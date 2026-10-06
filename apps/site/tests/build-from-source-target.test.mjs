@@ -48,21 +48,11 @@ function scan(text) {
   return INSTRUCTS_LEGACY.filter(({ re }) => re.test(hay)).map(({ id }) => id);
 }
 
-test('THE PREMISE IS STILL TRUE: apps/plugin is still the legacy, code-executing build', () => {
-  const readme = readFileSync(join(ROOT, 'apps', 'plugin', 'README.md'), 'utf8');
-  assert.match(
-    readme,
-    /^# apps\/plugin — NOT THE PRODUCT/m,
-    'THIS GUARD IS STALE, NOT THE PAGE: apps/plugin/README.md no longer declares itself the legacy ' +
-      'build. If the two plugins were merged or the legacy one was retired, re-read this file and ' +
-      'decide what the build page should say — do not delete it to get quiet.',
-  );
-  const ops = readFileSync(join(ROOT, 'apps', 'plugin', 'src', 'Ops.luau'), 'utf8');
-  assert.match(
-    ops,
-    /handlers\.run_code[\s\S]{0,2000}pcall\(require, module\)/,
-    'THIS GUARD IS STALE, NOT THE PAGE: apps/plugin no longer requires a ModuleScript built from ' +
-      'received text. The reason this page was retargeted may have gone — go and look.',
+test('THE PREMISE IS STILL TRUE: the legacy plugin is gone and the page names the only plugin', () => {
+  assert.equal(
+    existsSync(join(ROOT, 'apps', 'plugin')),
+    false,
+    'apps/plugin is back: it was removed in M4 (it executed Luau it was sent). If it returns, this page must again be told apart from it.',
   );
 
   // And the plugin the page now names must actually be buildable the way the page says.

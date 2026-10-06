@@ -16,7 +16,6 @@ import type { Env } from './env';
 import { serveStatic } from './static';
 import { getUploadStatus, uploadAsset, type CreatorEnv, type Result, type UploadedAsset, type UploadAssetInput } from './creator-dashboard';
 import { describeRobloxCredential } from './user-credentials';
-import { appendStudioPath } from './assets';
 import { footprintRadius, spreadSpot, type Footprint, type Vec3 } from './library-placement';
 
 type Row = [string, string, number, number, string, number | string, number, string | null, number | null, number[] | null, boolean?];
@@ -165,36 +164,6 @@ export function libraryAdvice(items: readonly unknown[]): { name: string; rows: 
       note: `The model library holds rows for "${name}". If this is a prop rather than structure, look first (find_library_model, preview_library_models) and decide; it was created as you asked.` });
   }
   return out.length ? out.slice(0, 3) : null;
-}
-
-/**
- * Where an owner-corpus import landed, with the transforms the caller asked for applied to the MODEL.
- *
- * Both owner imports (the cloud component and the local native one) put their roots inside a Folder wrapper, and a
- * Folder cannot be moved or scaled. The model inside it can, so the path handed back is the inner model's whenever the
- * wrapper holds exactly one, with the wrapper's path kept as `wrapper`. `position`, `height` and `scale` are the same
- * arguments insert_library_model takes for a Creator Store row; none of them is given, nothing is transformed and the
- * authored placement stands.
- */
-export async function placeImportedOwner(
-  exec: Exec,
-  data: unknown,
-  want: { position?: number[]; scale?: number; height?: number; longest?: number },
-): Promise<Record<string, unknown>> {
-  const d = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
-  const wrapper = (Array.isArray(d.inserted) ? d.inserted : []).find((p): p is string => typeof p === 'string');
-  if (!wrapper) return {};
-  let inner = wrapper;
-  const tree = await exec({ op: 'get_tree', root: wrapper, maxDepth: 1, maxNodes: 50 }, 15_000);
-  const root = ((tree.ok && tree.data && typeof tree.data === 'object' ? (tree.data as Record<string, unknown>).root : null) ?? {}) as Record<string, unknown>;
-  const kids = Array.isArray(root.children) ? (root.children as Record<string, unknown>[]) : [];
-  const several = root.class === 'Folder' && kids.length > 1;
-  if (root.class === 'Folder' && kids.length === 1 && typeof kids[0]!.name === 'string') inner = appendStudioPath(wrapper, kids[0]!.name) ?? wrapper;
-  const out: Record<string, unknown> = { inserted: [inner], ...(inner !== wrapper ? { wrapper } : {}) };
-  if (want.position === undefined && want.scale === undefined && want.height === undefined && want.longest === undefined) return out;
-  if (several) return { ...out, placementWarning: 'the import holds several pieces, so it was left where it landed; use transform_instances on each piece of the wrapper' };
-  const placed = await placeInserted(exec, inner, { id: 'owner', name: 'owner component', kind: 'prop' } as LibraryModel, want);
-  return { ...out, ...('error' in placed ? { placementWarning: placed.error } : { placed }) };
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -13,7 +13,7 @@ import { COMPONENTS } from './components.generated';
 import { studdedMap, STUD_PALETTE, type StudPalette } from './studded-map';
 import { waveDefenseHud } from './stud-ui';
 
-/** A piece of the owner library: its game (a unique hash prefix) and path, as library_extract and import_owner_library take them. */
+/** A library piece named by game (a unique hash prefix) and path. The composers that take it have no executor since M4 (the whole-game path is gone). */
 export interface LibRef { game: string; path: string }
 
 export interface EnemySpec {

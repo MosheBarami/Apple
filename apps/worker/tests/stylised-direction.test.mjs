@@ -36,8 +36,6 @@ function bundle(entry) {
 }
 const { worldBuildingBrief, PALETTES, MOODS } = await bundle('worldbuilding.ts');
 const { BRIEF_REMINDER } = await bundle('prompts.ts');
-const { hardFailChecks } = await bundle('vision.ts');
-const { metricsFromRender } = await bundle('critic-input.ts');
 
 const hsv = ([r, g, b]) => {
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -150,30 +148,3 @@ test('the collapsed reminder keeps the rules that the round-1 build broke', () =
   }
 });
 
-// ------------------------------------------------------------- the critics ---
-
-const view = (name, over = {}) => ({
-  name, rgbBase64: '',
-  meta: { width: 288, height: 180, partsConsidered: 120, partsVisible: 110, partsOffCamera: 10,
-    subjectCoverage: 0.5, distinctColours: 9,
-    materials: [{ material: 'SmoothPlastic', parts: 70 }, { material: 'Plastic', parts: 34 }, { material: 'Neon', parts: 3 }],
-    ...over },
-});
-const STYLISED = {
-  subject: 'Workspace', boundsSize: [180, 30, 140], views: [view('hero'), view('front')],
-  lighting: { brightness: 3, clockTime: 13, ambient: [100, 104, 112], lightInstances: 4, effects: ['Atmosphere', 'BloomEffect'] },
-};
-const GREYBOX = { ...STYLISED, views: [view('hero', { distinctColours: 2 }), view('front', { distinctColours: 2 })] };
-
-test('a many-coloured Plastic scene is a style, not a missing material pass', () => {
-  const fails = hardFailChecks(STYLISED, 'scene');
-  assert.ok(!fails.some((f) => /Plastic/.test(f)), fails.join(' | '));
-  assert.equal('factoryDefaultShare' in metricsFromRender(STYLISED), false,
-    'nine colours of Plastic were reported as factory defaults');
-});
-
-test('an all-Plastic scene in two colours still fails both critics', () => {
-  assert.ok(hardFailChecks(GREYBOX, 'scene').some((f) => /Plastic/.test(f)), 'the greybox check went blind');
-  const m = metricsFromRender(GREYBOX);
-  assert.ok(m.factoryDefaultShare > 0.3, `got ${m.factoryDefaultShare}`);
-});

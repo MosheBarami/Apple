@@ -102,160 +102,6 @@ test('compose: the bundled components are the current sources', () => {
   execFileSync('node', [join(WORKER, '..', '..', 'scripts', 'gen-components.mjs'), '--check'], { stdio: 'pipe' });
 });
 
-const outT = join(mkdtempSync(join(tmpdir(), 'compose-tool-')), 't.mjs');
-execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
-  [join(WORKER, 'src', 'compose-tool.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outT, '--external:cloudflare:*'],
-  { cwd: WORKER, stdio: 'pipe' });
-const CT = await import(`file://${outT}`);
-const outR = join(mkdtempSync(join(tmpdir(), 'compose-run-')), 'r.mjs');
-execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
-  [join(WORKER, 'src', 'compose-run.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outR, '--external:cloudflare:*'],
-  { cwd: WORKER, stdio: 'pipe' });
-const CR = await import(`file://${outR}`);
-
-/** A Studio that says yes to everything and remembers what was created. */
-function studio(init = {}) {
-  const ops = [];
-  const exists = new Set(init.exists ?? []);
-  return {
-    ops, exists,
-    ctx: {
-      env: {}, userId: 'u1', projectId: 'p1', studioConnected: () => true, createCheckpoint: async () => ({ id: 'cp' }), userRequest: () => init.request ?? '',
-      execStudioOp: async (op) => {
-        ops.push(op);
-        const has = (path) => [...exists].some((e) => path === e || path.startsWith(`${e}.`));
-        if (op.op === 'get_instance') return has(op.path) ? { ok: true, data: {} } : { ok: false, error: 'not found' };
-        if (op.op === 'get_tree') return { ok: has(op.root), data: { root: { name: 'x', class: 'Folder', children: (init.components ?? []).map((name) => ({ name })) } } };
-        if (op.op === 'create_instances') { for (const i of op.items) exists.add(`${i.parent}.${i.name}`); return { ok: true, data: {} }; }
-        if (op.op === 'spatial_query') return { ok: true, data: { center: [0, 3, 0], size: [8, 6, 8], bottomY: 0 } };
-        return { ok: true, data: { imported: 1, placed: [], failed: [] } };
-      },
-    },
-  };
-}
-const TYCOON = { title: 'Fixture Works', currency: 'Credits', item: { name: 'Raw Stuff', color: '#8a6d52' }, dropper: 'Chute',
-  machines: [{ name: 'Press', becomes: 'Pressed Stuff', color: '#dff3ff' }, { name: 'Oven', becomes: 'Baked Stuff', color: '#e8913a', times: 3 }], seller: { name: 'Counter' } };
-const PLOTSIM = { title: 'Fixture Sim', subject: 'gadget', currency: 'Gems', machines: [
-  { name: 'Small Gadget', price: 25, income: 1, look: { gameId: 'aabbccdd1122', path: '/Workspace/Gadget' } },
-  { name: 'Big Gadget', price: 100, income: 4, look: { gameId: 'aabbccdd1122', path: '/Workspace/Gadget#2' } }],
-  upgrades: [{ label: 'Faster', kind: 'perSecond', amount: 1, cost: 40 }] };
-
-test('compose_game: no template named is a menu, not a refusal and not a guess from the request words', async () => {
-  const { ctx, ops } = studio({ request: 'defend your garden from waves of vegetables' });
-  const r = await CT.composeGame(ctx, { request: 'defend your garden from waves of vegetables' });
-  assert.equal(r.changed, false);
-  assert.equal(r.template, 'none');
-  assert.deepEqual(r.templates.map((t) => t.template), ['tycoon', 'plot-sim', 'lane-defense']);
-  for (const t of r.templates) { assert.ok(t.makes && t.cannot && t.needs, t.template); }
-  assert.match(r.note, /build it with your other tools/);
-  assert.equal(ops.length, 0, 'nothing touched the place');
-  const unknown = await CT.composeGame(ctx, { request: 'x', template: 'racing' });
-  assert.equal(unknown.template, 'none');
-  assert.notEqual(CT.ideaSeed('defend your garden'), CT.ideaSeed('defend your farm'), 'a new idea gets a new map');
-  assert.equal(CT.ideaSeed('Defend  your garden'), CT.ideaSeed('defend your garden'), 'the same idea gets the same map');
-  assert.equal(CT.ideaRecipe, undefined, 'the request-word router is gone');
-});
-
-test('compose_game: a missing field is reported by name and nothing is built or filled from a template', async () => {
-  const { ctx, ops } = studio();
-  const r = await CT.composeGame(ctx, { request: 'x', template: 'tycoon', tycoon: { title: 'T', currency: 'C', item: { name: 'A' }, dropper: 'D', machines: [{ name: 'M' }], seller: {} } });
-  assert.equal(r.changed, false);
-  assert.ok(r.missing.includes('item.color (#rrggbb)'), JSON.stringify(r.missing));
-  assert.ok(r.missing.includes('machines[0].becomes'));
-  assert.ok(r.missing.includes('machines[0].color (#rrggbb)'));
-  assert.ok(r.missing.includes('seller.name'));
-  assert.match(r.error, /missing:/);
-  assert.equal(ops.some((o) => o.op === 'create_instances' || o.op === 'edit_script'), false);
-  const sim = await CT.composeGame(ctx, { request: 'x', template: 'plot-sim', plotSim: { title: 'S', subject: 's', currency: 'G', machines: [{ name: 'Only', price: 5 }] } });
-  assert.ok(sim.missing.some((m) => /machines\[0\]\.income/.test(m)) && sim.missing.some((m) => /look/.test(m)), JSON.stringify(sim.missing));
-  assert.ok(sim.missing.some((m) => /upgrades/.test(m)), 'upgrades are required: no default set');
-  const lane = await CT.composeGame(ctx, { request: 'x', template: 'lane-defense', laneDefense: { title: 'L' } });
-  assert.ok(lane.missing.includes('currency') && lane.missing.some((m) => /enemies/.test(m)) && lane.missing.some((m) => /base/.test(m)), JSON.stringify(lane.missing));
-});
-
-test('compose_game: a built place that already holds a composed game is reported, and the agent chooses extend or replace', async () => {
-  const there = studio({ exists: ['game.Workspace.AppleMap', 'game.ServerScriptService.AppleComponents'], components: ['AppleEconomy', 'AppleUpgrades'] });
-  const asked = await CT.composeGame(there.ctx, { request: 'x', template: 'tycoon', tycoon: TYCOON });
-  assert.equal(asked.changed, false);
-  assert.deepEqual(asked.existing, { map: true, components: ['AppleEconomy', 'AppleUpgrades'] });
-  assert.match(asked.note, /extend.*replace/s);
-  assert.equal(there.ops.some((o) => o.op === 'delete_instances' || o.op === 'create_instances'), false, 'nothing was deleted or built before the agent chose');
-  const replaced = studio({ exists: ['game.Workspace.AppleMap', 'game.ServerScriptService.AppleComponents'] });
-  const r = await CT.composeGame(replaced.ctx, { request: 'x', template: 'tycoon', existing: 'replace', tycoon: TYCOON });
-  assert.ok(replaced.ops.some((o) => o.op === 'delete_instances' && o.paths.includes('game.Workspace.AppleMap')), 'the earlier game went, because the agent said replace');
-  assert.ok(replaced.ops.some((o) => o.op === 'create_instances'), 'and the new one was built');
-  assert.equal(r.template, 'tycoon', JSON.stringify(r).slice(0, 300));
-});
-
-test('compose_game: a tycoon is exactly what the agent said: its names, its chain, its currency, and no baseplate or lighting change unasked', async () => {
-  const { ctx, ops } = studio();
-  const r = await CT.composeGame(ctx, { request: 'x', template: 'tycoon', tycoon: { ...TYCOON, title: 'מפעל', currency: 'מטבעות', item: { name: 'חומר גלם', color: '#8a6d52' } } });
-  assert.equal(r.template, 'tycoon');
-  assert.deepEqual(r.chain, ['חומר גלם', 'Pressed Stuff', 'Baked Stuff']);
-  assert.ok(r.economy.pads.length >= 3 && r.economy.pads.every((p) => p.secondsToAfford > 0), 'the economy curve is reported as information');
-  const authored = (o) => o.op === 'edit_script' ? /Config$/.test(o.path) ? o.source : '' : o.op === 'create_instances' ? JSON.stringify(o.items.filter((i) => !/AppleCompon/.test(i.name))) : '';
-  const text = ops.map(authored).join('\n');
-  assert.ok(text.includes('חומר גלם') && text.includes('מטבעות'), 'the agent\'s own words are in what was written');
-  for (const gone of ['Fabric', 'Cleaner', 'Polisher', 'Packer', 'Dirty', 'Laundry', '$']) assert.equal(text.includes(gone), false, `${gone} is back`);
-  // RESTATED 2026-10-04 (owner's recording of round 2): the default SpawnLocation's star decal is removed and the spawn switched off,
-  // nothing else of the default ground is touched; the Baseplate and the spawn itself are not deleted.
-  assert.equal(ops.some((o) => o.op === 'delete_instances' && o.paths.some((p) => /Baseplate|SpawnLocation/.test(p) && !/^game\.Workspace\.SpawnLocation\.(Decal|Texture)$/.test(p))), false, 'the default ground was left (only the default spawn\'s decal goes)');
-  assert.ok(ops.some((o) => o.op === 'set_props' && o.path === 'game.Workspace.SpawnLocation' && o.props.Enabled?.v === false), 'the default spawn is switched off');
-  assert.equal(ops.some((o) => o.op === 'set_props' && o.path === 'game.Lighting'), false, 'lighting was left');
-  assert.match(r.scene, /Baseplate was left as it was/);
-  const cleared = studio();
-  await CT.composeGame(cleared.ctx, { request: 'x', template: 'tycoon', clearDefaultGround: true, tycoon: TYCOON });
-  assert.ok(cleared.ops.some((o) => o.op === 'delete_instances' && o.paths.includes('game.Workspace.Baseplate')), 'cleared when the agent asked');
-});
-
-test('compose_game: a plot simulator is its machines, upgrades and currency as given, with the economy checked and a short ladder said', async () => {
-  const { ctx, ops } = studio();
-  const r = await CT.composeGame(ctx, { request: 'x', template: 'plot-sim', plotSim: PLOTSIM });
-  assert.equal(r.template, 'plot-sim', JSON.stringify(r).slice(0, 300));
-  assert.deepEqual(r.economy.machines.map((m) => m.paybackSeconds), [25, 25]);
-  assert.ok(r.notes.some((n) => /short ladder: 2 machines/.test(n)), JSON.stringify(r.notes));
-  assert.ok(r.defaults.includes('players = 4') && r.defaults.some((d) => /rebirth/.test(d)), 'defaults are reported, not silent');
-  const authored = (o) => o.op === 'edit_script' ? /Config$/.test(o.path) ? o.source : '' : o.op === 'create_instances' && o.items.some((i) => i.name === 'AppleHUD') ? JSON.stringify(o.items) : '';
-  const text = ops.map(authored).join('\n');
-  assert.ok(text.includes('Gems') && text.includes('Small Gadget') && text.includes('Faster'), 'the agent\'s own names are in the config and the screen');
-  for (const gone of ['Classic', 'Ice ', 'Galaxy', 'Mega ', 'Ultra ', 'Royal ', 'Coins', 'Stronger Taps', 'Auto Tapper', '$']) assert.equal(text.includes(gone), false, `${gone} is back`);
-  const hud = ops.find((o) => o.op === 'create_instances' && o.items.some((i) => i.name === 'AppleHUD')).items.find((i) => i.name === 'AppleHUD');
-  assert.ok(hud.children.some((c) => c.name === 'Gems'), 'a renamed currency: the money counter is named for it');
-  assert.equal(hud.children.some((c) => c.name === 'Coins'), false);
-  const client = ops.find((o) => o.op === 'edit_script' && /AppleClientConfig/.test(o.path)).source;
-  assert.match(client, /currency = "Gems"/);
-  assert.match(client, /counter = "Gems"/, 'the client scripts find the counter by this name');
-  const upgrades = ops.find((o) => o.op === 'edit_script' && /AppleUpgradesConfig/.test(o.path)).source;
-  assert.match(upgrades, /counter = "Gems"/);
-  const prices = await CT.composeGame(studio().ctx, { request: 'x', template: 'plot-sim', plotSim: { ...PLOTSIM, machines: [PLOTSIM.machines[1], PLOTSIM.machines[0]] } });
-  assert.match(prices.error, /must be higher than/, 'prices rise, or the cheaper tier is never worth buying');
-  const hero = studio();
-  hero.ctx.execStudioOp = (orig => async (op) => (op.op === 'spatial_query' && op.path === 'game.Workspace.Ghost') ? { ok: false } : orig(op))(hero.ctx.execStudioOp);
-  assert.match((await CT.composeGame(hero.ctx, { request: 'x', template: 'plot-sim', plotSim: { ...PLOTSIM, hero: 'Ghost' } })).error, /hero: game\.Workspace\.Ghost is not in the place/);
-});
-
-test('compose_game: a lane-defense game is the agent\'s own pieces, built as a new map', async () => {
-  const { ctx } = studio();
-  const r = await CT.composeGame(ctx, { request: 'x', template: 'lane-defense', laneDefense: FIXTURE });
-  assert.equal(r.template, 'lane-defense', JSON.stringify(r).slice(0, 300));
-  assert.equal(r.game, 'Fixture Siege');
-  assert.match(r.forUser, /Runner, Walker, Brute, King/);
-  const bad = R.readLaneDefense({ ...FIXTURE, waves: { list: [[{ enemy: 'Nobody', count: 1, every: 1 }]] } }, 1);
-  assert.ok(bad.missing.some((m) => /"Nobody" is not one of the enemies/.test(m)));
-  const src = readFileSync(join(WORKER, 'src', 'compose-lane.ts'), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.equal(/gameId: '[0-9a-f]{12}'|f3ac50e43d68|MythicNPC/.test(src), false, 'no library reference of an earlier benchmark is baked in');
-});
-
-test('compose_game: composer values become the plugin\'s typed values', () => {
-  assert.deepEqual(CR.propValue('Size', [4, 1, 4]), { t: 'Vector3', v: [4, 1, 4] });
-  assert.deepEqual(CR.propValue('Material', 'Grass'), { t: 'EnumItem', v: 'Enum.Material.Grass' });
-  assert.deepEqual(CR.propValue('TopSurface', 'Studs'), { t: 'EnumItem', v: 'Enum.SurfaceType.Studs' });
-  const c = CR.propValue('Color', '#ff8000');
-  assert.equal(c.t, 'Color3'); assert.equal(c.v[0], 1); assert.ok(Math.abs(c.v[1] - 128 / 255) < 1e-9); assert.equal(c.v[2], 0);
-  assert.deepEqual(CR.propValue('Anchored', true), { t: 'bool', v: true });
-  assert.deepEqual(CR.propValue('', 'AppleTile'), { t: 'string', v: 'AppleTile' });
-});
-
 test('compose: every property the map writes is one the plugin will write (one refused property loses the whole map)', () => {
   // Seen live 2026-09-30: SpawnLocation.Duration was refused, so create_instances refused the whole AppleMap.
   const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
@@ -266,75 +112,6 @@ test('compose: every property the map writes is one the plugin will write (one r
   const walk = (items) => { for (const i of items) { Object.keys(i.props ?? {}).forEach((k) => used.add(k)); walk(i.children ?? []); } };
   for (const s of steps.filter((x) => x.kind === 'create')) walk(s.items);
   for (const k of used) assert.ok(allowed.has(k), `${k} is not in the plugin's write allowlist`);
-});
-
-const outJ = join(mkdtempSync(join(tmpdir(), 'cjudge-')), 'j.mjs');
-execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'composed-judge.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outJ], { cwd: WORKER, stdio: 'pipe' });
-const J = await import(`file://${outJ}`);
-const IDEA = 'defend the base from waves of enemies';
-
-test('composed judge: it reads the config the composer wrote', () => {
-  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
-  assert.equal(cfg.title, 'Fixture Siege');
-  assert.deepEqual([...cfg.enemies].sort(), recipe.enemies.map((e) => e.name).sort());
-  assert.deepEqual([...cfg.creatures].sort(), recipe.enemies.map((e) => e.name).sort());
-  assert.equal(cfg.costumed, recipe.enemies.length);
-  assert.deepEqual(cfg.items, recipe.defenders.map((d) => d.id));
-  assert.equal(J.readConfig('return { foo = 1 }'), null, 'a place the composer did not make goes to the older judge');
-});
-
-const GOOD = { studpilot: { composed: true, bought: 2, moneyStart: 60, moneyAfterBuy: 10, moneyEnd: 22, enemies: 4, wave: 1, enemyJoints: 24, enemyJointsMoving: 22, defenderJoints: 2, defenderJointsMoving: 2 } };
-
-test('composed judge: a game that plays as asked is ready; each of the owner\'s failures fails it', () => {
-  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
-  const world = ['Camera', 'Terrain', 'AppleMap', 'AppleEnemies', 'AppleDefenders'];
-  const ok = J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: ['Failed to load animation 114302219876492'] });
-  assert.equal(J.verdictOf(ok).verdict, 'ready', JSON.stringify(ok.filter((f) => !f.ok)));
-  const fail = (f) => J.verdictOf(f).verdict === 'not ready';
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, [...world, 'Map', 'Lobby'], GOOD, { errors: [], loadFailures: [] })), 'a copied world fails');
-  assert.ok(fail(J.judgeFindings(IDEA, { ...cfg, enemies: ['Tung Tung', ...cfg.enemies] }, world, GOOD, { errors: [], loadFailures: [] })), 'an enemy with no costume fails');
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { studpilot: { ...GOOD.studpilot, enemyJointsMoving: 0 } }, { errors: [], loadFailures: [] })), 'a creature that does not move fails');
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: ['Failed to load 111111', 'Failed to load 222222', 'Failed to load 333333'] })), 'assets that do not load fail');
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { studpilot: { ...GOOD.studpilot, moneyEnd: 10 } }, { errors: [], loadFailures: [] })), 'a loop that pays nothing fails');
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, null, { errors: [], loadFailures: [] })), 'not played is never ready');
-});
-
-test('composed judge: the unpublished plugin 1.5.0 reports the play check under `apple`, and is judged the same as one that says `studpilot`', () => {
-  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
-  const world = ['Camera', 'Terrain', 'AppleMap', 'AppleEnemies', 'AppleDefenders'];
-  const logs = { errors: [], loadFailures: [] };
-  const old = { apple: GOOD.studpilot };
-  assert.deepEqual(J.judgeFindings(IDEA, cfg, world, old, logs), J.judgeFindings(IDEA, cfg, world, GOOD, logs), 'the old field name reads the same');
-  assert.equal(J.verdictOf(J.judgeFindings(IDEA, cfg, world, old, logs)).verdict, 'ready');
-  const stalled = { apple: { ...GOOD.studpilot, enemyJointsMoving: 0 } };
-  assert.equal(J.verdictOf(J.judgeFindings(IDEA, cfg, world, stalled, logs)).verdict, 'not ready', 'a failure is still a failure under the old name');
-  const both = { studpilot: { ...GOOD.studpilot, enemyJointsMoving: 0 }, apple: GOOD.studpilot };
-  assert.equal(J.verdictOf(J.judgeFindings(IDEA, cfg, world, both, logs)).verdict, 'not ready', 'when both are present the new name wins');
-});
-
-test('composed judge: what the agent said it meant to build is compared with what exists, with no list of nouns', () => {
-  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
-  const world = ['Camera', 'Terrain', 'AppleMap', 'AppleEnemies', 'AppleDefenders'];
-  const pieces = { Costume2: ['Cherry'], Costume3: ['Cherry'] };
-  const stated = (enemies) => J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: [] }, { enemies }, pieces).find((f) => f.area === 'twist');
-  const all = cfg.enemies.map((name) => ({ name }));
-  assert.equal(stated(all).ok, true, stated(all).said);
-  assert.equal(stated(all.slice(1)).ok, false, 'an enemy the design did not state');
-  assert.match(stated(all.slice(1)).said, /did not state/);
-  assert.equal(stated([...all, { name: 'Dragon' }]).ok, false);
-  assert.match(stated([...all, { name: 'Dragon' }]).said, /does not have: Dragon/);
-  const costume = cfg.costumeKeys.Walker;
-  assert.ok(costume, 'the judge reads which costume each enemy wears: ' + JSON.stringify(cfg.costumeKeys));
-  const wrong = stated(all.map((e) => e.name === 'Walker' ? { ...e, is: 'a pumpkin' } : e));
-  assert.equal(wrong.ok, false, 'meant to be a pumpkin, wears a cherry');
-  assert.match(wrong.said, /Walker is meant to be "a pumpkin", but it wears "Cherry"/);
-  assert.equal(stated(all.map((e) => e.name === 'Walker' ? { ...e, is: 'a cherry' } : e)).ok, true, 'the same words in the agent\'s own language of the piece');
-  const none = J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: [] }).find((f) => f.area === 'twist');
-  assert.match(none.said, /Not compared with a design/, 'a check that did not run is said, not a pass in disguise');
-  assert.deepEqual(J.readDesign({ enemies: [{ name: ' A ', is: 'x' }, {}, { name: 'B' }] }), { enemies: [{ name: 'A', is: 'x' }, { name: 'B' }] });
-  assert.equal(J.readDesign({}), null);
-  const src = readFileSync(join(WORKER, 'src', 'composed-judge.ts'), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.equal(/VEG|FRUIT|tomato|carrot|pumpkin/i.test(src), false, 'the judge holds no noun list');
 });
 
 test('compose: every class and enum the build creates is one the plugin will create', () => {
@@ -442,4 +219,16 @@ test('compose: the road never overlaps itself and no curb crosses it (owner\'s c
       assert.ok(road.some((r) => { const b = box(r); return x >= b.x0 - 1e-6 && x <= b.x1 + 1e-6 && z >= b.z0 - 1e-6 && z <= b.z1 + 1e-6; }), `seed ${seed}: a gap in the road at ${x},${z}`);
     }
   }
+});
+
+// RESTATED in M4: compose_game (the tool that carried these assertions) is removed. The reading of a lane-defense spec is a kept helper
+// (compose-lane.ts, block source material), so its properties are asserted on the helper itself.
+test('compose: a lane-defense spec reports a missing field by name, refuses a wave that names no enemy, and bakes in no earlier benchmark\'s library piece', () => {
+  const lane = R.readLaneDefense({ title: 'L' }, 1);
+  assert.ok('error' in lane && lane.missing.includes('currency') && lane.missing.some((m) => /enemies/.test(m)) && lane.missing.some((m) => /base/.test(m)), JSON.stringify(lane.missing));
+  const bad = R.readLaneDefense({ ...FIXTURE, waves: { list: [[{ enemy: 'Nobody', count: 1, every: 1 }]] } }, 1);
+  assert.ok(bad.missing.some((m) => /"Nobody" is not one of the enemies/.test(m)));
+  const src = readFileSync(join(WORKER, 'src', 'compose-lane.ts'), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.equal(/gameId: '[0-9a-f]{12}'|f3ac50e43d68|MythicNPC/.test(src), false, 'no library reference of an earlier benchmark is baked in');
+  assert.equal(read.recipe.title, 'Fixture Siege');
 });

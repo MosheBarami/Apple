@@ -30,17 +30,12 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
   /**
-   * THE SELF-CHECK BEFORE ANSWERING (M1 of docs/autonomy/PHASE-3-4-PLAN.md): `off` | `on` | `full`. A plain Worker var, not a
-   * secret. `off` is the run exactly as it was (the `look` tool is not even offered); `on` adds the evidence ledger, the look,
-   * the completion gate and the deterministic claim audit; `full` also runs the one cheap text judge over the final reply.
-   * UNSET: `on` everywhere except ENVIRONMENT=production, where it is `off` until the owner turns it on (the Q21 line is owed).
-   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.studpilot.jsonc "vars"). See self-check.ts.
+   * THE SELF-CHECK BEFORE ANSWERING (M1 of docs/autonomy/PHASE-3-4-PLAN.md, cut down in M4): `off` | `on` | `full`. A plain Worker var,
+   * not a secret. `off` is the run exactly as it was before the check existed; `on` adds the evidence ledger and the deterministic
+   * claim audit; `full` also runs the one cheap text judge over the final reply. There is no look and no critique in it any more.
+   * UNSET: `on` everywhere except ENVIRONMENT=production, where it is `off` unless set (wrangler.studpilot.jsonc sets it). See self-check.ts.
    */
   SELF_CHECK?: string;
-  /** The blind critique before answering (blind-critique.ts): on unless `off`, `0`, `false` or `no`. Only effective while SELF_CHECK is on. */
-  SELF_CHECK_CRITIC?: string;
-  /** How long, in ms (0 to 2000, default 350), the look waits after aiming the viewport camera before it captures. Tuning, not a switch. */
-  SELF_CHECK_SETTLE_MS?: string;
   /**
    * Purpose-scoped secret used only to claim and acknowledge membership-access outbox rows. The
    * raw value is a Worker secret; Supabase stores its SHA-256 digest (migration 0009). Without it,
@@ -81,15 +76,13 @@ export interface Env {
    */
   OWNER_USER_IDS?: string;
   /**
-   * Owner-corpus release library (V3 G05, Q37): whose cloud owner corpus approved accounts read.
-   * Unset or blank means the first OWNER_USER_IDS id. A Supabase user id; set as a secret like
-   * OWNER_USER_IDS so it survives deploys and stays out of the repo.
+   * Pre-launch account gate (Q37/G02, account-gate.ts): a Supabase user id approved to start builds besides OWNER_USER_IDS.
+   * Set as a secret like OWNER_USER_IDS so it survives deploys and stays out of the repo.
    */
   RELEASE_LIBRARY_OWNER_ID?: string;
   /**
-   * Comma-separated Supabase user ids approved before launch to find/read/insert from the release
-   * library (read-only; their own uploads stay in their own namespace). Unset or blank means nobody
-   * besides the release owner. Set as a secret (`wrangler secret put`).
+   * Comma-separated Supabase user ids approved before launch to start builds (account-gate.ts). Unset or blank means nobody
+   * besides the owner ids. Set as a secret (`wrangler secret put`).
    */
   LIBRARY_APPROVED_USER_IDS?: string;
   //[[ `RESVG_WASM?: WebAssembly.Module` WAS HERE, AND WAS A DIRECTION TO A PLACE THAT DOES NOT EXIST.

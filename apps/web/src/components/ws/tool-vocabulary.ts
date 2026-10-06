@@ -158,7 +158,6 @@ export const TOOL = {
   create_instances: { kind: 'building', label: 'Created instances', live: 'Building new things', on: 'Building the {}' },
   insert_asset: { kind: 'building', label: 'Inserted an asset', live: 'Adding something to your game' },
   edit_terrain: { kind: 'building', label: 'Edited terrain', live: 'Shaping the ground' },
-  build_scene: { kind: 'building', label: 'Built the scene', live: 'Building the scene' },
   // Two tools the worker gained on 2026-10-01 (09e97ab7), caught by tool-vocabulary.test.mjs before
   // the turn's Task rows could print their registry names. `build_object` makes one whole thing in a
   // call, named by its own `name`; `more_tools` widens the run's toolset when nothing offered fits.
@@ -193,7 +192,6 @@ export const TOOL = {
   // C13
   render_view: { kind: 'rendering', label: 'Rendered the scene', live: 'Taking a picture of it' },
   capture_studio_viewport: { kind: 'rendering', label: 'Captured the Studio view', live: 'Taking a picture of Studio' },
-  look: { kind: 'rendering', label: 'Looked at what was built', live: 'Looking at what was built' },
   compose_thumbnail: { kind: 'rendering', label: 'Framed a store-page image', live: 'Making a thumbnail' },
   get_instance: { kind: 'inspecting', label: 'Read an instance back', live: 'Taking a closer look', on: 'Looking at the {}' },
   get_selection: { kind: 'inspecting', label: 'Checked what you have selected', live: 'Seeing what you picked' },
@@ -226,31 +224,14 @@ export const TOOL = {
   insert_library_model: { kind: 'building', label: 'Added a model from the library', live: 'Adding a model' },
   preview_library_models: { kind: 'searching_assets', label: 'Looked at ready-made models', live: 'Looking at ready-made models' },
   dress_object: { kind: 'building', label: 'Added extras to it', live: 'Adding extras' },
-  insert_owner_component: { kind: 'building', label: 'Added a piece from the game library', live: 'Adding a piece' },
-  query_owner_catalog: { kind: 'searching_assets', label: 'Looked in the game library', live: 'Finding the right pieces' },
-  browse_owner_library: { kind: 'searching_assets', label: 'Looked in your game library', live: 'Looking through your games' },
-  import_owner_library: { kind: 'building', label: 'Added parts from your game library', live: 'Adding parts from your games' },
-  recreate_owner_game: { kind: 'building', label: 'Rebuilt a game from your library', live: 'Rebuilding the game from its parts' },
-  install_owner_system: { kind: 'building', label: 'Added a feature from your game library', live: 'Adding a feature from your games' },
-  plan_game: { kind: 'planning', label: 'Planned an original game from your library', live: 'Planning your game' },
-  build_game: { kind: 'building', label: 'Built a game from your library', live: 'Building your game from your games' },
-  compose_game: { kind: 'building', label: 'Built your game', live: 'Building your game' },
-  query_owner_assembly: { kind: 'searching_assets', label: 'Looked up how a library game works', live: 'Studying a library game' },
-  read_owner_media: { kind: 'inspecting', label: 'Looked at library media', live: 'Looking at library media' },
-  list_owner_original_strings: { kind: 'inspecting', label: 'Listed library code', live: 'Reading library code' },
-  read_owner_original_string: { kind: 'inspecting', label: 'Read library code', live: 'Reading library code' },
-  read_owner_component: { kind: 'inspecting', label: 'Looked at a library piece', live: 'Looking at a library piece' },
-  inspect_attachment_image: { kind: 'inspecting', label: 'Looked at your image', live: 'Looking at your image' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent', live: 'Checking how it looks' },
-  inspect_visually: { kind: 'critiquing', label: 'Looked at the result', live: 'Checking how it looks' },
 
   // C14 / C15 / C18
   run_and_check: { kind: 'playtesting', label: 'Ran the game and checked it', live: 'Playing your game' },
   play_check: { kind: 'playtesting', label: 'Played it as a player and checked the screen', live: 'Playing your game' },
   play_check_ui: { kind: 'playtesting', label: 'Played it and pressed the buttons on screen', live: 'Pressing the buttons to test them' },
-  judge_game: { kind: 'playtesting', label: 'Judged the game the way a player would', live: 'Judging your game like a player would' },
   get_output_logs: { kind: 'debugging', label: 'Read the output log', live: 'Looking for problems' },
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint', live: 'Saving your progress' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project', live: 'Remembering what changed' },
@@ -266,7 +247,6 @@ export const TOOL = {
   web_search: { kind: 'browsing', label: 'Searched the web', live: 'Searching the web' },
   docs_lookup: { kind: 'browsing', label: 'Read the documentation', live: 'Reading up on it' },
   screenshot_page: { kind: 'browsing', label: 'Captured a page', live: 'Looking at a web page' },
-  ocr_image: { kind: 'browsing', label: 'Read the text in an image', live: 'Reading a picture' },
   github_lookup: { kind: 'browsing', label: 'Looked something up on GitHub', live: 'Reading up on it' },
   git_history: { kind: 'browsing', label: 'Read version history', live: 'Looking back at earlier changes' },
   workspace_list: { kind: 'filing', label: 'Listed the project files', live: 'Checking your notes' },

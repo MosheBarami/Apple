@@ -265,7 +265,7 @@ print('entry runtime assertions passed')
   const output = execFileSync('luau', [file], { encoding: 'utf8' });
   assert.match(output, /entry runtime assertions passed/);
 
-  const oldCaptureFence = entry.replace(' or op.op == "capture_studio_viewport"', '');
+  const oldCaptureFence = entry.replace('op.op == "capture_studio_viewport"', 'false');
   assert.notEqual(oldCaptureFence,entry,'capture pairing fence must be present');
   const mutantFile=join(directory,'entry-capture-edit-fence-mutant.luau');
   writeFileSync(mutantFile,prelude+'\n'+oldCaptureFence+'\n'+assertions);

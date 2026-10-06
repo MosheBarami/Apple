@@ -213,7 +213,8 @@ function findings() {
 
 test('the scan reads the real source (a scan that read nothing would pass)', () => {
   assert.ok(SOURCES.length > 150, `only ${SOURCES.length} source files found`);
-  assert.ok(SOURCES.some((s) => s.p.endsWith('compose-tool.ts')));
+  assert.ok(SOURCES.some((s) => s.p.endsWith('compose-tycoon.ts')), 'the kept block source material is scanned (compose-tool.ts was removed in M4)');
+  assert.equal(SOURCES.some((s) => s.p.endsWith('compose-tool.ts')), false, 'the whole-game tool came back');
   assert.ok(SOURCES.some((s) => s.p.endsWith('AppleTycoon.luau')));
 });
 

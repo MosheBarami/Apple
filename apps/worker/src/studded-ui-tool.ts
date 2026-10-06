@@ -6,7 +6,7 @@
  */
 import type { AgentCtx } from './tools';
 import { STUD_COLOURS, studdedScreen, type StudAnchor, type StudColour, type StudPiece } from './stud-ui';
-import { typed } from './compose-run';
+import { typed } from './typed-spec';
 import type { InstanceSpecLite } from './compose';
 import { actionKey, duplicateAction, edgeButtons, placePieces, reconcilePieces, type Reuse, type TreeNode } from './ui-layout';
 import { currencyGlyph, glyphOf } from './ui-icons';

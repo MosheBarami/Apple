@@ -13,7 +13,7 @@ const CREATED_KEYS = ['created', 'inserted', 'placed'] as const;
 const MAX_CREATED = 150;
 
 /** Ops whose success means the place gained instances. */
-const ADDING_OPS = new Set(['create_instances', 'clone_instances', 'insert_asset', 'import_owner_component', 'import_owner_local', 'place_copies', 'group_instances']);
+const ADDING_OPS = new Set(['create_instances', 'clone_instances', 'insert_asset', 'place_copies', 'group_instances']);
 
 /** Add paths a tool reports directly (an insert settles its model under a final name after the plugin's own reply). */
 export function addCreated(prior: readonly string[] | undefined, paths: readonly string[]): string[] | undefined {

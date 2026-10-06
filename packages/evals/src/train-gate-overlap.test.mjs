@@ -95,15 +95,6 @@ test('§1 AN INSTRUCTION THAT IS ACTUALLY LUAU THROWS — the check the margin c
   );
 });
 
-test('§1 THE TAIL IS THE ONE build-dataset.mjs ACTUALLY WRITES — pinned against its source', () => {
-  // Without this the constant above is a guess that happens to be right today. build-dataset.mjs
-  // is the only writer of these files; if its template changes, this reddens here rather than
-  // silently at §5.
-  const src = readFileSync(join(HERE, '..', '..', 'training', 'src', 'build-dataset.mjs'), 'utf8');
-  assert.match(src, /content: `\$\{ex\.doc\}\\n\\nWrite the Luau implementation\.`/);
-  assert.equal(INSTRUCTION_SUFFIX, '\n\nWrite the Luau implementation.');
-});
-
 test('§1 every training split is compared, not just train.jsonl', () => {
   // test.jsonl is the SFT set's held-out split, which is a different held-out than this gate.
   // Leaving it out would compare the gate against 81% of the rows and report the same words.

@@ -44,7 +44,7 @@ test('preload_content and capture_studio_viewport reach the paired plugin throug
 });
 
 test('the ops that bring content in from outside are still refused', async () => {
-  for (const op of [{ op: 'insert_asset', assetId: 1, parent: 'game.Workspace' }, { op: 'import_owner_library', gameId: 'abcdef012345', path: '/Workspace', mode: 'children', parent: 'game.Workspace' }]) {
+  for (const op of [{ op: 'insert_asset', assetId: 1, parent: 'game.Workspace' }, { op: 'generate_model', prompt: 'a tree' }]) {
     const r = await adminOp(op);
     assert.equal(r.status, 400);
     assert.match(r.body.error, /not a diagnostics op/);

@@ -110,19 +110,19 @@ test('the worker MUTATING set matches the plugin table that opens undo recording
   // Two copies of one fact. The plugin's MUTATING table decides whether a ChangeHistory recording
   // is opened; this module's copy decides whether a timed-out op may be repeated. If they drift,
   // an op the plugin considers a mutation is one this module will happily re-send.
-  const luau = readFileSync(join(ROOT, 'apps/plugin/src/Ops.luau'), 'utf8');
-  const start = luau.indexOf('local MUTATING = {');
+  const luau = readFileSync(join(ROOT, 'apps/studpilot-plugin/src/Commands.luau'), 'utf8');
+  const start = luau.indexOf('\nlocal MUTATING = {');
   assert.ok(start > 0, 'the plugin still has a MUTATING table — if it moved, re-aim this test');
   const table = luau.slice(start, luau.indexOf('\n}', start));
   const pluginSet = new Set([...table.matchAll(/(\w+)\s*=\s*true/g)].map((m) => m[1]));
   assert.ok(pluginSet.size >= 15, `parsed ${pluginSet.size} mutating ops from the plugin — parser check`);
-  // The native owner import is a shipped op family; legacy fixtures never installed it.
-  const ownerFamily = readFileSync(join(ROOT, 'apps/studpilot-plugin/src/ops/OwnerCorpus.luau'), 'utf8');
-  const ownerMutating = ownerFamily.match(/mutating\s*=\s*\{([^}]*)\}/)?.[1] ?? '';
-  for (const [, name] of ownerMutating.matchAll(/(\w+)\s*=\s*true/g)) pluginSet.add(name);
   const here = new Set(MUTATING_OPS);
   assert.deepEqual([...pluginSet].filter((o) => !here.has(o)).sort(), [], 'the plugin mutates ops this module does not know about');
-  assert.deepEqual([...here].filter((o) => !pluginSet.has(o)).sort(), [], 'this module believes ops mutate that the plugin does not record');
+  // The other direction is not an equality since the legacy plugin was removed (M4): the worker also treats these two as
+  // mutations that the shipped plugin does not record in MUTATING (generate_model is deferred-mutating there, run_code is
+  // refused outright). Any other op this module believes mutates must be one the plugin records.
+  const workerOnly = new Set(['generate_model', 'run_code']);
+  assert.deepEqual([...here].filter((o) => !pluginSet.has(o) && !workerOnly.has(o)).sort(), [], 'this module believes ops mutate that the plugin does not record');
 });
 
 test('mutates() reads the op kind from every shape a caller has', () => {

@@ -97,7 +97,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-/** Convenience: plugin payload -> `data:` URL a vision model can consume directly. */
+/** Convenience: plugin payload -> `data:` URL a browser can show. (It once also fed a vision model; nothing sends a picture to a model since M4.) */
 export async function rgbBase64ToDataUrl(rgbBase64: string, width: number, height: number): Promise<string> {
   const png = await encodePng(decodeRgbBase64(rgbBase64), width, height);
   return `data:image/png;base64,${bytesToBase64(png)}`;

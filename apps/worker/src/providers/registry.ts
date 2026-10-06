@@ -84,7 +84,7 @@ export function capabilityTable(env: Env): CapabilityRow[] {
 // ---------------------------------------------------------------------------
 
 export interface AutoSelectOptions {
-  /** internal model key (plan/agent/memory/vision); its needs come from MODEL_KEY_NEEDS */
+  /** internal model key (plan/agent/memory); its needs come from MODEL_KEY_NEEDS */
   modelKey?: string;
   /** explicit overrides, used when the caller knows more than the key does */
   needsTools?: boolean;

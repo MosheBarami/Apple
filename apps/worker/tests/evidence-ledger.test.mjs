@@ -1,17 +1,16 @@
 /**
- * THE EVIDENCE LEDGER: what this run changed, read back, looked at and played — as facts a claim can be checked against.
+ * THE EVIDENCE LEDGER: what this run changed, read back and played — as facts a claim can be checked against.
  *
  * Properties under test, not spellings:
  *   - only a change that SUCCEEDED moves the mutation counter, and a failed one leaves no fact behind
  *   - colours and texts are recorded with HOW they are known (written, read back, played) and WHEN (sequence), because
  *     "I set it" and "I read it back" are different evidence and a later read outranks an earlier write
- *   - a look after the last change is what "looked at the work" means, and any later change un-looks it
  *   - the ledger is bounded and survives a JSON round trip: it is stored in a Durable Object value (128 KiB cap)
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  newLedger, recordToolCall, recordLook, lookNeeded, ledgerDigest, LEDGER_LIMITS,
+  newLedger, recordToolCall, ledgerDigest, LEDGER_LIMITS,
 } from '../src/evidence-ledger.ts';
 
 const red = { t: 'Color3', v: [1, 0, 0] };
@@ -40,7 +39,7 @@ test('a failed change is recorded as a failure, moves nothing and leaves no fact
 test('a composite that failed after it already changed the place still counts as a change, but none of what it wrote is trusted', () => {
   const l = newLedger();
   recordToolCall(l, { ...create([{ className: 'Part', name: 'Door', parent: 'game.Workspace', props: { Color: red } }]), ok: false, partial: true, result: { error: 'half done' } });
-  assert.equal(l.mutationSeq, 1, 'the place changed, so a look is owed');
+  assert.equal(l.mutationSeq, 1, 'the place changed');
   assert.deepEqual(l.touched, ['game.Workspace.Door']);
   assert.deepEqual(l.colours, []);
   assert.deepEqual(l.names, []);
@@ -158,70 +157,6 @@ test('deleting an instance removes what was known about it', () => {
   assert.deepEqual(l.names, []);
 });
 
-test('a look after the last change is "looked at"; any later change un-looks it', () => {
-  const l = newLedger();
-  assert.equal(lookNeeded(l), false, 'nothing changed, so nothing to look at');
-  recordToolCall(l, create([{ className: 'Part', name: 'A', parent: 'game.Workspace' }]));
-  assert.equal(lookNeeded(l), true);
-  recordLook(l, { ok: true, source: 'studio_viewport', views: ['front', 'eye'], observations: [{ about: 'a part', verdict: 'seen', note: 'a grey block in front of the camera' }], answers: [], issues: [] });
-  assert.equal(lookNeeded(l), false);
-  assert.equal(l.lookCount, 1);
-  assert.equal(l.lastLookMutationSeq, 1);
-  recordToolCall(l, create([{ className: 'Part', name: 'B', parent: 'game.Workspace' }]));
-  assert.equal(lookNeeded(l), true);
-});
-
-test('a change the viewport cannot show (a screen, a script, a service) does not make the work "unlooked"', () => {
-  const l = newLedger();
-  recordToolCall(l, create([{ className: 'Part', name: 'A', parent: 'game.Workspace' }]));
-  recordLook(l, { ok: true, source: 'studio_viewport', views: ['front'], observations: [], answers: [], issues: [] });
-  assert.equal(lookNeeded(l), false);
-  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.StarterGui.Hud.Title', props: { Text: { t: 'string', v: 'x' } } }, result: {}, ok: true });
-  recordToolCall(l, { tool: 'edit_script', kind: 'mutation', args: { path: 'game.ServerScriptService.Main', source: 'print(1)' }, result: {}, ok: true });
-  assert.equal(l.mutationSeq, 3, 'they are still changes');
-  assert.equal(lookNeeded(l), false, 'but a look at the viewport could not have shown them');
-  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.Lighting', props: { ClockTime: { t: 'number', v: 18 } } }, result: {}, ok: true });
-  assert.equal(lookNeeded(l), true, 'lighting is in the viewport');
-});
-
-test('a change whose paths are not known is assumed to be in view: the check never skips a look on a guess', () => {
-  const l = newLedger();
-  recordToolCall(l, { tool: 'edit_terrain', kind: 'mutation', args: { action: 'fill_block' }, result: { ok: true }, ok: true });
-  assert.equal(lookNeeded(l), true);
-});
-
-test('a change to something inside the workspace, or to the workspace itself, is in view', () => {
-  for (const path of ['game.Workspace', 'game.Workspace.Model.Part', 'game.Workspace["A Model"].Part', 'game.Lighting.Bloom']) {
-    const l = newLedger();
-    recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path, props: {} }, result: {}, ok: true });
-    assert.equal(lookNeeded(l), true, path);
-  }
-  for (const path of ['game.StarterGui.Hud', 'game.ServerScriptService.Main', 'game.ReplicatedStorage.Module', 'game.SoundService', 'game.WorkspaceFake.X']) {
-    const l = newLedger();
-    recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path, props: {} }, result: {}, ok: true });
-    assert.equal(lookNeeded(l), false, path);
-  }
-});
-
-test('a look that could not run does not count as looking, and is remembered as a failure', () => {
-  const l = newLedger();
-  recordToolCall(l, create([{ className: 'Part', name: 'A', parent: 'game.Workspace' }]));
-  recordLook(l, { ok: false, source: 'none', views: [], observations: [], answers: [], issues: [], error: 'no capture' });
-  assert.equal(lookNeeded(l), true);
-  assert.equal(l.lookFailures, 1);
-  assert.equal(l.lookCount, 1, 'an attempt still counts against the per-run cap');
-});
-
-test('what a look observed is kept as facts with the change number it was true at', () => {
-  const l = newLedger();
-  recordToolCall(l, create([{ className: 'Part', name: 'A', parent: 'game.Workspace' }]));
-  recordLook(l, { ok: true, source: 'box_approximation', views: ['front'], observations: [{ about: 'the red door', verdict: 'not_seen', note: 'no door in any view' }, { about: 'the sign', verdict: 'cannot_tell', note: 'too small' }], answers: [], issues: ['one wall floats'] });
-  assert.deepEqual(l.looks.map((o) => [o.about, o.verdict, o.mutationSeq, o.source]), [
-    ['the red door', 'not_seen', 1, 'box_approximation'], ['the sign', 'cannot_tell', 1, 'box_approximation'],
-  ]);
-  assert.deepEqual(l.lookIssues, ['one wall floats']);
-});
-
 test('the ledger is bounded however much a run does, and stays well under the storage value cap', () => {
   const l = newLedger();
   const huge = 'x'.repeat(5000);
@@ -243,7 +178,7 @@ test('the ledger is bounded however much a run does, and stays well under the st
 test('the ledger survives a JSON round trip unchanged', () => {
   const l = newLedger();
   recordToolCall(l, create([{ className: 'Part', name: 'Door', parent: 'game.Workspace', props: { Color: red } }]));
-  recordLook(l, { ok: true, source: 'studio_viewport', views: ['front'], observations: [{ about: 'door', verdict: 'seen', note: 'red door' }], answers: [], issues: [] });
+  recordToolCall(l, { tool: 'get_instance', kind: 'read', args: { path: 'game.Workspace.Door' }, result: { path: 'game.Workspace.Door', name: 'Door', props: { Color: white } }, ok: true });
   assert.deepEqual(JSON.parse(JSON.stringify(l)), l);
 });
 

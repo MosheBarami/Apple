@@ -240,15 +240,21 @@ function wireOps() {
   return new Set([...union.matchAll(/\bop:\s*'([a-z_]+)'/g)].map((m) => m[1]));
 }
 
-/** The handlers hung off the `handlers` table in the plugin. */
+/** The ops the shipped plugin (apps/studpilot-plugin) handles: the keys of its HANDLERS and DEFERRED_MUTATING tables. */
 function pluginHandlers() {
-  const src = readFileSync(join(ROOT, 'apps/plugin/src/Ops.luau'), 'utf8');
-  return new Set([...src.matchAll(/^\s*handlers\.(\w+)\s*=\s*function/gm)].map((m) => m[1]));
+  const src = readFileSync(join(ROOT, 'apps/studpilot-plugin/src/Commands.luau'), 'utf8');
+  const keys = (name) => {
+    const m = new RegExp(`(?<![.\\w])${name} = \\{([\\s\\S]*?)\\n\\}`).exec(src);
+    assert.ok(m, `${name} table not found in Commands.luau`);
+    return [...m[1].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((e) => e[1]);
+  };
+  // restore and undo_waypoint are dispatched by name outside the tables (as in studio-op-parity.test.mjs).
+  return new Set([...keys('HANDLERS'), ...keys('DEFERRED_MUTATING'), 'restore', 'undo_waypoint']);
 }
 
 test('both sides parsed, so the comparisons below are not vacuous', () => {
   assert.ok(wireOps().size >= 25, `parsed ${wireOps().size} ops from StudioOp`);
-  assert.ok(pluginHandlers().size >= 25, `parsed ${pluginHandlers().size} handlers from Ops.luau`);
+  assert.ok(pluginHandlers().size >= 25, `parsed ${pluginHandlers().size} handlers from Commands.luau`);
   assert.ok(wireOps().has('transform_instances'), 'a companion op must be among them');
   assert.ok(pluginHandlers().has('transform_instances'), 'and among the handlers');
 });

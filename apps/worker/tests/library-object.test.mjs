@@ -22,6 +22,12 @@ writeFileSync(entry, `export * from '${join(WORKER, 'src', 'library-object.ts')}
 const out = join(dir, 'l.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [entry, '--bundle', '--format=esm', '--target=es2022', '--platform=node', '--outfile=' + out, '--external:cloudflare:*', '--log-level=error'], { cwd: WORKER, stdio: 'pipe' });
 const L = await import(`file://${out}`);
+// A Creator Store row reaches the place through insert_library_model's own gate (tested in library-insert-failure.test.mjs); here that
+// gate is replaced by one insert_asset op into the folder the caller names, so these tests measure the staging and placing around it.
+L.TOOLS.insert_library_model.run = async (ctx, a) => {
+  const out = await ctx.execStudioOp({ op: 'insert_asset', assetId: 1, parent: a.parent });
+  return out.ok ? { inserted: [`${a.parent}.Piece`] } : { error: String(out.error) };
+};
 const src = (f) => readFileSync(join(WORKER, 'src', f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 // ------------------------------------------------------------------------------------------ a fake Studio ---
@@ -41,7 +47,7 @@ function studio(init = {}) {
         case 'get_instance': return exists.has(op.path) ? { ok: true, data: { path: op.path } } : { ok: false, error: `instance not found at ${op.path}` };
         case 'create_instances': for (const i of op.items) exists.add(`${i.parent}.${i.name}`); return { ok: true, data: {} };
         case 'delete_instances': for (const p of op.paths) for (const e of [...exists]) if (e === p || e.startsWith(`${p}.`)) exists.delete(e); return { ok: true, data: {} };
-        case 'import_owner_library': return init.importFails ? { ok: false, error: 'game not found' } : { ok: true, data: {} };
+        case 'insert_asset': return init.importFails ? { ok: false, error: 'asset not found' } : { ok: true, data: {} };
         case 'get_tree': if (init.absent?.includes(op.root)) return { ok: false, error: 'instance not found' }; return { ok: true, data: init.trees?.(op.root) ?? tree([part(0, 3, 0, 6, 6, 6), { class: 'Script', name: 'S', children: [] }, { class: 'Sound', name: 'Snd', children: [] }]) };
         case 'place_copies': for (const i of op.items) exists.add(`${i.parent}.${i.name}`); return { ok: true, data: { placed: op.items.map((i) => `${i.parent}.${i.name}`), failed: [] } };
         case 'spatial_query': return op.action === 'overlap' ? { ok: true, data: { parts: [], count: 0 } } : { ok: true, data: { center: [0, 3, -26], size: init.size ?? [6, 6, 6], bottomY: 0 } };
@@ -52,7 +58,6 @@ function studio(init = {}) {
   };
   return { ctx, ops, exists };
 }
-const GAME = 'a1b2c3d4e5f6';
 const created = (ops) => ops.filter((o) => o.op === 'create_instances').flatMap((o) => o.items.map((i) => `${i.parent}.${i.name}`));
 const allText = (ops) => JSON.stringify(ops);
 const writes = (ops) => ops.filter((o) => !['get_instance', 'get_tree', 'spatial_query'].includes(o.op));
@@ -98,44 +103,13 @@ test('with no name from the agent the piece\'s own name is used, never request w
 
 // ------------------------------------------------------------------------------------------- candidates ---
 
-test('a candidate is named back as { id } or { gameId, path }, and refused otherwise', () => {
+test('a candidate is named back as { id } from find_library_model, and refused otherwise', () => {
   assert.deepEqual(L.candidateOf({ id: 'lib:abc' }), { source: 'store', name: 'Model', id: 'lib:abc' });
-  const own = L.candidateOf({ gameId: GAME, path: '/Workspace/Lamp#2', game: 'Some Game' });
-  assert.equal(own.source, 'owner');
-  assert.equal(own.name, 'Lamp');
-  assert.match(L.candidateOf({ gameId: 'zz', path: '/Workspace/X' }).error, /library game id/);
-  assert.match(L.candidateOf({ gameId: GAME, path: 'Workspace/X' }).error, /path/);
-  assert.match(L.candidateOf({}).error, /id|gameId/);
+  assert.deepEqual(L.candidateOf({ id: 'lib:abc', name: 'Lamp' }), { source: 'store', name: 'Lamp', id: 'lib:abc' });
+  // An owner-library piece ({ gameId, path }) is no longer a candidate: the owner library was removed in M4.
+  assert.match(L.candidateOf({ gameId: 'a1b2c3d4e5f6', path: '/Workspace/Lamp#2' }).error, /id/);
+  assert.match(L.candidateOf({}).error, /id/);
   assert.match(L.candidateOf('x').error, /object/);
-});
-
-test('copyability is annotated per row with its reason; nothing is dropped, ranked or de-duplicated', () => {
-  const item = (name, game, extra = {}) => ({ gameId: GAME, game, kind: 'model', name, className: 'Model', path: `/Workspace/${name}`, parts: 5, instances: 9, ...extra });
-  const rows = [item('Alpha', 'G1'), item('Alpha', 'G1', { path: '/Workspace/Alpha#2' }), item('Person', 'G2', { contains: ['Humanoid'] }),
-    item('Huge', 'G3', { parts: 900 }), item('Empty', 'G4', { parts: 0 }), item('Sound', 'G5', { kind: 'sound' }), item('Gui', 'G6', { className: 'ScreenGui' })];
-  const out = L.annotateModels(rows);
-  assert.equal(out.length, rows.length, 'every row stays');
-  assert.deepEqual(out.map((r) => r.copyable), [true, true, false, false, false, false, false]);
-  assert.match(out[2].notCopyableBecause, /Humanoid/);
-  assert.match(out[3].notCopyableBecause, /900 parts.*too big/);
-  assert.match(out[4].notCopyableBecause, /no parts/);
-  assert.match(out[5].notCopyableBecause, /not a model/);
-  assert.match(out[6].notCopyableBecause, /ScreenGui/);
-  assert.equal(out[0].name, 'Alpha');
-  assert.equal(out[1].name, 'Alpha', 'a second row from one game is not hidden');
-});
-
-test('a models search through browse_owner_library carries the annotation, other kinds are returned as the plugin gave them', async () => {
-  const { ctx } = studio();
-  const items = [{ gameId: GAME, kind: 'model', name: 'Alpha', className: 'Model', path: '/Workspace/Alpha', parts: 5, instances: 9 }];
-  const seen = [];
-  ctx.localOwnerGateway = true; ctx.userId = 'u';
-  ctx.execStudioOp = async (op) => { seen.push(op); return { ok: true, data: { items } }; };
-  const models = await L.TOOLS.browse_owner_library.run(ctx, { kind: 'model', q: 'chest' });
-  assert.equal(models.error, undefined);
-  assert.equal(models.items[0].copyable, true);
-  const ui = await L.TOOLS.browse_owner_library.run(ctx, { kind: 'ui', q: 'x' });
-  assert.equal('copyable' in (ui.items?.[0] ?? {}), false);
 });
 
 // ------------------------------------------------------------------------------------------ the preview ---
@@ -151,17 +125,17 @@ test('preview_library_models is registered, a read-style tool the agent calls wi
 
 test('a preview stages in ServerStorage only, measures, strips scripts, and cleans up; nothing reaches Workspace', async () => {
   const { ctx, ops, exists } = studio();
-  const r = await L.previewLibraryModels(ctx, [{ gameId: GAME, path: '/Workspace/Chest', name: 'Chest', game: 'Pirates' }, { gameId: GAME, path: '/Workspace/Barrel' }]);
+  const r = await L.previewLibraryModels(ctx, [{ id: 'lib:Chest', name: 'Chest' }, { id: 'lib:Barrel', name: 'Barrel' }]);
   assert.equal(r.previews.length, 2);
   const first = r.previews[0];
   assert.equal(first.name, 'Chest');
-  assert.equal(first.game, 'Pirates');
+  assert.equal(first.source, 'store');
   assert.deepEqual(first.size, [6, 6, 6]);
   assert.match(first.sizeNote, /about 6 studs at its longest \(1\.2 player heights; a player is 5 studs tall\)/);
   assert.equal(first.dominantColourName, 'red');
   assert.equal(first.scriptsAndSoundsLeftOut, 2);
   assert.equal(first.parts, 1);
-  assert.ok(first.gameId && first.path, 'the agent gets the reference back to place it');
+  assert.ok(first.id, 'the agent gets the reference back to place it');
   for (const path of created(ops)) assert.match(path, /^game\.ServerStorage\./, `a preview wrote to ${path}`);
   assert.ok(ops.some((o) => o.op === 'strip_descendants' && o.root.startsWith('game.ServerStorage.AppleParts.ApplePreview') && o.classes.includes('Script')), 'scripts and sounds are stripped');
   assert.equal(ops.some((o) => o.op === 'place_copies' || o.op === 'camera_focus' || o.op === 'capture_studio_viewport'), false, 'no snapshot, no row, no camera');
@@ -172,14 +146,14 @@ test('a preview stages in ServerStorage only, measures, strips scripts, and clea
 
 test('a preview reports what blocks a piece as a fact and lists candidates that could not be staged, choosing none', async () => {
   const withPerson = studio({ trees: () => tree([part(0, 3, 0, 2, 6, 2), { class: 'Humanoid', name: 'H', children: [] }]) });
-  const r = await L.previewLibraryModels(withPerson.ctx, [{ gameId: GAME, path: '/Workspace/Person' }]);
+  const r = await L.previewLibraryModels(withPerson.ctx, [{ id: 'lib:Person', name: 'Person' }]);
   assert.match(r.previews[0].blockedBecause, /Humanoid/);
   const broken = studio({ importFails: true });
-  const f = await L.previewLibraryModels(broken.ctx, [{ gameId: GAME, path: '/Workspace/Gone', name: 'Gone' }]);
+  const f = await L.previewLibraryModels(broken.ctx, [{ id: 'lib:Gone', name: 'Gone' }]);
   assert.deepEqual(f.previews, []);
-  assert.match(f.failed[0].because, /could not be imported/);
+  assert.match(f.failed[0].because, /asset not found/);
   assert.match((await L.previewLibraryModels(broken.ctx, [])).error, /1 to 6/);
-  assert.match((await L.previewLibraryModels(broken.ctx, [{}])).error, /id|gameId/);
+  assert.match((await L.previewLibraryModels(broken.ctx, [{}])).error, /id/);
 });
 
 test('a preview with a snapshot stands the row in Workspace for one picture and takes it down, even when Studio gives no pixels', async () => {
@@ -187,7 +161,7 @@ test('a preview with a snapshot stands the row in Workspace for one picture and 
     const { ctx, ops, exists } = studio({ noShot });
     const frames = [];
     ctx.emitFrame = (f) => frames.push(f);
-    const r = await L.previewLibraryModels(ctx, [{ gameId: GAME, path: '/Workspace/A', name: 'A' }, { gameId: GAME, path: '/Workspace/B', name: 'B' }], { snapshot: true });
+    const r = await L.previewLibraryModels(ctx, [{ id: 'lib:A', name: 'A' }, { id: 'lib:B', name: 'B' }], { snapshot: true });
     assert.ok(created(ops).includes('game.Workspace.ApplePreviewLineup'), 'a row was stood up for the picture');
     assert.ok(ops.some((o) => o.op === 'capture_studio_viewport'));
     assert.equal(frames.length, noShot ? 0 : 1, 'the picture goes to the user');
@@ -201,7 +175,7 @@ test('a preview with a snapshot stands the row in Workspace for one picture and 
 
 test('placing is pure placement: no stage, no wobble, no counter, no light, no ground or spawn change, no camera, no mood', async () => {
   const { ctx, ops } = studio();
-  const r = await L.placeLibraryPiece(ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/Chest', name: 'Chest' }), { name: 'Treasure Chest' });
+  const r = await L.placeLibraryPiece(ctx, L.candidateOf({ id: 'lib:Chest', name: 'Chest' }), { name: 'Treasure Chest' });
   assert.equal(r.object, 'game.Workspace.Treasure Chest');
   assert.deepEqual(r.size, [6, 6, 6]);
   assert.match(r.sizeNote, /player heights/);
@@ -216,7 +190,7 @@ test('placing is pure placement: no stage, no wobble, no counter, no light, no g
 });
 
 test('the size is the agent\'s: size, height or scale, one of them, and a scale needs a measured piece', async () => {
-  const run = async (size, init) => { const s = studio(init); const r = await L.placeLibraryPiece(s.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X', size }); return { r, place: s.ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace')?.items[0] }; };
+  const run = async (size, init) => { const s = studio(init); const r = await L.placeLibraryPiece(s.ctx, L.candidateOf({ id: 'lib:X', name: 'X' }), { name: 'X', size }); return { r, place: s.ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace')?.items[0] }; };
   assert.equal((await run({ size: 30 })).place.length, 30);
   assert.equal((await run({ height: 9 })).place.height, 9);
   assert.equal((await run({ scale: 2 })).place.length, 12, 'twice its own 6 studs');
@@ -229,29 +203,17 @@ test('the size is the agent\'s: size, height or scale, one of them, and a scale 
 
 test('a placed model goes where the agent says, or beside what is there; a character is never placed; a taken name is refused', async () => {
   const at = studio();
-  await L.placeLibraryPiece(at.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X', at: [10, 0, 20] });
+  await L.placeLibraryPiece(at.ctx, L.candidateOf({ id: 'lib:X', name: 'X' }), { name: 'X', at: [10, 0, 20] });
   assert.deepEqual(at.ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace').items[0].at, [10, 0, 20]);
   const beside = studio();
-  await L.placeLibraryPiece(beside.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X' });
+  await L.placeLibraryPiece(beside.ctx, L.candidateOf({ id: 'lib:X', name: 'X' }), { name: 'X' });
   assert.ok(beside.ops.some((o) => o.op === 'spatial_query' && o.action === 'overlap'), 'the free lane is looked for when no place is given');
   const person = studio({ trees: () => tree([part(0, 3, 0, 2, 6, 2), { class: 'Humanoid', name: 'H', children: [] }]) });
-  assert.match((await L.placeLibraryPiece(person.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/P', name: 'P' }), { name: 'P' })).error, /Humanoid/);
+  assert.match((await L.placeLibraryPiece(person.ctx, L.candidateOf({ id: 'lib:P', name: 'P' }), { name: 'P' })).error, /Humanoid/);
   const taken = studio({ exists: ['game.Workspace.X'] });
-  const refused = await L.placeLibraryPiece(taken.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X' });
+  const refused = await L.placeLibraryPiece(taken.ctx, L.candidateOf({ id: 'lib:X', name: 'X' }), { name: 'X' });
   assert.match(refused.error, /already exists/);
   assert.equal(taken.ops.some((o) => o.op === 'delete_instances' && o.paths[0] === 'game.Workspace.X'), false, 'it did not delete what it did not make');
-});
-
-test('insert_library_model places an owner-library piece by { gameId, path } with the same pure placement, and refuses a bad size', async () => {
-  const { ctx, ops } = studio();
-  const r = await L.TOOLS.insert_library_model.run(ctx, { gameId: GAME, path: '/Workspace/Lamp', name: 'Lamp', size: 8 });
-  assert.equal(r.object, 'game.Workspace.Lamp');
-  assert.equal(ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace').items[0].length, 8);
-  assert.match((await L.TOOLS.insert_library_model.run(ctx, { gameId: GAME, path: '/Workspace/Lamp', size: 8, height: 3 })).error, /not several/);
-  assert.match((await L.TOOLS.insert_library_model.run(ctx, {})).error, /give \{ id \}/);
-  const params = L.TOOLS.insert_library_model.def.parameters.properties;
-  for (const k of ['id', 'gameId', 'path', 'name', 'size', 'height', 'scale', 'replace']) assert.ok(k in params, k);
-  assert.deepEqual(L.TOOLS.insert_library_model.def.parameters.required ?? [], []);
 });
 
 // ---------------------------------------------------------------------------------------------- dressing ---

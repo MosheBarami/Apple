@@ -90,10 +90,3 @@ test('the module knows no genre: no game-specific word in its code', () => {
     .replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(src, /\b(shop|currency|coin|stall|rebirth|simulator|tycoon|obby|garden|plot|pet|leaderboard|gamepass)\b/i);
 });
-
-test('a run that recreated an owner game owes no named parts: the original brought them under its own names', () => {
-  // Live 2026-09-29: "bring in its map, UI, scripts, sounds and lighting" steered the model to build a
-  // "Grow_A_Garden_Map" folder after the recreate was done and verified.
-  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(src, /function openParts\(agent: AgentState\) \{[\s\S]{0,200}agent\.keepOwnerOriginal\) return \[\];/);
-});

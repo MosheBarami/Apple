@@ -368,8 +368,6 @@ function makeEnv(opts = {}) {
         if (String(model).includes('bge')) return { data: [new Array(384).fill(0.01)] };
         return (
           opts.aiResponse ?? {
-            // A well-formed visual critique by default, so `inspect_visually` reaches all the way
-            // through the vision path instead of erroring out and proving nothing.
             choices: [{ message: { content: opts.aiText ?? CRITIQUE_JSON }, finish_reason: 'stop' }],
             usage: { prompt_tokens: 10, completion_tokens: 5 },
           }
@@ -866,28 +864,11 @@ const TOOL_ARGS = {
   // ADDED 2026-10-02 WITH THE SELF-CHECK (M1). `look` frames the place from several camera angles through plugin operations that
   // already exist and sends the pixels to the vision role. Its egress is reviewed here like every other tool's: the result the model
   // reads is observations (seen / not seen / cannot tell, bounded strings), never pixels, and nothing in it is a credential.
-  look: {},
   animate_model: { model: 'game.Workspace.Door', clips: { open: { play: 'click', keys: [{ t: 0, Door: { rot: [0, 0, 0] } }, { t: 1, Door: { rot: [0, 90, 0] } }] } } },
-  browse_owner_library: { q: 'tree' },
-  build_game: {},
   build_object: { name: 'Butter', parts: [{ name: 'Stick', size: [6, 1.5, 1.5], color: '#ffe680', move: { as: 'wobble', on: 'click' } }] },
   build_studded_ui: { pieces: [{ kind: 'counter', name: 'Coins', text: '0', at: 'top-left' }] },
   capture_studio_viewport: {},
-  compose_game: { request: 'a tower defense game' },
-  import_owner_library: { gameId: 'g1', path: 'Workspace.Tree', mode: 'copy' },
-  insert_owner_component: { id: 'owner:c1' },
-  inspect_attachment_image: { attachmentId: 'a1' },
-  install_owner_system: { gameId: 'g1' },
-  judge_game: { request: 'a tower defense game' },
-  list_owner_original_strings: {},
   more_tools: { why: 'need a terrain tool' },
-  plan_game: { request: 'a tower defense game' },
-  query_owner_assembly: {},
-  query_owner_catalog: {},
-  read_owner_component: { id: 'owner:c1' },
-  read_owner_media: { id: 'owner:c1', property: 'Texture' },
-  read_owner_original_string: { id: 'owner:c1', seq: 1 },
-  recreate_owner_game: { gameId: 'g1' },
   get_project_tree: {},
   list_scripts: {},
   read_script: { path: 'game.ServerScriptService.Main' },
@@ -929,7 +910,6 @@ const TOOL_ARGS = {
   set_locked: { paths: ['game.Workspace.A'], locked: true },
   set_visible: { paths: ['game.Workspace.A'], visible: false },
   edit_terrain: { action: 'fill_block', center: [0, 0, 0], size: [4, 4, 4], material: 'Grass' },
-  build_scene: { kit: 'floating_island', center: [0, 150, 0], radius: 40 },
 
   run_luau: { code: 'return 1' },
   run_and_check: { seconds: 2 },
@@ -1006,7 +986,6 @@ const TOOL_ARGS = {
   //   experience thumbnails at all, so there is nothing for it to upload to even if it tried.
   compose_thumbnail: { kind: 'thumbnail' },
   check_composition: { intent: 'a town plaza with a clock tower' },
-  inspect_visually: { intent: 'a town plaza with a clock tower' },
   // A plan that SATISFIES its own admission rules, for the third time the same reason applies: a
   // plan with no verification step is refused, and a refusal emits no checklist at all — so the
   // egress scan would inspect an error and report a tool that broadcasts user-authored titles into
@@ -1081,7 +1060,6 @@ const TOOL_ARGS = {
   web_search: { query: 'humanoid state' },
   docs_lookup: { query: 'humanoid walkspeed' },
   screenshot_page: { url: 'https://devforum.roblox.com/t/example' },
-  ocr_image: { imageUrl: 'https://devforum.roblox.com/uploads/sign.png' },
   github_lookup: { repo: 'Roblox/creator-docs', resource: 'repo' },
   git_history: { repo: 'Roblox/creator-docs', action: 'log', limit: 3 },
   workspace_list: {},
@@ -2710,7 +2688,10 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // look's fenced observations, both now through pushHarness; their reviews are the TWENTY-ONE comment below. 21 user-role turns.
   // REVIEWED at the 2026-10-04 agent-quality change (F3 + F5): + 1 = 21, the report push (`pushReport` in session.ts), written up as the
   // TWENTY-TWO comment below. The skill push (F1) added NO site: creator skills ride in the existing skill-card note.
-  assert.equal(harnessPushes.length, 21, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
+  // REVIEWED at the 2026-10-05 M4 change (no vision): - 1 = 20. The forced look's fenced observations push is removed with the look and
+  // the vision model that wrote them. The check steer (`decision.message`) stays; the report push (`pushReport`) now carries only the
+  // measured layout flags (the blind critique's model-written text, which was the riskier body, no longer exists), still fenced.
+  assert.equal(harnessPushes.length, 20, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
   const userPushes = [...rawUserPushes, ...harnessPushes];
   {
     const idleSrc = readCode('run-idle.ts');
@@ -2824,14 +2805,18 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   observations (TWENTY above). The words around the body are a fixed literal (blind-critique.ts reportMessage, interpolating
   //   only the fenced text); the fence's tool name is one of two literals. Nothing the user, the model or a tool wrote reaches
   //   the wrapper. The critic itself is given only the user's request and the frames (held in blind-critique.test.mjs). ]]
-  assert.equal(userPushes.length, 22, 'a user-role transcript injection was added or removed — review it for injection risk');
-  assert.match(session, /pushHarness\(agent\.llm, reportMessage\(kind, this\.fencedToolOutput\(agent, kind === 'critique' \? 'blind_critique' : 'layout_flags', body\)\.text\)\)/,
-    'the report must enter the transcript only through the fence helper, under one of two literal tool names');
+  //[[ TWENTY-ONE, REVIEWED 2026-10-05 (M4, no vision): - 1. The forced look's fenced observations push is removed with the look, and
+  //   the report push (`pushReport`) now has ONE body: the measured layout flags, under the single literal fence name 'layout_flags'.
+  //   The blind critique's body (vision-model output about screenshots, which could contain any text a scene shows) no longer exists.
+  //   The sites are the same count minus one, and none is new. ]]
+  assert.equal(userPushes.length, 21, 'a user-role transcript injection was added or removed — review it for injection risk');
+  assert.match(session, /pushHarness\(agent\.llm, layoutMessage\(this\.fencedToolOutput\(agent, 'layout_flags', body\)\.text\)\)/,
+    'the report must enter the transcript only through the fence helper, under the one literal tool name');
   {
-    const critic = readCode('blind-critique.ts');
-    const wrapper = bodyBlock(critic, critic.indexOf('export function reportMessage('));
-    assert.ok(wrapper.length > 300, 'reportMessage was not found — this test would check nothing');
-    assert.deepEqual([...wrapper.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['fenced', 'fenced'],
+    const flagsRun = readCode('scene-flags-run.ts');
+    const wrapper = bodyBlock(flagsRun, flagsRun.indexOf('export function layoutMessage('));
+    assert.ok(wrapper.length > 200, 'layoutMessage was not found — this test would check nothing');
+    assert.deepEqual([...wrapper.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['fenced'],
       'the report wrapper interpolates something other than the fenced body');
   }
   const failSteer = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function failureSteer('));
@@ -2855,8 +2840,7 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //     (which can contain any text a scene shows), so they enter ONLY through the shared fence helper, as untrusted data under the
   //     run's own unguessable id — the same helper the tool loop uses. Asserted below. ]]
   assert.match(session, /pushHarness\(agent\.llm, decision\.message\)/, 'the check steer moved; review its new transcript path');
-  assert.match(session, /pushHarness\(agent\.llm, forcedLookMessage\(this\.fencedToolOutput\(agent, LOOK_TOOL, out\.resultForLlm\)\.text\)\)/,
-    'the look observations must enter the transcript only through the fence helper');
+  assert.doesNotMatch(session, /forcedLookMessage|LOOK_TOOL/, 'the look (and its model-written observations) is removed in M4; a look push must not return');
   const answerSteerSite = session.slice(session.indexOf("storage.get<string>('assetSourcesAwaitingRun')"), session.indexOf("storage.get<string>('assetSourcesAwaitingRun')") + 400);
   assert.match(answerSteerSite, /const steer = assetSourceAnswerSteer\(this\.pinnedPrefs\?\.asset_sources\)/,
     'the new user-role steer no longer comes from the reviewed source selector');
@@ -2881,13 +2865,13 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // REVIEWED 2026-10-01: AUTONOMOUS_IDLE_STEER (2a884997) is a module constant in run-idle.ts made only of string
   // literals — no interpolation, no argument — so it carries no user, tool or model text. Held to that below.
   // REVIEWED 2026-10-02: `decision.message` (the self-check's steer, NINETEEN above) comes from checkAtAnswer in self-check-run.ts —
-  // askLookMessage() or steerForFindings() — and is held to its property in the next block, not to an absence of interpolation.
+  // steerForFindings() — and is held to its property in the next block, not to an absence of interpolation.
   // REVIEWED 2026-10-02: `text` is the once-per-run "Nothing has changed yet" note, `buildNudge(agent.trace, …)` in
   // run-idle.ts. It carries trace text, so it is held below to the same rule as a plan title: tool names only from
   // the registry, error text only through fenceForQuote, inside its own quotation.
-  // RESTATED 2026-10-04 (round 3, a deliberate change, reviewed in "NINE, REVISED" above): `stallNote`, the read-stall note, became a
-  // variable because after a composer it carries the next step of the world pass, fenced. The held properties are asserted below.
-  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'decision.message', 'partNext', 'skillSteer.message', 'stallNote', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
+  // RESTATED 2026-10-05 (M4): the read-stall note is the module constant `READ_STALL_NOTE` again (pure string literals, held below); it was
+  // a variable (`stallNote`) between 2026-10-04 and M4 because after a composer it carried the next step of the world pass, fenced.
+  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'READ_STALL_NOTE', 'decision.message', 'partNext', 'skillSteer.message', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
   assert.match(session, /const text = buildNudge\(agent\.trace, [^;]*\);/, 'the build note no longer comes from buildNudge — review its new source');
   {
     const nudge = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function buildNudge('));
@@ -2909,25 +2893,19 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   }
   assert.match(session, /let decision = checkAtAnswer\(|const decision = checkAtAnswer\(/, 'the self-check steer no longer comes from checkAtAnswer — review its source');
   const runCheck = readCode('self-check-run.ts');
-  assert.match(runCheck, /message: askLookMessage\(\)/, 'the look steer is no longer the fixed literal');
+  assert.doesNotMatch(runCheck, /askLookMessage/, 'the look steer is removed in M4');
   assert.match(runCheck, /const message = steerForFindings\(result, i\.can\)/, 'the audit steer no longer comes from steerForFindings');
   const idle = /export const AUTONOMOUS_IDLE_STEER =([^;]*);/.exec(readCode('run-idle.ts'));
   assert.ok(idle, 'AUTONOMOUS_IDLE_STEER was not found — this check would be vacuous');
   assert.match(idle[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'AUTONOMOUS_IDLE_STEER is no longer pure string literals — review what it now carries');
   {
-    // The read-stall note: the plain sentence, or the plain sentence plus ONE step of the world pass that arrives fenced.
-    assert.match(session, /const stallNote = idle\.action === 'build' \? readStallNote\(agent\.worldBase \? this\.fencedToolOutput\(agent, 'world_steps', this\.worldStepsFor\(agent, ledger\)\[0\] \?\? ''\)\.text : undefined\) : '';/,
-      'the read-stall note no longer gets its step through the fence helper — review its new source');
-    const wp = readCode('world-pass.ts');
-    const stall = bodyBlock(wp, wp.indexOf('export function readStallNote('));
-    assert.ok(stall.length > 200, 'readStallNote was not found — this test would check nothing');
-    assert.deepEqual([...stall.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['plain', 'fencedStep'],
-      'the read-stall note interpolates something other than its own fixed sentence and the fenced step');
-    // The world pass's list rides the existing check-steer site and is fenced before decideWorldPass sees it.
-    assert.match(session, /decideWorldPass\(agent\.worldBase, \{ canBuild: canFix, \.\.\.\(agent\.worldBase \? \{ steps: this\.fencedToolOutput\(agent, 'world_steps', stepsBody\(this\.worldStepsFor\(agent, ledger\)\)\)\.text \} : \{\}\) \}\)/,
-      'the world pass list no longer reaches the transcript through the fence helper');
+    // The read-stall note: a fixed sentence. RESTATED in M4: it used to add one step of the world pass that arrived fenced; the world pass is gone.
+    assert.match(session, /pushHarness\(agent\.llm, READ_STALL_NOTE\)/, 'the read-stall note moved; review its new source');
+    const stall = /const READ_STALL_NOTE =([^;]*);/.exec(session);
+    assert.ok(stall, 'READ_STALL_NOTE was not found — this check would be vacuous');
+    assert.match(stall[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'READ_STALL_NOTE is no longer pure string literals — review what it now carries');
   }
-  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text' && n !== 'decision.message' && n !== 'stallNote')) {
+  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text' && n !== 'decision.message' && n !== 'READ_STALL_NOTE')) {
     assert.match(session, new RegExp(`const ${name.replace('.', '\\.')} =[^;]*\\bsteerToPart\\(agent\\)`),
       `user-role push of \`${name}\` no longer comes from steerToPart — review its source`);
   }
@@ -2936,10 +2914,9 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   assert.ok(gapSteer.length > 100, 'gameGapSteer was not found — this test would check nothing');
   assert.deepEqual([...gapSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ["owed.join(' ')"],
     'gameGapSteer interpolates something other than its own fixed sentences');
-  // RESTATED 2026-10-01: the automatic visual self-critique loop was removed from runStep (3dc0d89c); the critique
-  // now reaches the model only as the result of a tool it called. So no user-role push may carry critique text.
-  assert.ok(!dynamic.some((p) => /critiqueToText/.test(p)),
-    'a critique is injected as a user-role turn again — that hand-back was removed (3dc0d89c); re-review it');
+  // RESTATED in M4: the visual critique (critiqueToText) no longer exists at all; no user-role push may carry critique text.
+  assert.ok(!dynamic.some((p) => /critique/i.test(p)),
+    'a critique is injected as a user-role turn again — the visual critique was removed in M4; re-review it');
   const recovery = dynamic.find((p) => /rescued\.refused/.test(p));
   assert.ok(recovery, 'the tool-call-as-text steer is gone, or no longer names what it refused');
   // Its ONLY interpolation is `rescued.refused`, and that is a registry name by construction.

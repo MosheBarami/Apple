@@ -33,8 +33,6 @@ import { RULES } from './rules.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
-const CLIENT = join(REPO, 'apps', 'benchmark', 'crystal-canyon', 'src', 'client');
-const read = (f) => ({ path: f, source: readFileSync(join(CLIENT, f), 'utf8') });
 
 // ---------------------------------------------------------------- overlap
 // Measured live at viewport height 698 before the fix.
@@ -127,52 +125,6 @@ test('a module creating tweens outside the gate is caught', () => {
 });
 
 // ---------------------------------------------------------------- safe area
-//
-// The fixture is DERIVED from the real client rather than transcribed, so it
-// cannot quietly stop describing the code it claims to describe.
-function screenGuisIn(file) {
-  const src = readFileSync(join(CLIENT, file), 'utf8');
-  const out = [];
-  const RE = /Instance\.new\("ScreenGui"\)([\s\S]{0,400}?)(?=\n\n|\nlocal |\nfunction )/g;
-  for (const m of src.matchAll(RE)) {
-    const name = m[1].match(/\.Name\s*=\s*"([^"]+)"/);
-    const inset = m[1].match(/\.IgnoreGuiInset\s*=\s*(true|false)/);
-    if (name) out.push({ name: name[1], ignoreGuiInset: inset ? inset[1] === 'true' : false, declaredIn: file });
-  }
-  return out;
-}
-
-test('the two ScreenGuis in the shipping client disagree about the safe area', () => {
-  const screens = [...screenGuisIn('init.client.luau'), ...screenGuisIn('Hud.luau')];
-  const ui = screens.find((s) => s.name === 'CrystalCanyonUI');
-  const hud = screens.find((s) => s.name === 'CrystalCanyonHud');
-  assert.ok(ui && hud, `expected both ScreenGuis, saw ${screens.map((s) => s.name).join(', ')}`);
-  // Hud.luau opts IN, with a comment saying why: "keep the top row clear of the
-  // Roblox topbar". init.client.luau opts OUT — and it is the one Panels parents
-  // its modal layer to (`ctx.gui = screen`).
-  assert.equal(hud.ignoreGuiInset, false, 'the HUD deliberately keeps the inset');
-  assert.equal(ui.ignoreGuiInset, true, 'the main UI opts out of it');
-});
-
-test('the opted-out ScreenGui carrying every close button IS a finding', () => {
-  // `interactive` is counted from the real source too: Panels builds its controls
-  // through Theme, and its modal layer is parented to CrystalCanyonUI.
-  const panels = readFileSync(join(CLIENT, 'Panels.luau'), 'utf8');
-  const controls = (panels.match(/Theme\.button|Theme\.close/g) ?? []).length;
-  assert.ok(controls >= 10, `expected Panels to build controls, counted ${controls}`);
-
-  const findings = checkSafeArea([
-    { name: 'CrystalCanyonUI', ignoreGuiInset: true, interactive: controls },
-    { name: 'CrystalCanyonHud', ignoreGuiInset: false, interactive: 2 },
-  ]);
-  assert.equal(findings.length, 1);
-  assert.equal(findings[0].screen, 'CrystalCanyonUI');
-  assert.deepEqual(findings[0].keptInsetIn, ['CrystalCanyonHud']);
-  assert.match(findings[0].detail, /camera cutout/);
-  // The disagreement is the evidence, exactly as in the wait-contract check.
-  assert.match(findings[0].detail, /demonstrably matters here/);
-});
-
 test('a decorative full-bleed surface is NOT a finding — that is what opting out is for', () => {
   assert.deepEqual(
     checkSafeArea([{ name: 'Vignette', ignoreGuiInset: true, interactive: 0 }]),
@@ -290,35 +242,7 @@ test('SmoothNoOutlines is caught as the no-op it is documented to be', () => {
   assert.match(findings[0].detail, /changes nothing/);
 });
 
-test('plain Smooth is not flagged — the check fires on exactly one token', () => {
-  // The world builder uses Enum.SurfaceType.Smooth throughout. A check that could
-  // not tell those apart would fire on the whole shipping build.
-  const world = {
-    path: 'world/Build.luau',
-    source: readFileSync(join(REPO, 'apps', 'benchmark', 'crystal-canyon', 'world', 'Build.luau'), 'utf8'),
-  };
-  assert.match(world.source, /Enum\.SurfaceType\.Smooth\b/, 'the real build does set Smooth');
-  assert.deepEqual(checkInertSurfaceFlags([world]), []);
-});
-
 // ---------------------------------------------------------------- the real tree
-test('the SHIPPING client passes every mechanised rule', () => {
-  const files = ['Theme.luau', 'Hud.luau', 'Panels.luau', 'Effects.luau', 'Objective.luau'].map(read);
-  const result = audit({ files, clusters: [WALLET, NAV_AFTER], viewportHeight: 698 });
-  assert.deepEqual(
-    result.findings.map((f) => `${f.ruleId}: ${f.detail}`),
-    [],
-    'the live client must satisfy the rules extracted from it',
-  );
-  assert.equal(result.ok, true);
-});
-
-test('every client module that tweens is routed through the gate', () => {
-  const files = ['Theme.luau', 'Hud.luau', 'Panels.luau', 'Effects.luau', 'Objective.luau'].map(read);
-  const tweening = files.filter((f) => /TweenService:Create/.test(f.source));
-  assert.ok(tweening.length >= 5, `expected all five modules to tween, saw ${tweening.length}`);
-  assert.deepEqual(checkMotionGate(files), []);
-});
 
 // ---------------------------------------------------------------------------
 // currency.one-value-one-motion-policy
@@ -533,20 +457,4 @@ test('a bounded wait that actually degrades still contradicts an unbounded one',
   assert.equal(found.length, 1);
   assert.equal(found[0].dependency, 'Shared');
   assert.deepEqual(found[0].blockedIn, ['Hud.luau']);
-});
-
-test("this repository's own benchmark satisfies the wait contract", () => {
-  // The check that produced the fix above, kept as a regression in both directions:
-  // it fails if the benchmark grows a genuinely optional consumer, and it fails if the
-  // check regresses into flagging fail-fast again.
-  const dir = new URL('../../../apps/benchmark/crystal-canyon/src/', import.meta.url);
-  const files = [];
-  for (const sub of ['client', 'server', 'shared']) {
-    const d = new URL(`${sub}/`, dir);
-    for (const name of readdirSync(d)) {
-      if (name.endsWith('.luau')) files.push({ path: `${sub}/${name}`, source: readFileSync(new URL(name, d), 'utf8') });
-    }
-  }
-  assert.ok(files.length >= 20, `expected the benchmark's modules, found ${files.length}`);
-  assert.deepEqual(checkWaitContracts(files), []);
 });

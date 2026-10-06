@@ -33,14 +33,12 @@ import {
  * THE ONE PRODUCT ENGINE (V3 gate G01): StudPilot runs GLM 5.3 Flash, read from the registry in
  * @studpilot/shared so this id cannot go stale beside it again (it once still named Qwen3).
  *
- * The visual critic is the same model. The product run routes and `vision` keep their own
- * maxTokens, temperature and tool settings in DEFAULT_MODELS; they merely resolve to the same weights.
+ * The `plan` and `agent` routes keep their own maxTokens, temperature and tool settings in DEFAULT_MODELS; they merely
+ * resolve to the same weights.
  */
 export const STUDPILOT_MODEL_ID = registryModel('apple')!.providerModelId;
-export const VISION_MODEL_ID = STUDPILOT_MODEL_ID;
 
 export const STUDPILOT_CONTEXT_WINDOW = 1_310_720;
-export const VISION_CONTEXT_WINDOW = 1_310_720;
 
 /** The memory summariser's model (DEFAULT_MODELS.memory). Internal; never a customer engine. */
 const MEMORY_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
@@ -84,9 +82,8 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
     unverifiedFields: [],
   },
   {
-    // The ONLY free-eligible model here that accepts image input. vision.ts sends real pixels and
-    // instructs the model to judge only what it can see, so this entry existing and being
-    // vision-capable is what keeps the visual critic visual.
+    // A catalogue row only: no DEFAULT_MODELS key points at it (the product sends no picture to a model, M4), and
+    // gateway.ts LEGACY_USER_MODEL_IDS keeps a stale KV override from routing a key onto it.
     id: '@cf/meta/llama-3.2-11b-vision-instruct',
     displayName: 'Llama 3.2 11B Vision',
     provider: 'workers-ai',
@@ -110,16 +107,15 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
     outputCostPer1M: 0.335,
     unverifiedFields: ['maxOutput'],
   },
-  // ONE ROW, because STUDPILOT_MODEL_ID and VISION_MODEL_ID are the same id. A second row for the same
-  // string would make `modelById()` return whichever came first and quietly hide the other one's
-  // figures — two catalogue entries for one model is a disagreement waiting to be believed.
+  // ONE ROW per id. A second row for the same string would make `modelById()` return whichever came first and
+  // quietly hide the other one's figures — two catalogue entries for one model is a disagreement waiting to be believed.
   {
     id: STUDPILOT_MODEL_ID,
     displayName: 'GLM-5.3 Flash',
     provider: 'workers-ai',
     supportsTools: true,
     supportsVision: true,
-    contextWindow: VISION_CONTEXT_WINDOW,
+    contextWindow: STUDPILOT_CONTEXT_WINDOW,
     maxOutput: 6_500,
     inputCostPer1M: 0.15,
     outputCostPer1M: 0.5,
@@ -348,7 +344,7 @@ export const workersAiAdapter: ProviderAdapter = {
     if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
 
     const promptChars =
-      messages.reduce((n, m) => n + contentChars(m.content, req.modelId), 0) + JSON.stringify(payload.tools ?? '').length;
+      messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;
     return { payload, promptChars };
   },
 

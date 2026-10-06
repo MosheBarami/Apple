@@ -56,7 +56,7 @@ let session;
 let calls;
 function fresh() {
   calls = [];
-  session = { ownerId: OWNER, initialised: true, resetStatus: 200, resetBody: { ok: true, removedMessages: 4, messagesAfter: 0, memoryCleared: true, planCleared: false, ledgerCleared: true } };
+  session = { ownerId: OWNER, initialised: true, resetStatus: 200, resetBody: { ok: true, removedMessages: 4, messagesAfter: 0, memoryCleared: true, ledgerCleared: true } };
 }
 fresh();
 
@@ -236,7 +236,6 @@ function seeded(extra = {}) {
   h.store.set('memory', { summary: 'Builds pet shops.', facts: ['likes eggs'] });
   h.store.set('memoryEditedAt', '2026-10-05T10:00:00.000Z');
   h.store.set('buildLedger', [{ id: 'a1b2c3', request: 'build a shop for pets', tool: 'build_object', rootPaths: ['Workspace/Shop'], at: WHEN }]);
-  h.store.set('plannedGame', { template: 'tycoon' });
   return h;
 }
 const messages = (h) => h.sql.exec('select count(*) as n from messages').toArray()[0].n;
@@ -251,13 +250,13 @@ test('SESSION: the conversation, its model picks, the memory, the ledger and the
   assert.equal(messages(h), 4);
   const r = await doReset(h);
   assert.equal(r.status, 200, JSON.stringify(r.json));
-  assert.deepEqual(r.json, { ok: true, removedMessages: 4, messagesAfter: 0, memoryCleared: true, planCleared: true, ledgerCleared: true });
+  assert.deepEqual(r.json, { ok: true, removedMessages: 4, messagesAfter: 0, memoryCleared: true, ledgerCleared: true });
   assert.equal(messages(h), 0);
   assert.equal(models(h), 0, 'the model picks of the deleted messages go with them');
-  for (const key of ['memory', 'memoryEditedAt', 'buildLedger', 'plannedGame']) assert.equal(h.store.has(key), false, `${key} survived`);
+  for (const key of ['memory', 'memoryEditedAt', 'buildLedger']) assert.equal(h.store.has(key), false, `${key} survived`);
   // idempotent: a second reset removes nothing and says so
   const again = await doReset(h);
-  assert.deepEqual(again.json, { ok: true, removedMessages: 0, messagesAfter: 0, memoryCleared: false, planCleared: false, ledgerCleared: false });
+  assert.deepEqual(again.json, { ok: true, removedMessages: 0, messagesAfter: 0, memoryCleared: false, ledgerCleared: false });
 });
 
 test('SESSION: every open tab is told, from the FIRST message, exactly as an edit of the first message tells them', async () => {
@@ -292,11 +291,12 @@ test('SESSION: it deletes only keys the project-state table marks as the work, n
   const src = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   const start = src.indexOf("path === '/conversation-reset'");
   assert.ok(start > 0, 'the session route is missing');
-  const body = src.slice(start, src.indexOf("path === '/bench-evaluate'", start));
+  const body = src.slice(start, src.indexOf("if (path === ", start + 1));
   const list = /for \(const key of \[([^\]]+)\]\)/.exec(body);
   assert.ok(list, 'the route no longer names the keys it deletes in one list');
   const keys = list[1].split(',').map((k) => k.trim().replace(/^'|'$/g, '')).map((k) => (k === 'LEDGER_KEY' ? 'buildLedger' : k));
-  assert.ok(keys.length >= 4, 'the list was read empty: this test would check nothing');
+  // 3 since M4 (the game plan's key went with the whole-game path): memory, its edit stamp, the build ledger.
+  assert.ok(keys.length >= 3, 'the list was read empty: this test would check nothing');
   for (const k of keys) assert.equal(STORAGE_KEYS[k], 'reset', `${k} is not a key a fresh start erases`);
 });
 

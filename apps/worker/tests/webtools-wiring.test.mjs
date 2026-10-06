@@ -46,8 +46,9 @@ const WEB = W.WEB_TOOL_NAMES;
 
 /* ------------------------------------------------------------- the registry --- */
 
-test('the fixture is the real thing: eleven web tools, and a registry that has other tools in it too', () => {
-  assert.equal(WEB.length, 11);
+test('the fixture is the real thing: ten web tools (ocr_image was removed in M4), and a registry that has other tools in it too', () => {
+  assert.equal(WEB.length, 10);
+  assert.equal(WEB.includes('ocr_image'), false, 'a tool that sends a picture to a model came back');
   assert.ok(T.toolNames().length > 30, 'the worker registry did not load');
 });
 

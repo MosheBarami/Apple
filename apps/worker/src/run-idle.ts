@@ -9,14 +9,6 @@
 // whose latest change has passed a verifier, and which has since only read, is idle.
 
 import { fenceForQuote } from './run-parts.ts';
-/**
- * Tools that are CHECKS without being verifiers. A plan's verification step is the agent's own choice among the verifiers in
- * verifiers.ts, and the self-check's `look` is not one of them (it answers "what does it look like", never "is it good"). But a
- * successful look after a change IS the run having checked that change, so reading afterwards is the idle this file bounds.
- * Registered here, beside the bound it feeds; tests/run-idle.test.mjs derives that each is a real tool that changes nothing.
- */
-export const EXTRA_CHECK_TOOLS: ReadonlySet<string> = new Set(['look']);
-
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;
 /**
@@ -39,9 +31,8 @@ export const ANSWER_ONLY_NUDGE = 5;
  */
 export const READ_STALL_NUDGE = 6;
 export const READ_STALL_LIMIT = 20;
-// The nudge was 10 until round 3 (2026-10-04): a run after a composer read for 30 steps, and the generic note at the tenth did not
-// move it. It is 6 now, and after a composer the note restates the next concrete step of the world pass (world-pass.ts readStallNote).
-// Still well under the limit, which ends the run.
+// The nudge was 10 until round 3 (2026-10-04): a run read for 30 steps, and the generic note at the tenth did not move it. It is 6
+// now. Still well under the limit, which ends the run.
 
 /**
  * EVERY TURN THE HARNESS WRITES INTO THE TRANSCRIPT CARRIES THIS PREFIX. The transcript only has a `user`
@@ -264,7 +255,7 @@ export function afterToolOutcome(streaks: Record<string, number> | undefined, to
  */
 const MADE: Record<string, string | [string, string]> = {
   edit_script: 'how the game works', format_script: 'how the game works', run_luau: 'how the game works', install_module: 'how the game works',
-  create_instances: 'new objects', build_scene: 'a ready-made scene',
+  create_instances: 'new objects',
   set_properties: 'how things look', set_properties_bulk: 'how things look', set_locked: 'how things look', set_visible: 'how things look',
   edit_terrain: 'the terrain', shape_terrain: 'the terrain',
   delete_instances: 'removed objects',
@@ -274,49 +265,16 @@ const MADE: Record<string, string | [string, string]> = {
   set_mood: 'the lighting',
   add_effect: ['effect', 'effects'], insert_vfx: ['effect', 'effects'], remove_effect: 'removed effects',
   insert_sound: ['sound', 'sounds'], design_sound: 'the sound mix', assign_sounds: 'the sound mix',
-  insert_asset: ['model', 'models'], insert_library_model: ['model', 'models'], insert_owner_component: ['model', 'models'],
+  insert_asset: ['model', 'models'], insert_library_model: ['model', 'models'],
   generate_model: ['model', 'models'], generate_model_external: ['model', 'models'],
   insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts', build_studded_ui: 'the on-screen parts', add_upgrades: 'the upgrades', animate_model: 'the moving parts', add_behaviour: ['behaviour', 'behaviours'], build_object: 'new objects', dress_object: 'the object\'s stage, motion and extras',
   collision_groups: 'what things can pass through',
   create_rig: ['character', 'characters'],
 };
 
-const WORDS = (s: string) => s.replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').replace(/[^A-Za-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-const SERVICE_PART: Record<string, string> = {
-  Workspace: 'the game map', StarterGui: 'the game screens', Lighting: 'the game lighting', SoundService: 'the game sounds',
-  StarterPack: 'the starter tools', Teams: 'the teams', MaterialService: 'the game materials',
-};
-
-/** "/StarterGui/ShopGui#2" -> "shop": the library name of a thing, as words. Empty when nothing readable is left (an id or a bare number is not a name). */
-export function plainName(path: string): string {
-  const last = path.split('/').filter(Boolean).pop() ?? '';
-  const words = WORDS(last.replace(/#\d+$/, '')).replace(/ (gui|ui|screen|frame|model|folder)$/, '');
-  return /[a-z]/.test(words) && (words.match(/\d/g) ?? []).length <= 4 ? words.slice(0, 40).trim() : '';
-}
-
-/** What a library path is called to a user: "/Workspace" is the game map, "/StarterGui/ShopGui" the shop screen. */
-export function plainLibraryThing(path: string): string {
-  const [service, ...rest] = path.split('/').filter(Boolean);
-  if (!service) return 'a saved model';
-  if (!rest.length) return SERVICE_PART[service] ?? 'the game systems';
-  const name = plainName(path);
-  const kind = service === 'StarterGui' ? 'screen' : service === 'StarterPack' ? 'tool' : service === 'SoundService' ? 'sound'
-    : service === 'Workspace' ? '' : 'system';
-  return name ? `the ${name}${kind ? ` ${kind}` : ''}` : kind ? `a ${kind}` : 'a model';
-}
-
-/** The key a successful project-changing call is filed under (see addMade): its tool, or "=" and what a library import brought. */
-export function madeKey(tool: string, args: string | undefined): string {
-  if (tool === 'recreate_owner_game') return '=the whole game';
-  if (tool === 'build_game') return '=a whole new game from your saved games';
-  if (tool === 'compose_game') return '=a whole new game made for your idea';
-  if (tool === 'install_owner_system') return '=a ready-made feature from your saved games';
-  if (tool !== 'import_owner_library') return tool;
-  try {
-    const path = (JSON.parse(args || '{}') as { path?: unknown }).path;
-    if (typeof path === 'string') return '=' + plainLibraryThing(path);
-  } catch { /* the tool already refused bad JSON */ }
-  return '=part of a saved game';
+/** The key a successful project-changing call is filed under (see addMade): its tool. */
+export function madeKey(tool: string, _args: string | undefined): string {
+  return tool;
 }
 
 /** Count one more change under its key. At most 30 different keys are kept; the rest count as other changes. */
@@ -382,13 +340,11 @@ export const AUTONOMOUS_IDLE_STEER =
   'tool calls, ending with a statement, not a question.';
 
 /**
- * Whether THIS RUN built something game-shaped, judged by what it built and not by the words of the request: a composed or saved
- * game (builtGame), or scripts together with at least two other kinds of change. (A keyword list of game genres used to decide
+ * Whether THIS RUN built something game-shaped, judged by what it built and not by the words of the request: scripts together with at least two other kinds of change. (A keyword list of game genres used to decide
  * that a request "owed" a HUD and a playtest: a request in another language, or for a genre not on the list, owed nothing, and a
  * script fix that said "game" owed both.)
  */
-export function builtAGame(run: { builtGame?: boolean; made?: Record<string, number> }): boolean {
-  if (run.builtGame === true) return true;
+export function builtAGame(run: { made?: Record<string, number> }): boolean {
   const kinds = Object.keys(run.made ?? {});
   return (run.made?.edit_script ?? 0) >= 1 && kinds.length >= 3;
 }
@@ -399,7 +355,7 @@ export function builtAGame(run: { builtGame?: boolean; made?: Record<string, num
  * Only what this run can supply is owed.
  */
 export function gameGaps(
-  run: { hudBuilt?: boolean; playChecked?: boolean; builtGame?: boolean; made?: Record<string, number> },
+  run: { hudBuilt?: boolean; playChecked?: boolean; made?: Record<string, number> },
   canPlay: boolean,
 ): ('hud' | 'playtest')[] {
   if (!builtAGame(run)) return [];
@@ -409,10 +365,10 @@ export function gameGaps(
   return gaps;
 }
 
-/** A mutating call that puts a HUD on screen. An owner game's original UI counts: a recreate or a StarterGui import brings its own. */
+/** A mutating call that puts a HUD on screen. */
 export function buildsHud(name: string, args: string | undefined): boolean {
-  return name === 'build_ui' || name === 'insert_ui_component' || name === 'build_studded_ui' || name === 'add_upgrades' || name === 'recreate_owner_game' || name === 'build_game' || name === 'compose_game' ||
-    /ScreenGui|ui_kit/.test(args ?? '') || (name === 'import_owner_library' && /StarterGui/.test(args ?? ''));
+  return name === 'build_ui' || name === 'insert_ui_component' || name === 'build_studded_ui' || name === 'add_upgrades' ||
+    /ScreenGui|ui_kit/.test(args ?? '');
 }
 
 export function gameGapSteer(gaps: readonly ('hud' | 'playtest')[]): string {

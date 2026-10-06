@@ -134,7 +134,9 @@ jobs:
         # member, so tests/gate-check.test.mjs — the test of the program that decides whether every
         # gate in GATES.md is met — ran nowhere in CI. Same shape as the apps/plugin gap that
         # check-workspace-coverage.mjs exists for, one level out.
-        run: node --test tests/*.test.mjs
+        # A per-test ceiling (2026-10-06): a hung test fails under its own name instead of the job being
+        # cut off at its timeout with nothing said about which file hung.
+        run: node --test --test-timeout=240000 tests/*.test.mjs
 
       - name: Ledger is well-formed
         # Executes nothing: seconds, not the ten minutes a full gate pass costs. It checks the
@@ -230,10 +232,8 @@ jobs:
   # ---------------------------------------------------------------- plugin --
   # THE SHIPPED PLUGIN IS apps/studpilot-plugin — the Creator Store's "Apple Studio" listing (its title until the owner retitles it), asset
   # 107230158271368. Until 2026-09-22 this job built apps/plugin, the legacy source whose asset
-  # Roblox removed, so CI proved that the plugin nobody installs still compiled and never looked at
-  # the one people do. apps/plugin now lives on only as test fixtures: its Luau specs still run under
-  # `pnpm -r test` in the job above, because studpilot-plugin's render-parity test and a dozen worker and
-  # eval tests read its files. Nothing builds it into an artifact.
+  # Roblox removed; that package was deleted in M4. The render oracle its specs gave the shipped plugin's
+  # render-parity test now lives in apps/studpilot-plugin/tests/legacy-oracle. Nothing here builds anything but the shipped plugin.
   plugin:
     name: Build and verify the Studio plugin (apps/studpilot-plugin)
     runs-on: ubuntu-latest

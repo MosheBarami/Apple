@@ -60,11 +60,23 @@ function scratch() {
 //   Two changes, because the budget and the reporting are separate faults. The checker walks the
 //   whole tree and this file spawns it more than thirty times, so 120 s is simply too tight under
 //   any parallel load. And a run that does not finish now THROWS, naming the timeout, instead of
-//   handing back a null that the next line turns into somebody else's failure. ]]
+//   handing back a null that the next line turns into somebody else's failure.
+//
+//   A HUNG RUN IS RETRIED (2026-10-06). On the Linux runner a spawn of the checker sometimes never exits:
+//   strace showed it had printed its verdict and then sat in process teardown, its main thread joining a
+//   thread that never ends, and the same checker run by hand in the same clone exits in 2 s. One attempt
+//   is now bounded at 100 s (a normal run is 1 to 2 s, so that is still fifty times the work under load)
+//   and a timed-out attempt is run again, up to three times: the 300 s budget is kept, and a timeout
+//   still measures nothing, so retrying it changes no verdict. ]]
 const RUN_TIMEOUT_MS = 300_000;
+const ATTEMPTS = 3;
 
 function runRaw(dir) {
-  const proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: RUN_TIMEOUT_MS });
+  let proc;
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: RUN_TIMEOUT_MS / ATTEMPTS });
+    if (!(proc.error?.code === 'ETIMEDOUT' || proc.signal === 'SIGTERM')) break;
+  }
   if (proc.error || proc.signal) {
     // If this ever fires again, say what was still running: the hang has not been reproduced locally.
     let alive = '';

@@ -7,7 +7,7 @@
  * conveyor, machines over the belt turn it into the next thing and multiply what it is worth, a seller at the end pays
  * the owner, and buy pads on the floor unlock the next dropper, machine or speed-up in turn (AppleTycoon).
  *
- * WHAT the game is made of is the AGENT's: compose_game's `tycoon` argument carries the item, the dropper, the machines
+ * WHAT the game is made of is the AGENT's: the `tycoon` spec carries the item, the dropper, the machines
  * in order and what each makes of the item, the seller and the currency, in the user's own words and language. The
  * harness holds no trade of its own (it used to hold a laundry chain, a pizza chain and a generic "Cleaner, Polisher,
  * Packer" fallback, and every tycoon came out as one of them): a missing field is reported by name and the agent fills
@@ -99,7 +99,7 @@ export function tycoonTheme(given: unknown): { theme: TycoonTheme; notes: string
   });
   const seller = (g.seller && typeof g.seller === 'object' ? g.seller : {}) as Record<string, unknown>;
   const sellerName = text(seller.name, 'seller.name');
-  if (missing.length) return { error: `The tycoon is missing: ${missing.join('; ')}. Fill them from the user's request and call compose_game again.`, missing };
+  if (missing.length) return { error: `The tycoon is missing: ${missing.join('; ')}. Fill them from the user's request.`, missing };
   const shape = ['Ball', 'Block', 'Cylinder'].find((x) => x.toLowerCase() === String(item.shape ?? '').toLowerCase()) as 'Ball' | 'Block' | 'Cylinder' | undefined;
   const size = Array.isArray(item.size) && item.size.length === 3 && item.size.every((n) => typeof n === 'number' && n > 0.2 && n < 12) ? item.size as V3 : undefined;
   const material = typeof item.material === 'string' && /^[A-Za-z]{3,20}$/.test(item.material) ? item.material : undefined;

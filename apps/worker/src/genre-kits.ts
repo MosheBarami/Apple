@@ -90,12 +90,9 @@ export interface PinnedAsset {
 /**
  * Pure configuration — the `lighting` need, which is the highest quality-per-effort row there is.
  *
- * NO KIT MAY USE THE ENGINE DEFAULT AS A VALUE. Roblox ships clockTime 14.5 / brightness 3, and
- * roblox-defaults.ts is the single place those numbers are allowed to live, because the critic
- * asks "did anybody light this scene?" by comparing against them. Two kits had clockTime 14 —
- * near enough to read as the default at a glance, and `critic-wiring.test.mjs` failed the build
- * for it, correctly: a second file carrying the shape of the defaults table is how the question
- * gets two answers. They are now 13.5 and 12.5, which are choices rather than near-misses.
+ * NO KIT MAY USE THE ENGINE DEFAULT AS A VALUE. Roblox ships clockTime 14.5 / brightness 3 (not independently verified),
+ * and a kit that sits near them reads as "nobody lit this scene". Two kits had clockTime 14, and are now 13.5 and 12.5, which are
+ * choices rather than near-misses. (roblox-defaults.ts, which held the numbers for the render critic, was removed in M4.)
  */
 export interface KitLighting {
   ambient: string;

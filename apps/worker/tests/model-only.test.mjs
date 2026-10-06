@@ -241,12 +241,3 @@ test('the model rule holds no noun list: no noun, shape or name decides anything
   assert.equal(/'tree'|'chest'|'lamp'|'pet'/.test(src), false);
 });
 
-test('the floating-island tool builds only plain terrain and leaves detailed props to the asset order', async () => {
-  const s = studio();
-  const r = await T.TOOLS.build_scene.run(s.ctx, { kit: 'floating_island', center: [0, 150, 0] });
-  assert.ok(!refused(r), JSON.stringify(r).slice(0, 400));
-  assert.equal(r.complete, false);
-  assert.match(r.next, /find_library_model/);
-  assert.doesNotMatch(r.next, /Never hand-build/i, 'the kit still forbids the order\'s last step');
-  assert.equal(s.calls.filter((call) => call.op === 'create_instances').length, 0, 'the kit hand-built a prop');
-});

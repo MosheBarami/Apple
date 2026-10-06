@@ -1,6 +1,6 @@
 // FINDING A VERIFIED MODULE BY WHAT A CUSTOMER SAID, NOT BY WHAT ITS CONTRACT SAYS.
 //
-// THE MEASUREMENT THIS ANSWERS. packages/training/runs/knowledge-reach.json, 2026-09-20, against
+// THE MEASUREMENT THIS ANSWERS. packages/corpus/data/measurements/knowledge-reach.json, 2026-09-20, against
 // the Worker's own bundled code: 80 verified modules, retrieval only, limit 5. A query phrased the
 // way the module's CONTRACT is phrased finds it 80/80 at rank one. A query phrased the way a
 // customer talks finds it 49/80 — 31 customer-phrased needs return the wrong module first, and 13
@@ -33,7 +33,7 @@
 // Both halves are measured separately in packages/training/src/measure-need-index.mjs, because an
 // approach that cannot say which half earned the points is not a result anyone can build on.
 //
-// WHAT IT MEASURED — packages/training/runs/knowledge-reach-need-index.json, 2026-09-20, retrieval
+// WHAT IT MEASURED — packages/corpus/data/measurements/knowledge-reach-need-index.json, 2026-09-20, retrieval
 // only, limit 5, the same 80 customer-phrased and 80 contract-phrased queries as the 61% baseline,
 // run against the Worker's own bundled code with no model in the loop:
 //

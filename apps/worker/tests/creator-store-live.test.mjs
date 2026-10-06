@@ -14,7 +14,6 @@
  *   - find_library_model tops up from the live store only when the context turns it on, only when the project's asset sources
  *     allow the Creator Store, and remembers the rows it returned so insert_library_model takes exactly those ids;
  *   - insert_library_model on a `cs:` id sends the plugin's insert_asset for that asset id, through the same in-place scan;
- *   - an owner-library row that matched only in a path (the javelin that answered "crystal") is held back.
  *
  * Run with:  node --test tests/creator-store-live.test.mjs      (from apps/worker)
  */
@@ -429,31 +428,6 @@ test('a live insert respects the source policy like every Creator Store insert',
 });
 
 /* --------------------------------------------------------------------- the owner library --- */
-
-test('an owner-library row that matched only in a path is held back, so "crystal" no longer answers a javelin', async () => {
-  const raw = 'a'.repeat(64) + ':42';
-  const gateway = (rows) => async (op) => (op.op === 'query_owner_local' ? { ok: true, data: { items: rows, nextAfter: null } } : { ok: false, error: 'unexpected' });
-  const javelin = { id: raw, name: 'Javelin', class: 'Model', path: 'Workspace.CrystalQuest.Javelin', summary: 'a thrown crystal tipped spear' };
-  const f = fakeStore(CRYSTALS);
-  const { ctx } = ctxWith(gateway([javelin]), { localOwnerGateway: true, liveCreatorStore: true, liveStoreFetch: f });
-  const res = await run(ctx, 'find_library_model', { query: 'crystal' });
-  assert.notEqual(res.source, 'owner_local', 'the javelin does not answer');
-  assert.deepEqual(res.results.map((r) => r.id), ['cs:7416934814', 'cs:157006174'], 'the live store answers instead');
-
-  // A row whose own name has the word still answers first.
-  const crystalRow = { id: 'b'.repeat(64) + ':7', name: 'Crystal Spire', class: 'Model', path: 'Workspace.Cave.Crystal Spire' };
-  const named = ctxWith(gateway([javelin, crystalRow]), { localOwnerGateway: true, liveCreatorStore: true, liveStoreFetch: fakeStore(CRYSTALS) });
-  const first = await run(named.ctx, 'find_library_model', { query: 'crystal' });
-  assert.equal(first.source, 'owner_local');
-  assert.deepEqual(first.results.map((r) => r.name), ['Crystal Spire']);
-  assert.match(first.note, /1 other row\(s\) matched only in a path or description/);
-
-  // With nothing else to offer, the held rows come back, said to be unnamed matches.
-  const alone = ctxWith(gateway([javelin]), { localOwnerGateway: true });
-  const last = await run(alone.ctx, 'find_library_model', { query: 'crystal' });
-  assert.equal(last.source, 'owner_local');
-  assert.match(last.note, /None of these rows has a word of "crystal" in its own name/);
-});
 
 test('the real run context turns the live search on and keeps the rows between calls', async () => {
   const { readFileSync } = await import('node:fs');

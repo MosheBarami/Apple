@@ -79,21 +79,21 @@ async function propose(args, ctx) {
 
 const planSteps = (res) => res.detail?.blocks?.[0]?.steps ?? [];
 
-/** Studio that cannot render — the case the appended inspect_visually was announced to anyway. */
+/** Studio that cannot render — the case the appended render-dependent check (once inspect_visually, now check_composition) was announced to anyway. */
 const NO_RENDER = offeredFor({ capabilities: report('render_view', 'run_code') });
 
 test('the narrowed sets are real, so nothing below passes vacuously', () => {
   const full = offeredFor();
   assert.ok(full.size > 50, `a paired Agent run was offered ${full.size} tools`);
-  assert.ok(full.has('propose_plan') && full.has('inspect_visually'), 'the paired Agent set lost the tools under test');
-  assert.equal(NO_RENDER.has('inspect_visually'), false, 'render_view unsupported must withhold inspect_visually');
-  assert.equal(NO_RENDER.has('check_composition'), false, 'and check_composition');
+  assert.ok(full.has('propose_plan') && full.has('check_composition'), 'the paired Agent set lost the tools under test');
+  assert.equal(full.has('inspect_visually'), false, 'M4: the vision tool is not offered to any run');
+  assert.equal(NO_RENDER.has('check_composition'), false, 'render_view unsupported must withhold check_composition');
   assert.equal(NO_RENDER.has('run_spec'), false, 'run_code unsupported must withhold run_spec');
   assert.equal(NO_RENDER.has('audit_build'), true, 'audit_build needs only get_tree and must survive');
   assert.equal(NO_RENDER.has('propose_plan'), true);
 });
 
-test('the append preference is a permutation of the five verifiers', () => {
+test('the append preference is a permutation of the four verifiers', () => {
   assert.deepEqual([...T.APPENDED_VERIFIER_PREFERENCE].sort(), [...T.VERIFIER_TOOLS].sort(),
     'a verifier missing from the preference can never be appended; an extra one is not a verifier');
 });
@@ -106,7 +106,7 @@ test('A PLAN WITH NO CHECK GETS A CHECK THE RUN WAS OFFERED — never a withheld
     ['paired, full plugin', offeredFor()],
     ['render_view unsupported', NO_RENDER],
     ['render_view + get_tree unsupported', offeredFor({ capabilities: report('render_view', 'get_tree', 'run_code') })],
-    ['inspect_visually denied by permission', offeredFor({ perms: { inspect_visually: 'deny' } })],
+    ['audit_build denied by permission (the first choice)', offeredFor({ perms: { audit_build: 'deny' } })],
   ];
   let appended = 0;
   for (const [label, offered] of scenarios) {
@@ -120,7 +120,7 @@ test('A PLAN WITH NO CHECK GETS A CHECK THE RUN WAS OFFERED — never a withheld
   }
   assert.equal(appended, scenarios.length, 'every scenario above offers at least one verifier, so each must have one appended');
 
-  // The specific case: no renderer means the best offered check, audit_build, not inspect_visually.
+  // The specific case: no renderer means the best offered check is audit_build, never a renderer-bound one.
   const res = await propose({ steps: [{ title: 'Build it', tool: 'create_instances' }] }, ctxFor(NO_RENDER));
   assert.equal(planSteps(res).at(-1).tool, 'audit_build');
   assert.match(res.resultForLlm, /audit_build was added/, 'the model must be told which check it now owes');
@@ -218,7 +218,7 @@ const ADVERSARIAL = [
   { steps: [{ title: 'Plan it', tool: 'propose_plan' }] },
   { steps: [{ title: 'Edit it', tool: 'edit_scripts' }] },
   { steps: [{ title: 'Test it', tool: 'run_spec' }] },
-  { steps: [{ title: 'Look at it', tool: 'inspect_visually' }] },
+  { steps: [{ title: 'Look at it', tool: 'inspect_visually' }] }, // a tool that no longer exists (M4): refused like any unknown name
   { steps: Array.from({ length: 20 }, (_, i) => ({ title: `Part ${i}`, tool: 'create_instances' })) },
   { steps: Array.from({ length: 20 }, (_, i) => ({ title: `Part ${i}`, tool: i % 3 ? 'create_instances' : 'edit_scripts' })) },
   { steps: [{ title: 'Build it', tool: 'create_instances' }] },

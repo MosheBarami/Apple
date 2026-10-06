@@ -177,30 +177,6 @@ test('a stopped run says what the user got, in plain words, counted from its own
     'It worked on new objects, the lighting, a sound, the terrain, how the game works, copies of objects and more.', 'a long list is cut short');
 });
 
-test('what a library import brought is named the way the game shows it, never by path or tool', async () => {
-  const { builtSummary, addMade, madeKey, plainName, plainLibraryThing } = await import('../src/run-idle.ts');
-  const imp = (path, mode = 'self') => madeKey('import_owner_library', JSON.stringify({ gameId: 'abcdef012345', path, mode }));
-  assert.equal(plainLibraryThing('/Workspace'), 'the game map');
-  assert.equal(plainLibraryThing('/StarterGui'), 'the game screens');
-  assert.equal(plainLibraryThing('/StarterGui/ShopGui'), 'the shop screen');
-  assert.equal(plainLibraryThing('/StarterGui/MainUI/Frames#2'), 'the frames screen');
-  assert.equal(plainLibraryThing('/Workspace/BrainrotPet'), 'the brainrot pet');
-  assert.equal(plainLibraryThing('/ServerScriptService/CashLoop'), 'the cash loop system');
-  assert.equal(plainLibraryThing('/StarterPack/Sword'), 'the sword tool');
-  assert.equal(plainLibraryThing('/'), 'a saved model');
-  assert.equal(plainLibraryThing('/StarterGui/##'), 'a screen', 'a name with nothing readable falls back to its kind');
-  assert.equal(plainName('/Workspace/Plot1'), 'plot 1');
-  assert.equal(plainName('/StarterGui/ShopGUI'), 'shop');
-  assert.equal(plainName('/Workspace/Brainrot Pet#3'), 'brainrot pet');
-  assert.equal(plainName('/Workspace/Bases_NEW/{94396031-cda8-4c6d-ae16-6f869de43bd7}'), '', 'an id is not a name');
-  assert.equal(plainName('/Workspace/1449'), '', 'a bare number is not a name');
-  assert.equal(plainLibraryThing('/SavedGameModules/Workspace/BoatContainer/Boat_{2E055272-1AE8-47E0-8BF6-22F0E52C71F9}'), 'a system');
-  let made;
-  for (const key of [imp('/Workspace', 'children'), imp('/StarterGui/ShopGui'), imp('/StarterGui/ShopGui'), madeKey('recreate_owner_game', '{"gameId":"abcdef012345"}')]) made = addMade(made, key);
-  assert.equal(builtSummary(made), 'It worked on the game map, the shop screen and the whole game.');
-  assert.equal(madeKey('import_owner_library', 'not json'), '=part of a saved game', 'unreadable arguments still name no tool');
-});
-
 test('addMade keeps a bounded record and files the overflow as other changes', async () => {
   const { builtSummary, addMade } = await import('../src/run-idle.ts');
   let made;
@@ -273,7 +249,7 @@ test('a built game with nothing on screen or an unplayed loop is not finished: s
   const { gameGaps, gameGapSteer, builtAGame } = await import('../src/run-idle.ts');
   // RESTATED phase 1: a regex over genre words in the request decided that "a game" owed a HUD and a playtest (a request in
   // another language, or for a genre not on the list, owed nothing; a script fix that said "game" owed both).
-  const game = { builtGame: true };
+  const game = { made: { edit_script: 2, create_instances: 3, build_object: 1 } };
   assert.deepEqual(gameGaps(game, true), ['hud', 'playtest']);
   assert.deepEqual(gameGaps({ ...game, hudBuilt: true }, true), ['playtest']);
   assert.deepEqual(gameGaps({ ...game, hudBuilt: true, playChecked: true }, true), []);
@@ -298,19 +274,17 @@ test('a built game with nothing on screen or an unplayed loop is not finished: s
 
 test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
   assert.match(SESSION, /out\.mutatedProject === true && buildsHud\(call\.name, call\.arguments\)\) agent\.hudBuilt = true/);
-  // The property: a play_check that worked marks the run as played; so does a judge_game that played (sessions other than 0).
-  assert.match(SESSION, /out\.ok && \(call\.name === 'play_check' \|\| \(call\.name === 'judge_game' && [^\n]*sessions[^\n]*\)\) agent\.playChecked = true/);
+  // The property: a play_check that worked marks the run as played. (RESTATED in M4: a judge_game that played used to count too; the judge is gone.)
+  assert.match(SESSION, /out\.ok && call\.name === 'play_check'\) agent\.playChecked = true/);
+  assert.doesNotMatch(SESSION, /judge_game/, 'no judge verdict marks a run as played');
   // every Autonomous ending consults the game gaps: prose, idle, and the duplicate-streak unstick
   const uses = SESSION.match(/gameGaps\(agent, allowed\.has\('play_check'\)\)/g) ?? [];
   assert.equal(uses.length, 3, 'the prose, idle and duplicate-streak endings must all check the game');
   assert.match(SESSION, /gaps\.length > 0 \|\| leavesWorkOpen\(res\.text\)/);
 });
 
-test('an owner game recreate or StarterGui import brings its own HUD, so no generated HUD is owed', async () => {
+test('a HUD built by a UI tool or written as a ScreenGui is a HUD, so no generated HUD is owed', async () => {
   const { buildsHud } = await import('../src/run-idle.ts');
-  assert.equal(buildsHud('recreate_owner_game', '{"gameId":"0a1b2c3d"}'), true);
-  assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/StarterGui","parent":"game.StarterGui"}'), true);
-  assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/Workspace/Farm"}'), false);
   assert.equal(buildsHud('insert_ui_component', '{}'), true);
   assert.equal(buildsHud('create_instances', '{"items":[{"className":"Part"}]}'), false);
 });
@@ -357,15 +331,6 @@ test('CREDITS: the run loop skips only run_luau when a change names no target', 
   assert.match(SESSION, /const target = aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\);\s*if \(target\) \{[\s\S]{0,400}afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
 });
 
-test('CREDITS: the visual inspection tool no longer says to repeat it "until it passes"', () => {
-  const tools = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
-  const at = tools.indexOf("name: 'inspect_visually'");
-  assert.ok(at > 0, 'inspect_visually was not found — this test would check nothing');
-  const description = tools.slice(at, at + 1500);
-  assert.doesNotMatch(description, /until it passes/, 'a repeat-until-pass instruction has no progress test, and each inspection renders and calls a vision model');
-  assert.match(description, /do not score better, stop and say so/);
-});
-
 test('review 2026-10-02: a back-and-forth bout that ended does not turn a later, unrelated bout into an immediate end', async () => {
   const R = await import('../src/run-idle.ts');
   let st; const actions = [];
@@ -391,32 +356,3 @@ test('review 2026-10-02: an A, A, B loop still ends, and a changeless tool (set_
   assert.ok(session.includes(`Over your last ${R.CHANGE_WINDOW} changes, ${R.WINDOW_NUDGE} or more`), 'the steer states numbers other than the guard uses');
 });
 
-test('the self-check\'s look counts as a check after a change, so reading after it is the idle this file bounds', async () => {
-  const { EXTRA_CHECK_TOOLS, afterStep, IDLE_AFTER_VERIFY_NUDGE } = await import('../src/run-idle.ts');
-  assert.ok(EXTRA_CHECK_TOOLS.has('look'));
-  // Derived from the registry, not asserted by hand: every extra check is a real tool and changes nothing (a check that changes the
-  // place would be a change, and a change clears the check).
-  const esbuild = await import('esbuild');
-  const { mkdtempSync, rmSync } = await import('node:fs');
-  const { tmpdir } = await import('node:os');
-  const { join } = await import('node:path');
-  const { pathToFileURL } = await import('node:url');
-  const dir = mkdtempSync(join(tmpdir(), 'run-idle-checks-'));
-  try {
-    await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
-      alias: { '@studpilot/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
-    const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
-    for (const name of EXTRA_CHECK_TOOLS) {
-      assert.ok(T.toolNames().includes(name), `${name} is not a registered tool`);
-      assert.ok(!T.projectMutatingToolNames().includes(name), `${name} changes the place, so it cannot be a check`);
-    }
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-  // And it behaves as a check: after a change and a check, only reading is counted toward the nudge.
-  let state = {};
-  state = afterStep(state, { mutated: true, verified: false, calls: 1 });
-  state = afterStep(state, { mutated: false, verified: true, calls: 1 });
-  for (let i = 0; i < IDLE_AFTER_VERIFY_NUDGE; i++) state = afterStep(state, { mutated: false, verified: false, calls: 1 });
-  assert.equal(state.action, 'nudge');
-});

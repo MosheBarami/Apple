@@ -28,7 +28,6 @@ test('nothing in the prompt still coaches jargon', () => {
   assert.doesNotMatch(src, /flagged suspicious/i);
   assert.doesNotMatch(src, /possible backdoors/i);
   assert.doesNotMatch(src, /quote what (playerSees|each press)/);
-  assert.match(src, /If an imported game can load code from the internet, say so in one plain sentence/);
 });
 
 test('rules the code already enforces are not repeated in the prompt', () => {

@@ -1,7 +1,7 @@
 /**
  * LANE DEFENSE (compose.ts): enemies walk a winding road to a base, the player buys defenders and places them on plots
  * beside the road, and waves keep coming. The composer lays out a new studded map and installs the components; WHAT the game
- * is made of is the AGENT's, argument by argument (compose_game's `laneDefense`): its title and words, its enemies (a rigged
+ * is made of is the AGENT's, argument by argument (the `laneDefense` spec): its title and words, its enemies (a rigged
  * body wearing a costume, or a whole library model), its defenders, the base they protect, the props of the map and the
  * waves. Every piece is a library piece the agent found and chose (`{ gameId, path }`).
  *
@@ -25,7 +25,7 @@ export const DEFAULT_WORDS: Record<string, string> = {
   shop: 'Shop', gate: 'Gate', plot: 'Free plot', cleared: 'Wave cleared! Bonus!', earn: 'Beat enemies and clear waves to earn more!',
 };
 
-/** What the lane-defense template needs, for the template list compose_game gives back. */
+/** What the lane-defense template needs, for a list of the templates. */
 export const LANE_NEEDS = 'laneDefense { title, currency, enemies[] { name, health, speed, reward, damage, body{gameId,path}+costume{gameId,path} or model{gameId,path} }, defenders[] { name, model{gameId,path}, price, range, damage, rate }, base{gameId,path}, waves { list [[ { enemy, count, every } ]] } }; optional: start, words, props[], palette, symbol';
 
 const num = (v: unknown, lo: number, hi: number): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi ? v : undefined);
@@ -100,7 +100,7 @@ export function readLaneDefense(given: unknown, seed: number): { recipe: Recipe;
     list.push(groups);
   });
   const waveNum = (k: string, d: number, lo: number, hi: number) => { const v = num(w[k], lo, hi); if (v === undefined) defaults.push(`waves.${k} = ${d}`); return v ?? d; };
-  if (missing.length) return { error: `The lane-defense game is missing: ${[...new Set(missing)].slice(0, 12).join('; ')}. Fill them from the user's request (every piece is a library piece you found) and call compose_game again.`, missing };
+  if (missing.length) return { error: `The lane-defense game is missing: ${[...new Set(missing)].slice(0, 12).join('; ')}. Fill them from the user's request (every piece is a library piece you found).`, missing };
 
   const start = num(g.start, 0, 1e12);
   if (start === undefined) defaults.push('start = 50');

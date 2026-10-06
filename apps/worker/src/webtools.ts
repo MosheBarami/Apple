@@ -1,4 +1,4 @@
-// THE WEB-FACING TOOL VOCABULARY: browser, search, fetch, screenshot, OCR, GitHub, git, files.
+// THE WEB-FACING TOOL VOCABULARY: browser, search, fetch, screenshot, GitHub, git, files.
 //
 // Ten tools over four substrates (the open web, a search endpoint, the GitHub API, a per-project
 // file store), all of them sharing one shape:
@@ -694,7 +694,6 @@ export function pageLinks(html: string, baseUrl: string, policy: HostPolicy, lim
  *   `fetchImpl`  absent -> the global fetch. Present in tests so the suite never touches the network.
  *   `workspace`  absent -> built from `env.KV` and the project id; without a project, the file
  *                tools refuse, because a workspace with no owner is not a workspace.
- *   `readTextFromImage` absent -> `ocr_image` reports `not_configured`. It never returns "".
  *   `showImage`  absent -> `screenshot_page` still reports what it captured, and says the image
  *                could not be shown. It never claims to have displayed something it did not.
  */
@@ -703,7 +702,6 @@ export interface WebToolCtx {
   projectId?: string;
   fetchImpl?: WebFetchLike;
   workspace?: WorkspaceStore;
-  readTextFromImage?(dataUrl: string, opts: { language: string }): Promise<{ text: string } | { error: string }>;
   showImage?(pngBase64: string, subject: string, meta: { width: number; height: number; note?: string }): Promise<boolean>;
 }
 
@@ -1239,51 +1237,6 @@ const screenshotTool: WebTool = {
   },
 };
 
-const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-
-const ocrTool: WebTool = {
-  contract: {
-    name: 'ocr_image',
-    description:
-      'Read the text in an image at an allowlisted https URL. Returns the text it found; an image with no text says so, and a read that could not happen is an error.',
-    args: {
-      imageUrl: { type: 'string', description: 'The https URL of the image.', required: true, max: 2048 },
-      language: { type: 'string', description: 'Expected language of the text.', enum: ['en', 'auto'], default: 'auto' },
-    },
-  },
-  available: () => ({ ok: true }),
-  async run(ctx, args) {
-    if (!ctx.readTextFromImage) {
-      return notConfigured('no text-reading engine is wired into this session');
-    }
-    const binary = await fetchBinary(args.imageUrl, {
-      policy: policyFor(ctx),
-      fetchImpl: ctx.fetchImpl,
-      accept: IMAGE_TYPES,
-      maxBytes: 6 * 1024 * 1024,
-    });
-    if (!binary.ok) return failureToToolError(binary.failure);
-
-    const dataUrl = `data:${binary.contentType};base64,${binary.base64}`;
-    const read = await ctx.readTextFromImage(dataUrl, { language: args.language as string });
-    if ('error' in read) {
-      // THE DISTINCTION THIS TOOL EXISTS TO KEEP. An engine that failed is not an image with no
-      // text in it, and collapsing the two would let "the OCR call errored" reach the model as
-      // "this image is blank".
-      return { error: `the image was fetched but could not be read: ${read.error}`, imageBytes: binary.bytes, url: binary.url };
-    }
-    const text = read.text ?? '';
-    return {
-      url: binary.url,
-      imageBytes: binary.bytes,
-      contentType: binary.contentType,
-      chars: text.length,
-      text: text.slice(0, 4000),
-      note: text.trim().length === 0 ? 'the image was read successfully and contains no legible text' : undefined,
-    };
-  },
-};
-
 function githubHeaders(env: Env): Record<string, string> {
   const headers: Record<string, string> = {
     accept: 'application/vnd.github+json',
@@ -1599,7 +1552,6 @@ export const WEB_TOOLS: Record<string, WebTool> = {
   web_search: webSearchTool,
   docs_lookup: docsLookupTool,
   screenshot_page: screenshotTool,
-  ocr_image: ocrTool,
   github_lookup: githubTool,
   git_history: gitTool,
   workspace_list: workspaceListTool,
@@ -1616,7 +1568,6 @@ export const READ_ONLY_WEB_TOOLS: readonly string[] = [
   'web_search',
   'docs_lookup',
   'screenshot_page',
-  'ocr_image',
   'github_lookup',
   'git_history',
   'workspace_list',

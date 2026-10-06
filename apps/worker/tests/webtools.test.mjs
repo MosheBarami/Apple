@@ -95,7 +95,7 @@ function assertNotAnObservation(result, fields) {
 test('the module loaded and the registry is the real one', () => {
   assert.deepEqual(
     W.WEB_TOOL_NAMES.sort(),
-    ['browse_page', 'docs_lookup', 'git_history', 'github_lookup', 'ocr_image', 'screenshot_page', 'web_fetch', 'web_search', 'workspace_list', 'workspace_read', 'workspace_write'].sort(),
+    ['browse_page', 'docs_lookup', 'git_history', 'github_lookup', 'screenshot_page', 'web_fetch', 'web_search', 'workspace_list', 'workspace_read', 'workspace_write'].sort(),
   );
   for (const [name, tool] of Object.entries(W.WEB_TOOLS)) {
     assert.equal(tool.contract.name, name, `${name} disagrees with its own contract name`);
@@ -410,36 +410,6 @@ test('a screenshot size that is not a real number is refused', async () => {
 /* ------------------------------------------------------------------ ocr_image --- */
 
 const imageAnswer = { status: 200, headers: { 'content-type': 'image/png' }, buffer: PNG.buffer };
-
-test('ocr_image returns the text an engine read', async () => {
-  const { impl } = net(imageAnswer);
-  const r = await run('ocr_image', { imageUrl: 'https://create.roblox.com/a.png' }, { fetchImpl: impl, readTextFromImage: async () => ({ text: 'PLAY NOW' }) });
-  assert.equal(r.error, undefined);
-  assert.equal(r.text, 'PLAY NOW');
-  assert.equal(r.chars, 8);
-});
-
-test('AN ENGINE THAT FAILED IS NOT AN IMAGE WITH NO TEXT IN IT', async () => {
-  const { impl } = net(imageAnswer);
-  const r = await run('ocr_image', { imageUrl: 'https://create.roblox.com/a.png' }, { fetchImpl: impl, readTextFromImage: async () => ({ error: 'the engine timed out' }) });
-  assertNotAnObservation(r, ['text', 'chars']);
-  assert.match(r.error, /timed out/);
-});
-
-test('CONTROL: an image that genuinely has no text succeeds and says so', async () => {
-  const { impl } = net(imageAnswer);
-  const r = await run('ocr_image', { imageUrl: 'https://create.roblox.com/a.png' }, { fetchImpl: impl, readTextFromImage: async () => ({ text: '' }) });
-  assert.equal(r.error, undefined);
-  assert.equal(r.text, '');
-  assert.match(r.note, /no legible text/);
-});
-
-test('with no engine wired in, ocr_image reports that rather than returning nothing', async () => {
-  const { impl } = net(imageAnswer);
-  const r = await run('ocr_image', { imageUrl: 'https://create.roblox.com/a.png' }, { fetchImpl: impl });
-  assertNotAnObservation(r, ['text', 'chars']);
-  assert.equal(r.failure.kind, 'not_configured');
-});
 
 test('a body that is not an image is refused rather than transcribed', async () => {
   const { impl } = net(htmlPage);

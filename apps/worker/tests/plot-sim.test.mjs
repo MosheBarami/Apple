@@ -174,73 +174,25 @@ test('scenery is what the agent chose from the library: scatter, roadside, shop 
   const map = JSON.stringify(steps.find((x) => x.kind === 'create' && x.parent === 'game.Workspace'));
   assert.equal((map.match(/"name":"Tile\d+"/g) ?? []).length, 4 * 16, '4 plots of 4x4 tiles');
   assert.equal(P.PLOT_TILES, 4);
-  const tool = src('compose-tool.ts');
-  assert.equal(/libraryModels|streetLight|subjectModels|lookFor|\bKIN\b|\bTHINGS\b|query_owner_library/.test(tool), false, 'the tool searches for no scenery or look of its own');
+  assert.equal(/libraryModels|streetLight|subjectModels|lookFor|\bKIN\b|\bTHINGS\b|query_owner_library/.test(src('compose-plotsim.ts')), false, 'the recipe searches for no scenery or look of its own');
 });
 
-test('the hero is the agent\'s naming: measured so the hub holds it, moved onto the hub, and its own stage and screen are left alone', () => {
-  const tool = src('compose-tool.ts');
-  assert.match(tool, /hb = await bounds\(ctx\.execStudioOp, `game\.Workspace\.\$\{recipe\.hero\}`\)/);
-  assert.match(tool, /paths: \[`game\.Workspace\.\$\{recipe\.hero\}`\], move: \[hx - hb\.center\[0\], 0\.8 - hb\.bottomY, hz - hb\.center\[2\]\]/, 'only the hero moves, onto the plaza');
-  assert.equal(/delete_instances', paths: \[`game\.Workspace\.\$\{recipe\.hero\}Stage`\]/.test(tool), false, 'its stage is not deleted');
+// RESTATED in M4: the measuring and moving of the hero lived in compose-tool.ts (removed). What stays is the recipe's side: the hero is the
+// agent's naming, never found by the harness, and the recipe deletes nothing of the hero's own screen.
+test('the hero is the agent\'s naming: read from the spec, never found by the harness, and its own screen is left alone', () => {
   assert.equal(/HUDScript|HUD`\]/.test(src('compose-plotsim.ts')), false, 'its own screen is not deleted');
   assert.equal(P.readPlotSim({ ...GIVEN, hero: 'game.Workspace.MyGadget' }, 1, false).recipe.hero, 'MyGadget');
   assert.equal(P.readPlotSim({ ...GIVEN }, 1, false).recipe.hero, undefined, 'a hero is never found by the harness');
-  assert.equal(src('compose-tool.ts').includes('readPlace'), false);
+  assert.equal(src('compose-plotsim.ts').includes('readPlace'), false);
 });
 
-test('compose_game is offered, never forced: no template guess from the request words decides the first tool', () => {
+// RESTATED in M4: the composer and its play-and-answer ending are gone. The property that stays is that the run loop narrows nothing
+// after a build and never refuses a rebuild by itself.
+test('the run loop narrows nothing after a build, and a game already in the project does not refuse a rebuild', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.doesNotMatch(session, /composeFirst|ideaRecipe/, 'phase 1: the run starts with the model, which chooses compose_game when the idea calls for it');
-});
-
-// The owner's 93-step run (2026-10-01, 274 credits): compose_game ran, then the model rebuilt plots and screens by hand
-// with 24 build_object calls and 49 tree reads. A built plot simulator is played once and answered.
-test('a composed plot simulator ends the run at play-and-answer, narrows nothing, and a game already in the project does not refuse it', () => {
-  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  // The composer says which template it made; the request's words decide nothing (phase 1).
-  assert.match(session, /call\.name === 'compose_game' && out\.mutatedProject === true && out\.ok && \['plot-sim', 'tycoon'\]\.includes\([^\n]*\) \{\s*agent\.composedPlotSim = true;/);
+  assert.doesNotMatch(session, /composedPlotSim|composedForUser|endWithComposed|compose_game/, 'the composed endings are gone with the composer');
   assert.doesNotMatch(session, /AFTER_OBJECT|objectBuilt/, 'no tool narrowing after a build');
   assert.doesNotMatch(session, /continueGameLine|refuseRebuild|BuiltGameRecord|continuesGame/, 'a rebuild is never refused by the harness');
-});
-
-// Live 2026-10-01: the simulator HUD was 400+ instances; Studio refused the create, the old screen was already gone,
-// and the game had no screen at all while compose_game said "Built".
-test('a create too big for one call is split under the limit, parents first, nothing lost', async () => {
-  const runOut = join(mkdtempSync(join(tmpdir(), 'run-')), 'r.mjs');
-  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'compose-run.ts'), '--bundle', '--format=esm', '--platform=node', '--outfile=' + runOut, '--external:cloudflare:*'], { cwd: WORKER, stdio: 'pipe' });
-  const R = await import(`file://${runOut}`);
-  const machines = Array.from({ length: 6 }, (_, i) => ({ name: `Gadget ${i + 1}`, price: 10 * 5 ** i, income: 1 + i, look: GIVEN.machines[0].look }));
-  const upgrades = Array.from({ length: 6 }, (_, i) => ({ label: `Upgrade ${i + 1}`, kind: 'perSecond', amount: 1, cost: 10 + i }));
-  const hud = P.plotSimSteps(recipe({ machines, upgrades })).find((s) => s.kind === 'create' && s.parent === 'game.StarterGui');
-  const count = (i) => 1 + (i.children ?? []).reduce((n, c) => n + count(c), 0);
-  const total = hud.items.reduce((n, i) => n + count(i), 0);
-  assert.ok(total > 400, `the HUD is ${total} instances, the case this guards`);
-  const batches = R.createBatches(hud.parent, hud.items);
-  assert.ok(batches.length > 1);
-  for (const b of batches) assert.ok(b.items.reduce((n, i) => n + count(i), 0) <= R.CREATE_LIMIT, 'a batch over the limit');
-  assert.equal(batches.reduce((n, b) => n + b.items.reduce((m, i) => m + count(i), 0), 0), total, 'every instance is made once');
-  const made = new Set(['game.StarterGui']);
-  for (const b of batches) {
-    assert.ok(made.has(b.parent), `${b.parent} is used before it is made`);
-    const walk = (parent, i) => { made.add(`${parent}.${i.name}`); for (const c of i.children ?? []) walk(`${parent}.${i.name}`, c); };
-    for (const i of b.items) walk(b.parent, i);
-  }
-  const run = readFileSync(join(WORKER, 'src', 'compose-run.ts'), 'utf8');
-  assert.match(run, /if \(s\.parent === 'game\.StarterGui'\) report\.critical\.push/, 'a screen that was not made fails the build');
-});
-
-test('the composer reads the screen back before it says "built"', () => {
-  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
-  assert.match(tool, /op: 'get_instance', path: 'game\.StarterGui\.AppleHUD'/);
-  assert.match(tool, /the game's screen is not in StarterGui/);
-});
-
-test('a run that ends early after building a game ends on how to play it, and on what the last check found', () => {
-  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(session, /: agent\.composedForUser\s*\?\s*`\$\{agent\.composedForUser\}/);
-  assert.match(session, /if \(typeof said === 'string' && said\.trim\(\)\) agent\.composedForUser = said\.trim\(\)/);
-  assert.match(session, /agent\.lastCheckProblem = /);
 });
 
 // Live play, 2026-10-01 (test 1 rerun): "+0/s" with a machine earning, Rebirth did nothing, the SHOP pad did nothing,
@@ -287,10 +239,7 @@ test('the clips the server announces are always received (no "invocation queue e
 
 // Round 4 of test 1 (2026-10-01): the answer said "you spawn in a hub... claim a plot" (each player starts on their own
 // plot); the Rebirth panel's bare "x1" read as "a rebirth gives nothing"; a placed machine covered three tiles.
-test('the composer tells the truth about plots, Rebirth shows what it gives, and staging checks its own fit', () => {
-  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
-  assert.match(tool, /Every player starts on their own plot/);
-  assert.doesNotMatch(tool, /`Claim a plot/);
+test('Rebirth shows what it gives, and staging checks its own fit', () => {
   assert.match(comp('machines', 'AppleMachinesClient.luau'), /x\(mult\) \.\. "  →  " \.\. x\(nextMult\)/);
   const boot = comp('boot', 'AppleBoot.luau');
   assert.match(boot, /if measure\(after\) <= want \* 1\.05 then return end/, 'the fit is measured after ScaleTo');
@@ -298,46 +247,13 @@ test('the composer tells the truth about plots, Rebirth shows what it gives, and
 });
 
 // Round 6 of test 1 (2026-10-01): the answer promised a starter machine on every plot, and plots started empty.
-test('every plot starts with the cheapest machine, and the composer says so', () => {
+test('every plot starts with the cheapest machine', () => {
   const r = recipe();
   const cfg = P.plotSimSteps(r).find((s) => s.kind === 'script' && s.name === 'AppleGameConfig').source;
   assert.match(cfg, new RegExp(`starter = "${r.machines[0].id}"`));
   const shop = comp('shop', 'AppleShop.luau');
   assert.match(shop, /task\.spawn\(giveStarter, player, plot\)/);
   assert.match(shop, /local function giveStarter[\s\S]{0,1500}put\(player, id, item, template, best\)/);
-  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
-  assert.match(tool, /starts on their own plot with a free/);
-});
-
-// Round 7 of test 1 (2026-10-01): the model's answer kept saying "you spawn in a hub"; every player starts on their plot.
-// RESTATED 2026-10-04 (t1 round 2, deliberate behaviour change): this ending used to end the run unconditionally, and with it the
-// run skipped the look, the blind critique, the judge's verdict and the claim audit (compose_game, judge_game "not ready (79/100)",
-// then the run ended here with 0 vision calls). It now applies only with the self-check off; with it on the answer goes through the
-// gates (composed-answer-gates.test.mjs replays round 2 through the real run loop). The ending itself is unchanged.
-test('a checked plot simulator is answered with what the composer built and what the check measured, when the self-check is off', () => {
-  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  const at = session.search(/if \(\(?agent\.composedPlotSim[^\n]*agent\.composedForUser && agent\.playChecked/);
-  assert.ok(at > 0, 'the composed ending exists');
-  const end = session.slice(at, at + 900);
-  assert.match(end, /!agent\.lastCheckProblem && selfCheckMode\(this\.env\) === 'off'\) \{/, 'only when the check passed, and only with the self-check off');
-  assert.match(end, /agent\.finalText = `\$\{agent\.composedForUser\}\\n\\nI play-tested it: \$\{agent\.lastCheckSeen/);
-  assert.match(end, /await this\.finishRun\(agent, 'done'\);\s*return;/, 'no further model call');
-  assert.ok(at < session.indexOf('const focusedAllowed'), 'before the next model step is prepared');
-});
-
-// Round 11 of test 1 (2026-10-01): with a Play test running every write was refused, each retried ~12 s, and the build
-// ground on for 17 minutes; Stop could not end it.
-test('a build Studio refuses because a Play test runs stops at once and tells the user what to do', async () => {
-  const runOut = join(mkdtempSync(join(tmpdir(), 'run-')), 'r.mjs');
-  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'compose-run.ts'), '--bundle', '--format=esm', '--platform=node', '--outfile=' + runOut, '--external:cloudflare:*', '--log-level=error'], { cwd: WORKER, stdio: 'pipe' });
-  const R = await import(`file://${runOut}`);
-  let calls = 0;
-  const ctx = { execStudioOp: async () => { calls += 1; return { ok: false, error: 'writes require Studio edit mode' }; } };
-  const report = await R.runSteps(ctx, P.plotSimSteps(recipe()));
-  assert.equal(report.stopped, R.PLAY_TEST_STOP);
-  assert.ok(calls <= 2, `${calls} refused writes before it stopped`);
-  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(session, /if \(agent\.endWithComposed && agent\.composedForUser\) \{\s*agent\.finalText = agent\.composedForUser;\s*await this\.finishRun\(agent, 'incomplete'\);/);
 });
 
 // Round 11 of test 1 (2026-10-01): a run whose step died with a deploy answered Stop with "stopping" and stayed running.

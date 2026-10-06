@@ -49,7 +49,7 @@ test('every storage key session.ts uses is in the registry, and every registry k
 
 test('what a fresh start erases is the project\'s work; what it keeps is the project\'s identity and the Studio pairing', () => {
   const reset = new Set(S.RESET_KEYS);
-  for (const k of ['agent', 'memory', 'memoryEditedAt', 'pendingAssetChoice', 'buildLedger', 'plannedGame', 'playtestRun', 'assetSourcesAwaitingRun', 'assetSourcesAsked', 'steerQueue', 'placeMirrored', 'pluginSelection', 'opQueue']) {
+  for (const k of ['agent', 'memory', 'memoryEditedAt', 'pendingAssetChoice', 'buildLedger', 'playtestRun', 'assetSourcesAwaitingRun', 'assetSourcesAsked', 'steerQueue', 'placeMirrored', 'pluginSelection', 'opQueue']) {
     assert.ok(reset.has(k), `${k} survives a fresh start: it would leak into the next project`);
   }
   for (const k of ['bind', 'pluginClient', 'pluginLastSeen', 'pluginPlace', 'pluginState', 'pluginSuperseded', 'pluginTokenHash', 'pluginTokenIssuedAt', 'seq']) {
@@ -59,7 +59,7 @@ test('what a fresh start erases is the project\'s work; what it keeps is the pro
 });
 
 test('/bench-reset uses the registry (one resetProjectState), and clears the in-memory mirrors of the keys it deletes', () => {
-  const reset = session.slice(session.indexOf("path === '/bench-reset'"), session.indexOf("path === '/bench-evaluate'"));
+  const reset = session.slice(session.indexOf("path === '/bench-reset'"), session.indexOf("path === '/purge'"));
   assert.match(reset, /await this\.resetProjectState\(\);/);
   assert.equal(/storage\.delete\('/.test(reset), false, 'a hand-written list of keys is back in the handler');
   const fn = session.slice(session.indexOf('private async resetProjectState'), session.indexOf('private async liveLedger'));
@@ -71,7 +71,7 @@ test('no other Durable Object file keeps a project key the registry does not kno
   const dirPath = join(WORKER, 'src', 'do');
   for (const f of readdirSync(dirPath).filter((n) => n.endsWith('.ts') && n !== 'session.ts')) {
     const keys = [...strip(readFileSync(join(dirPath, f), 'utf8')).matchAll(/storage\.(?:get|put|delete)(?:<[^>()]*>)?\(\s*'([A-Za-z]+)'/g)].map((m) => m[1]);
-    for (const k of keys) assert.ok(!['buildLedger', 'plannedGame', 'memory'].includes(k), `${f} keeps ${k}, a project key, outside the registry's reach`);
+    for (const k of keys) assert.ok(!['buildLedger', 'memory'].includes(k), `${f} keeps ${k}, a project key, outside the registry's reach`);
   }
 });
 

@@ -31,8 +31,7 @@ test('a build leaves an entry with the request that made it, the tool, and the p
   const lib = B.ledgerEntryFor('insert_library_model', { id: 'x' }, { changed: true, inserted: ['game.Workspace.Lamp'] }, 'a lamp', 1, 'i1');
   assert.deepEqual(lib.rootPaths, ['game.Workspace.Lamp']);
   assert.equal(lib.spec, undefined, 'only build_object keeps a spec, for extend');
-  const game = B.ledgerEntryFor('compose_game', {}, { changed: true, game: 'G', template: 'tycoon' }, 'a game', 1, 'g1');
-  assert.deepEqual(game.rootPaths, ['game.Workspace.AppleMap']);
+  assert.equal(B.ledgerEntryFor('compose_game', {}, { changed: true, game: 'G', template: 'tycoon' }, 'a game', 1, 'g1'), null, 'the whole-game tool is gone (M4): a call by that name leaves no entry');
   const ui = B.ledgerEntryFor('add_upgrades', {}, { changed: true, screen: 'Hud' }, 'upgrades', 1, 'u1');
   assert.deepEqual(ui.rootPaths, ['game.StarterGui.Hud']);
   assert.equal(B.ledgerEntryFor('build_object', SPEC, { error: 'x' }, 'r', 1, 'e'), null, 'a failed build leaves nothing');
@@ -118,12 +117,10 @@ test('the session keeps a ledger, not two single slots: no builtObject, no built
   assert.match(s, /if \(out\.mutatedProject === true\) await this\.recordBuild\(agent, call\.name, call\.arguments, out\);/);
   const restore = s.slice(s.indexOf('async restoreCheckpoint('));
   assert.ok(restore.indexOf("storage.delete(LEDGER_KEY)") > restore.indexOf("op: 'restore'"), 'the ledger goes only after the place was really put back');
-  assert.ok(restore.indexOf("storage.delete('plannedGame')") > restore.indexOf("op: 'restore'"));
+  assert.equal(restore.includes("plannedGame"), false, 'plan_game is gone (M4): no stored design is kept or cleared');
   const live = s.slice(s.indexOf('private async liveLedger'), s.indexOf('private async recordBuild'));
   assert.match(live, /!studioConnected\) return \[\]/, 'with Studio away nothing that may be dead is offered');
   assert.match(live, /op: 'get_instance'/, 'each entry is verified against the live place');
-  const runFlow = src('run-flow.ts');
-  assert.equal(/wantsNewGame|REBUILD_TOOLS|continueGameLine|refuseRebuild/.test(runFlow), false);
   const tools = src('tools.ts');
   assert.equal(/objectMemory/.test(tools) || /objectMemory/.test(src('object-tool.ts')), false);
 });

@@ -147,52 +147,6 @@ test('a create name conflict cannot be followed by deleting saved geometry in th
   assert.equal((await freshDelete).ok, true);
 });
 
-test('a run that recreated an owner game keeps its original names and structure', async () => {
-  const { o, map } = await session();
-  o.pluginConnected = async () => true;
-  o.runAccessVerdict = async () => ({ stop: false });
-  const run = { msgId: 'recreate-run', status: 'running', llm: [], trace: [], finalText: '' };
-  const reply = async (pending, result) => {
-    await new Promise((resolve) => setImmediate(resolve));
-    const [id, answer] = [...o.opWaiters.entries()].at(-1) ?? [];
-    assert.ok(answer, 'the op did not reach the Studio queue');
-    answer({ id, ...result });
-    return pending;
-  };
-  // A combining import (no replace) does not fence renames.
-  await reply(o.execStudioOp({ op: 'import_owner_library', replace: false }, 1000, run), { ok: true, data: {} });
-  await reply(o.execStudioOp({ op: 'rename_instance', path: 'game.Workspace.Farm', name: 'Plots' }, 1000, run), { ok: true, data: {} });
-  await reply(o.execStudioOp({ op: 'import_owner_library', replace: true }, 1000, run), { ok: true, data: {} });
-  assert.equal(map.get('agent')?.keepOwnerOriginal, true, 'the fence must survive DO eviction');
-
-  const queued = o.opQueue.length;
-  for (const op of [{ op: 'rename_instance', path: 'game.Workspace.Farm', name: 'Map' },
-    { op: 'move_instances', moves: [] }, { op: 'group_instances', paths: [] }, { op: 'ungroup_instances', paths: [] }]) {
-    const r = await o.execStudioOp(op, 1000, run);
-    assert.equal(r.failure, 'refused', op.op);
-    assert.match(r.error, /original names/);
-  }
-  assert.equal(o.opQueue.length, queued, 'a restructuring op reached the Studio queue');
-  const edit = await reply(o.execStudioOp({ op: 'set_properties', path: 'game.Workspace.Farm', properties: {} }, 1000, run), { ok: true, data: {} });
-  assert.equal((await edit).ok, true, 'property edits stay allowed');
-});
-
-test('a game built by build_game may rename and move its models: giving the content a new theme needs it', async () => {
-  const { o } = await session();
-  o.pluginConnected = async () => true;
-  o.runAccessVerdict = async () => ({ stop: false });
-  // The world import of a new place replaced the template, which fences the run; build_game then finished.
-  const run = { msgId: 'build-run', status: 'running', llm: [], trace: [], finalText: '', keepOwnerOriginal: true, builtGame: true };
-  for (const op of [{ op: 'rename_instance', path: 'game.ReplicatedStorage.Assets.Carrot', name: 'Gumdrop' }, { op: 'move_instances', moves: [] }]) {
-    const pending = o.execStudioOp(op, 1000, run);
-    await new Promise((resolve) => setImmediate(resolve));
-    const [id, answer] = [...o.opWaiters.entries()].at(-1) ?? [];
-    assert.ok(answer, `${op.op} did not reach the Studio queue`);
-    answer({ id, ok: true, data: {} });
-    assert.equal((await pending).ok, true, op.op);
-  }
-});
-
 async function paired(extra = {}) {
   return session({
     bind: { projectId: 'proj', projectName: 'Tower Defence', ownerId: 'owner-1' },

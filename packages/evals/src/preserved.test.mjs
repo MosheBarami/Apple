@@ -900,8 +900,9 @@ test('B9 the provider abstraction did not change which model actually serves a r
   const block = /export const DEFAULT_MODELS: Record<string, ModelCfg> = \{([\s\S]*?)\n\};/.exec(gw);
   assert.ok(block, 'DEFAULT_MODELS is no longer declared the way this guard reads it');
   const entries = [...block[1].matchAll(/^\s*(\w+): \{ id: '([^']+)'/gm)].map(([, k, id]) => [k, id]);
-  assert.ok(entries.length >= 4, `parsed ${entries.length} model keys; the parse is broken, not the gateway`);
-  assert.deepEqual(entries.map(([k]) => k).sort(), ['agent', 'memory', 'plan', 'vision'],
+  assert.ok(entries.length >= 3, `parsed ${entries.length} model keys; the parse is broken, not the gateway`);
+  // REVIEWED in M4 (no vision): the `vision` key is gone, so the tripwire reads three keys. A fourth must be read, and a picture role must not return.
+  assert.deepEqual(entries.map(([k]) => k).sort(), ['agent', 'memory', 'plan'],
     'the model catalogue changed shape — that is a product decision, so it needs reading');
   for (const [k, id] of entries) {
     assert.match(id, /^@cf\//, `${k} must still resolve to a Workers AI model id`);

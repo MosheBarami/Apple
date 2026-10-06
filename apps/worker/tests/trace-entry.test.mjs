@@ -53,7 +53,8 @@ test('a result cut off by the size cap still gives its start as the reason, and 
 });
 
 test('every place that records a call that ran builds the row with the shared builder', () => {
-  assert.equal((SESSION.match(/toolTraceEntry\(/g) ?? []).length, 2, 'the tool loop and the self-check look both use it');
+  // RESTATED in M4: the self-check look (the second user of the builder) is gone, so the tool loop is the one place that records a call that ran.
+  assert.equal((SESSION.match(/toolTraceEntry\(/g) ?? []).length, 1, 'the tool loop uses it');
   assert.doesNotMatch(SESSION, /function failureText\(/, 'a second failureText would drift from the shared one');
   // The one remaining hand-written row is the search-limit refusal, which is not a tool result: it states its own reason.
   const hand = [...SESSION.matchAll(/agent\.trace\.push\(\{ tool: [^\n]*ok: false[^\n]*\}\);/g)].map((m) => m[0]);
@@ -61,15 +62,16 @@ test('every place that records a call that ran builds the row with the shared bu
   assert.match(hand[0], /error: summary/);
 });
 
-test('compose_game failing for want of the owner library: the summary is fixed, the row says why', async () => {
+// RESTATED in M4: the example was compose_game (removed); a composite tool that fails on its own arguments shows the same property.
+test('a composite tool failing on its arguments: the summary is fixed, the row says why', async () => {
   const out = join(mkdtempSync(join(tmpdir(), 'trace-entry-')), 'tools.mjs');
   execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out], { cwd: WORKER, stdio: 'pipe' });
   const T = await import(`file://${out}`);
   const ctx = { env: {}, studioConnected: () => true, addMemoryFact: async () => {}, execStudioOp: async () => ({ ok: true, data: {} }) };
-  const res = await T.runTool(ctx, 'compose_game', JSON.stringify({ request: 'make a game', template: 'tycoon' }));
+  const res = await T.runTool(ctx, 'build_object', JSON.stringify({ name: 'Chest', parts: [] }));
   assert.equal(res.ok, false);
-  assert.equal(res.summary, 'Could not build the game', 'the summary is the person-facing sentence and carries no reason');
+  assert.equal(res.summary, 'Could not build it', 'the summary is the person-facing sentence and carries no reason');
   assert.equal(res.detail, undefined, 'a failed tool has no panel: the reason cannot live in detail');
-  const row = toolTraceEntry({ tool: 'compose_game', summary: res.summary, ok: res.ok, resultForLlm: res.resultForLlm, detail: res.detail }, 3, T.scrubEngineIdentity);
-  assert.match(row.error, /Owner library access needs an authenticated owner context/);
+  const row = toolTraceEntry({ tool: 'build_object', summary: res.summary, ok: res.ok, resultForLlm: res.resultForLlm, detail: res.detail }, 3, T.scrubEngineIdentity);
+  assert.match(row.error, /parts is empty: list what the object is made of/);
 });

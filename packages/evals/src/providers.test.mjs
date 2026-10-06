@@ -169,8 +169,7 @@ function stable(value) {
   );
 }
 
-// The request shapes that exercise every branch of the gateway: native tools, vision content
-// parts, an assistant turn that already made tool calls, a tool result, and a JSON schema.
+// The request shapes that exercise every branch of the gateway: native tools, an assistant turn that already made tool calls, a tool result, and a JSON schema.
 const REQUESTS = [
   {
     name: 'native tools + system + user',
@@ -214,23 +213,6 @@ const REQUESTS = [
       ],
       tools: [{ name: 'run_luau', description: 'Run Luau in Studio', parameters: { type: 'object' } }],
       reasoningEffort: 'high',
-    },
-  },
-  {
-    name: 'vision: image content parts, no tools',
-    req: {
-      model: 'vision',
-      messages: [
-        { role: 'system', content: 'Critique this scene.' },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Score the composition.' },
-            { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAABBBBCCCC' } },
-          ],
-        },
-      ],
-      jsonSchema: { name: 'critique', schema: { type: 'object' } },
     },
   },
   {
@@ -351,12 +333,12 @@ test('every StudPilot product route still uses the Workers AI adapter', () => {
   assert.equal(P.adapterForModelId('@cf/some/future-model').id, 'workers-ai');
 });
 
-test('gateway defaults: one engine for every run key, and memory and vision stay independent', () => {
+test('gateway defaults: one engine for every run key, memory stays independent, and there is no vision lane', () => {
   // RESTATED 2026-10-01 (38efea2e single engine; c839d7af one mode). There is ONE product mode,
   // 'agent', and ONE engine, StudPilot (GLM 5.3 Flash). There is no StudPilot MAX tier and no outside
   // model. `plan` survives only as a gateway key for a legacy persisted run, and it must resolve to
-  // the same engine, never to a second foundation. The two lanes that are not run modes —
-  // housekeeping and vision — are still independent and pinned on their own terms.
+  // the same engine, never to a second foundation. The one lane that is not a run mode (housekeeping) is still independent and pinned on
+  // its own terms. RESTATED in M4: the `vision` lane is gone (no picture is sent to a model).
   for (const mode of ['agent', 'plan']) {
     assert.equal(G.DEFAULT_MODELS[mode].id, P.STUDPILOT_MODEL_ID, `${mode} runs on the one StudPilot engine (GLM 5.3 Flash)`);
     assert.equal(G.DEFAULT_MODELS[mode].ctx, P.STUDPILOT_CONTEXT_WINDOW, `${mode} gets the full context window`);
@@ -370,12 +352,10 @@ test('gateway defaults: one engine for every run key, and memory and vision stay
   assert.notEqual(G.DEFAULT_MODELS.memory.id, P.STUDPILOT_MODEL_ID);
   assert.equal(G.DEFAULT_MODELS.memory.ctx, 32_768);
   assert.equal(G.DEFAULT_MODELS.memory.nativeTools, false, 'housekeeping is not given a toolset');
-  // Vision shares the StudPilot model id and is still a separate lane: smaller ceiling, no tools.
-  assert.equal(G.DEFAULT_MODELS.vision.id, P.VISION_MODEL_ID, 'vision remains the separate multimodal specialist');
-  assert.equal(G.DEFAULT_MODELS.vision.ctx, P.VISION_CONTEXT_WINDOW);
-  assert.equal(G.DEFAULT_MODELS.vision.nativeTools, false);
+  assert.equal(G.DEFAULT_MODELS.vision, undefined, 'M4: there is no vision lane');
+  assert.equal(P.VISION_MODEL_ID, undefined, 'M4: there is no vision model constant');
   // THE KEY SET IS THE CONTRACT. No outside-model keys exist any more (the registry has no
-  // 'unified-billing' route), so the only non-lab keys are the run keys and the two lanes. A new
+  // 'unified-billing' route), so the only non-lab keys are the run keys and the one lane. A new
   // run-mode key would mean a mode crept back in.
   assert.equal(OUTSIDE.length, 0, 'no outside model in the registry (removed by owner decision, 38efea2e)');
   //
@@ -388,16 +368,15 @@ test('gateway defaults: one engine for every run key, and memory and vision stay
   for (const k of lab) {
     assert.equal(MODEL_REGISTRY.some((m) => m.id === k), false, `${k} is in the product registry — a customer could select it`);
   }
-  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !lab.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
+  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !lab.includes(k)).sort(), ['agent', 'memory', 'plan']);
 });
 
-test('the StudPilot engine, housekeeping and vision catalogue rows carry the verified facts', () => {
+test('the StudPilot engine and housekeeping catalogue rows carry the verified facts', () => {
   // RESTATED 2026-10-01 (38efea2e): there is no StudPilot MAX row. StudPilot IS the GLM-5.3 Flash row; the
-  // visual critic is the same row; the Qwen3 row is the housekeeping (memory) lane's model.
+  // Qwen3 row is the housekeeping (memory) lane's model. RESTATED in M4: the visual critic (the same row) is gone.
   const studpilot = P.WORKERS_AI_MODELS.find((model) => model.id === P.STUDPILOT_MODEL_ID);
   const memory = P.WORKERS_AI_MODELS.find((model) => model.id === MEMORY_MODEL_ID);
-  const vision = P.WORKERS_AI_MODELS.find((model) => model.id === P.VISION_MODEL_ID);
-  assert.ok(studpilot && memory && vision, 'the three routes the gateway can run must be catalogued');
+  assert.ok(studpilot && memory, 'the two routes the gateway can run must be catalogued');
 
   assert.deepEqual(
     [memory.displayName, memory.supportsTools, memory.supportsVision, memory.contextWindow, memory.inputCostPer1M, memory.outputCostPer1M],
@@ -405,16 +384,10 @@ test('the StudPilot engine, housekeeping and vision catalogue rows carry the ver
   );
   assert.ok(memory.unverifiedFields.includes('maxOutput'), 'Qwen max output must stay labelled unverified');
 
-  // STUDPILOT AND VISION ARE THE SAME ROW, and this test says so rather than asserting the same object
-  // twice under two names as if it had checked two things.
-  assert.equal(studpilot.id, vision.id, 'StudPilot and the visual critic resolve to one model');
   assert.deepEqual(
     [studpilot.displayName, studpilot.supportsTools, studpilot.supportsVision, studpilot.contextWindow, studpilot.inputCostPer1M, studpilot.outputCostPer1M],
     ['GLM-5.3 Flash', true, true, 1_310_720, 0.15, 0.5],
   );
-  // The lanes stay separate in DEFAULT_MODELS; only the model behind them merged.
-  assert.equal(G.DEFAULT_MODELS.agent.id, G.DEFAULT_MODELS.vision.id);
-  assert.notEqual(G.DEFAULT_MODELS.agent.maxTokens, G.DEFAULT_MODELS.vision.maxTokens);
 
   // Exactly one catalogue row for that id. Two rows would make `modelById` answer with whichever
   // came first and hide the other's prices — which is how a billing figure goes wrong silently.
@@ -443,7 +416,7 @@ test('a stale free-tier KV map cannot restore legacy models for user-facing keys
   assert.equal(models.agent.id, P.STUDPILOT_MODEL_ID, 'Agent must not be routed by a stale KV row');
   // Present in the stale row with a RETIRED model id — the override must be refused, not applied.
   assert.equal(models.memory.id, MEMORY_MODEL_ID, 'a stale row must not put housekeeping back on gpt-oss');
-  assert.equal(models.vision.id, P.VISION_MODEL_ID, 'a stale row must not put vision back on llama-3.2-11b');
+  assert.equal(models.vision, undefined, 'a stale row must not put a vision lane back, on llama-3.2-11b or on anything (M4)');
   // …while a custom diagnostic key is still the operator's to configure. The refusal is scoped to
   // the user-facing keys, not to the KV override itself.
   assert.equal(models.probe.id, '@cf/qwen/qwen3-30b-a3b-fp8', 'custom diagnostic keys remain configurable');
@@ -838,18 +811,19 @@ test('AUTO: with only Workers AI credentialed the choice is deterministic and it
   assert.match(r, /tool calling/, 'it should name the capability the task needed');
 });
 
-test('AUTO: a vision task rules text-only models out on capability, not on credentials', () => {
+// RESTATED in M4: no model key needs vision any more, so the negotiation is exercised through the explicit `needsVision` option, which
+// the selector keeps as generic capability matching (supportsVision is still a published attribute of each catalogue row).
+test('AUTO: a task that needs an image-capable model rules text-only models out on capability, not on credentials', () => {
   const { env } = fakeEnv();
-  const pick = P.selectProvider(env, { modelKey: 'vision' });
+  const pick = P.selectProvider(env, { needsVision: true });
   assert.equal(pick.ok, true);
   const textOnly = P.allModels().filter((m) => !m.supportsVision);
   assert.ok(textOnly.length >= 1, 'no text-only model in the catalogue — this checks nothing');
   for (const m of textOnly) {
     assert.equal(pick.rejected.find((r) => r.model === m.id)?.why, 'no vision support', m.id);
   }
-  // and whatever wins must actually be able to see an image — that is the whole point of the
-  // `vision` key, and a text-only winner would make the visual critic silently non-visual.
-  assert.equal(pick.model.supportsVision, true, 'the vision key must resolve to a vision model');
+  // and whatever wins must actually be able to see an image, or the capability match means nothing.
+  assert.equal(pick.model.supportsVision, true, 'an image-capable request must resolve to an image-capable model');
   assert.match(pick.reasoning, /cheapest of the \d+ usable options/);
 });
 
@@ -869,8 +843,8 @@ test('AUTO: ranking is by cost among the models that can serve the task', () => 
 test('AUTO: when nothing can serve the task it refuses and explains, rather than picking anyway', () => {
   const { env } = fakeEnv();
   const only = { ...env, AI: undefined };
-  const pick = P.selectProvider(only, { modelKey: 'vision' });
+  const pick = P.selectProvider(only, { modelKey: 'agent' });
   assert.equal(pick.ok, false);
-  assert.match(pick.reasoning, /No provider can serve the `vision` task/);
+  assert.match(pick.reasoning, /No provider can serve the `agent` task/);
   assert.match(pick.reasoning, /workers-ai \(binding not present\)/);
 });

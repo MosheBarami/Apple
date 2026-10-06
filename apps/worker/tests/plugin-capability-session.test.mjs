@@ -249,12 +249,15 @@ test('real SessionDO never executes a model-returned run_luau that the connected
   assert.doesNotMatch(String(toolReply.content), /execute me|<\/system>/i, 'plugin-authored refusal reason never enters the model transcript');
 });
 
-test('visual auto-inspection stays off when render_view is explicitly unsupported and final status stays unverified', async () => {
+// RESTATED in M4 (no vision): the admission used to be said only when render_view was unsupported (inspect_visually withheld). No run
+// can inspect visually any more, so a reply to a visual design request says that how it looks was not checked whatever the plugin can do,
+// and no auto-inspection or render ever runs.
+for (const [label, renderStatus] of [['render_view unsupported', 'unsupported'], ['render_view supported', 'supported']]) test(`a visual design reply admits that how it looks was not checked, and nothing is inspected visually (${label})`, async () => {
   const h = sessionHarness();
   await settleBoot();
   const token = 'visual-fence-secret';
   await register(h, token);
-  await poll(h, token, { capabilities: capabilityReport() });
+  await poll(h, token, { capabilities: renderStatus === 'unsupported' ? capabilityReport() : { ...capabilityReport(), operations: capabilityReport().operations.map((o) => (o.op === 'render_view' ? { op: 'render_view', status: 'supported' } : o)) } });
 
   let studioCalls = 0;
   let offered = [];
@@ -294,11 +297,12 @@ test('visual auto-inspection stays off when render_view is explicitly unsupporte
 
   await h.session.runStep(agent);
 
-  assert.equal(offered.includes('inspect_visually'), false);
-  assert.equal(offered.includes('render_view'), false);
-  assert.equal(studioCalls, 0, 'auto-inspection cannot bypass the effective tool set');
+  assert.equal(offered.includes('inspect_visually'), false, 'no run is offered a visual inspection');
+  assert.equal(offered.includes('render_view'), renderStatus === 'supported', 'render_view follows the plugin; it is only a capture for the user');
+  assert.equal(studioCalls, 0, 'nothing is rendered or inspected by the loop on its own');
   assert.equal(agent.autoCritiqued, undefined);
-  assert.match(agent.finalText, /Rendered appearance was not verified/);
+  assert.match(agent.finalText, /How it looks on screen was not checked: StudPilot cannot look at pictures\./);
+  assert.doesNotMatch(agent.finalText, /Rendered appearance was not verified/, 'the old capability-bound wording is gone');
   assert.equal(finishedAs, 'done');
 });
 

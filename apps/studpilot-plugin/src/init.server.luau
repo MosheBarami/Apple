@@ -44,8 +44,7 @@ local Commands = require(script.Commands)
 -- this file was force-clearing consent because we are not, and the user would be told to press a
 -- button that refuses. editModeActive() is the definition the consent fence already uses; the
 -- engine gets that one, so a refusal names the thing that is actually shut.
-local ownerGatewayConfig: any = nil
-local commands = Commands.new({ isEdit = editModeActive, ownerGateway = function() return ownerGatewayConfig end })
+local commands = Commands.new({ isEdit = editModeActive })
 local allowEdits = false
 local confirmingEdits = false
 local connecting = false
@@ -245,25 +244,6 @@ codeCorner.CornerRadius = UDim.new(0, 10)
 codeCorner.Parent = code
 local connect = control("Connect to StudPilot")
 
-text("Your owner library connects by itself while StudPilot is paired (the library server on this Mac, port 63747). Selected descriptions/source pages may be sent to the agent over HTTPS; native asset bytes stay in Studio. Downloaded source is never executed.", 13, true)
-local function gatewayField(name: string, placeholder: string): TextBox
-    order += 1
-    local field = Instance.new("TextBox")
-    field.Name = name; field.LayoutOrder = order; field.Size = UDim2.new(1,0,0,40)
-    field.BackgroundColor3 = colors.panel; field.TextColor3 = colors.text; field.PlaceholderColor3 = colors.muted
-    field.Font = Enum.Font.SourceSans; field.TextSize = 14; field.Text = ""; field.PlaceholderText = placeholder
-    field.ClearTextOnFocus = false; field.Parent = scroll
-    return field
-end
-local gatewayPort = gatewayField("OwnerGatewayPort","Local gateway port")
-local gatewayKey = gatewayField("OwnerGatewayKey","Ephemeral gateway key (cleared on connect)")
-local gatewayConnect = control("Connect private owner library")
-local gatewayNote = text("Owner library: checking…",13,true)
--- OWNER, 2026-10-01 ("manually entering it every time in the plugin is trash"): the library connects by itself, so
--- the port/key fields are an override nobody needs day to day. They stay in the tree (hidden) for --require-key.
-gatewayPort.Visible = false
-gatewayKey.Visible = false
-gatewayConnect.Visible = false
 local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
@@ -273,29 +253,6 @@ local version = text("StudPilot Studio · 1.5.0 · independent preview", 12, tru
 text("Classic studs by Resurface (cxmeel) · github.com/cxmeel/resurface-plugin", 12, true)
 version.LayoutOrder = 100
 
-local probeLibrary
--- What the owner library holds, read from the local library server (loopback, no key); at most every 30 seconds.
-local lastLibraryProbe = 0
-probeLibrary = function()
-	if os.clock() - lastLibraryProbe < 30 then return end
-	lastLibraryProbe = os.clock()
-	task.spawn(function()
-		local ok, report = pcall(function()
-			local http = game:GetService("HttpService")
-			local res = http:RequestAsync({ Url = "http://127.0.0.1:63747/v1/library/report", Method = "GET" })
-			if not res.Success then return nil end
-			return http:JSONDecode(res.Body)
-		end)
-		if disposed then return end
-		if ok and type(report) == "table" and type(report.games) == "number" then
-			gatewayNote.Text = string.format("Owner library: connected · %d games · %d assets", report.games, tonumber(report.assets) or 0)
-		else
-			gatewayNote.Text = "Owner library: not running on this Mac (it starts at login; or run packages/owner-corpus/start-gateway.sh)"
-			lastLibraryProbe = 0
-		end
-	end)
-end
-
 local function refreshAccess()
 	local connected = bridge ~= nil and bridge:isConnected()
 	if not connected then
@@ -303,11 +260,6 @@ local function refreshAccess()
 		confirmingEdits = false
 		studpilotRunActive = false
 		showSources(false, nil)
-		ownerGatewayConfig = nil
-		gatewayKey.Text = ""
-		gatewayNote.Text = "Owner library: connects when StudPilot is paired"
-	else
-		probeLibrary()
 	end
 	permission.Text = if allowEdits and not editModeActive() then "Access: edits paused while Studio is testing"
 		elseif allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
@@ -364,7 +316,7 @@ bridge = Bridge.new({
 			local authorized = if runAction ~= nil then pairingStillCurrent() and allowEdits else consentStillCurrent()
 			-- Pairing already consents to active viewport snapshots. This operation reads
 			-- native pixels without camera/place writes; StudioCapture also fences edit mode.
-			local readFence = if type(op) == "table" and (op.op == "query_owner_local" or op.op == "query_owner_exact" or op.op == "query_owner_assembly" or op.op == "query_owner_media" or op.op == "query_owner_library" or op.op == "capture_studio_viewport") then pairingStillCurrent else consentStillCurrent
+			local readFence = if type(op) == "table" and op.op == "capture_studio_viewport" then pairingStillCurrent else consentStillCurrent
 			local result = commands:execute(id, op, authorized, readFence)
 			if runAction ~= nil then
 				if result.ok ~= true then
@@ -398,19 +350,6 @@ bridge = Bridge.new({
 		showSources(value.owed == true, if type(value.message) == "string" then value.message else nil)
 	end,
 })
-
-table.insert(connections, gatewayConnect.Activated:Connect(function()
-    local key = gatewayKey.Text
-    gatewayKey.Text = ""
-    if disposed or not bridge:isConnected() then gatewayNote.Text = "Pair with StudPilot first."; return end
-    if ownerGatewayConfig then ownerGatewayConfig = nil; gatewayNote.Text = "Private library disconnected"; return end
-    local port = tonumber(gatewayPort.Text)
-    if port == nil or port ~= math.floor(port) or port < 1 or port > 65535 or #key < 32 or #key > 128 or string.match(key,"^[%w_-]+$") == nil then
-        gatewayNote.Text = "Enter the current local port and ephemeral key."; return
-    end
-    ownerGatewayConfig = {port=port,key=key}
-    gatewayNote.Text = "Private library configured for this session; requests verify gateway access. Click again to disconnect."
-end))
 
 table.insert(connections, sourcesSave.Activated:Connect(function()
 	if disposed then return end
@@ -506,8 +445,6 @@ end
 
 plugin.Unloading:Connect(function()
 	disposed = true
-	ownerGatewayConfig = nil
-	gatewayKey.Text = ""
 	allowEdits = false
 	confirmingEdits = false
 	bridge:destroy()

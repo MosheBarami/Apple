@@ -111,9 +111,7 @@ test('without Studio, builders retain image generation but Plan stays read-only'
   // `find_library_model` (D-MODELLIB-1) is the same kind of lookup, over the model index.
   // `find_sound` and `find_vfx` (D-FXLIB-1, reviewed 2026-09-23): the same kind of lookup, over the
   // bundled sound and effect indexes (fx-library.test.mjs).
-  // `read_owner_component` (7238774a): studio:false, reads cloud owner-corpus bytes and description by
-  // the signed-in user's namespace, so it answers identically with Studio absent.
-  const KNOWLEDGE = ['read_owner_component', 'get_verified_module', 'get_ui_construction', 'find_ui_asset', 'find_library_model', 'find_sound', 'find_vfx'];
+  const KNOWLEDGE = ['get_verified_module', 'get_ui_construction', 'find_ui_asset', 'find_library_model', 'find_sound', 'find_vfx'];
   const expected = {
     plan: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
     // generate_ui_image_hf: reviewed 2026-09-23 as generate_image's fallback — studio:false,
@@ -158,15 +156,15 @@ test('generate_image refuses a missing project before the paid model call', () =
 
 test('generate_model stays Studio-backed and reports an unavailable GenerationService honestly', () => {
   const toolSrc = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
-  const pluginSrc = readFileSync(join(WORKER, '..', 'plugin', 'src', 'Generation.luau'), 'utf8');
-  const opsSrc = readFileSync(join(WORKER, '..', 'plugin', 'src', 'Ops.luau'), 'utf8');
+  const pluginSrc = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'GenerationService.luau'), 'utf8');
+  const opsSrc = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const start = toolSrc.indexOf('  generate_model: {');
   const end = toolSrc.indexOf('  inspect_model: {', start);
   assert.ok(start >= 0 && end > start, 'could not isolate generate_model in the tool table');
   const tool = toolSrc.slice(start, end);
   assert.match(tool, /studio: true/, 'generate_model must not be offered as a worker-only tool');
-  assert.match(opsSrc, /handlers\.generate_model\s*=\s*function\(op\)/);
-  assert.match(opsSrc, /Generation\.generateAndInspect/);
+  assert.match(opsSrc, /generate_model = true,/, 'the shipped plugin handles generate_model (it is in its MUTATING table)');
+  assert.match(opsSrc, /the GenerationService adapter is unavailable/, 'the handler refuses honestly without the adapter');
   assert.match(pluginSrc, /GetService\("GenerationService"\)/);
   assert.match(pluginSrc, /GenerationService is unavailable in this Studio build/,
     'a missing beta service must be surfaced as an explicit refusal');

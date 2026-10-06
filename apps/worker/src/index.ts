@@ -56,7 +56,6 @@ import {
 } from './erasure';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
-import { ownerCorpusRoutes } from './owner-corpus-routes';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
@@ -186,7 +185,6 @@ import {
 } from './automation-store';
 import { dstDisclosure, instantForWall, wallPartsAt } from './zoned-time';
 import { dunningCopy, interpretDunningEvent } from './dunning';
-import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
 import { applyBrandingEdit, brandingArt, BRANDING_PUBLISH, generateBranding, readBranding, writeBranding } from './branding';
 import { refuseLuauIngress } from './tools';
@@ -309,7 +307,7 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
+import type { OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS } from '@studpilot/shared';
 import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
 import { isPlanId, normalizeModelId, PRICE_CURRENCY, quotaLimit, type ProductModel } from '@studpilot/shared';
@@ -709,7 +707,6 @@ app.use('/api/*', async (c, next) => {
   // A browser <img> cannot attach the account JWT. This one numeric, read-only route returns
   // only Roblox's public thumbnail; unknown sibling paths stay behind the JWT gate.
   if (AUTH_EXEMPT.includes(path) ||
-      /^\/api\/owner-corpus\/content\/[a-f0-9]{64}$/.test(path) ||
       (/^\/api\/library-preview\/[1-9][0-9]{0,15}$/.test(path) && AUTH_EXEMPT.includes('/api/library-preview/:assetId')) ||
       path.startsWith('/api/admin/')) return next();
   const token = bearerToken(c.req.raw);
@@ -721,8 +718,6 @@ app.use('/api/*', async (c, next) => {
   c.set('user', user);
   return next();
 });
-
-app.route('/api/owner-corpus', ownerCorpusRoutes);
 
 /**
  * SIGN IN WITH ROBLOX. Outside /api on purpose: these are browser navigations to and from Roblox, so there
@@ -4620,70 +4615,6 @@ app.get('/api/admin/session-info/:id', async (c) => {
 });
 
 /**
- * Raw vision access for the eval harness: it brings its own 20-dimension rubric prompt and its own
- * PNGs, and only needs a model to look at them. Kept separate from /api/admin/critique, which is
- * the product's own opinionated 8-dimension critique — the eval must be free to disagree with the
- * product's judgement rather than inherit it.
- */
-app.post('/api/admin/vision-critique', async (c) => {
-  const { prompt, images, responseFormat } = await c.req.json<{
-    prompt: string;
-    images: { mediaType: string; base64: string }[];
-    responseFormat?: string;
-  }>();
-  if (!prompt || !Array.isArray(images) || !images.length) return c.json({ ok: false, error: 'prompt and images required' }, 400);
-  const content = [
-    { type: 'text' as const, text: prompt },
-    ...images.map((i) => ({ type: 'image_url' as const, image_url: { url: `data:${i.mediaType};base64,${i.base64}` } })),
-  ];
-  try {
-    const res = await llmChat(
-      c.env,
-      {
-        model: 'vision',
-        messages: [{ role: 'user', content }],
-        // `high`, never `medium`: measured, medium spends the whole budget on reasoning and
-        // returns an empty string. See docs/COST-MODEL.md.
-        reasoningEffort: 'high',
-        maxTokens: 4000,
-        ...(responseFormat === 'json' ? {} : {}),
-      },
-      { kind: 'eval:vision-critique', cacheTtl: 0 },
-    );
-    return c.json({ ok: true, text: res.text, neurons: res.neurons });
-  } catch (e) {
-    if (e instanceof BudgetError) return c.json({ ok: false, error: e.message, reason: e.reason }, 429);
-    throw e;
-  }
-});
-
-/**
- * Critique rendered views. This is how the visual eval harness reaches a vision model: the
- * grader has no Workers AI binding of its own, and routing it through here means eval spend is
- * counted by the same budget ledger as everything else rather than escaping it.
- */
-app.post('/api/admin/critique', async (c) => {
-  const { subject, boundsSize, views, lighting, intent, passThreshold, subjectKind } = await c.req.json<{
-    subject?: string;
-    boundsSize?: [number, number, number];
-    views: RenderViewResult['views'];
-    lighting?: RenderViewResult['lighting'];
-    intent: string;
-    passThreshold?: number;
-    /** 'prop' judges one object; 'scene' judges a place. Inferred from bounds when omitted. */
-    subjectKind?: 'prop' | 'scene';
-  }>();
-  if (!Array.isArray(views) || !views.length) return c.json({ error: 'views required' }, 400);
-  const result: RenderViewResult = { subject: subject ?? 'scene', boundsSize: boundsSize ?? [0, 0, 0], views, lighting };
-  try {
-    return c.json(await critiqueViews(c.env, result, intent ?? 'a well-built Roblox scene', { passThreshold, subject: subjectKind }));
-  } catch (e) {
-    if (e instanceof BudgetError) return c.json({ error: e.message, reason: e.reason }, 429);
-    throw e;
-  }
-});
-
-/**
  * Run a single Studio op against a paired project, with no agent loop and no inference.
  * The visual eval harness captures renders through this: driving a model to ask for a screenshot
  * would make every eval run cost money and would confound what the eval is measuring.
@@ -4703,19 +4634,13 @@ app.post('/api/admin/agent-run/:id', async (c) => {
 
 /**
  * The owner's benchmark on his OWN project, with his own sign-in (owner, 2026-10-02): a fresh chat (conversation,
- * memory and run state cleared; pairing and checkpoints kept) and the evaluation of what a finished request built.
- * Owner only, never a collaborator; neither route builds anything.
+ * memory and run state cleared; pairing and checkpoints kept). The evaluation half (`bench/evaluate`) judged photos with a
+ * vision model and was removed in M4. Owner only, never a collaborator; the route builds nothing.
  */
 app.post('/api/projects/:id/bench/reset', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const res = await ctx.stub.fetch('https://do/bench-reset', { method: 'POST' });
-  return c.json(await res.json(), res.status as 200);
-});
-app.post('/api/projects/:id/bench/evaluate', async (c) => {
-  const ctx = await withOwnedProject(c, c.req.param('id'));
-  if (!ctx) return c.json({ error: 'not found' }, 404);
-  const res = await ctx.stub.fetch('https://do/bench-evaluate', { method: 'POST', body: JSON.stringify(await c.req.json().catch(() => ({}))) });
   return c.json(await res.json(), res.status as 200);
 });
 
@@ -4830,7 +4755,7 @@ app.post('/api/admin/run-tool/:id', async (c) => {
  * available through /api/admin/run-tool, which goes through the gate.
  *
  * The list is what the harnesses in infra/ and packages/evals actually send, and no more, plus the two read-only
- * ops the owner-library audit drives (capture_studio_viewport, preload_content): they look, they insert nothing.
+ * ops (capture_studio_viewport, preload_content): they look, they insert nothing.
  */
 const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([
   'ping',

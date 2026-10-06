@@ -14,12 +14,11 @@
  */
 import type { AgentCtx } from './tools';
 import { luau } from './compose';
-import { typed } from './compose-run';
+import { typed } from './typed-spec';
 import { findSounds, soundAssetId } from './fx-library';
 import { installAnimationPlayer } from './animate-tool';
 import { contrastStage, motionClip, writeObjectHud, type ObjectPart } from './object-tool';
 import { bounds, candidateOf, colourName, mainColourOf, safeObjectName, worldBox, type LibraryCandidate } from './library-object';
-import { LIBRARY_IMPORT_MS, libraryMaterials } from './local-owner-corpus';
 
 type V3 = [number, number, number];
 const MOTIONS = ['wobble', 'spin', 'bob', 'pop', 'press', 'open'] as const;
@@ -170,11 +169,7 @@ async function attachPiece(ctx: AgentCtx, model: string, name: string, c: Librar
     await ctx.execStudioOp({ op: 'delete_instances', paths: [folderPath] }, 20_000).catch(() => undefined);
     await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleDress' }), parent: 'game.ServerStorage.AppleParts' }] }, 20_000).catch(() => undefined);
     let from = folderPath;
-    if (c.source === 'owner') {
-      await libraryMaterials(ctx, c.gameId!).catch(() => undefined);
-      const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: c.gameId!, path: c.path!, mode: 'self', parent: folderPath, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
-      if (!imported?.ok) return `could not be imported: ${clip(imported?.error)}`;
-    } else {
+    {
       const { TOOLS } = await import('./tools');
       const inserted = await TOOLS.insert_library_model!.run(ctx, { id: c.id, parent: folderPath }).catch(() => ({ error: 'insert failed' })) as Record<string, unknown>;
       const paths = Array.isArray(inserted.inserted) ? inserted.inserted.filter((p): p is string => typeof p === 'string') : [];

@@ -75,7 +75,6 @@ const MODULES = {
   billing: W_SRC('billing.ts'),
   dunning: W_SRC('dunning.ts'),
   erasure: W_SRC('erasure.ts'),
-  vision: W_SRC('vision.ts'),
   spec: W_SRC('spec-runner.ts'),
   gateway: W_SRC('gateway.ts'),
   single: W_SRC('single-flight.ts'),
@@ -554,19 +553,12 @@ export const SCENARIOS = [
   {
     n: 11,
     name: 'Verification reports distinguish passed, failed, and unverified outcomes',
+    // RESTATED in M4 (no vision): the visual critique's pass/fail/unavailable wording (vision.ts critiqueToText) is removed with the vision critique.
+    // What stays is the spec runner's: a case that never reported is named as missing rather than counted as a pass.
     checks:
-      'a critique that could not be read is reported as unknown and never as a failure, a failed one says so, and a spec case that never reported is named as missing rather than counted as a pass',
+      'a spec case that never reported is named as missing rather than counted as a pass',
     notChecked: 'that a user ever reaches a verification — every checker requires a Studio connection',
     async run() {
-      const shell = { score: null, passed: false, summary: '', defects: [], hardFails: [], neurons: 0 };
-      const unread = W.vision.critiqueToText({ ...shell, unavailable: true });
-      must(/UNAVAILABLE/.test(unread), 'a critique that could not be read no longer says so');
-      must(!/FAILS/.test(unread), 'a critique that could not be read is being reported as a failure — that is a tooling fault told as a verdict');
-      const failed = W.vision.critiqueToText({ ...shell, score: 3, passed: false, summary: 'bare' });
-      must(/FAILS/.test(failed), 'a failed critique no longer reports a failure');
-      const passed = W.vision.critiqueToText({ ...shell, score: 8, passed: true, summary: 'good' });
-      must(/PASSES/.test(passed), 'a passing critique no longer reports a pass');
-
       const sent = [
         { name: 'door opens', luau: 'return true' },
         { name: 'player spawns on the ground', luau: 'return true' },

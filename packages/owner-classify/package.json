@@ -1,9 +1,0 @@
-{
-  "name": "@apple/owner-classify",
-  "private": true,
-  "version": "0.1.0",
-  "description": "The owner library classified and searchable (phase 2). Python; see README.md.",
-  "scripts": {
-    "test": "python3 -m unittest discover -s tests"
-  }
-}

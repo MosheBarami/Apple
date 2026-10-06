@@ -37,6 +37,8 @@ test('a value nobody defined fails to the environment default, not to a guess', 
 
 test('the bounds are the plan\'s numbers and are frozen', () => {
   // A tripwire, on purpose: each of these is a cost and honesty decision, so changing one needs a review.
-  assert.deepEqual({ ...SELF_CHECK_LIMITS }, { forcedLooks: 1, repairRounds: 2, looksPerRun: 6, auditRounds: 2 });
+  // REVIEWED in M4 (no vision): the three look bounds (forcedLooks 1, repairRounds 2, looksPerRun 6) went with the look; only the
+  // audit's two rounds remain, and a look bound must not come back under another name.
+  assert.deepEqual({ ...SELF_CHECK_LIMITS }, { auditRounds: 2 });
   assert.ok(Object.isFrozen(SELF_CHECK_LIMITS));
 });

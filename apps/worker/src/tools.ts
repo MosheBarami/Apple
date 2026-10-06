@@ -1,14 +1,11 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
-import { annotateModels, candidateOf, placeLibraryPiece, placeSizeOf, previewLibraryModels } from './library-object';
+import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
-import { renderShowsTerrain } from '@studpilot/shared';
-import { isOutdoorRequest } from './worldbuilding';
-import { floatingIslandKit } from './scene-kits';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
 import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
-import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
+import { decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { planCopyRounds } from './dup-names';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
@@ -16,7 +13,6 @@ import { normaliseItems, normaliseProps, describeRefusals, createLimitIssues, pl
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@studpilot/shared';
 import { RENDER_VIEWS, phaseForTool } from '@studpilot/shared';
 import { searchDocsDetailed } from './rag';
-import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
 import {
   chooseAssetSource,
@@ -83,11 +79,7 @@ import { applyOrigin, readOrigin, sharedParent } from './local-space';
 import { expandTerrainPath, TERRAIN_PATH_OP_CAP } from './terrain-path';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, libraryAdvice, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted, type LibraryModel } from './model-library';
-import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
-import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, librarySafetyCopy, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame, FIND_TYPES, FIND_SIZES } from './local-owner-corpus';
-import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
-import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
+import { findLibraryModels, libraryAdvice, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted, type LibraryModel } from './model-library';
 import { sourcesIn as runSourcesIn } from './sources';
 import { buildObject } from './object-tool';
 import { animateModel } from './animate-tool';
@@ -96,19 +88,14 @@ import { lintScriptWrite } from './behaviour-review';
 import { modelAnatomy } from './model-anatomy';
 import { buildStuddedUi } from './studded-ui-tool';
 import { addUpgrades } from './upgrades-tool';
-import { composeGame, composeSummary } from './compose-tool';
-import { judgeComposed } from './composed-judge';
-import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
-import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
-import { contentWords, fetchLiveModel, liveAssetIdOf, relevanceOf, searchLiveModels, LIVE_ID_PREFIX, type LiveModel } from './creator-store-live';
+import { fetchLiveModel, liveAssetIdOf, searchLiveModels, LIVE_ID_PREFIX, type LiveModel } from './creator-store-live';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
 import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses, sceneFromTree } from './build-audit';
 import { sceneFlags } from './scene-flags';
 import { formatPanelReport, runCriticPanel } from './critic';
-import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
 // The audio tools are DEFINED in audio-tools.ts and registered here with one spread. Their
 // descriptions carry the whole cluster's product surface — what the model may claim about
@@ -128,10 +115,7 @@ import {
 } from './creator-skills';
 import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
-import { chat } from './gateway';
-import { inspectAttachmentImage } from './attachment-vision';
-// The self-check (M1 of docs/autonomy/PHASE-3-4-PLAN.md): the `look` tool, and the ledger runTool writes to.
-import { LOOK_DEF, LOOK_TOOL, runLookTool, lookSummary } from './look-tool';
+// The self-check's ledger, which runTool writes to (evidence-ledger.ts).
 import { recordToolCall, type EvidenceLedger, type ToolRecord } from './evidence-ledger';
 import {
   searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
@@ -200,8 +184,6 @@ export interface AgentCtx {
    * a tool that needs one refuses without it.
    */
   userId?: string;
-  /** Explicit paired-plugin capability; carries no loopback address or credentials. */
-  localOwnerGateway?: boolean;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   /** Live run fence: direct model deletion is refused after a create name conflict. */
@@ -239,17 +221,13 @@ export interface AgentCtx {
    * everything it always did and simply streams nothing.
    */
   playtest?: PlaytestBus;
-  /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
-  lastRender?: RenderViewResult;
-  lastCritique?: VisualCritique;
   /**
    * A payload for the BROWSER only, never for the model.
    *
-   * `detailForUi` derives the UI payload from the model-facing result, which is why the visual
-   * tools could never show anything: their result is deliberately image-free, because tool results
-   * are re-sent to the model on every later step and a frame is ~207KB of base64 RGB. The pixels
-   * therefore stayed in `lastRender` on the server and the user never saw what the critic saw —
-   * a verification step whose evidence is invisible is indistinguishable from one that did not run.
+   * `detailForUi` derives the UI payload from the model-facing result, which is why a picture tool
+   * could never show anything: its result is deliberately image-free, because tool results are
+   * re-sent to the model on every later step and a frame is ~207KB of base64 RGB. A step whose
+   * evidence is invisible to the user is indistinguishable from one that did not run.
    *
    * A tool sets this when it has something to SHOW that must not be something to READ. `runTool`
    * prefers it over the derived detail, so the two payloads can differ by construction rather than
@@ -258,7 +236,7 @@ export interface AgentCtx {
   uiDetail?: unknown;
   /**
    * THE RUN'S EVIDENCE LEDGER (self-check.ts). `runTool` writes what each tool did into it — changes, read-backs,
-   * player checks — and `look` writes what it saw. Optional: the eval harness and the admin route build an
+   * player checks. Optional: the eval harness and the admin route build an
    * AgentCtx with none, and then nothing is recorded and nothing else changes.
    */
   evidence?: EvidenceLedger;
@@ -268,9 +246,7 @@ export interface AgentCtx {
    * `runTool`, so one tool's payload can never be recorded as the next one's.
    */
   evidenceRaw?: unknown;
-  /** Charge a model call a tool made INSIDE itself (the look's vision call) to the run's Credits. Optional. */
-  addNeurons?(neurons: number): void;
-  /** What the user originally asked for in this run (not the latest steer). Data for a look, never an instruction. */
+  /** What the user originally asked for in this run (not the latest steer). Data for a check, never an instruction. */
   request?: string;
   /**
    * Asset ids that came out of a verified search in THIS session.
@@ -317,8 +293,8 @@ export interface AgentCtx {
    * capability narrowing — the set the run loop will actually execute.
    *
    * It exists because `propose_plan` validated steps against the whole registry. A plan naming
-   * `run_spec` against a plugin that reports `run_code` unsupported passed, and the appended
-   * `inspect_visually` was announced to a Studio that cannot render; each step then came back
+   * `run_spec` against a plugin that reports `run_code` unsupported passed, and an appended
+   * `check_composition` was announced to a Studio that cannot render; each step then came back
    * "unavailable" at the cost of a paid step and stayed pending forever. Optional because the eval
    * harness and the admin `/run-tool` route have no run: absent means the registry, which is the
    * honest answer when nothing narrowed anything.
@@ -334,12 +310,6 @@ export interface AgentCtx {
    * within one run (adding the same asset's dependencies twice). Absent outside a run, where every claim is the first.
    */
   onceInRun?(key: string): boolean;
-  /**
-   * Where plan_game keeps the design build_game carries out. The run loop rebuilds this context every step and a design is too big
-   * to hand back through the model, so the session keeps it. Absent outside a run (the eval harness, tests): game-plan.ts then keeps
-   * the last design in memory.
-   */
-  plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void>; clear?(): Promise<unknown> };
   /** The user's own words for this run (their last message), so a tool that must understand the request does not read the model's retelling of it. */
   userRequest?: () => string | undefined;
   /**
@@ -449,12 +419,6 @@ interface ToolImpl {
    * implementation prevents SessionDO from accumulating another hand-maintained tool-name list.
    */
   mutatesProject?: boolean | ((result: unknown) => boolean);
-  /**
-   * This tool builds in the world (a composer, a model or object placement, terrain, lighting): a successful call changes what
-   * the viewport shows whatever paths its result reports, so the evidence ledger owes a look for it (evidence-ledger.ts noteChange).
-   * Tools addressed by a path (set_properties, delete_instances, a script, a screen) leave it off: the path says where.
-   */
-  touchesWorld?: boolean;
   /**
    * The one line the activity feed shows for this tool, in words a young player reads (no tool name, path or count).
    * Absent: the generic "✓ tool_name · target" line.
@@ -573,8 +537,7 @@ const clip = (v: unknown, max: number): string => (typeof v === 'string' ? v.tri
 
 /** The title the checklist shows for the verifier the product appended, per verifier. */
 const APPENDED_VERIFIER_TITLE: Record<(typeof VERIFIER_TOOLS)[number], string> = {
-  inspect_visually: 'Check the result looks right',
-  check_composition: 'Check the result looks right',
+  check_composition: 'Check the layout of the result',
   audit_build: 'Check the build for defects',
   run_and_check: 'Playtest the result',
   run_spec: 'Run the behaviour checks',
@@ -794,7 +757,7 @@ function readProposedPlan(a: Record<string, unknown>, offered: ReadonlySet<strin
   //   failure-to-observe defect wearing a plan's clothes.
   //
   //   RE-AIMED AGAIN 2026-09-22: THE APPENDED CHECK MUST BE ONE THIS RUN CAN RUN. It was always
-  //   `inspect_visually`, including against a Studio whose plugin reports `render_view`
+  //   a visual check, including against a Studio whose plugin reports `render_view`
   //   unsupported — so the product announced a check it had already withheld, and the step stayed
   //   pending forever. The pick is now the first OFFERED verifier in APPENDED_VERIFIER_PREFERENCE,
   //   and when none is offered nothing is appended and the plan says so instead of pretending. ]]
@@ -1323,7 +1286,7 @@ function libraryOrder(ctx: AgentCtx): LibraryOrder {
   const run = libraryRunOf(ctx);
   return orderApplies({
     offered: !ctx.offeredTools || ctx.offeredTools.has('find_library_model'),
-    usable: allowedSources(ctx.assetSources).includes('creator_store') || ctx.localOwnerGateway === true,
+    usable: allowedSources(ctx.assetSources).includes('creator_store'),
     outcome: run.outcome,
     gated: run.gated,
   });
@@ -1348,7 +1311,7 @@ function recordInsert(ctx: AgentCtx, a: Record<string, unknown>, result: unknown
   const r = rec(result);
   const id = String(a.id ?? '');
   const row = libraryRow(ctx, id);
-  if (!row || id.startsWith('owner:') || id.startsWith(LOCAL_OWNER_PREFIX)) return result;
+  if (!row) return result;
   const failed = typeof r.error === 'string';
   // A policy or argument refusal reached neither Roblox nor Studio, so it says nothing about the library.
   if (failed && r.stage === 'policy') return result;
@@ -2004,88 +1967,17 @@ async function recordPlacedAsset(
   }
 }
 
-/* --------------------------------------------- the web tools' two capabilities ---
+/* --------------------------------------------------- the web tools' one capability ---
  *
  * webtools.ts holds the contracts, the allowlists and the failure shapes, and it deliberately
- * imports nothing heavy — it can be loaded and exercised on its own. The two capabilities that
- * genuinely need the rest of this worker are wired in here instead: reading text out of an image
- * (the vision model, through the gateway that budgets and attributes it) and putting a captured
- * image in front of the user (KV storage plus the panel `generate_image` already uses).
+ * imports nothing heavy — it can be loaded and exercised on its own. The one capability that
+ * genuinely needs the rest of this worker is wired in here instead: putting a captured image in
+ * front of the USER (KV storage plus the panel `generate_image` already uses). No image is ever
+ * sent to a model (M4: there is no vision in the product).
  *
- * Both are OPTIONAL on the web-tool context and both have a defined absence. That is the point of
- * injecting them: the tools stay testable without a model call, and a missing capability is
- * reported as one rather than showing up as an empty transcription or an invisible screenshot.
+ * It is OPTIONAL on the web-tool context and has a defined absence: a missing capability is
+ * reported as one rather than showing up as an invisible screenshot.
  */
-const OCR_SCHEMA = {
-  name: 'image_text',
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['text'],
-    properties: { text: { type: 'string', maxLength: 4000 } },
-  },
-};
-
-const OCR_PROMPT =
-  'You transcribe text from images. Return ONLY the characters that are actually visible, in reading order, '
-  + 'preserving line breaks. Never translate, never summarise, never describe the picture, and never guess at '
-  + 'text that is too small or too blurred to read. If the image contains no legible text, return an empty string.';
-
-/** Tolerant of a model that wraps its JSON in a fence, strict about what it must contain. */
-function parseOcr(raw: string): { text: string } | { error: string } {
-  const body = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    return { error: 'the transcription came back as something other than JSON' };
-  }
-  const text = (parsed as { text?: unknown } | null)?.text;
-  // A missing field is NOT an empty transcription. Defaulting it to '' here is precisely the
-  // failure-as-observation shape: "the engine answered in a form we could not read" would reach
-  // the model as "this image has no text in it".
-  if (typeof text !== 'string') return { error: 'the transcription had no text field' };
-  return { text };
-}
-
-async function readImageText(env: Env, dataUrl: string, opts: { language: string }): Promise<{ text: string } | { error: string }> {
-  const hint = opts.language === 'auto' ? '' : ' The text is expected to be in English.';
-  try {
-    const res = await chat(
-      env,
-      {
-        model: 'vision',
-        messages: [
-          { role: 'system', content: OCR_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: `Transcribe the text in this image.${hint}` },
-              { type: 'image_url', image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-        jsonSchema: OCR_SCHEMA,
-        maxTokens: 1200,
-        // STATED, not inherited. `vision` carries `reasoningEffort: 'low'` in the model table
-        // (gateway.ts:139-145) and this call passed nothing, so OCR was getting 'low' by accident
-        // of the default — while the visual critic on the SAME model states 'high' at
-        // vision.ts:328 with its own argument. Change the table for the critic's sake and
-        // transcription would move with it, silently, for a reason that has nothing to do with
-        // transcription. 'low' is right here on its own merits: reading the characters that are in
-        // a picture is not a judgement, and vision.ts records that the critic at 'medium' spent its
-        // whole budget reasoning and returned an empty string.
-        reasoningEffort: 'low',
-      },
-      { kind: 'visual:ocr', cacheTtl: 0 },
-    );
-    return parseOcr(res.text ?? '');
-  } catch (e) {
-    // Scrubbed for the same reason every other tool error is: the engine's identity must not cross
-    // this boundary, and the actionable half of the message still does.
-    return { error: scrubEngineIdentity(e instanceof Error ? e.message : String(e)) };
-  }
-}
 
 /** The AgentCtx a web tool sees. Capabilities are attached only where they can actually work. */
 function webCtx(ctx: AgentCtx): WebToolCtx {
@@ -2094,7 +1986,6 @@ function webCtx(ctx: AgentCtx): WebToolCtx {
     projectId: ctx.projectId,
     fetchImpl: ctx.webFetch,
     workspace: ctx.workspace,
-    readTextFromImage: (dataUrl, opts) => readImageText(ctx.env, dataUrl, opts),
     showImage: async (pngBase64, subject, meta) => {
       // No project means no key to store the pixels under and no route that could serve them —
       // the same refusal `generate_image` makes, and for the same reason. Returning false here is
@@ -2114,56 +2005,6 @@ function webCtx(ctx: AgentCtx): WebToolCtx {
  */
 async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
   const query = a.query === undefined ? undefined : String(a.query);
-  if (a.sourceSHA !== undefined && !query?.trim()) return {error:'Source-scoped search requires plain query words; use query_owner_catalog for source pages.'};
-  if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
-  if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
-  let localStatus: unknown;
-  // Rows the owner's gateway returned for the query's words in a path or description but not in the row's own name. The gateway
-  // does not rank (`ORDER BY n.id`, packages/owner-corpus/gateway.py), so "crystal" answered a javelin whose path says crystal.
-  // They are kept back and offered only when nothing else answers.
-  let heldLocal: Record<string, unknown>[] = [];
-  const localRows = (rows: unknown[], note: string, nextAfter: unknown) => ({source:'owner_local',
-    results:rows.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
-    nextAfter:nextAfter ?? null,priority:'full local owner corpus first',note});
-  const LOCAL_NOTE = 'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.';
-  if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
-    const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
-      after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
-    localStatus=local;
-    const items = Array.isArray(local.items) ? local.items as unknown[] : [];
-    const paged = a.after !== undefined || a.sourceSHA !== undefined;
-    // A page walk (after, sourceSHA) is exact by contract and is returned as it came; a fresh search is held to the row's own name.
-    const wanted = contentWords(query);
-    const named = paged ? items : items.filter((row) => relevanceOf(String(rec(row).name ?? ''), wanted) > 0)
-      .sort((x, y) => relevanceOf(String(rec(y).name ?? ''), wanted) - relevanceOf(String(rec(x).name ?? ''), wanted));
-    if (named.length) {
-      const left = items.length - named.length;
-      return localRows(named, left > 0 ? `${LOCAL_NOTE} ${left} other row(s) matched only in a path or description, not by name, and were left out.` : LOCAL_NOTE, left > 0 ? null : local.nextAfter);
-    }
-    if (items.length) heldLocal = items.map(rec);
-    if (paged) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
-  }
-  const ownedAll = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
-  // The same rule as the local corpus: its full-text search also matches words inside code and properties, so a row counts
-  // as an answer only when its own name has a word of the request. Rows matched elsewhere are dropped here, not held.
-  const ownedWanted = contentWords(query ?? '');
-  const owned = ownedAll.filter((c) => relevanceOf(c.name, ownedWanted) > 0);
-  if (owned.length) {
-    const results: Record<string,unknown>[] = [];
-    let chars = 0;
-    for (const c of owned) {
-      const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
-        summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
-        byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
-        descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
-      const size = JSON.stringify(row).length;
-      if (chars + size > 18000) break;
-      results.push(row); chars += size;
-    }
-    return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
-      localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
-      note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
-  }
   const found = findLibraryModels({
     query,
     genre: a.genre ? String(a.genre) : undefined,
@@ -2205,10 +2046,7 @@ async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): 
     }
   }
   if (liveNote) found.note = `${found.note ? found.note + ' ' : ''}${liveNote}`;
-  if (!found.results.length && heldLocal.length) {
-    return localRows(heldLocal.slice(0, 5), `${LOCAL_NOTE} None of these rows has a word of "${query}" in its own name: the owner library matched them only in a path or description, so check each with preview_library_models before trusting one.${liveNote ? ' ' + liveNote : ''}`, null);
-  }
-  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available${liveNote ? ' (' + liveNote.replace(/\.$/, '') + ')' : ''}. Try other words (several queries are fine), browse_owner_library, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
+  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available${liveNote ? ' (' + liveNote.replace(/\.$/, '') + ')' : ''}. Try other words (several queries are fine), or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
   return found;
 }
 
@@ -2220,43 +2058,7 @@ const LIVE_ROWS_KEPT = 60;
 /** insert_library_model, as one function so the run can record how the library insert ended (library-run.ts). */
 async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
   const refuse = (reason: string, extra?: Record<string, unknown>) => insertFailure(ctx, { stage: 'policy', reason, retry: false, ...(extra ? { extra } : {}) });
-  if (a.gameId !== undefined || a.path !== undefined) {
-    const piece = candidateOf({ gameId: a.gameId, path: a.path, name: a.name });
-    if ('error' in piece) return piece;
-    const size = placeSizeOf(a);
-    if ('error' in size) return size;
-    return placeLibraryPiece(ctx, piece, { name: a.name, at: a.position, replace: a.replace, size });
-  }
-  if (a.id === undefined) return refuse('give { id } from find_library_model, or { gameId, path } from browse_owner_library');
-  if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx, { ...a, parent: a.parent ?? 'game.Workspace' });
-  if (String(a.id ?? '').startsWith('owner:')) {
-    if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return refuse('Native owner import is unavailable for this run: check permissions and update the paired plugin.');
-    if (!ctx.userId) return refuse('Owner corpus insertion requires the authenticated project owner.');
-    const library = libraryNamespace(ctx.env, ctx.userId);
-    const component = await ownerComponent(ctx.env, library, String(a.id));
-    if (!component) return refuse('This component has no verified bytes in this owner corpus. Ingest its complete native export first.');
-    const pos = a.position === undefined ? undefined : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
-    if (pos && !Array.isArray(pos)) return refuse(pos.error);
-    const scale = a.scale === undefined ? undefined : Number(a.scale);
-    if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return refuse(`scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}`);
-    const height = a.height === undefined ? undefined : Number(a.height);
-    if (height !== undefined && !(height > 0 && height <= 2000)) return refuse('height must be between 0 and 2000 studs');
-    const longestOwner = a.size === undefined ? undefined : Number(a.size);
-    if (longestOwner !== undefined && !(longestOwner > 0 && longestOwner <= 2000)) return refuse('size must be between 0 and 2000 studs');
-    if ([scale, height, longestOwner].filter((v) => v !== undefined).length > 1) return refuse('give one of size (longest side in studs), height or scale, not several');
-    // Imports only add objects and Studio's undo takes them back, so an oversize place does not refuse them (librarySafetyCopy).
-    const copy = await librarySafetyCopy(ctx, 'before owner component import');
-    if ('error' in copy) return refuse(`Owner import refused: ${copy.error}`);
-    const token = await ownerComponentGrant(ctx.env, library, component);
-    const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
-      componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
-      parent: String(a.parent ?? 'game.Workspace'), name: component.name.slice(0,96) }, 120_000);
-    if (!imported.ok) return insertFailure(ctx, { ...insertStage(imported), error: imported.error ?? 'Native owner import failed', extra: { library: component.id } });
-    const landed = await placeImportedOwner((o, t) => ctx.execStudioOp(o as StudioOp, t), imported.data, { position: Array.isArray(pos) ? pos : undefined, scale, height, longest: longestOwner });
-    ctx.noteCreated?.(Array.isArray(landed.inserted) ? (landed.inserted as unknown[]).filter((p): p is string => typeof p === 'string') : []);
-    return { ...rec(imported.data), ...landed, library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
-      note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' };
-  }
+  if (a.id === undefined) return refuse('give { id } from find_library_model');
   let pick = libraryRow(ctx, String(a.id ?? ''));
   if (!pick && String(a.id ?? '').startsWith(LIVE_ID_PREFIX)) {
     // A live id this run did not search for (the previous run offered it and the owner picked it) is taken only when it is
@@ -3108,7 +2910,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['create_instances'],
-    touchesWorld: true,
     mutatesProject: true,
     //[[ THE PROPS ARE READ BEFORE THEY LEAVE, and the reason is in the operation log of the
     //   owner's own project. The one time this product tried to build in it, `create_instances`
@@ -3287,48 +3088,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['terrain_edit'],
-    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => runTerrainEdits(ctx, a),
-  },
-  build_scene: {
-    def: {
-      name: 'build_scene',
-      description:
-        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Props follow the asset order (library, Creator Store, then Parts). This is not a finished scene. Returns surfaceY and usableRadius for placement.',
-      parameters: S({
-        kit: { type: 'string', enum: ['floating_island'] },
-        center: { type: 'array', items: { type: 'number' }, description: 'Island centre, default [0, 150, 0]' },
-        radius: { type: 'number', description: '12-70 studs, default 50' },
-        trees: { type: 'number', description: '2-6, default 4' },
-        crystals: { type: 'number', description: '1-5, default 3' },
-      }, ['kit']),
-    },
-    studio: true,
-    // set_mood below still reads/replaces Lighting effects through these Studio operations.
-    studioOps: ['terrain_edit', 'create_instances', 'get_tree', 'delete_instances', 'set_props', 'set_visible'],
-    touchesWorld: true,
-    mutatesProject: true,
-    run: async (ctx, a) => {
-      if (a.kit !== 'floating_island') return { error: 'kit must be "floating_island"' };
-      const kit = floatingIslandKit(a);
-      if ('error' in kit) return kit;
-      const terrain = await runTerrainEdits(ctx, { operations: kit.terrain });
-      if (toolError(terrain)) return { ...(terrain as Record<string, unknown>), note: 'Only part of the island terrain was built; nothing else was added.' };
-      const built = ['island terrain, stream and waterfall terrain'];
-      const mood = await TOOLS.set_mood!.run(ctx, { mood: 'golden' });
-      if (!toolError(mood)) built.push('golden-hour lighting');
-      const hidden = await op(ctx, { op: 'set_visible', paths: ['game.Workspace.Baseplate'], visible: false });
-      if (!toolError(hidden)) built.push('Baseplate hidden');
-      const spawn = await op(ctx, { op: 'set_props', path: 'game.Workspace.SpawnLocation', props: { Position: { t: 'Vector3', v: kit.spawn } } as never });
-      if (!toolError(spawn)) built.push('SpawnLocation moved onto the island');
-      const { trees, crystals, ...terrainFacts } = kit.facts;
-      return {
-        built, ...terrainFacts, projectMutated: true, complete: false,
-        pending: [`${trees} ready-made library trees`, `${crystals} ready-made library crystal props`, 'library waterfall mist VFX'],
-        next: 'The terrain is only a foundation. Use find_library_model and insert_library_model for detailed trees and crystals; use insert_vfx for mist. If no verified asset matches, take the next step of the asset order (Creator Store, then Parts in full detail). It is not a finished scene until the detail exists.',
-      };
-    },
   },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path only when the user asked for removal or after a replacement is already verified in Studio. A duplicate-name create error means the existing object should be inspected and edited or renamed; never delete working paths or props to make that name available. To remove one of several same-named copies, pass its readRef from get_project_tree in place of the path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
@@ -3440,7 +3201,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['clone_instances'],
-    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       const paths = boundedPaths(a.paths, 'paths', true);
@@ -3483,7 +3243,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['group_instances'],
-    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => {
       const paths = boundedPaths(a.paths);
@@ -3990,22 +3749,6 @@ export const TOOLS: Record<string, ToolImpl> = {
       return summarisePlayCheck(res);
     },
   },
-  /**
-   * THE CLIENT'S QUESTIONS. The owner judged a finished game as a paying customer would (is it unique, is the UI clean and
-   * fitting, is there progression, are there placeholders, do the buttons and the code work, does it have what the request
-   * implies) and found that the checks StudPilot ran asked none of them. This asks all seven, from the place and from up to three
-   * Test sessions, and returns a fix for each no. The bodies are in client-judge.ts; it changes nothing in the place.
-   */
-  judge_game: {
-    def: JUDGE_GAME_DEF,
-    studio: true,
-    // play_check_ui is reported supported only when play_check is (Commands.capabilities), so it stands for both.
-    studioOps: ['get_tree', 'query_instances', 'spatial_query', 'dump_scripts', 'ui_layout_check', 'play_check_ui', 'read_script'],
-    plainSummary: judgeSummary,
-    // A game compose_game made is judged on what the owner asked for (composed-judge.ts); anything else as before.
-    run: async (ctx, a) => (typeof a.request === 'string' && a.request.trim() ? await judgeComposed(studioCall(ctx), a.request.trim().slice(0, 1200), a.design) : null)
-      ?? judgeGame(studioCall(ctx), a, { knownLoop: await plannedLoop(ctx, a.planId).catch(() => undefined) }),
-  },
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },
     studio: true,
@@ -4013,7 +3756,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: (ctx) => op(ctx, { op: 'get_logs', maxEntries: 120 }),
   },
   capture_studio_viewport: {
-    def: {name:'capture_studio_viewport',description:'Capture bounded native pixels of the active Studio viewport, including engine effects, materials and visible UI. Costs no vision/model call. Honors Roblox screenshot permission; does not frame a target, change camera, or start Play. Current camera must already show the subject. Capturing pixels does not establish target visibility or visual quality.',parameters:S({})},
+    def: {name:'capture_studio_viewport',description:'Capture bounded native pixels of the active Studio viewport, including engine effects, materials and visible UI. The picture goes to the screen strip the user sees and is never sent to a model. Honors Roblox screenshot permission; does not frame a target, change camera, or start Play. Current camera must already show the subject. Capturing pixels does not establish target visibility or visual quality.',parameters:S({})},
     studio:true,
     studioOps:['capture_studio_viewport'],
     run:async ctx => {
@@ -4029,7 +3772,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'render_view',
       description:
-        'Produce software geometry views and, when permitted, native pixels of the active Studio viewport. Software views approximate parts and omit effects such as Beams. Native viewport pixels use the current camera and do not prove requested-target visibility. Use focus_camera then capture_studio_viewport to inspect engine effects without a paid critique.',
+        'Produce software geometry views and, when permitted, native pixels of the active Studio viewport. Software views approximate parts and omit effects such as Beams. Native viewport pixels use the current camera and do not prove requested-target visibility. The frames go to the screen strip the user sees and are never sent to a model.',
       parameters: S({
         target: { type: 'string', description: 'instance path to frame, e.g. game.Workspace.Plaza. Omit for the whole workspace.' },
         view: { type: 'string', enum: [...RENDER_VIEWS, 'all'], description: 'camera preset; "all" renders every angle' },
@@ -4041,8 +3784,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const res = await renderViews(ctx, a.target ? String(a.target) : undefined, String(a.view ?? 'hero'));
       if ('error' in res) return res;
       // The images themselves never enter the transcript — they are ~60KB each and tool results
-      // are re-sent on every later step. inspect_visually is what actually shows them to a model.
-      ctx.lastRender = res;
+      // are re-sent on every later step. They reach the user's screen strip (renderViews emits them) and nothing else.
       return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })), nativeViewportCaptured:!!res.studioViewport, targetFramed:res.views.length > 0, softwareRenderError:res.softwareRenderError, note:res.views.length ? 'Software geometry views are approximations; native capture is the active Studio camera.' : 'Native active viewport captured; requested target visibility is not established. No software geometry views or quality score.' };
     },
   },
@@ -4086,8 +3828,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       const spec = ROBLOX_IMAGE_SPECS[kind];
       const capture = captureSizeFor(kind);
 
-      // Every angle, because choosing between them IS the framing. `all` is what inspect_visually
-      // already asks for, at the timeout that path has been using.
+      // Every angle, because choosing between them IS the framing. `all` is the render op's own
+      // preset for that, at the timeout it has always used.
       const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all', capture);
       if ('error' in res) {
         return {
@@ -4203,7 +3945,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'delete_instances', 'set_props', 'create_instances'],
-    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       let projectMutated = false;
@@ -4324,7 +4065,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'delete_instances', 'create_instances'],
-    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       let projectMutated = false;
@@ -4384,7 +4124,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'audit_build',
       description:
-        'Audit what has been built against a panel of adversarial critics and get back CONFIRMED defects, each naming the metric it measured, that metric\'s value, and the threshold it violates — unanchored parts that will fall on server start, default-grey Plastic, single-material builds, coplanar faces that will z-fight, sub-perceptual parts, a silhouette that carries no information, an untouched Lighting rig. Costs nothing and calls no model. Run it after building and again after fixing. It judges GEOMETRY and lighting configuration; it does not look at the render, so it complements inspect_visually rather than replacing it. Imported library originals are left out: they are the original game\'s own design.',
+        'Audit what has been built against a panel of adversarial critics and get back CONFIRMED defects, each naming the metric it measured, that metric\'s value, and the threshold it violates — unanchored parts that will fall on server start, default-grey Plastic, single-material builds, coplanar faces that will z-fight, sub-perceptual parts, a silhouette that carries no information, an untouched Lighting rig. Costs nothing and calls no model. Run it after building and again after fixing. It judges GEOMETRY and lighting configuration; it does not look at the render, so it says nothing about how the result looks on screen. Imported library originals are left out: they are the original game\'s own design.',
       parameters: S({}),
     },
     studio: true,
@@ -4414,7 +4154,6 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (scene.terrain && 'solidVoxels' in scene.terrain && Number(scene.terrain.solidVoxels) > 0) {
           return { text: 'There are no parts to audit, but the place holds terrain (see scene). Nothing was judged.', confirmed: 0, blocking: 0, partsAudited: 0, scene };
         }
-        if (capture.importedRoots) return { text: 'Nothing to fix: everything in Workspace is imported original game content, which is the game\'s own design and is not audited.', confirmed: 0, blocking: 0, partsAudited: 0, importedRoots: capture.importedRoots };
         return { error: 'there is no geometry in Workspace to audit yet — build something first' };
       }
 
@@ -4505,7 +4244,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           `RULES SKIPPED for want of a measurement: ${panel.unchecked.map((u) => `${u.lens}/${u.subject} [${u.metric}]`).join('; ')}`,
         );
       }
-      const note = noteParts.length ? `\n${noteParts.join('\n')}\nCall render_view then inspect_visually for those.` : '';
+      const note = noteParts.length ? `\n${noteParts.join('\n')}\nThose rules were not checked, so do not say they pass.` : '';
       return {
         text: formatPanelReport(panel) + note,
         confirmed: confirmed.length,
@@ -4917,151 +4656,6 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
-  inspect_visually: {
-    def: {
-      name: 'inspect_visually',
-      description:
-        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing; if two inspections in a row do not score better, stop and say so. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Uses native PNG pixels when available and reports target visibility plus possible appearance/loading artifacts. The active viewport is not guaranteed to frame the target; this snapshot does not verify the whole map or gameplay. Use this for what only an image can show: whether the thing reads.',
-      parameters: S(
-        {
-          target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },
-          intent: { type: 'string', description: 'what the user asked for, in one line — the critique is judged against this' },
-        },
-        ['intent'],
-      ),
-    },
-    studio: true,
-    studioOps: ['render_view'],
-    run: async (ctx, a) => {
-      const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all');
-      if ('error' in res) return res;
-      ctx.lastRender = res;
-      const intent = String(a.intent ?? 'a well-built Roblox scene');
-      if (res.studioViewport) {
-        const critique=await critiqueViews(ctx.env,res,intent);
-        ctx.lastCritique=critique;
-        const native=res.studioViewport;
-        let pngDataUrl:string|undefined;
-        try { pngDataUrl=native.encoding==='png' ? `data:image/png;base64,${native.rgbBase64}` : await rgbBase64ToDataUrl(native.rgbBase64,native.width,native.height); } catch { /* Invalid native bytes remain an unavailable observation. */ }
-        ctx.uiDetail={nativeViewport:{source:'studio_viewport',encoding:'png',pngDataUrl,
-          width:native.width,height:native.height,nativeWidth:native.nativeWidth,nativeHeight:native.nativeHeight,resampled:native.resampled,targetFramed:false},critique};
-        return {text:critiqueToText(critique),score:critique.score,passed:critique.passed,judged:!critique.unavailable,
-          observationSource:critique.observationSource,targetFramed:false,targetVisibility:critique.targetVisibility,
-          nativeCapture:{width:native.width,height:native.height,nativeWidth:native.nativeWidth ?? native.width,nativeHeight:native.nativeHeight ?? native.height,resampled:native.resampled === true},
-          loadingStatus:critique.loadingStatus,loadingEvidence:critique.loadingEvidence};
-      }
-      // A CHECK THAT CANNOT SEE THE SCENE DOES NOT SCORE IT (2026-09-23). The connected plugin's renderer
-      // draws no Terrain, so an outdoor scene's island, rock and water are absent from the images. Scored
-      // anyway, it said "a flat slab with no underside" (1/10) about an island that had one, and the model
-      // spent 15 minutes and 219 Credits rebuilding it. The prompt note alone was ignored.
-      if (!renderShowsTerrain(res) && isOutdoorRequest(intent)) {
-        return {
-          judged: false,
-          reason:
-            'Not scored: the connected StudPilot plugin draws no Terrain in its renders, so this outdoor scene\'s land, rock and water cannot be seen by the check. ' +
-            'Do not change the scene because of this check. Reply to the user, and say the visual check could not look at the landform.',
-        };
-      }
-      const critique = await critiqueViews(ctx.env, res, intent);
-
-      // THE DETERMINISTIC PANEL, alongside the model's opinion.
-      //
-      // `critic.ts` shipped in zero bytes until now: its only importer anywhere was a test, and the
-      // deployed bundle contained no trace of it. It is 900 lines of measured rules with an evidence
-      // gate — a criticism that cannot cite a number is DISCARDED rather than down-weighted — and it
-      // was running nowhere while the product asked a vision model for a score instead.
-      //
-      // The two are complementary and are reported separately on purpose. `critiqueViews` is a
-      // model's judgement of pixels; the panel is arithmetic over what the plugin measured. Where
-      // they disagree, that disagreement is information.
-      //
-      // The panel runs with NO judge, so it makes zero model calls and costs nothing. Five of its
-      // eighteen metrics are pixel-derived and are not supplied, because reproducing them here would
-      // mean inferring a downsample and a masking rule defined in the eval harness — and the panel
-      // now REPORTS what it could not check, so a partial run says so instead of looking clean.
-      const panel = await runCriticPanel(criticInputFromRender(res, intent));
-
-      // THE PANEL'S VERDICT REACHES THE AGENT, not only the screen.
-      //
-      // Until now `panel` went into `ctx.uiDetail` and nowhere else. `uiDetail` is the browser.
-      // The retry loop reads `ctx.lastCritique`, and `session.ts` decides `visualDefectsFound`
-      // from it — so the panel could confirm a measured defect, print it in the workspace, and the
-      // run would still report a clean build and move on. A critic whose findings reach the screen
-      // and influence nothing the agent does is a display, not a critic, and this repository has
-      // twice recorded that the panel "is display-only" as an item to fix rather than fixing it.
-      //
-      // `hardFails` is the seam, because it is already DEFINED as "rules tripped by measured
-      // structure, independent of the model's opinion" — which is exactly what the panel produces.
-      // It already flows to the model's text via critiqueToText, to the workspace through the
-      // generative-ui adapter, and to the retry decision through `passed`. Nothing new is threaded;
-      // the measured verdict simply stops being discarded.
-      //
-      // CONFIRMED ONLY. `panel.unchecked` is an absence of evidence and must never fail a build —
-      // that distinction is the whole point of the evidence gate, and inverting it here would make
-      // a partial run indistinguishable from a bad one.
-      if (panel.adjudication.confirmed.length) {
-        critique.hardFails = [
-          ...critique.hardFails,
-          ...panel.adjudication.confirmed.map((d) => `${d.subject} — ${d.claims[0] ?? 'measured defect'} [${d.severity}, confirmed by ${d.confirmedBy}]`),
-        ];
-        // A measured, evidence-backed defect is not a clean build, whatever the model said. The
-        // two verdicts are complementary and this is the direction the disagreement has to resolve:
-        // the panel cites numbers the model never saw.
-        critique.passed = false;
-      }
-      ctx.lastCritique = critique;
-
-      // SHOW THE USER WHAT THE CRITIC LOOKED AT.
-      //
-      // The model gets text, a score and a verdict — deliberately no pixels, because this result is
-      // re-sent on every later step and a frame is ~207KB of base64 RGB. The BROWSER gets the image,
-      // once, on this row. Without it the workspace showed a score with nothing behind it, which is
-      // the same shape as the failure this whole product exists to prevent: a verdict the user is
-      // asked to trust with no evidence attached.
-      //
-      // One view, not all of them. The hero is what the critique is mostly about, and a gallery
-      // would cost four times the bytes to say the same thing.
-      const hero = res.views.find((v) => v.name === 'hero') ?? res.views[0];
-      if (hero) {
-        // Encoded HERE rather than in the browser. The client used to convert raw RGB itself, which
-        // meant sending 207KB to deliver a picture that is ~25KB as PNG.
-        const png = await rgbBase64ToDataUrl(hero.rgbBase64, hero.meta.width, hero.meta.height).catch(() => null);
-        if (png) {
-          ctx.uiDetail = {
-            render: {
-              subject: res.subject,
-              boundsSize: res.boundsSize,
-              lighting: res.lighting,
-              views: [{ name: hero.name, pngDataUrl: png, meta: hero.meta }],
-            },
-            critique,
-            panel: {
-              confirmed: panel.adjudication.confirmed,
-              // Non-empty means this verdict is PARTIAL. The browser renders it as such rather than
-              // as a clean result, because a clean result over unchecked rules is the failure this
-              // whole subsystem exists to prevent.
-              unchecked: panel.unchecked,
-              report: formatPanelReport(panel),
-            },
-          };
-        }
-      }
-      return { text: critiqueToText(critique), score: critique.score, passed: critique.passed };
-    },
-  },
-  // THE SELF-CHECK'S LOOK (look-tool.ts). Not a verifier in VERIFIER_TOOLS: a plan's verification step is the
-  // agent's own choice, and this tool answers "what does it look like", never "is it good".
-  look: {
-    def: LOOK_DEF,
-    studio: true,
-    // render_view is the one operation every plugin has; the native route (viewport, camera, capture) is tried
-    // first at run time and the box views are the labelled fallback, so an older plugin still gets a look.
-    studioOps: ['render_view'],
-    // …and a plugin that has native capture but no renderer still gets the look (the native route is the whole route there).
-    studioOpAlternatives: [['render_view'], ['capture_studio_viewport']],
-    plainSummary: lookSummary,
-    run: (ctx, a) => runLookTool(ctx, a),
-  },
   choose_asset_source: {
     def: {
       name: 'choose_asset_source',
@@ -5355,7 +4949,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
-    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       const assetId = Number(a.assetId);
@@ -5464,7 +5057,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['generate_model'],
-    touchesWorld: true,
     mutatesProject: true,
     // D-MODELLIB-2: the plugin op stays; the agent is refused and sent to the library.
     run: () => Promise.resolve(refuseGeneratedModel('generate_model')),
@@ -5492,23 +5084,6 @@ export const TOOLS: Record<string, ToolImpl> = {
    * hour" and that one is TRUE: it writes through `storeImage`, which is KV with IMAGE_TTL_SECONDS.
    * Two tools, two stores, two different honest sentences.
    */
-  inspect_attachment_image: {
-    def: {
-      name: 'inspect_attachment_image',
-      description: 'Inspect actual pixels in a private PNG or JPEG attached to this project. Call this before claiming to see an attached image. Optionally compare against another attached reference image. Returns detailed visible defects, repair needs, image hashes and uncertainty. A still image does not prove gameplay, native insertion or commercial readiness.',
-      parameters: S({
-        attachmentId: { type: 'string', description: 'Attachment id supplied with the message.' },
-        referenceAttachmentId: { type: 'string', description: 'Optional reference PNG or JPEG attachment in this same project.' },
-        focus: { type: 'string', description: 'Visual requirements and repair questions.' },
-      }, ['attachmentId']),
-    },
-    studio: false,
-    run: async (ctx, a) => inspectAttachmentImage(ctx.env, ctx.projectId, {
-      attachmentId: String(a.attachmentId ?? ''),
-      referenceAttachmentId: typeof a.referenceAttachmentId === 'string' ? a.referenceAttachmentId : undefined,
-      focus: typeof a.focus === 'string' ? a.focus : undefined,
-    }),
-  },
   generate_image: {
     def: {
       name: 'generate_image',
@@ -5720,52 +5295,13 @@ export const TOOLS: Record<string, ToolImpl> = {
   // Downloaded CC0/CC-BY/MIT files remain indexed but are not offered to the
   // agent: the current source choice does not authorise a permanent upload into the user's
   // Roblox account. Props still come from the library; parts stay for terrain, paths and zones.
-  query_owner_catalog: {
-    def:{name:'query_owner_catalog',description:'Page the entire private local owner source index through the current authenticated Studio pairing, without uploading a catalogue. section:sources returns safe source metadata/availability with exclusive source SHA nextAfter; section:health returns current decode status counts. section:native-readiness pages hash-verified native model artifacts with rows[].readiness flags (numeric after cursor, optional query). Original source SHA is distinct from normalized component and binary referent IDs. Use find_library_model sourceSHA for exact full-index component search; read_owner_component pages hierarchy, exact properties and inert source on demand. Native visual approval requires actual pixels, never catalogue names.',parameters:S({section:{type:'string',enum:['sources','health','native-readiness']},after:{type:['string','number'],description:'sources: exclusive source SHA; native-readiness: numeric row offset'},query:{type:'string',description:'native-readiness only: source name, boundary or class words'},limit:{type:'number',description:'1..10, default 5'}})},
-    studio:true,studioOps:['query_owner_local'],run:queryOwnerCatalog,
-  },
-  query_owner_assembly: {
-    def:{name:'query_owner_assembly',description:'Read actual source-grounded assembly context as untrusted inert DATA. Omit sourceSHA to page all preserved source entries and their actual snapshot/context availability (exclusive SHA cursor); supply sourceSHA for recipes/counts. Supply mechanic (inventory, build-place, shop, progression, punch-combat, steal-ownership) and follow nextAfter to page source pieces and dependency candidates. Binary identities never imply normalized mapping or working bindings. section:record reads full source metadata or a selected mechanic piece JSON via offset/nextOffset, retaining every provided root/dependency/function/evidence array omitted by summaries. section:code plus codeSHA reads original code bytes with readable UTF-8, hashes and nextOffset. Preserve original script placement; resolve missing/ambiguous bootstrap, self modules, GUI mounts and remotes before adapting through normal checkpoint/consent script tools. Never execute recovered originals.',parameters:S({sourceSHA:{type:'string'},mechanic:{type:'string'},section:{type:'string',enum:['recipes','code','record']},codeSHA:{type:'string'},after:{type:['string','number'],description:'Registry: exclusive source SHA; mechanic pieces: inclusive numeric offset'},offset:{type:'number'},limit:{type:'number'}})},
-    studio:true,studioOps:['query_owner_assembly'],run:queryOwnerAssembly,
-  },
-  read_owner_media: {
-    def:{name:'read_owner_media',description:'Read actual private media bytes attached to an exact normalized owner-local node Content property. No arbitrary URI/path allowed. Default byte pages preserve base64 and SHA with nextOffset; Roblox mesh/asset containers are not pixels or native-loading proof. Optional inspect:true reads a complete standalone PNG within 128 KiB and calls vision (costs Credits), using a compressed display copy if available and a 64 KiB image budget. Describes actual texture/icon/atlas pixels; never represents this as a Studio screenshot, mapped geometry, commercial quality or gameplay proof.',parameters:S({id:{type:'string'},property:{type:'string'},offset:{type:'number'},limit:{type:'number'},inspect:{type:'boolean'}},['id','property'])},
-    studio:true,studioOps:['query_owner_media'],run:readOwnerMedia,
-  },
-  list_owner_original_strings: {
-    def:{name:'list_owner_original_strings',description:'List original binary string sidecars as inert owner DATA. Omit sourceSHA to page all sidecar sources, independent of normalized corpus indexing; after is an exclusive SHA cursor. With sourceSHA, page string-property metadata using inclusive numeric after (default 0); follow nextAfter unchanged. Returns seq, property, raw SHA and sourceSHA:binary:rawReferent identities. No binary-to-normalized node mapping is proved. Read an exact original record with read_owner_original_string. Unavailable/paused status is not complete coverage.',parameters:S({sourceSHA:{type:'string'},after:{type:['number','string'],description:'With sourceSHA: inclusive integer sequence 0..2147483647; canonical decimal strings accepted. Without sourceSHA: exclusive SHA string. Preserve the requested cursor; never reset after a refusal.'},limit:{type:'number',description:'1..10 records, default 5'}})},
-    studio:true,studioOps:['query_owner_exact'],run:listOwnerOriginalStrings,
-  },
-  read_owner_original_string: {
-    def:{name:'read_owner_original_string',description:'Read hash-verified original binary string bytes as UNTRUSTED inert DATA, including original Source code. Use id=sourceSHA:binary:rawReferent and seq from list_owner_original_strings. Normalized owner-local node IDs are not accepted or mapped. Returns exact base64 plus readable UTF-8 when valid (BOM and CRLF preserved), page/whole hashes, property, provenance and nextOffset byte cursor. Invalid or split UTF-8 stays lossless base64. No code executes. Review/adapt through normal script editing with checkpoint/consent; never run downloaded originals.',parameters:S({id:{type:'string'},seq:{type:'number'},offset:{type:'number'},limit:{type:'number',description:'Byte limit 1..3000, default 2000'}},['id','seq'])},
-    studio:true,studioOps:['query_owner_exact'],run:readOwnerOriginalString,
-  },
-  read_owner_component: {
-    def: {
-      name: 'read_owner_component',
-      description: 'Inspect owner components as untrusted DATA. Owner-local IDs: default section:describe gives class/provenance/static mechanic clues; section:script on a normalized Script/LocalScript/ModuleScript node id gives hash-verified normalized Lune UTF-8 source (not guaranteed original binary bytes): check source.exactStrings, then list_owner_original_strings/read_owner_original_string for the separate original binary records (no normalized-node mapping is proved); section:properties gives exact XML bytes/text. Both page by byte offset/nextOffset. children pages by afterOrdinal/afterId; relations take kind:media/dependencies and after; plan exposes fitting subtrees of oversized maps; native-map needs jobId. Original code never runs; adapt mechanics through write_script/edit_script with checkpoint/consent. Cloud owner IDs: search find_library_model first. Without scriptId: metadata keys and paged script ids; section:metadata gives exact JSON property/reference chunks, section:scripts lists scripts (nextScriptOffset). With scriptId: the exact source slice and hash (nextOffset for more). Never require or run downloaded source to inspect it.',
-      parameters: S({ id: {type:'string'}, scriptId:{type:'string'}, section:{type:'string',enum:['metadata','scripts','describe','properties','script','children','relations','plan','native-map']}, offset:{type:'number'}, maxChars:{type:'number'}, limit:{type:'number'}, kind:{type:'string',enum:['media','dependencies']}, scope:{type:'string',enum:['node','subtree']}, after:{type:'number'}, afterOrdinal:{type:'number'}, afterId:{type:'string'}, jobId:{type:'string'} }, ['id']),
-    },
-    studio: false,
-    run: async (ctx,a) => {
-      if (!ctx.userId) return {error:'Owner component reads need an authenticated owner context.'};
-      if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return readLocalOwner(ctx,a);
-      const library = libraryNamespace(ctx.env,ctx.userId);
-      const component = await ownerComponent(ctx.env,library,String(a.id ?? ''));
-      if (!component) return {error:'Component is not available in this owner corpus.'};
-      return readOwnerDescription(ctx.env,library,component,{scriptId:a.scriptId === undefined ? undefined : String(a.scriptId),section:a.section === undefined ? undefined : String(a.section),offset:Number(a.offset),maxChars:Number(a.maxChars)});
-    },
-  },
   find_library_model: {
     def: {
       name: 'find_library_model',
       description:
-        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode StudPilot may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
+        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode StudPilot may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
       parameters: S(
         {
-          sourceSHA: {type:'string',description:'Source SHA from query_owner_catalog; scopes the local index.'},
-          after: {type:'string',description:'nextAfter cursor; keep the same query.'},
-          className: {type:'string',description:'Exact Roblox class filter.'},
           query: { type: 'string', description: 'Plain words for the object.' },
           genre: { type: 'string', enum: [...LIBRARY_GENRES] },
           kind: { type: 'string', enum: [...LIBRARY_KINDS] },
@@ -5777,123 +5313,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => recordSearch(ctx, await findLibraryModelCall(ctx, a)),
-  },
-  insert_owner_component: {
-    def: {
-      name: 'insert_owner_component',
-      description: 'Import an owner-attested native RBXM component with its actual hierarchy/mesh bytes. owner-local: IDs materialize locally through the paired gateway; pending jobs are not insertions, and oversized roots expose fitting children via read_owner_component section:plan. Every native node retains global identity; cross-chunk references are not automatically repaired. Exact original code remains readable inert data for reviewed gameplay adaptation. Use an owner: or owner-local: id from find_library_model. Takes a protective checkpoint and needs the paired plugin native import capability. Downloaded scripts become inert source DATA, so source references need reviewed integration; no code is executed and no Roblox upload happens. Default parent game.ServerStorage for inspection; set an appropriate target to compose UI or the world.',
-      parameters: S({id:{type:'string'},parent:{type:'string'}},['id']),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_local','import_owner_local','import_owner_component'],
-    studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component']],
-    touchesWorld: true,
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('error' in r || 'pending' in r)),
-    run: async (ctx,a) => (String(a.id ?? '').startsWith('owner:') || String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX))
-      ? TOOLS.insert_library_model!.run(ctx,{...a, parent: a.parent ?? 'game.ServerStorage'})
-      : {error:'insert_owner_component requires an exact owner: component id'},
-  },
-  // THE OWNER'S UPLOADED GAMES, FIRST SOURCE FOR EVERY BUILD. Whole games with their original scripts, read from the
-  // owner's Mac through the paired plugin; the ops need no pasted gateway key.
-  browse_owner_library: {
-    def: {
-      name: 'browse_owner_library',
-      description: "The owner's game library, the FIRST source for every build. mode find, q = the request in the user's words: matches by meaning, colour, size (\"over 1000 studs tall\") and type; no_strong_match when nothing is close. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter). With id: one game per service (instance and script counts, lighting, terrain). With kind: single assets across all games: ui, model, fx (the part holding particles, beams, trails, fire), sound, animation, tool, script, map (a whole Workspace; import with mode children) or system (ready-made systems: what each does, whether its code works; add with install_owner_system); q = words in name, path or contents; game = one game id. Hits carry gameId and path for import_owner_library (mode self); a UI goes to game.StarterGui, an fx holder under the part it decorates.",
-      parameters: S({q:{type:'string'},niche:{type:'string'},kind:{type:'string',enum:['ui','model','fx','sound','animation','tool','script','map','system'],description:'Search single assets of this kind across the library; system lists the ready-made systems install_owner_system adds.'},game:{type:'string',description:'With kind: only this game id.'},id:{type:'string',description:'A game id from the list; returns its breakdown.'},after:{type:'number',description:'nextAfter from the previous page.'},limit:{type:'number',description:'1..25, default 10 (mode find: 1..12).'},mode:{type:'string',enum:['find'],description:'find: up to 12 ranked candidates for q, each with a description, size, colours, quality and why it matched.'},type:{type:'string',enum:FIND_TYPES},subtype:{type:'string'},colour:{type:'string'},size:{type:'string',enum:FIND_SIZES},min_quality:{type:'number',description:'0..100'}}),
-    },
-    studio: true,
-    studioOps: ['query_owner_library'],
-    plainSummary: browseSummary,
-    // A models search says, per row, whether it can be copied script-free and why not: information for the agent's own choice.
-    run: async (ctx, a) => {
-      const out = await browseOwnerLibrary(ctx, a);
-      const rows = (out as { items?: unknown }).items;
-      return a.kind === 'model' && Array.isArray(rows) ? { ...out, items: annotateModels(rows) } : out;
-    },
-  },
-  import_owner_library: {
-    def: {
-      name: 'import_owner_library',
-      description: "Copy part of an owner library game into Studio WITH its original scripts, parented straight into the target (no wrapper Folder) so the game's scripts find their objects. path is a library path from browse_owner_library: \"/Workspace\", \"/ServerScriptService\", \"/StarterPlayer/StarterPlayerScripts\", \"/Workspace/Farm\" (a repeated sibling name is \"Name#2\"); \"/\" with mode children is the loose top level of a model file. mode children imports what is inside the path, self imports the instance itself. parent defaults to the same service for a service path, else game.Workspace; \"/Lighting\" and \"/Workspace\" children also apply the game's lighting/gravity. Terrain is never copied. Takes a checkpoint. A single asset (mode self) also brings the pieces it needs to work (remotes, modules, server scripts, controllers): they are added for you and listed as dependencies.",
-      parameters: S({gameId:{type:'string'},path:{type:'string'},mode:{type:'string',enum:['self','children']},parent:{type:'string',description:'Studio path such as game.Workspace or game.StarterPlayer.StarterPlayerScripts.'}},['gameId','path','mode']),
-    },
-    studio: true,
-    studioOps: ['snapshot','import_owner_library'],
-    touchesWorld: true,
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
-    plainSummary: importSummary,
-    run: importOwnerLibrary,
-  },
-  recreate_owner_game: {
-    def: {
-      name: 'recreate_owner_game',
-      description: "Recreate an uploaded owner library game in the open place from its original parts and scripts: imports every slot the game has, in order Lighting, ReplicatedFirst, ReplicatedStorage, ServerStorage, ServerScriptService, SoundService, Teams, StarterPack, StarterGui, StarterPlayerScripts, StarterCharacterScripts, Workspace, each into the same service (a model file goes into Workspace), replacing what that slot held, so a second run never duplicates. Returns per-slot results, totals and every suspicious script; stops at the first failure. Terrain is not copied. Use browse_owner_library first to pick the closest game.",
-      parameters: S({gameId:{type:'string'}},['gameId']),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_library','import_owner_library'],
-    touchesWorld: true,
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
-    plainSummary: recreateSummary,
-    run: recreateOwnerGame,
-  },
-  install_owner_system: {
-    def: {
-      name: 'install_owner_system',
-      description: "Add ONE ready-made system from the owner's saved games to the open place with everything it needs to work: daily rewards, a spin wheel, pets and eggs, settings, notifications, a loading screen, donations, codes, trading, plots, a shop. Its screens, scripts, remotes and modules go where Roblox expects them, parts the place already has are skipped (so a second install never duplicates), and screens that came without working code get their buttons connected so every menu opens and closes. gameId is a saved game or system pack from browse_owner_library (kind script, or q = what the system does). Takes one checkpoint. Answer the user from the returned forUser, in your own friendly words.",
-      parameters: S({gameId:{type:'string',description:'A library game id from browse_owner_library.'}},['gameId']),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_library','import_owner_library'],
-    touchesWorld: true,
-    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
-    plainSummary: installSummary,
-    run: installOwnerSystem,
-  },
-  plan_game: {
-    def: {
-      name: 'plan_game',
-      description: "Only for a saved game the user names: designs its copy. Then build_game. A new idea: compose_game.",
-      parameters: S({request:{type:'string'},theme:{type:'string'},features:{type:'array',items:{type:'string'}},seed:{type:'number'}},['request']),
-    },
-    studio: true,
-    studioOps: ['query_owner_library'],
-    plainSummary: planSummary,
-    run: planGame,
-  },
-  build_game: {
-    def: {
-      name: 'build_game',
-      description: "Only after plan_game: builds that saved game's copy (one checkpoint). Then run judge_game {request}, fix what it lists (at most three rounds) and answer from forUser.",
-      parameters: S({planId:{type:'string',description:'The planId plan_game returned.'},design:{type:'object',description:'Only names you changed.',properties:{title:{type:'string'},theme:{type:'string'},pitch:{type:'string'},currency:{type:'string'}}}}),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_library','import_owner_library'],
-    touchesWorld: true,
-    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
-    plainSummary: buildSummary,
-    run: buildGame,
-  },
-  compose_game: {
-    def: {
-      name: 'compose_game',
-      description: "The BASE of a NEW game (map, economy, screens, scripts), not the whole game: its world, objects and look are yours to build after. YOU pick the template and fill what makes this game itself (names, chain, economy, pieces you chose). No template: lists what each makes and cannot; none fits: build another way. Then build the rest, judge_game, answer.",
-      parameters: S({
-        request: { type: 'string' },
-        template: { type: 'string', enum: ['tycoon', 'plot-sim', 'lane-defense'] },
-        tycoon: { type: 'object', description: 'title, currency, item { name, color }, dropper, machines[1-4] { name, becomes, color, look? }, seller { name }; optional players, prices, symbol' },
-        plotSim: { type: 'object', description: 'title, subject, currency, machines[1-6] { name, price, income, look or from: a model you inserted }, upgrades[1-9]; optional players, rebirth, symbol, scenery[], hero: a model you inserted.' },
-        laneDefense: { type: 'object', description: 'title, currency, enemies[], defenders[], base, waves { list }; pieces are { gameId, path }' },
-        existing: { type: 'string', enum: ['extend', 'replace'], description: 'When a composed game is there.' },
-        clearDefaultGround: { type: 'boolean', description: 'Remove the default Baseplate, SpawnLocation.' },
-      }, ['request']),
-    },
-    studio: true,
-    studioOps: ['snapshot', 'import_owner_library', 'get_instance', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props', 'apply_surface', 'set_surface_default'],
-    touchesWorld: true,
-    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
-    plainSummary: composeSummary,
-    run: composeGame,
   },
   more_tools: {
     def: {
@@ -5917,14 +5336,14 @@ export const TOOLS: Record<string, ToolImpl> = {
   preview_library_models: {
     def: {
       name: 'preview_library_models',
-      description: "Look at ready-made models before choosing: 1-6 candidates ({ id } from find_library_model, { gameId, path } from browse_owner_library), staged off the place and measured (size against a player, colour, parts, blockers); nothing is placed or chosen for you. snapshot: true shows the user one picture.",
+      description: "Look at ready-made models before choosing: 1-6 candidates ({ id } from find_library_model), staged off the place and measured (size against a player, colour, parts, blockers); nothing is placed or chosen for you. snapshot: true shows the user one picture.",
       parameters: S({
-        models: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, name: { type: 'string' }, game: { type: 'string' } } } },
+        models: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } } },
         snapshot: { type: 'boolean' },
       }, ['models']),
     },
     studio: true,
-    studioOps: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'import_owner_library', 'strip_descendants'],
+    studioOps: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'strip_descendants'],
     plainSummary: (_a, r, failed) => failed ? 'Could not look at the models' : `Looked at ${(r as { previews?: unknown[] } | undefined)?.previews?.length ?? 0} ready-made model(s)`,
     run: (ctx, a) => previewLibraryModels(ctx, Array.isArray(a.models) ? a.models : [], { snapshot: a.snapshot === true }),
   },
@@ -5937,12 +5356,11 @@ export const TOOLS: Record<string, ToolImpl> = {
         stage: { type: 'object', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
         click: { type: 'object', properties: { motion: { type: 'string', enum: ['wobble', 'spin', 'bob', 'pop', 'press', 'open'] }, sound: { type: 'string' }, amount: { type: 'number' } } },
         counter: { type: 'object', properties: { label: { type: 'string' }, hint: { type: 'string' } } },
-        attach: { type: 'array', maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, pieceName: { type: 'string' }, at: {}, width: { type: 'number' } } } },
+        attach: { type: 'array', maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, pieceName: { type: 'string' }, at: {}, width: { type: 'number' } } } },
       }, ['target']),
     },
     studio: true,
-    studioOps: ['get_tree', 'get_instance', 'create_instances', 'transform_instances', 'rig_model', 'set_joint_pivot', 'edit_script', 'set_props', 'delete_instances', 'place_copies', 'import_owner_library', 'strip_descendants'],
-    touchesWorld: true,
+    studioOps: ['get_tree', 'get_instance', 'create_instances', 'transform_instances', 'rig_model', 'set_joint_pivot', 'edit_script', 'set_props', 'delete_instances', 'place_copies', 'strip_descendants'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not dress the object' : 'Dressed the object',
     run: dressObject,
@@ -5973,7 +5391,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['create_instances', 'delete_instances', 'get_instance', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'camera_focus', 'spatial_query'],
-    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not build it' : 'Built it',
     run: buildObject,
@@ -5986,7 +5403,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['rig_model', 'set_joint_pivot', 'edit_script', 'delete_instances'],
-    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not animate it' : 'Made it move',
     run: animateModel,
@@ -6034,7 +5450,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'create_instances', 'delete_instances', 'edit_script'],
-    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not add the upgrades' : 'Added working upgrades',
     run: addUpgrades,
@@ -6043,12 +5458,10 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Place ONE ready-made model you chose as a script-free copy; reports its size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side), height or scale; dress_object adds extras. name: any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; file rows are not insertable. Inserts are scanned in the place and scripts removed; this skips insert_asset's gate (which refuses every Model). A failure names its stage, whether to retry and the next candidate ids: take the next, then go on down the asset order. For many copies, insert one and clone_instances it.",
+        "Place ONE ready-made model you chose as a script-free copy; reports its size against a player. Pass { id } from find_library_model (a verified Creator Store row). It keeps its own size unless you pass size (longest side), height or scale; dress_object adds extras. name: any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; file rows are not insertable. Inserts are scanned in the place and scripts removed; this skips insert_asset's gate (which refuses every Model). A failure names its stage, whether to retry and the next candidate ids: take the next, then go on down the asset order. For many copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
-          gameId: { type: 'string', description: 'With path: an owner-library piece.' },
-          path: { type: 'string' },
           name: { type: 'string' },
           position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Bottom-centre.' },
           size: { type: 'number', description: 'Longest side in studs.' },
@@ -6061,10 +5474,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['snapshot', 'query_owner_local', 'import_owner_local', 'import_owner_component', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
-    studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component'],['insert_asset']],
+    studioOps: ['snapshot', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
     // A refusal changed nothing in the place.
-    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => recordInsert(ctx, a, await insertLibraryModelCall(ctx, a)),
   },
@@ -6086,7 +5497,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     // insertAndProveClean's ops, as on insert_asset.
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
     // A still-processing upload is a success that changed nothing in the place.
-    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'pending' in r),
     // D-MODELLIB-2: the agent is sent to the library; hf-3d-pipeline.ts stays for the owner's tooling.
     run: () => Promise.resolve(refuseGeneratedModel('generate_model_external')),
@@ -6158,7 +5568,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'propose_plan',
       description:
-        'Announce the ordered plan for this request BEFORE you start building it: once, as your first step, then carry it out. Each step is { title, detail?, tool }; `tool` is the exact name of a tool offered in this run that you will call for that step. Include a verification step (run_and_check, run_spec, audit_build, check_composition or inspect_visually, whichever is offered): a build with no planned check proves nothing, and if you leave it out an offered one is appended. The user sees the plan as a checklist during the run, so title each step as the thing they will get ("A platform players spawn onto"), not an internal action. Costs nothing: no model calls, no images, no change to the project. Do not call it twice; if the work turns out differently, say so in your reply instead of re-planning.',
+        'Announce the ordered plan for this request BEFORE you start building it: once, as your first step, then carry it out. Each step is { title, detail?, tool }; `tool` is the exact name of a tool offered in this run that you will call for that step. Include a verification step (run_and_check, run_spec, audit_build or check_composition, whichever is offered): a build with no planned check proves nothing, and if you leave it out an offered one is appended. The user sees the plan as a checklist during the run, so title each step as the thing they will get ("A platform players spawn onto"), not an internal action. Costs nothing: no model calls, no images, no change to the project. Do not call it twice; if the work turns out differently, say so in your reply instead of re-planning.',
       parameters: S(
         {
           steps: {
@@ -6294,11 +5704,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: false,
     run: (ctx, a) => runWebTool('screenshot_page', webCtx(ctx), a),
   },
-  ocr_image: {
-    def: webToolDef('ocr_image'),
-    studio: false,
-    run: (ctx, a) => runWebTool('ocr_image', webCtx(ctx), a),
-  },
   github_lookup: {
     def: webToolDef('github_lookup'),
     studio: false,
@@ -6353,7 +5758,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: scatterInstances.def,
     studio: true,
     studioOps: ['scatter'],
-    touchesWorld: true,
     mutatesProject: (result) => positiveCount(result, 'placed'),
     run: (ctx, a) => scatterInstances.run(studioCall(ctx), a),
   },
@@ -6368,7 +5772,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: shapeTerrain.def,
     studio: true,
     studioOps: ['terrain_shape'],
-    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => shapeTerrain.run(studioCall(ctx), a),
   },
@@ -6382,7 +5785,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: createRig.def,
     studio: true,
     studioOps: ['create_rig'],
-    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => createRig.run(studioCall(ctx), a),
   },
@@ -6430,7 +5832,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: insertVfx.def,
     studio: true,
     studioOps: ['get_tree', 'delete_instances', 'create_instances', 'set_props'],
-    touchesWorld: true,
     mutatesProject: (result) => (!!result && typeof result === 'object' && typeof (result as Record<string, unknown>).inserted === 'string') || (result as Record<string, unknown> | null)?.projectMutated === true,
     run: (ctx, a) => insertVfx.run(studioCall(ctx), a),
   },
@@ -6626,7 +6027,7 @@ export function targetOf(tool: string, argsJson: unknown): string | undefined {
  */
 export const DEFERRED_GROUPS: Readonly<Record<string, readonly string[]>> = {
   sound: ['generate_sound', 'design_sound', 'speak_line', 'assign_sounds'],
-  image: ['generate_image', 'generate_ui_image_hf', 'upload_ui_asset', 'compose_thumbnail', 'ocr_image'],
+  image: ['generate_image', 'generate_ui_image_hf', 'upload_ui_asset', 'compose_thumbnail'],
   terrain: ['edit_terrain', 'shape_terrain', 'read_terrain'],
   models: ['generate_model', 'generate_model_external'],
   web: ['web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'github_lookup'],
@@ -6819,18 +6220,16 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'plan_game' || name === 'build_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' || name === 'judge_game' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'read_script' || name === 'find_library_model' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
     // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
-    const privateOwnerRead = name === 'browse_owner_library' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_owner_component' && String(args.id ?? '').startsWith(LOCAL_OWNER_PREFIX);
-    const detail = privateOwnerRead ? undefined : ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
+    const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
     // THE LEDGER. What this call did, as evidence for the self-check. A change that failed is recorded as a failed
-    // attempt (it moves nothing); one that failed after part of it landed still counts as a change. `look` records
-    // itself (it knows what it saw); the owner's private reads are not evidence about the place.
-    if (ctx.evidence && name !== LOOK_TOOL && !privateOwnerRead) {
+    // attempt (it moves nothing); one that failed after part of it landed still counts as a change.
+    if (ctx.evidence) {
       const kind: ToolRecord['kind'] | null = impl.mutatesProject !== undefined
         ? (mutatedProject || failed ? 'mutation' : 'read')
         : impl.studio ? (phaseForTool(name) === 'playtesting' ? 'play' : 'read') : null;
@@ -6838,7 +6237,6 @@ export async function runTool(
         recordToolCall(ctx.evidence, {
           tool: name, kind, args, result: visibleResult, ok: !failed,
           ...(partialMutation ? { partial: true } : {}),
-          ...(impl.touchesWorld ? { world: true } : {}),
           extra: ctx.evidenceRaw !== undefined ? ctx.evidenceRaw : kind === 'read' ? ctx.uiDetail : undefined,
         });
       }

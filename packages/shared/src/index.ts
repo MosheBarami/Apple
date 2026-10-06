@@ -153,20 +153,6 @@ export type StudioOp =
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
-  | { op: 'query_owner_local'; action: 'health' | 'sources' | 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map' | 'native-readiness';
-      id?: string; query?: string; sourceSHA?: string; jobId?: string; className?: string; kind?: string; scope?: string; limit?: number;
-      offset?: number; after?: string | number; afterOrdinal?: number; afterId?: string }
-  | { op: 'query_owner_assembly'; action: 'recipes' | 'code' | 'record'; sourceSHA?: string; mechanic?: string; codeSHA?: string; after?: string | number; offset?: number; limit?: number }
-  | { op: 'query_owner_media'; id: string; property: string; offset?: number; limit?: number; inspect?: boolean }
-  | { op: 'query_owner_exact'; action: 'sources' | 'strings' | 'string'; sourceSHA?: string; identity?: string;
-      seq?: number; offset?: number; limit?: number; after?: string | number }
-  | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
-      nativeInstances: number; parent: string }
-  | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps' | 'route'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string;
-      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design' | 'find'; params?: Record<string, string | number> }
-  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean; studioData?: boolean }
-  | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
-      contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
   // survive save/publish. The result always carries a QC verdict — generation succeeding is not
   // evidence the model is good.
@@ -287,15 +273,6 @@ export interface RenderedView {
     /** Terrain surface cells drawn. Absent from renderers older than 2026-09-23, which drew no Terrain. */
     terrainCells?: number;
   };
-}
-
-/**
- * Whether these images can show Roblox Terrain. Plugins before 2026-09-23 rendered BaseParts only, so
- * a terrain island was invisible to every critique of it ("a flat slab with no underside", 2/10 on an
- * island that had one) — and every store customer runs such a plugin until the next publish.
- */
-export function renderShowsTerrain(result: { views: { meta: { terrainCells?: number } }[] }): boolean {
-  return result.views.some((v) => typeof v.meta.terrainCells === 'number');
 }
 
 /** Told to every critic when the images cannot show Terrain. */
@@ -859,7 +836,7 @@ export type AgentPhase =
   | 'building' // creating or configuring instances
   | 'writing_luau' // editing script source
   | 'rendering' // the plugin is rasterising the scene
-  | 'critiquing' // composition / semantic / vision gate is judging it
+  | 'critiquing' // a model-free check (composition, audit, spec) is judging it
   | 'rebuilding' // a gate rejected the work and the agent is starting over
   | 'playtesting' // run mode is active in Studio
   | 'debugging' // reading logs after a failure
@@ -945,7 +922,6 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'docs_lookup':
     case 'github_lookup':
     case 'git_history':
-    case 'ocr_image':
     case 'workspace_list':
     case 'workspace_read':
     // Capturing a page is looking at it. NOT `rendering`, which in this product means the plugin
@@ -957,20 +933,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'spatial_query':
     case 'read_terrain':
     case 'check_ui_layout':
-    // Reading the owner's private library and a project's own attached image: each looks something
-    // up and changes nothing in the place.
-    case 'inspect_attachment_image':
-    case 'query_owner_catalog':
-    case 'query_owner_assembly':
-    case 'read_owner_media':
-    case 'list_owner_original_strings':
-    case 'read_owner_original_string':
-    case 'read_owner_component':
-    case 'browse_owner_library':
       return 'inspecting';
-    // Working out the design of a game reads the owner's library and moves nothing: it is the planning step of a build.
-    case 'plan_game':
-      return 'planning';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'
     // would have the workspace claim the place is being changed at the exact moment it is not.
@@ -989,7 +952,6 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'create_instances':
     case 'set_properties':
     case 'edit_terrain':
-    case 'build_scene':
     case 'delete_instances':
     // Direct bounded authoring ops. These all mutate the open place through typed plugin commands;
     // they are distinct tools so Agent can express the edit without arbitrary Luau.
@@ -1003,12 +965,6 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_visible':
     case 'insert_asset':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
-    case 'insert_owner_component':
-    case 'import_owner_library':
-    case 'recreate_owner_game':
-    case 'install_owner_system':
-    case 'build_game':
-    case 'compose_game':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -1071,12 +1027,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'compose_thumbnail':
     // The plugin rasterises the live Studio viewport; nothing in the place changes.
     case 'capture_studio_viewport':
-    // The self-check's look aims the viewport camera at what was changed, captures it from several angles and
-    // puts the camera back. Nothing in the place changes, so it announces the same phase as the capture.
-    case 'look':
       return 'rendering';
     case 'check_composition':
-    case 'inspect_visually':
     // audit_build and run_spec are judgement, not construction: they measure what is already
     // there and report defects. They belong beside the other critics.
     case 'audit_build':
@@ -1085,8 +1037,6 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'run_and_check':
     case 'play_check':
     case 'play_check_ui':
-    // Judging the finished game plays it (up to three short Test sessions), so it announces the phase that says so.
-    case 'judge_game':
       return 'playtesting';
     case 'get_output_logs':
       return 'debugging';
@@ -1819,12 +1769,10 @@ export interface PairingCodeDto {
 
 // Model gateway internals (worker-side only, exported for evals)
 /**
- * Multimodal message content. A plain string stays a plain string on the wire; the array form is
- * only used where an image is actually attached, so ordinary text calls are unaffected.
+ * Message content. A plain string stays a plain string on the wire. The array form is text parts only: no picture is ever
+ * sent to a model (M4: there is no vision in the product), and a test fails if an image part comes back.
  */
-export type GatewayContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } }; // data: URL, base64 PNG
+export type GatewayContentPart = { type: 'text'; text: string };
 
 export interface GatewayMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -2913,12 +2861,6 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
-    name: 'build_scene',
-    label: 'Build a ready-made scene',
-    why: 'Builds a whole environment — terrain, trees, crystals, water and lighting — in the open place.',
-    group: 'changes',
-  },
-  {
     name: 'move_instances',
     label: 'Reparent objects',
     why: 'Moves existing objects to different parents in the project hierarchy.',
@@ -2991,42 +2933,6 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
-    name: 'insert_owner_component',
-    label: 'Import owner-supplied components',
-    why: 'Inserts private native components, preserving downloaded source as inert data.',
-    group: 'changes',
-  },
-  {
-    name: 'import_owner_library',
-    label: 'Import parts of your uploaded games',
-    why: 'Copies objects and their original scripts from your own game library into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'recreate_owner_game',
-    label: 'Recreate your uploaded games',
-    why: 'Copies a whole game from your own library, scripts included, into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'install_owner_system',
-    label: 'Add a ready-made feature from your uploaded games',
-    why: 'Copies one feature with its scripts from your own game library into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'compose_game',
-    label: 'Build a new game for your idea',
-    why: 'Builds a new game for your idea from ready-made parts and pieces of your game library, with its own map, in your place.',
-    group: 'changes',
-  },
-  {
-    name: 'build_game',
-    label: 'Build a new game from your uploaded games',
-    why: 'Builds an original game from a plan made out of your uploaded games, scripts included, in your place.',
-    group: 'changes',
-  },
-  {
     name: 'preview_library_models',
     label: 'Look at ready-made models',
     why: 'Measures candidate models off your place (size, colour, parts) so the right one can be chosen. It briefly stages them in the place and takes them away again; nothing stays.',
@@ -3060,12 +2966,6 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'play_check_ui',
     label: 'Playtest and press buttons',
     why: 'Starts a short Test session and clicks on-screen buttons as a player would. Withhold it and StudPilot cannot prove a menu or shop works.',
-    group: 'changes',
-  },
-  {
-    name: 'judge_game',
-    label: 'Judge the finished game like a client',
-    why: 'Reads your whole place and starts up to three short Test sessions in your Studio that click buttons as a player would. Withhold it and StudPilot cannot check the finished game against what you asked for.',
     group: 'changes',
   },
   {

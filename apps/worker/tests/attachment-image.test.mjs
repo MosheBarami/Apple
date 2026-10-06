@@ -1,11 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { encodePng } from '../src/png.ts';
 import { validateAttachment, MAX_ATTACHMENT_BYTES, MAX_IMAGE_ATTACHMENT_BYTES } from '@studpilot/shared';
-import { putAttachment, promptWithAttachments } from '../src/attachments.ts';
-import { inspectAttachmentImage } from '../src/attachment-vision.ts';
+import { putAttachment, promptWithAttachments, readAttachment } from '../src/attachments.ts';
 
 function envFor() {
   const rows = new Map();
@@ -25,31 +23,23 @@ test('PNG framing accepts pixels and refuses corrupt, disguised, or oversized by
   assert.equal(validateAttachment({ name: 'notes.txt', size: MAX_ATTACHMENT_BYTES + 1 }).reason, 'too_large');
 });
 
-test('private PNG availability is honest and exact pixels reach vision, with project isolation', async () => {
+// RESTATED in M4 (there is no vision in the product): this test used to hand the stored pixels to a vision model through
+// inspect_attachment_image. The live properties are that a private PNG stays inside its project and that the prompt DECLARES it
+// unseen, so the agent cannot describe a picture nobody looked at.
+test('a private PNG stays in its project and is declared NOT SEEN: its pixels reach no model', async () => {
   const env = envFor();
   const saved = await putAttachment(env, 'owner-project', { name: 'view.png', declaredMime: 'image/png', bytes: png });
   assert.equal(saved.ok, true);
   const id = saved.attachment.attachmentId;
   const prompt = await promptWithAttachments(env, 'owner-project', 'Review this', [saved.attachment]);
-  assert.match(prompt, /PIXELS AVAILABLE, NOT YET INSPECTED/);
-  assert.match(prompt, new RegExp(id));
-  let calls = 0;
-  const infer = async (_env, request, options) => {
-    calls++;
-    assert.equal(request.model, 'vision');
-    assert.equal(options.cacheTtl, 0);
-    const url = request.messages[1].content.find(x => x.type === 'image_url').image_url.url;
-    assert.deepEqual(Buffer.from(url.split(',')[1], 'base64'), Buffer.from(png));
-    return { text: 'Visible red and green pixels. Gameplay is unknown.', neurons: 7 };
-  };
-  const denied = await inspectAttachmentImage(env, 'other-project', { attachmentId: id }, infer);
-  assert.equal(denied.inspected, false); assert.equal(calls, 0);
-  const result = await inspectAttachmentImage(env, 'owner-project', { attachmentId: id }, infer);
-  assert.equal(result.inspected, true); assert.equal(calls, 1);
-  assert.equal(result.images[0].sha256, createHash('sha256').update(png).digest('hex'));
-  assert.equal(result.neurons, 7); assert.equal(result.gameplayVerified, false);
-  const unavailable = await inspectAttachmentImage(env, 'owner-project', { attachmentId: id }, async () => ({ text: '', neurons: 2 }));
-  assert.equal(unavailable.inspected, false);
+  assert.match(prompt, /Attached image view\.png: NOT SEEN/);
+  assert.match(prompt, /StudPilot cannot look at pictures/);
+  assert.doesNotMatch(prompt, /inspect_attachment_image|PIXELS AVAILABLE|NOT YET INSPECTED/, 'no tool is named that does not exist');
+  assert.doesNotMatch(prompt, new RegExp(id), 'the attachment id is not handed to the agent: there is nothing to do with it');
+  assert.equal(await readAttachment(env, 'other-project', id), null, 'another project cannot read it');
+  const mine = await readAttachment(env, 'owner-project', id);
+  assert.deepEqual(Buffer.from(mine.bytes), Buffer.from(png), 'the owner still gets the exact bytes back');
+  assert.equal(mine.meta.mime, 'image/png');
 });
 
 // docs/evidence/owner-corpus-*/ is gitignored (D-V3-3, 9ababa90), so the screenshot exists only in the

@@ -16,8 +16,6 @@ export {
   acceptsReasoningEffort,
   gatewayOpts,
   STUDPILOT_MODEL_ID,
-  VISION_MODEL_ID,
   STUDPILOT_CONTEXT_WINDOW,
-  VISION_CONTEXT_WINDOW,
   WORKERS_AI_MODELS,
 } from './workers-ai';

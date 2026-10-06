@@ -12,7 +12,7 @@
  *   1. THE FLOOR IS A MEASUREMENT, NOT A HOPE. A retrieval change is one bad refactor away from
  *      silently returning to 61%, and nothing downstream would notice — the model would just start
  *      writing the logic by hand again, which is the 0/8 this whole library exists to remove. The
- *      floor below is the number packages/training/runs/knowledge-reach-need-index.json recorded,
+ *      floor below is the number packages/corpus/data/measurements/knowledge-reach-need-index.json recorded,
  *      asserted here so a regression fails a test instead of shipping.
  *
  *   2. A MISS STILL MISSES. The failure this repository keeps meeting is a confident wrong answer,
@@ -48,12 +48,12 @@ const {
   searchVerifiedModulesByContract,
 } = await import(out);
 
-const CUSTOMER = JSON.parse(readFileSync(join(ROOT, 'packages/training/runs/knowledge-reach.json'), 'utf8'))
+const CUSTOMER = JSON.parse(readFileSync(join(ROOT, 'packages/corpus/data/measurements/knowledge-reach.json'), 'utf8'))
   .customer.rows.map((r) => ({ id: r.id, query: r.query }));
 
 /**
  * THE RECORDED RESULT THIS DEFENDS.
- * packages/training/runs/knowledge-reach-need-index.json, retrieval only, limit 5, the same 80
+ * packages/corpus/data/measurements/knowledge-reach-need-index.json, retrieval only, limit 5, the same 80
  * customer-phrased queries as the 61% baseline. Raise these when a run beats them; never lower one
  * without saying in the commit message which measurement replaced which.
  */
