@@ -73,7 +73,8 @@ test('every agent route checks the caller owns the project before Flue sees it',
 
 test('the team: the coordinator only reads, only the builder edits, the tester may only add a play check', () => {
   const agent = read('../src/agents/studpilot.ts');
-  assert.match(agent, /for \(const tool of pick\(READS\)\) useTool\(tool\);/, 'the coordinator mounts the read tools and nothing else');
+  assert.match(agent, /for \(const tool of pick\(COORDINATOR_READS\)\) useTool\(tool\);/, 'the coordinator mounts read tools and nothing else');
+  assert.match(agent, /const COORDINATOR_READS = READS\.filter\(/, 'and they are a subset of the read tools');
   assert.match(agent, /const READS = STUDIO_TOOL_SPECS\.filter\(\(t\) => !t\.writes\)/);
   assert.match(agent, /const TEST = \[\.\.\.READS, 'play_check'\];/);
   const roles = agent.slice(agent.indexOf('const ROLES = {'), agent.indexOf('} as const;'));
