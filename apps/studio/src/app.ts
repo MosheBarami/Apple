@@ -18,27 +18,36 @@ const bound = env as unknown as Env;
  * reservation fails the call with the product's own message. A streamed reply reports no usage here, so it settles at
  * the reserved estimate, which can only over-count.
  */
-const metered: Ai = Object.assign(Object.create(bound.AI) as Ai, {
-  async run(model: string, inputs: Record<string, unknown>, options?: unknown) {
-    const asked = inputs?.max_completion_tokens ?? inputs?.max_tokens;
-    const maxOut = typeof asked === 'number' ? asked : 4096;
-    const hold = await bound.GATE.reserveModel(model, JSON.stringify(inputs ?? {}).length, maxOut);
-    if (!hold.ok) throw new Error(hold.message);
-    try {
-      const result = await (bound.AI.run as (m: string, i: unknown, o?: unknown) => Promise<unknown>)(model, inputs, options);
-      const usage = (result as { usage?: { prompt_tokens?: number; completion_tokens?: number } } | null)?.usage;
-      await bound.GATE.settleModel(
-        model,
-        hold.reserved,
-        usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number'
-          ? { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens }
-          : null,
-      );
-      return result;
-    } catch (e) {
-      await bound.GATE.releaseModel(model, hold.reserved);
-      throw e;
-    }
+async function meteredRun(model: string, inputs: Record<string, unknown>, options?: unknown) {
+  const asked = inputs?.max_completion_tokens ?? inputs?.max_tokens;
+  const maxOut = typeof asked === 'number' ? asked : 4096;
+  const hold = await bound.GATE.reserveModel(model, JSON.stringify(inputs ?? {}).length, maxOut);
+  if (!hold.ok) throw new Error(hold.message);
+  try {
+    const result = await (bound.AI.run as (m: string, i: unknown, o?: unknown) => Promise<unknown>)(model, inputs, options);
+    const usage = (result as { usage?: { prompt_tokens?: number; completion_tokens?: number } } | null)?.usage;
+    await bound.GATE.settleModel(
+      model,
+      hold.reserved,
+      usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number'
+        ? { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens }
+        : null,
+    );
+    return result;
+  } catch (e) {
+    await bound.GATE.releaseModel(model, hold.reserved);
+    throw e;
+  }
+}
+
+// Lazy: at upload validation the module runs with no bindings, so nothing here may touch bound.AI before a call.
+const metered = new Proxy({} as Ai, {
+  get(_target, prop) {
+    if (prop === 'run') return meteredRun;
+    const ai = bound.AI as unknown as Record<string | symbol, unknown> | undefined;
+    if (!ai) return undefined;
+    const value = ai[prop];
+    return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(ai) : value;
   },
 });
 setProvider(cloudflareBindingProvider({ binding: metered, gateway: { id: bound.AI_GATEWAY_ID } }));
