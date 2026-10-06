@@ -111,3 +111,16 @@ test('every model call of the Studio agent is reserved against the shared budget
   const index = read('../../worker/src/index.ts');
   assert.match(index.slice(index.indexOf('async reserveModel(')), /^async reserveModel[^]*?reserveBudget\(this\.env, model, estimateNeurons\(/);
 });
+
+test('Credits: a message is admitted only with Credits left, and each settled response is charged to the grant\'s owner', () => {
+  const app = read('../src/app.ts');
+  const check = app.indexOf('GATE.canSpend(projectId)');
+  assert.ok(check > 0 && check < app.indexOf('createAgentRouter(StudPilot)'), 'the Credit check runs at the route, before Flue');
+  assert.match(app, /if \(!spend\.ok\) return c\.json\(\{ error: spend\.message \}, 402\);/);
+  const agent = read('../src/agents/studpilot.ts');
+  assert.match(agent, /useResponseFinish\(\(\{ response \}\) => \{[^]*GATE\.chargeUsage\(projectId, MODEL,/);
+  const index = read('../../worker/src/index.ts');
+  const charge = index.slice(index.indexOf('async chargeUsage('), index.indexOf('async releaseModel('));
+  assert.match(charge, /const owner = await studioGrantOwner\(this\.env, projectId\);/, 'the owner charged is the one the grant names');
+  assert.match(charge, /QUOTA_DO\.idFromName\(owner\)\)\.fetch\('https:\/\/do\/spend'/);
+});

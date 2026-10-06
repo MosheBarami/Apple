@@ -2021,12 +2021,14 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
   const sgsOwner = owners.find((o) => o.name === 'studioGrantedStub');
   assert.ok(sgsOwner, 'studioGrantedStub is gone — re-review how the Studio agent reaches a session');
   const sgs = src.slice(sgsOwner.start, sgsOwner.end);
-  assert.ok(sgs.includes('sessionStub(') && sgs.indexOf('studioGrantKey(') < sgs.indexOf('sessionStub('),
+  assert.ok(sgs.includes('sessionStub(') && sgs.indexOf('studioGrantOwner(') > 0 && sgs.indexOf('studioGrantOwner(') < sgs.indexOf('sessionStub('),
     'the studio grant must be checked before the session is addressed');
+  const sgo = owners.find((o) => o.name === 'studioGrantOwner');
+  assert.ok(sgo && /env\.KV\.get\(studioGrantKey\(projectId\)\)/.test(src.slice(sgo.start, sgo.end)), 'studioGrantOwner no longer reads the grant itself');
   const grantCalls = [...src.matchAll(/await grantStudio\(/g)];
   assert.equal(grantCalls.length, 1, 'a studio grant is written from somewhere other than StudioGate.openProject');
   const openProject = src.slice(src.indexOf('async openProject('), grantCalls[0].index + 80);
-  assert.match(openProject, /const ctx = await withOwnedProject\([^]*if \(!ctx\) return \{ ok: false \};\s*await grantStudio\(this\.env, ctx\.project\.id\)/,
+  assert.match(openProject, /const ctx = await withOwnedProject\([^]*if \(!ctx\) return \{ ok: false \};\s*await grantStudio\(this\.env, ctx\.project\.id, ctx\.project\.owner_id\)/,
     'the studio grant must be written only after withOwnedProject succeeded, for the id it resolved');
 
   // THE EARLIER CHECK THAT MAKES discordPorts SAFE. A Discord link's project id is only ever

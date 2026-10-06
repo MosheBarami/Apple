@@ -961,13 +961,21 @@ async function withOwnedProject(
 const STUDIO_GRANT_TTL_S = 1800;
 const studioGrantKey = (projectId: string) => `studio-grant:${projectId}`;
 
-async function grantStudio(env: Env, resolvedProjectId: string): Promise<void> {
-  await env.KV.put(studioGrantKey(resolvedProjectId), '1', { expirationTtl: STUDIO_GRANT_TTL_S });
+/** The grant's value is the project's owner, as the owner check read it: whose Credits the Studio agent spends. */
+async function grantStudio(env: Env, resolvedProjectId: string, ownerId: string): Promise<void> {
+  await env.KV.put(studioGrantKey(resolvedProjectId), ownerId, { expirationTtl: STUDIO_GRANT_TTL_S });
+}
+
+/** The owner a live grant names, or null (no grant, an expired one, or one written before grants named the owner). */
+async function studioGrantOwner(env: Env, projectId: string): Promise<string | null> {
+  if (!UUID_RE.test(projectId)) return null;
+  const owner = await env.KV.get(studioGrantKey(projectId));
+  return owner && UUID_RE.test(owner) ? owner : null;
 }
 
 async function studioGrantedStub(env: Env, projectId: string): Promise<DurableObjectStub | null> {
-  if (!UUID_RE.test(projectId)) return null;
-  if ((await env.KV.get(studioGrantKey(projectId))) !== '1') return null;
+  // The grant is read (studioGrantOwner -> studioGrantKey) before the session is addressed.
+  if (!(await studioGrantOwner(env, projectId))) return null;
   return sessionStub(env, projectId);
 }
 
@@ -989,7 +997,7 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     if (!user) return { ok: false };
     const ctx = await withOwnedProject({ env: this.env, get: () => user }, projectId);
     if (!ctx) return { ok: false };
-    await grantStudio(this.env, ctx.project.id);
+    await grantStudio(this.env, ctx.project.id, ctx.project.owner_id);
     // The Studio agent's model calls are not metered against Credits yet, so it answers only an owner who may build at all
     // (the pre-launch gate `/agent-run` applies). Anyone else can read their conversation but not send to it.
     return { ok: true, projectName: ctx.project.name, canBuild: buildApproved(this.env, ctx.project.owner_id) };
@@ -1020,6 +1028,38 @@ export class StudioGate extends WorkerEntrypoint<Env> {
       }
     }
     await settleBudget(this.env, reserved, actual, model, 'studio');
+  }
+
+  /**
+   * THE STUDIO AGENT'S CREDITS. Checked before a message is admitted, and charged when a response settles, to the owner the
+   * project's grant names (written behind the owner check, never supplied by the Studio worker). An unmetered owner is charged
+   * nothing, as everywhere else.
+   */
+  async canSpend(projectId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+    const owner = await studioGrantOwner(this.env, projectId);
+    if (!owner) return { ok: false, message: 'This project is not open in StudPilot Studio. Reload the page.' };
+    const state = (await (await this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(owner)).fetch('https://do/state')).json()) as QuotaState;
+    if (state.unmetered || state.creditsRemaining > 0) return { ok: true };
+    return { ok: false, message: 'You have used all your Credits for now. Your allowance renews at midnight UTC, or you can buy more.' };
+  }
+
+  async chargeUsage(projectId: string, model: string, usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }): Promise<{ ok: boolean; credits: number }> {
+    const owner = await studioGrantOwner(this.env, projectId);
+    if (!owner) return { ok: false, credits: 0 };
+    let neurons: number;
+    try {
+      neurons = neuronsFor(model, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
+    } catch {
+      return { ok: false, credits: 0 };
+    }
+    if (neurons <= 0) return { ok: true, credits: 0 };
+    const credits = creditsForNeurons(neurons);
+    const res = await this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(owner)).fetch('https://do/spend', {
+      method: 'POST',
+      body: JSON.stringify({ credits, kind: 'usage_studio', upTo: true }),
+    });
+    const out = (await res.json().catch(() => ({}))) as { ok?: boolean };
+    return { ok: out.ok === true, credits };
   }
 
   async releaseModel(model: string, reserved: number): Promise<void> {

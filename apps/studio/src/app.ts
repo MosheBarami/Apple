@@ -72,6 +72,11 @@ app.use(`${MOUNT}/*`, async (c, next) => {
   if (c.req.method === 'POST' && !open.canBuild) {
     return c.json({ error: 'StudPilot is in private pre-launch: building is open to approved accounts only.' }, 403);
   }
+  // A new message spends the owner's Credits (charged when the response settles, in the agent): none left, none admitted.
+  if (c.req.method === 'POST' && !c.req.path.endsWith('/abort')) {
+    const spend = await c.env.GATE.canSpend(projectId);
+    if (!spend.ok) return c.json({ error: spend.message }, 402);
+  }
   return next();
 });
 
