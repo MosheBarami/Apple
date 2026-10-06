@@ -116,7 +116,7 @@ export const RENDERS: RenderItem[] = [
   { id: "inventory", title: "Inventory grid", kind: "screen", featured: true, alt: "An inventory window with a grid of animal cards, each with a rarity and an Equip button." },
   { id: "daily-quests", title: "Daily quests", kind: "system", featured: true, alt: "A daily quests window with three quests, progress bars and Claim buttons." },
   { id: "daily-rewards", title: "Daily rewards", kind: "system", featured: true, alt: "A seven-day rewards window with claimed days, today's reward and locked days." },
-  { id: "upgrades", title: "Upgrades", kind: "system", featured: true, alt: "An upgrades window with four upgrades, each with a level, a progress bar and a price." },
+  { id: "upgrades", title: "Upgrades", kind: "system", featured: true, alt: "An upgrades window with five upgrades, each with a level, a progress bar and a price." },
   { id: "rebirth", title: "Rebirth", kind: "system", featured: false, alt: "A rebirth window showing the current and next multiplier, a cost and a progress bar." },
   { id: "park-props", title: "Park props", kind: "prop", featured: true, alt: "Blocky trees, a rock, two benches and a lamp post standing on studded grass." },
   { id: "park-wide", title: "Props in place", kind: "prop", featured: false, alt: "A wide view of a small park: a clump of trees, benches and a flag on a green baseplate." },

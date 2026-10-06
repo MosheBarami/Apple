@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -24,6 +24,13 @@ const TABS = [
 /** A framed Studio window around real renders. The tabs swap the render; nothing here is a screenshot of the product. */
 export function StudioWindow() {
   const [active, setActive] = useState(0);
+  // The other tabs' renders sit in the viewport at opacity 0, so "lazy" still fetched them with the hero: they wait for
+  // the page to settle (or for a tab press) instead of competing with the first render.
+  const [rest, setRest] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setRest(true), 2500);
+    return () => window.clearTimeout(t);
+  }, []);
   const uid = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -110,8 +117,8 @@ export function StudioWindow() {
                 height={623}
                 loading={i === 0 ? "eager" : "lazy"}
                 sizes="(min-width: 1024px) 640px, 92vw"
-                src={`/renders/${t.id}.webp`}
-                srcSet={`/renders/${t.id}-640.webp 640w, /renders/${t.id}.webp 1174w`}
+                src={i === 0 || rest || active === i ? `/renders/${t.id}.webp` : undefined}
+                srcSet={i === 0 || rest || active === i ? `/renders/${t.id}-640.webp 640w, /renders/${t.id}.webp 1174w` : undefined}
                 width={1174}
               />
             </div>

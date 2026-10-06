@@ -290,13 +290,13 @@ html {
     opacity: 1;
   }
 }
+/* Entrances move, they do not fade from nothing: content at opacity 0 does not count as painted, and the page's first
+   paint waited for every fade (Lighthouse, 2026-10-06: FCP 2.8 s on mobile). */
 @keyframes route-in {
   from {
-    opacity: 0;
     transform: translateY(10px);
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
@@ -408,8 +408,16 @@ html {
 }
 
 /* The hero entrance runs on load, in a fixed order. */
+@keyframes rise-up {
+  from {
+    transform: translateY(14px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
 .rise {
-  animation: fade-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: rise-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: var(--d, 0ms);
 }
 
