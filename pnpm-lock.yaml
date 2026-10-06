@@ -292,6 +292,8 @@ importers:
         specifier: workspace:*
         version: link:../design
 
+  packages/library: {}
+
   packages/sdk: {}
 
   packages/shared: {}

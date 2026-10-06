@@ -1,0 +1,11 @@
+{
+  "name": "@studpilot/library",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The StudPilot Library pipeline (master plan §4): licences, the human-made check, provenance, sanitizing, grading, families and search cards. Metadata only; binaries live in R2.",
+  "scripts": {
+    "typecheck": "node --check src/licence.mjs && node --check src/item.mjs && node --check src/card.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

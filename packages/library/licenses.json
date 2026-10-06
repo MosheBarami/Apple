@@ -1,0 +1,24 @@
+{
+  "about": "Master plan §4.1 L2: the licence classes an item may carry. An item whose licence is not one of these is refused. Classes, not free text: the source's own licence words are kept in the item, and licence.mjs maps them here.",
+  "allowed": {
+    "cc0": { "name": "CC0 1.0 / public domain", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "attribution": false },
+    "cc-by-3.0": { "name": "CC BY 3.0", "url": "https://creativecommons.org/licenses/by/3.0/", "attribution": true },
+    "cc-by-4.0": { "name": "CC BY 4.0", "url": "https://creativecommons.org/licenses/by/4.0/", "attribution": true },
+    "mit": { "name": "MIT", "url": "https://opensource.org/license/mit", "attribution": true },
+    "apache-2.0": { "name": "Apache 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0", "attribution": true },
+    "bsd-2-clause": { "name": "BSD 2-Clause", "url": "https://opensource.org/license/bsd-2-clause", "attribution": true },
+    "bsd-3-clause": { "name": "BSD 3-Clause", "url": "https://opensource.org/license/bsd-3-clause", "attribution": true },
+    "ofl-1.1": { "name": "SIL Open Font License 1.1", "url": "https://openfontlicense.org", "attribution": true },
+    "roblox-creator-store": { "name": "Roblox Creator Store public asset (Open Use), used by ID", "url": "https://create.roblox.com/docs/projects/assets/privacy", "attribution": false },
+    "roblox-licensed-audio": { "name": "Roblox-licensed music (inside Roblox only, by ID)", "url": "https://create.roblox.com/docs/audio", "attribution": false },
+    "roblox-owned": { "name": "Roblox-owned asset (animation packages, emotes, Roblox uploads)", "url": "https://en.help.roblox.com/hc/en-us/articles/115004647846", "attribution": false }
+  },
+  "banned": [
+    { "pattern": "\\bnc\\b|non[- ]?commercial", "why": "NC: not usable in commercial games" },
+    { "pattern": "\\bnd\\b|no[- ]?deriv", "why": "ND: the tool changes items (scale, pivot, materials)" },
+    { "pattern": "personal use", "why": "personal use only" },
+    { "pattern": "no[- ]?redistribut|not (be )?redistribut", "why": "no redistribution" },
+    { "pattern": "mixamo", "why": "Mixamo's FAQ forbids redistributing raw animation files" },
+    { "pattern": "share[- ]?alike|\\bsa\\b|gpl|agpl|lgpl", "why": "copyleft terms would bind the user's game" }
+  ]
+}
