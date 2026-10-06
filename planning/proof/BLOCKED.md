@@ -7,9 +7,10 @@ no token here can reach. Work that does not depend on an item goes on. Done and 
 ## Urgent
 
 ### N2. Google and Discord sign-in: one live sign-in with each (after Claude Code switches them on)
-The four `.env` lines are in (found 2026-10-05). Claude Code enables both providers once the app with the buttons is
-live, and updates the pages. Then sign in once with Google and once with Discord on https://studpilot.app/app/signin
-and tell Claude Code it worked.
+Both providers were switched on 2026-10-06 (Supabase reports google: true, discord: true; the app shows the buttons when
+they are). Google's consent page loads with our callback and no redirect error; Discord's page renders client-side, so a
+redirect error there cannot be ruled out without a person. The privacy policy already covers both "where offered".
+Left: sign in once with Google and once with Discord on https://studpilot.app/app/signin and tell Claude Code it worked.
 
 ## Before charging money
 
