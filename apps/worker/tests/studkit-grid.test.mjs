@@ -34,12 +34,13 @@ test('the grid sizes the cards the recipe gives it, and shows the bar only when 
   assert.equal(many.props.ScrollBarThickness, 10);
 });
 
-test('a tintable icon takes its token colour; a fixed one keeps its picture', () => {
+test('a tintable icon takes the pale (rim) shade of its token, so it stands out on a card of that colour; a fixed one keeps its picture', () => {
   const egg = expandKit({ kit: 'icon', icon: 'egg', tint: 'grape' });
-  assert.equal(egg.props.ImageColor3, TOKENS.grape.top);
+  assert.equal(egg.props.ImageColor3, TOKENS.grape.rim);
+  assert.notEqual(egg.props.ImageColor3, TOKENS.grape.mid, 'never the card face colour it sits on');
   const gem = expandKit({ kit: 'icon', icon: 'gem', tint: 'grape' });
   assert.equal(gem.props.ImageColor3, undefined);
-  assert.equal(expandKit({ kit: 'icon', icon: 'egg' }).props.ImageColor3, TOKENS.sun.top, 'untinted, a tintable icon is gold');
+  assert.equal(expandKit({ kit: 'icon', icon: 'egg' }).props.ImageColor3, TOKENS.sun.rim, 'untinted, a tintable icon is pale gold');
 });
 
 test('UI Spec v2: every face has the navy contour outside and a pale rim inside; the window body is cloud, never navy', () => {

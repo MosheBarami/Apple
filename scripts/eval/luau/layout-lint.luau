@@ -59,6 +59,22 @@ end
 local function area(r) return math.max(0, r[3] - r[1]) * math.max(0, r[4] - r[2]) end
 local function inter(a, b) return area({ math.max(a[1], b[1]), math.max(a[2], b[2]), math.min(a[3], b[3]), math.min(a[4], b[4]) }) end
 local function related(a, b) return a == b or a:IsDescendantOf(b) or b:IsDescendantOf(a) end
+-- The nearest kit holder of an object (the tile, card or slot it is part of).
+local function holderOf(o)
+	local x = o.Parent
+	while x and x:IsA("GuiObject") do
+		local _, p = kitOf(x)
+		if p == "holder" then return x end
+		x = x.Parent
+	end
+	return nil
+end
+-- A label drawn over its own item's icon is the design (spec 4.6: a tile label overlaps the icon's lower edge); a
+-- picture drawn over a text, or a picture from another item, is still a collision.
+local function ownsOver(text, pic)
+	local h = holderOf(text)
+	return h ~= nil and h == holderOf(pic) and text.ZIndex >= pic.ZIndex
+end
 -- The list item an object belongs to: its nearest kit holder whose parent holds two or more holders of the same component.
 local function itemOf(o)
 	local x = o.Parent
@@ -152,7 +168,7 @@ for i, a in content do
 	end
 	if a.text then
 		for j, b in content do
-			if i ~= j and not related(a.o, b.o) and (b.text == false or j > i) then
+			if i ~= j and not related(a.o, b.o) and (b.text == false or j > i) and not (b.text == false and ownsOver(a.o, b.o)) then
 				local share = inter(a.r, b.r) / math.max(1, area(a.r))
 				if share > 0.12 then
 					local what = b.text and ("text '" .. string.sub(b.o.Text, 1, 24) .. "'") or ("picture " .. b.o.Name)

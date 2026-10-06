@@ -192,9 +192,9 @@
          "kit": "icon",
          "icon": "{{item.icon}}",
          "size": [
-          0.32,
+          0.36,
           0,
-          0.86,
+          1.0,
           0
          ],
          "position": [

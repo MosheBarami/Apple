@@ -191,12 +191,13 @@ export function face(component: string, name: string, t: Token, opts: Place & { 
 }
 
 /**
- * An icon from the family by name. A white family image (`tintable`) takes its item's colour; a name the family does not
+ * An icon from the family by name. A white family image (`tintable`) takes the pastel (rim) shade of its item's colour,
+ * so it stands out on a card of that colour; a name the family does not
  * have draws nothing (no emoji fallback, spec §3.5) and says so in StudKitMissingIcon for the lint.
  */
 export function icon(component: string, name: unknown, opts: Place & { tint?: unknown } = {}): Spec {
   const entry = typeof name === 'string' ? ICONS[name] : undefined;
-  const tint = entry?.tintable ? { ImageColor3: TOKENS[typeof opts.tint === 'string' && opts.tint in TOKENS ? (opts.tint as Token) : 'sun']!.top } : {};
+  const tint = entry?.tintable ? { ImageColor3: TOKENS[typeof opts.tint === 'string' && opts.tint in TOKENS ? (opts.tint as Token) : 'sun']!.rim } : {};
   return {
     className: 'ImageLabel', name: 'Icon',
     props: { Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Image: entry?.image ?? '', ScaleType: enumOf('ScaleType', 'Fit'), ZIndex: opts.z ?? 8, ...tint },
@@ -326,17 +327,20 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
       ...(n.text !== undefined ? [label('bar', 'Label', n.text, { size: [1, -12, 0.8, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 24, z: 9, line: true })] : []),
     ],
   }),
-  /** A currency pill (spec §4.6): the icon overflows the left end, then the number in its ink. */
+  /** A currency pill (spec §4.6): the icon overflows the left end, the number in its ink, a small lime "+" button. */
   currency: (n) => face('currency', String(n.name ?? 'Currency'), 'grey', {
     ...(n as Place), geo: GEO.chip, studs: false,
-    children: [label('currency', 'Value', n.text, { ink: (n.ink as Ink) ?? 'money', size: [0.66, 0, 0.78, 0], position: [0.3, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 44, line: true })],
-    holderChildren: [{ ...icon('currency', n.icon, { size: [0.3, 0, 1.35, 0], position: [-0.04, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] }],
+    children: [label('currency', 'Value', n.text, { ink: (n.ink as Ink) ?? 'money', size: [0.5, 0, 0.78, 0], position: [0.28, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 44, line: true })],
+    holderChildren: [
+      { ...icon('currency', n.icon, { size: [0.3, 0, 1.2, 0], position: [-0.02, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] },
+      COMPONENTS.button!({ name: 'Add', token: 'lime', text: '+', size: [0.16, 0, 0.78, 0], position: [0.97, 0, 0.46, 0], anchor: [1, 0.5], max: 40, z: 5 }),
+    ],
   }),
   /** A hotbar slot (spec §4.6): a tile with its item's icon; an empty slot is a clean grey tile with only its number. */
   slot: (n) => face('slot', String(n.name ?? 'Slot'), n.filled === true ? 'lime' : 'grey', {
     ...(n as Place), aspect: 1, geo: GEO.tile, button: true, attributes: n.attributes as V | undefined,
     children: [
-      label('slot', 'Number', n.number, { size: [0.32, 0, 0.3, 0], position: [0.07, 0, 0.04, 0], align: 'Left', max: 20 }),
+      label('slot', 'Number', n.number, { size: [0.32, 0, 0.3, 0], position: [0.07, 0, 0.04, 0], align: 'Left', max: 20, z: 10 }),
       ...(n.filled === true ? [label('slot', 'Label', n.text, { size: [0.96, 0, 0.34, 0], position: [0.5, 0, 1.02, 0], anchor: [0.5, 1], max: 22, z: 9 })] : []),
     ],
     holderChildren: n.filled === true ? [icon('slot', n.icon, { size: [0.8, 0, 0.62, 0], position: [0.5, 0, 0.44, 0], anchor: [0.5, 0.5], z: 9 })] : [],

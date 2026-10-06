@@ -4,7 +4,8 @@
 --   font          a font other than FredokaOne
 --   emoji         an emoji in any text
 --   banned-text   "R$", "Gems <n>", ">" used as an arrow, "Placeholder", "Coming soon", "Empty", "Item Name"
---   same-hue      a stroke whose colour is within dE 25 of the face it outlines (the contour must be the navy)
+--   same-hue      a stroke whose colour is within dE 25 of the face it outlines (the contour must be the navy, so a
+--                 navy stroke always passes, even round a navy track)
 --   white-band    a translucent white frame covering more than 15 % of a face (the v1 shine band)
 --   black-shadow  a translucent black frame (shadows are the contour colour or a darker shade of the face)
 --   navy-body     a window body darker than the cloud body (no navy wells unless the request asked for dark)
@@ -62,7 +63,7 @@ for _, gui in game:GetService("StarterGui"):GetChildren() do
 			local parent = o.Parent
 			if parent and parent:IsA("GuiObject") and not isText(parent) and parent.BackgroundTransparency < 0.95 and o.Transparency < 0.9 then
 				local d = dE(o.Color, faceColour(parent))
-				if o.Name ~= "Rim" and d < 25 then find("same-hue", o, string.format("stroke dE %.0f from its face", d)) end
+				if o.Name ~= "Rim" and o.Color:ToHex() ~= "0b1a33" and d < 25 then find("same-hue", o, string.format("stroke dE %.0f from its face", d)) end
 			end
 			continue
 		end
