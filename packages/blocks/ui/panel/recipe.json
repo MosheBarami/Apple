@@ -47,6 +47,9 @@
         },
         "BackgroundTransparency": 1
        },
+       "attributes": {
+        "StartOpen": "{{startOpen}}"
+       },
        "children": [
         {
          "className": "UISizeConstraint",

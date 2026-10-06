@@ -631,7 +631,8 @@
               "AutoButtonColor": false
              },
              "attributes": {
-              "UI_Click": true
+              "UI_Click": true,
+              "Action": "{{item.action}}"
              },
              "children": [
               {

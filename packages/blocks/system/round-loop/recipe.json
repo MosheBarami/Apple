@@ -1,0 +1,24 @@
+{
+ "steps": [
+  {
+   "id": "module",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.Rounds",
+   "file": "src/Rounds.luau",
+   "create": {
+    "className": "ModuleScript",
+    "parent": "game.ServerScriptService"
+   }
+  },
+  {
+   "id": "start",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.RoundsStart",
+   "file": "src/RoundsStart.luau",
+   "create": {
+    "className": "Script",
+    "parent": "game.ServerScriptService"
+   }
+  }
+ ]
+}

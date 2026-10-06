@@ -10,16 +10,18 @@ local CURRENCY = {{currency}}
 local BASE_COST = {{baseCost}}
 local COST_GROWTH = {{costGrowth}}
 local STEP = {{multiplierStep}}
+local COMPOUND = {{compound}}
 local Rebirth = { CURRENCY = CURRENCY }
 
 local function count(player): number return Currency.getData(player, "Rebirths") or 0 end
 function Rebirth.cost(player): number return math.floor(BASE_COST * COST_GROWTH ^ count(player)) end
-function Rebirth.multiplier(player): number return 1 + count(player) * STEP end
+local function multiplierAt(n: number): number return if COMPOUND then STEP ^ n else 1 + n * STEP end
+function Rebirth.multiplier(player): number return multiplierAt(count(player)) end
 
 local function show(player)
 	player:SetAttribute("Rebirths", count(player))
 	player:SetAttribute("Multiplier", Rebirth.multiplier(player))
-	player:SetAttribute("NextMultiplier", 1 + (count(player) + 1) * STEP)
+	player:SetAttribute("NextMultiplier", multiplierAt(count(player) + 1))
 	player:SetAttribute("RebirthCost", Rebirth.cost(player))
 end
 

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Rounds",
+    "contains": "function Rounds.winners",
+    "describes": "the server runs the lobby and round timers and pays winners"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the round loop has no errors"
+  }
+]

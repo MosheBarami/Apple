@@ -1,0 +1,55 @@
+{
+  "id": "round-loop",
+  "kind": "system",
+  "summary": "A round loop: lobby countdown, a timed round in an arena, and coins for the players still standing at the end.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "lobbySeconds": {
+        "type": "integer",
+        "minimum": 5,
+        "maximum": 600,
+        "default": 30
+      },
+      "roundSeconds": {
+        "type": "integer",
+        "minimum": 10,
+        "maximum": 1800,
+        "default": 120
+      },
+      "minPlayers": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 1,
+        "description": "Players needed to start a round"
+      },
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+        "default": "Coins",
+        "description": "A currency from the currency block"
+      },
+      "reward": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000000,
+        "default": 50,
+        "description": "Paid to each winner"
+      },
+      "arena": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Arena",
+        "description": "Workspace model or folder holding the round spawn parts (named Spawn...)"
+      }
+    }
+  },
+  "provides": [
+    "Rounds.winners"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

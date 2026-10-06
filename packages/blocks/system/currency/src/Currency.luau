@@ -80,7 +80,13 @@ function Currency.grant(player: Player, name: string, amount: number, reason: st
 	local after = Currency.afterGrant(before, amount)
 	record.balances[name] = after
 	show(player, name)
-	if after > before then changed:Fire(player, name, after, after - before, reason or "grant") end
+	if after > before then
+		-- Lifetime earnings, for "total earned" leaderboards: saved, and the player attribute <name>Earned.
+		local key = name .. "Earned"
+		record.data[key] = (record.data[key] or 0) + (after - before)
+		player:SetAttribute(key, record.data[key])
+		changed:Fire(player, name, after, after - before, reason or "grant")
+	end
 end
 
 function Currency.getData(player: Player, key: string): any

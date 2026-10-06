@@ -1,0 +1,24 @@
+{
+ "steps": [
+  {
+   "id": "module",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.ClickEarn",
+   "file": "src/ClickEarn.luau",
+   "create": {
+    "className": "ModuleScript",
+    "parent": "game.ServerScriptService"
+   }
+  },
+  {
+   "id": "start",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.ClickEarnStart",
+   "file": "src/ClickEarnStart.luau",
+   "create": {
+    "className": "Script",
+    "parent": "game.ServerScriptService"
+   }
+  }
+ ]
+}

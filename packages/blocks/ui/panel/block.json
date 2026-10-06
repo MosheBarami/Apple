@@ -53,6 +53,11 @@
         "type": "boolean",
         "default": true,
         "description": "Show the red close button"
+      },
+      "startOpen": {
+        "type": "boolean",
+        "default": true,
+        "description": "Open when the game starts; false for a panel a HUD button opens"
       }
     }
   },

@@ -1,0 +1,52 @@
+{
+  "id": "click-earn",
+  "kind": "system",
+  "summary": "Click-to-earn on the server: each click pays a currency, with a cooldown that autoclickers cannot beat.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+        "default": "Coins",
+        "description": "A currency from the currency block"
+      },
+      "amount": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000000,
+        "default": 1,
+        "description": "Coins per click before boosts"
+      },
+      "cooldown": {
+        "type": "number",
+        "minimum": 0.05,
+        "maximum": 10,
+        "default": 0.2,
+        "description": "Seconds between paid clicks"
+      },
+      "upgrade": {
+        "type": "string",
+        "maxLength": 26,
+        "default": "",
+        "description": "An upgrades-block upgrade that adds per click (its name), or \"\""
+      },
+      "perLevel": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000,
+        "default": 1,
+        "description": "Extra per click for each level of that upgrade"
+      }
+    }
+  },
+  "provides": [
+    "ClickEarn.click",
+    "ClickEarn.amount",
+    "ClickEarn"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

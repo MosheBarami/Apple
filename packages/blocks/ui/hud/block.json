@@ -83,7 +83,8 @@
           "required": [
             "label",
             "icon",
-            "colour"
+            "colour",
+            "action"
           ],
           "properties": {
             "label": {
@@ -115,6 +116,12 @@
               ],
               "default": "green",
               "description": "Button colour"
+            },
+            "action": {
+              "type": "string",
+              "pattern": "^((open|fire):[A-Za-z][A-Za-z0-9_]{0,31}|pass:[0-9]{1,15})?$",
+              "default": "",
+              "description": "open:<Screen> toggles a panel; fire:<Remote> asks the server (e.g. fire:ClickEarn, fire:RebirthRequest, fire:DailyClaim); pass:<id> offers a gamepass; \"\" nothing"
             }
           }
         },

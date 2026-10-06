@@ -31,7 +31,12 @@
         "minimum": 0.05,
         "maximum": 10,
         "default": 0.5,
-        "description": "Multiplier gained per rebirth (1 + rebirths x step)"
+        "description": "Multiplier gained per rebirth (1 + rebirths x step), or the factor per rebirth when compound"
+      },
+      "compound": {
+        "type": "boolean",
+        "default": false,
+        "description": "true: each rebirth multiplies (step^rebirths, e.g. 1.5x each time)"
       }
     }
   },
