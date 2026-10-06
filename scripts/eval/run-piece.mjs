@@ -18,6 +18,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeAdminApi } from './lib/api.mjs';
+import { evalConversationId, mintUserSession, runStudioRequest } from './lib/studio-agent.mjs';
 import { DEFAULT_SPAWN, WORLD_CAMERAS, cameraPlan, classifyBuild, classifyConsole, consoleDelta, extractImage, fileExtension, framingFor, imageSize, playTestCounts, plannedShotNames, sizeLabel, uiShotName, UI_TARGETS } from './lib/capture-plan.mjs';
 import { REPO_ROOT, getRequest } from './lib/dev-set.mjs';
 import { loadHarnessEnv, redact } from './lib/env.mjs';
@@ -74,7 +75,7 @@ return HttpService:JSONEncode({ errors = errors, warnings = warnings, first = fi
 // ---------------------------------------------------------------------------------------------------------------
 export function parseArgs(argv) {
   const o = { positional: [], flags: {} };
-  const valued = new Set(['milestone', 'project', 'user', 'proof-root', 'env-file', 'api-base', 'baseline-file', 'studio-id', 'grant', 'timeout-minutes', 'max-month-usd']);
+  const valued = new Set(['milestone', 'project', 'user', 'proof-root', 'env-file', 'api-base', 'baseline-file', 'studio-id', 'grant', 'timeout-minutes', 'max-month-usd', 'agent']);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith('--')) o.positional.push(a);
@@ -92,7 +93,9 @@ export function parseArgs(argv) {
 
 export function resolveOptions(argv, { env = process.env } = {}) {
   const { positional, flags } = parseArgs(argv);
-  const known = new Set(['milestone', 'project', 'user', 'proof-root', 'env-file', 'api-base', 'baseline-file', 'studio-id', 'grant', 'timeout-minutes', 'max-month-usd', 'dry-run', 'init-baseline', 'overwrite', 'help']);
+  const known = new Set(['milestone', 'project', 'user', 'proof-root', 'env-file', 'api-base', 'baseline-file', 'studio-id', 'grant', 'timeout-minutes', 'max-month-usd', 'agent', 'dry-run', 'init-baseline', 'overwrite', 'help']);
+  const agent = flags.agent ?? 'product';
+  if (agent !== 'product' && agent !== 'studio') throw new Error('--agent is product (the /app agent, default) or studio (the rebuilt Studio agent)');
   for (const f of Object.keys(flags)) if (!known.has(f)) throw new Error(`unknown flag --${f}`);
   const milestone = flags.milestone ?? DEFAULTS.milestone;
   if (!/^[A-Za-z0-9._-]+$/.test(milestone)) throw new Error(`--milestone "${milestone}" is not a folder name`);
@@ -111,6 +114,7 @@ export function resolveOptions(argv, { env = process.env } = {}) {
     projectId: flags.project ?? DEFAULT_PROJECT,
     userId: flags.user ?? DEFAULT_USER,
     dryRun: flags['dry-run'] === true,
+    agent,
     initBaseline,
     overwrite: flags.overwrite === true,
     proofRoot,
@@ -467,6 +471,24 @@ export async function runPiece(opts, deps) {
     // ----------------------------------------------------------------------------------------------- a fresh conversation, credits and the run
     if (opts.dryRun) {
       manifest.conversation = { cleared: false, skipped: 'dry run: no agent run follows, so the project\'s chat is left as it is' };
+    } else if (opts.agent === 'studio') {
+      // THE REBUILT STUDIO AGENT. A new conversation per piece (`<project>~eval-<id>-<time>`), so nothing to clear. It charges no
+      // Credits yet (its model calls are metered by the shared budget only), so the credit steps do not apply and say so.
+      const conversationId = evalConversationId(opts.projectId, opts.requestId, new Date(deps.now()).toISOString().replace(/[^0-9]/g, '').slice(0, 14));
+      manifest.agent = 'studio';
+      manifest.conversation = { cleared: true, route: 'a new Studio conversation', conversationId, at: new Date(deps.now()).toISOString() };
+      credits.skipped = 'the Studio agent charges no Credits yet; its model calls are metered by the shared budget';
+      await timer.step('agent-run', async (entry) => {
+        const startedAt = deps.now();
+        const token = await deps.studio.session(opts.userId);
+        secrets.push(token);
+        const r = await deps.studio.run({ token, conversationId, text: request.text, timeoutMs: opts.timeoutMinutes * 60_000 });
+        manifest.run = { startedAt: new Date(startedAt).toISOString(), startConfirmed: true, endedBy: r.endedBy, stopReason: r.endedBy, minutes: Math.round(((deps.now() - startedAt) / 60_000) * 100) / 100, timeoutMinutes: opts.timeoutMinutes, error: r.error ? redact(r.error, secrets) : null };
+        out.reply = `${r.reply}\n`;
+        out.steps = { dryRun: false, stopReason: r.endedBy, count: r.steps.length, failed: r.steps.filter((x) => x.ok === false).length, byTool: r.steps.reduce((acc, x) => ({ ...acc, [x.tool]: (acc[x.tool] ?? 0) + 1 }), {}), steps: r.steps };
+        if (r.endedBy === 'failed') throw new Abort('agent-run', `the Studio agent's run failed: ${manifest.run.error}`);
+        entry.note = `${manifest.run.minutes} min, ${r.endedBy}, ${r.steps.length} top-level tool calls`;
+      });
     } else {
       // The next request must not see an earlier one: the messages, the memory they produced and the build ledger of the project go
       // (POST /api/admin/conversation-reset/:id; scripts/eval/README.md says exactly what that is). A piece that cannot get one does
@@ -860,6 +882,11 @@ export function defaultDeps(opts) {
     adminKey: env.adminKey,
     api: makeAdminApi({ apiBase: env.apiBase, adminKey: env.adminKey }),
     openStudio: () => new StudioMcpClient().start(),
+    // The rebuilt Studio agent (`--agent studio`): one fresh conversation per piece, reached with the test user's own session.
+    studio: {
+      session: (userId) => mintUserSession(userId, { managementToken: env.supabaseManagementToken }),
+      run: (args) => runStudioRequest({ apiBase: env.apiBase, ...args }),
+    },
     devSetPath: undefined,
     envFile: env.envFile,
   };
