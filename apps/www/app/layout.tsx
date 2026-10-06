@@ -32,8 +32,10 @@ const fredoka = Fredoka({
   weight: ["500", "600", "700"],
 });
 
+// Code and tool names in the app only: not preloaded, so it does not compete with the landing's first paint.
 const geistMono = Geist_Mono({
   display: "swap",
+  preload: false,
   subsets: ["latin"],
   variable: "--font-geist-mono",
 });
