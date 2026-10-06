@@ -20,9 +20,12 @@ export function renderIcons(dir = DIR) {
   for (const [name, glyph] of Object.entries(glyphs)) icons[name] = { glyph };
   for (const p of pack) {
     if (!icons[p.name]) throw new Error(`assets/icons.json names ${p.name}, which glyphs.json does not list`);
+    if (!p.licence || !/^https:\/\//.test(p.source_url ?? '') || !/^[0-9a-f]{64}$/.test(p.png_sha256 ?? '')) throw new Error(`assets/icons.json: ${p.name} needs licence, source_url and png_sha256`);
+    if (p.tintable === true) icons[p.name].tintable = true;
+    // imageId is null until the StudPilot group has uploaded the PNG; the name then draws nothing (StudKitMissingIcon).
+    if (p.imageId === null) continue;
     if (!/^rbxassetid:\/\/\d{1,20}$/.test(p.imageId)) throw new Error(`assets/icons.json: ${p.name} has no image id`);
     icons[p.name].image = p.imageId;
-    if (p.tintable === true) icons[p.name].tintable = true;
   }
   const worldFile = join(dir, 'assets', 'world-pack.json');
   const props = {};
