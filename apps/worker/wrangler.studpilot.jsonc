@@ -173,6 +173,8 @@
     "BILLING_TEST_ADMINS": "moshe.barami111@gmail.com",
     "MEMBERSHIP_OUTBOX_CONSUMER": "apple",
     "AI_GATEWAY_ID": "studpilot",
+    // Pruned nightly to 30 days until they are deleted (handoff M1); remove each id once its gateway is gone.
+    "AI_GATEWAY_RETIRED_IDS": "golem,default",
     // Public account id; with the CF_ANALYTICS_TOKEN secret it lets /api/admin/product-analytics read Analytics Engine.
     "CF_ACCOUNT_ID": "e9b8acf2e89a1de289a1ee4abb0f3f8d",
     "BUILD_SHA": "616d84b"

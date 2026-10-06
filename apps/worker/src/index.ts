@@ -7614,6 +7614,20 @@ async function runScheduled(env: Env, cron: string | null): Promise<void> {
       actorId: null,
     });
   }
+  // RETIRED GATEWAYS KEEP THEIR LOGS UNTIL THEY ARE DELETED, and the 30 days apply to them too (D-14; the privacy page states it for every log).
+  // `golem` and `default` are to be deleted (handoff M1: 7 days after their replacement was verified); until then each night prunes them.
+  // Audit only: a retired gateway that is already gone answers an error, which is the expected end of this list, not an alarm.
+  for (const retired of (env.AI_GATEWAY_RETIRED_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)) {
+    const pruned = await pruneGatewayLogs({ ...env, AI_GATEWAY_ID: retired });
+    recordEvent({
+      kind: 'audit',
+      action: 'gateway_log_retention',
+      actorKind: 'system',
+      allowed: pruned.status === 'requested',
+      subject: `${retired} (retired): ${describeGatewayRetention(pruned)}`,
+    });
+  }
+
   // ROBLOX GRANTS (owner decision D-14): ask Roblox whether each stored token is still valid, and wipe the Roblox data of a person whose grant is lost
   // (Roblox Third-Party App Policy). Its own step, after the others: a Roblox outage must not cancel the retention sweep. The counts are recorded either
   // way, so a night that checked nothing (no Roblox sign-in on this deployment) reads as that and not as a quiet night.

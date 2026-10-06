@@ -475,3 +475,16 @@ test('WIRING: the daily schedule is declared, the secret is an optional Env fiel
   assert.match(env, /CF_WORKER_OPS_TOKEN\?: string;/, 'CF_WORKER_OPS_TOKEN is not an optional Env field');
   assert.doesNotMatch(readFileSync(join(WORKER, 'wrangler.studpilot.jsonc'), 'utf8'), /CF_WORKER_OPS_TOKEN\s*"\s*:/, 'a secret was written into the config');
 });
+
+test('RETIRED GATEWAYS: the nightly step also prunes every gateway named in AI_GATEWAY_RETIRED_IDS, golem and default today', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const index = readFileSync(join(here, '..', 'src', 'index.ts'), 'utf8');
+  const loop = index.slice(index.indexOf("for (const retired of (env.AI_GATEWAY_RETIRED_IDS ?? '')"));
+  assert.ok(loop.length > 0, 'the retired-gateway loop is gone');
+  assert.match(loop.slice(0, 400), /await pruneGatewayLogs\(\{ \.\.\.env, AI_GATEWAY_ID: retired \}\)/);
+  const config = readFileSync(join(here, '..', 'wrangler.studpilot.jsonc'), 'utf8');
+  assert.match(config, /"AI_GATEWAY_RETIRED_IDS": "golem,default"/);
+});
