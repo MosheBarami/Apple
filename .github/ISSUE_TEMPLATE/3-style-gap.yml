@@ -1,0 +1,34 @@
+name: Style gap
+description: Output works but does not look like the reference board (STYLE-BIBLE).
+title: "[Style] "
+labels: [style]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Kit part or block
+      placeholder: StudKit Window / ui/panel
+    validations: { required: true }
+  - type: checkboxes
+    id: signatures
+    attributes:
+      label: Signatures missing or weak (STYLE-BIBLE §3.1)
+      options:
+        - label: 1 Heavy rounded font with thick outline
+        - label: 2 Glossy gradient fills
+        - label: 3 Stud texture
+        - label: 4 Thick same-hue borders, small corners
+        - label: 5 Big 3D icons overflowing the frame
+        - label: 6 Candy colours by role
+        - label: 7 Game layout conventions
+  - type: input
+    id: ref
+    attributes:
+      label: Closest reference
+      placeholder: R01 / R02 / R04 / R07 / R10–R13
+  - type: textarea
+    id: shots
+    attributes:
+      label: Our screenshot
+      description: Drag our capture here. Never upload the reference images (they are private).
+    validations: { required: true }

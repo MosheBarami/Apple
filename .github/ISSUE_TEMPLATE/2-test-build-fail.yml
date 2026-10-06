@@ -1,0 +1,56 @@
+name: Test build failed
+description: A dev-set test build (U/S/P/Z) did not pass the bar.
+title: "[Test build] <id>: "
+labels: [test-build]
+body:
+  - type: markdown
+    attributes:
+      value: "Never edit a frozen request after seeing its score. File the GAP, not a fix for one subject. Never post hidden-set requests here."
+  - type: input
+    id: id
+    attributes:
+      label: Request id
+      placeholder: U07
+    validations: { required: true }
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [UI, Systems, Props, Zones]
+    validations: { required: true }
+  - type: input
+    id: run
+    attributes:
+      label: Run / proof folder
+      placeholder: planning/proof/M5a/U07/
+    validations: { required: true }
+  - type: textarea
+    id: scores
+    attributes:
+      label: Lowest scores (rubric v2)
+      value: |
+        delivers:
+        visual:
+        layout:
+        ui:
+        life:
+        polish:
+        style:
+    validations: { required: true }
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Gates that failed
+      options:
+        - label: Severe flaw
+        - label: Play-test error
+        - label: False claim in reply
+        - label: Functional check
+        - label: Colour gate
+        - label: Kit lint
+        - label: Panel never shown open
+  - type: textarea
+    id: cause
+    attributes:
+      label: Likely cause and the general fix
+      description: Which block, kit part or rule. Must help every request of this kind.
