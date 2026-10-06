@@ -95,7 +95,7 @@ import {
   type MembershipAccessEvent,
 } from './membership-access-outbox';
 import { companionOpAccess, companionRefusal, sanitizeCompanionOp } from './companion';
-import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
+import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError, release as releaseBudget, reserve as reserveBudget, settle as settleBudget } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { imageKvKey, imageMimeType, type ImageMeta } from './imagegen';
 import { readGeneratedImage } from './generated-images';
@@ -245,7 +245,7 @@ import {
   rpcResult,
   toolResult,
 } from './mcp';
-import { creditsForNeurons } from './pricing';
+import { creditsForNeurons, estimateNeurons, neuronsFor } from './pricing';
 import {
   API_SCOPES,
   planRotation,
@@ -993,6 +993,37 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     // The Studio agent's model calls are not metered against Credits yet, so it answers only an owner who may build at all
     // (the pre-launch gate `/agent-run` applies). Anyone else can read their conversation but not send to it.
     return { ok: true, projectName: ctx.project.name, canBuild: buildApproved(this.env, ctx.project.owner_id) };
+  }
+
+  /**
+   * THE STUDIO AGENT'S MODEL SPEND goes through the same global budget as every other model call (BudgetDO: the daily
+   * and monthly ceilings and the kill switch). The Studio worker reserves an estimate before each Workers AI call and
+   * settles it after; a refusal is the same message the product shows.
+   */
+  async reserveModel(model: string, inputChars: number, maxOutputTokens: number): Promise<{ ok: true; reserved: number } | { ok: false; message: string }> {
+    try {
+      const reserved = await reserveBudget(this.env, model, estimateNeurons(model, inputChars, maxOutputTokens));
+      return { ok: true, reserved };
+    } catch (e) {
+      return { ok: false, message: e instanceof BudgetError ? e.message : 'StudPilot could not check its building capacity, so nothing was run.' };
+    }
+  }
+
+  /** Settles a reservation: by the reported token usage when the call gave one, otherwise at the reserved estimate. */
+  async settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number } | null): Promise<void> {
+    let actual = reserved;
+    if (usage) {
+      try {
+        actual = neuronsFor(model, usage.inputTokens, usage.outputTokens);
+      } catch {
+        actual = reserved;
+      }
+    }
+    await settleBudget(this.env, reserved, actual, model, 'studio');
+  }
+
+  async releaseModel(model: string, reserved: number): Promise<void> {
+    await releaseBudget(this.env, reserved, model);
   }
 
   async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {

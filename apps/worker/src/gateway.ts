@@ -203,7 +203,7 @@ const BUDGET_MESSAGES: Record<string, string> = {
   third_party_monthly_cap: "This month's allowance for outside models is used up. StudPilot still works.",
 };
 
-async function reserve(env: Env, model: string, neurons: number): Promise<number> {
+export async function reserve(env: Env, model: string, neurons: number): Promise<number> {
   const res = await budgetStub(env).fetch('https://do/reserve', {
     method: 'POST',
     body: JSON.stringify({ neurons, model }),
@@ -216,13 +216,13 @@ async function reserve(env: Env, model: string, neurons: number): Promise<number
   return data.reserved ?? neurons;
 }
 
-async function settle(env: Env, reserved: number, actual: number, model: string, kind: string): Promise<void> {
+export async function settle(env: Env, reserved: number, actual: number, model: string, kind: string): Promise<void> {
   await budgetStub(env)
     .fetch('https://do/settle', { method: 'POST', body: JSON.stringify({ reserved, actual, model, kind }) })
     .catch(() => {});
 }
 
-async function release(env: Env, reserved: number, model: string): Promise<void> {
+export async function release(env: Env, reserved: number, model: string): Promise<void> {
   // The model says which ledger the hold is on: a third-party reservation is released from the
   // third-party wallet, not from Workers AI's neuron day.
   await budgetStub(env)

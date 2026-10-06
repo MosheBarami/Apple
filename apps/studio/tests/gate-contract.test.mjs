@@ -96,3 +96,16 @@ test('only an owner who may build can send to the Studio agent (its model time i
   const open = index.slice(index.indexOf('async openProject('), index.indexOf('async callTool('));
   assert.match(open, /canBuild: buildApproved\(this\.env, ctx\.project\.owner_id\)/);
 });
+
+test('every model call of the Studio agent is reserved against the shared budget first, and settled or released after', () => {
+  const app = read('../src/app.ts');
+  assert.match(app, /setProvider\(cloudflareBindingProvider\(\{ binding: metered,/, 'the provider must use the metered binding, not env.AI');
+  const run = app.slice(app.indexOf('async run('), app.indexOf('setProvider('));
+  const reserve = run.indexOf('GATE.reserveModel(');
+  const refuse = run.indexOf('if (!hold.ok) throw');
+  const call = run.indexOf('bound.AI.run');
+  assert.ok(reserve > 0 && reserve < refuse && refuse < call, 'reserve, then refuse, then call');
+  assert.ok(run.indexOf('GATE.settleModel(') > call && run.indexOf('GATE.releaseModel(') > call, 'settled on success, released on failure');
+  const index = read('../../worker/src/index.ts');
+  assert.match(index.slice(index.indexOf('async reserveModel(')), /^async reserveModel[^]*?reserveBudget\(this\.env, model, estimateNeurons\(/);
+});

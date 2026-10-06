@@ -10,9 +10,38 @@ import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { StudPilot } from './agents/studpilot.ts';
 
-// Every model call goes through the account's own AI Gateway, so spend caps and logs see it.
 const bound = env as unknown as Env;
-setProvider(cloudflareBindingProvider({ binding: bound.AI, gateway: { id: bound.AI_GATEWAY_ID } }));
+
+/**
+ * Every model call is metered by the main worker's budget (StudioGate.reserveModel / settleModel: the same daily and
+ * monthly ceilings and kill switch as the product's own agent) and goes through the account's AI Gateway. A refused
+ * reservation fails the call with the product's own message. A streamed reply reports no usage here, so it settles at
+ * the reserved estimate, which can only over-count.
+ */
+const metered: Ai = Object.assign(Object.create(bound.AI) as Ai, {
+  async run(model: string, inputs: Record<string, unknown>, options?: unknown) {
+    const asked = inputs?.max_completion_tokens ?? inputs?.max_tokens;
+    const maxOut = typeof asked === 'number' ? asked : 4096;
+    const hold = await bound.GATE.reserveModel(model, JSON.stringify(inputs ?? {}).length, maxOut);
+    if (!hold.ok) throw new Error(hold.message);
+    try {
+      const result = await (bound.AI.run as (m: string, i: unknown, o?: unknown) => Promise<unknown>)(model, inputs, options);
+      const usage = (result as { usage?: { prompt_tokens?: number; completion_tokens?: number } } | null)?.usage;
+      await bound.GATE.settleModel(
+        model,
+        hold.reserved,
+        usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number'
+          ? { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens }
+          : null,
+      );
+      return result;
+    } catch (e) {
+      await bound.GATE.releaseModel(model, hold.reserved);
+      throw e;
+    }
+  },
+});
+setProvider(cloudflareBindingProvider({ binding: metered, gateway: { id: bound.AI_GATEWAY_ID } }));
 
 const app = new Hono<{ Bindings: Env }>();
 
