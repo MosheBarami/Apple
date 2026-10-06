@@ -1,0 +1,1 @@
+a click-to-earn system: clicking gives coins, with a cooldown so autoclickers can't abuse it

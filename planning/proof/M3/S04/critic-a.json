@@ -1,0 +1,24 @@
+{
+ "scores": {
+  "delivers": 5.5,
+  "visual": 6.5,
+  "layout": 6,
+  "ui": 6,
+  "life": 2.5,
+  "polish": 6
+ },
+ "na": [],
+ "severeFlaws": [],
+ "topFixes": [
+  "Show the multiplier effect and rebirth progress visibly",
+  "Animate or highlight rebirth button when unlocked",
+  "Make LOCKED state more informative with the coin cost needed"
+ ],
+ "notes": "Coin counter, purple x1 multiplier badge and a locked REBIRTH button with empty progress bar. Cohesive studded skin with a clear locked state; static across play frames and nothing shows the 1.5x scaling.",
+ "shotsViewed": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ]
+}

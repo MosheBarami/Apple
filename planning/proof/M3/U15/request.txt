@@ -1,0 +1,1 @@
+tycoon top bar: cash, cash per second, and a rebirth button

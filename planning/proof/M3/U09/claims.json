@@ -1,0 +1,48 @@
+{
+ "claims": [
+  {
+   "claim": "The Codes button opens the panel",
+   "verdict": "unsupported",
+   "evidence": "play_check_ui ok but no output."
+  },
+  {
+   "claim": "The box accepts typing, Enter or Redeem submits",
+   "verdict": "unsupported",
+   "evidence": "No evidence of typing/submit."
+  },
+  {
+   "claim": "Server answers with Type a code first / reward / clear message",
+   "verdict": "unsupported",
+   "evidence": "No evidence output."
+  },
+  {
+   "claim": "WELCOME gives 100 coins and RELEASE 250, once per player",
+   "verdict": "unsupported",
+   "evidence": "No test output showing values."
+  },
+  {
+   "claim": "No errors on screen during play",
+   "verdict": "supported",
+   "evidence": "0 errors, empty console."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The Codes button opens the panel",
+   "why": "play_check_ui ok but no output."
+  },
+  {
+   "claim": "The box accepts typing, Enter or Redeem submits",
+   "why": "No evidence of typing/submit."
+  },
+  {
+   "claim": "Server answers with Type a code first / reward / clear message",
+   "why": "No evidence output."
+  },
+  {
+   "claim": "WELCOME gives 100 coins and RELEASE 250, once per player",
+   "why": "No test output showing values."
+  }
+ ],
+ "summary": "4 of 5 claims unsupported."
+}

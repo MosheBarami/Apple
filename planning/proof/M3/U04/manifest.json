@@ -1,0 +1,554 @@
+{
+ "harness": {
+  "name": "studpilot-eval",
+  "version": 2,
+  "node": "v26.8.1",
+  "startedAt": "2026-10-06T03:42:59.658Z",
+  "finishedAt": "2026-10-06T03:52:30.058Z",
+  "dryRun": false
+ },
+ "milestone": "M3",
+ "request": {
+  "id": "U04",
+  "category": "ui",
+  "text": "rebirth panel showing current multiplier, next multiplier, cost and a progress bar",
+  "devSetSha256": "466afbf7d0ceee766c8e9afc7942a67fc53510d90828f499ec46a913c9cab114"
+ },
+ "project": {
+  "id": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d",
+  "name": "Owner benchmark (E2E)"
+ },
+ "userId": "8722e4df-ab9c-47f6-8a57-02f5a5dd1d44",
+ "deploy": {
+  "apiBase": "https://studpilot.app",
+  "buildSha": "d3d68c71",
+  "healthTime": "2026-10-06T03:42:59.747Z"
+ },
+ "studio": {
+  "serverInfo": {
+   "name": "RobloxStudio",
+   "version": "1.0.0"
+  },
+  "studioId": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit",
+  "studiosListed": 1,
+  "probes": [
+   {
+    "id": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+    "name": "EvalBaseplate.rbxlx",
+    "ok": true,
+    "text": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+   }
+  ]
+ },
+ "plugin": {
+  "connected": true,
+  "pluginVersion": "1.5.0",
+  "paired": true,
+  "openPlace": {
+   "placeName": "EvalBaseplate.rbxlx",
+   "placeId": 0,
+   "gameId": 0,
+   "isRunMode": false
+  },
+  "queuedOps": 0,
+  "messagesBefore": 0,
+  "agentStatus": "idle"
+ },
+ "baseline": {
+  "file": "planning/proof/M3/place-baseline.json",
+  "sha256": "3faad99a431bc3d7d872c733c29b710e270f49d4cda92378d940b88273fda978",
+  "capturedAt": "2026-10-06T03:19:36.761Z"
+ },
+ "reset": {
+  "removedInstances": 59,
+  "removedByService": {
+   "ServerScriptService": 1,
+   "StarterPlayer": 1,
+   "StarterGui": 57
+  },
+  "restored": [],
+  "rebuilt": [],
+  "restoreFailed": [],
+  "terrainCleared": false,
+  "verifyAfter": {
+   "extra": 0,
+   "missing": 0,
+   "propDiffs": 0
+  },
+  "clean": true
+ },
+ "conversation": {
+  "cleared": true,
+  "route": "POST /api/admin/conversation-reset/:id",
+  "status": 200,
+  "removedMessages": 2,
+  "memoryCleared": true,
+  "planCleared": null,
+  "ledgerCleared": true,
+  "messagesAfter": 0,
+  "at": "2026-10-06T03:43:00.292Z"
+ },
+ "spend": {
+  "before": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 22199,
+   "dayPending": 0,
+   "monthBillableNeurons": 368739,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.8612562500000001,
+   "estimatedMonthUsd": 4.0561,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  },
+  "after": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 35968,
+   "dayPending": 0,
+   "monthBillableNeurons": 382508,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.7752,
+   "estimatedMonthUsd": 4.2076,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  }
+ },
+ "run": {
+  "startedAt": "2026-10-06T03:43:01.697Z",
+  "startConfirmed": true,
+  "startError": null,
+  "endedBy": "incomplete",
+  "stopReason": "incomplete",
+  "minutes": 9.22,
+  "timeoutMinutes": 15,
+  "requestEchoed": true,
+  "creditsSpentLedger": 459,
+  "error": null
+ },
+ "build": {
+  "kind": "both",
+  "emptyScreenGuis": [],
+  "addedParts": 102,
+  "screenGuis": [
+   {
+    "enabled": true,
+    "guiObjects": 49,
+    "name": "RebirthGui",
+    "texts": 15
+   }
+  ],
+  "addedInstances": 286,
+  "framing": {
+   "basis": "framed",
+   "includesTerrain": false,
+   "hiddenParts": 8,
+   "hugeParts": 0
+  },
+  "terrainCells": 0,
+  "addedByService": {
+   "StarterPlayer": 1,
+   "Workspace": 145,
+   "StarterGui": 132,
+   "Lighting": 4,
+   "ServerScriptService": 1,
+   "MaterialService": 1,
+   "ReplicatedStorage": 2
+  },
+  "bounds": {
+   "min": [
+    -33.636291652953254,
+    -8.232510447502136,
+    -62.760794137066085
+   ],
+   "max": [
+    33.636264950072395,
+    12.096346974372864,
+    22.840380450113436
+   ]
+  },
+  "addedScripts": 3,
+  "viewport": [
+   1554,
+   623
+  ],
+  "terrain": {
+   "cells": 0,
+   "edited": false,
+   "baselineCells": 0
+  },
+  "partBounds": {
+   "min": [
+    -33.636291652953254,
+    -8.232510447502136,
+    -62.760794137066085
+   ],
+   "max": [
+    33.636264950072395,
+    12.096346974372864,
+    22.840380450113436
+   ]
+  },
+  "spawn": {
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "source": "pristine",
+   "position": [
+    0,
+    0.05000000074505806,
+    0
+   ]
+  },
+  "cameraPlan": {
+   "built": true,
+   "bounds": {
+    "min": [
+     -33.64,
+     -8.23,
+     -62.76
+    ],
+    "max": [
+     33.64,
+     12.1,
+     22.84
+    ]
+   },
+   "center": [
+    0,
+    1.93,
+    -19.96
+   ],
+   "radius": 55.38,
+   "cameras": [
+    {
+     "name": "overview",
+     "position": [
+      28.25,
+      119.87,
+      57.64
+     ],
+     "lookAt": [
+      0,
+      1.93,
+      -19.96
+     ]
+    },
+    {
+     "name": "three-quarter",
+     "position": [
+      80.43,
+      54.98,
+      60.47
+     ],
+     "lookAt": [
+      0,
+      1.93,
+      -19.96
+     ]
+    },
+    {
+     "name": "close-up",
+     "position": [
+      -27.96,
+      10.26,
+      19.97
+     ],
+     "lookAt": [
+      0,
+      -0.1,
+      -19.96
+     ]
+    },
+    {
+     "name": "spawn-eye",
+     "position": [
+      0,
+      5.05,
+      0
+     ],
+     "lookAt": [
+      0,
+      5.05,
+      -19.96
+     ]
+    }
+   ],
+   "basis": "parts",
+   "spawnSource": "pristine",
+   "framing": {
+    "basis": "framed",
+    "includesTerrain": false,
+    "hiddenParts": 8,
+    "hugeParts": 0
+   }
+  }
+ },
+ "captures": [
+  {
+   "name": "overview",
+   "file": "shots/overview.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 205090,
+   "camera": {
+    "position": [
+     28.25,
+     119.87,
+     57.64
+    ],
+    "lookAt": [
+     0,
+     1.93,
+     -19.96
+    ]
+   },
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item"
+  },
+  {
+   "name": "three-quarter",
+   "file": "shots/three-quarter.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 207269,
+   "camera": {
+    "position": [
+     80.43,
+     54.98,
+     60.47
+    ],
+    "lookAt": [
+     0,
+     1.93,
+     -19.96
+    ]
+   },
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item"
+  },
+  {
+   "name": "close-up",
+   "file": "shots/close-up.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 324587,
+   "camera": {
+    "position": [
+     -27.96,
+     10.26,
+     19.97
+    ],
+    "lookAt": [
+     0,
+     -0.1,
+     -19.96
+    ]
+   },
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item"
+  },
+  {
+   "name": "spawn-eye",
+   "file": "shots/spawn-eye.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 332071,
+   "camera": {
+    "position": [
+     0,
+     5.05,
+     0
+    ],
+    "lookAt": [
+     0,
+     5.05,
+     -19.96
+    ]
+   },
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item"
+  },
+  {
+   "name": "ui",
+   "file": "shots/ui-1554x623.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 220542,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "target": null
+  }
+ ],
+ "ui": {
+  "requested": [
+   "1920x1080",
+   "1280x720"
+  ],
+  "viewportReported": [
+   1554,
+   623
+  ],
+  "captured": "1554x623",
+  "met": null,
+  "switchedOff": [],
+  "enabledForCapture": [],
+  "enableError": null,
+  "restoreError": null,
+  "note": "captured at 1554x623, which is not a target size; it is named by the pixels actually captured"
+ },
+ "playTest": {
+  "started": true,
+  "serverAnswered": true,
+  "frames": [
+   {
+    "name": "play-1",
+    "file": "shots/play-1.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 248668
+   },
+   {
+    "name": "play-2",
+    "file": "shots/play-2.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 248575
+   },
+   {
+    "name": "play-3",
+    "file": "shots/play-3.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 248577
+   }
+  ],
+  "consoleChars": 0,
+  "console": {
+   "errors": 0,
+   "warnings": 0,
+   "errorLines": [],
+   "warningLines": []
+  },
+  "logServer": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "logClient": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "stateAfterStart": "- Current Studio Mode: Play\n- Available DataModels: Client, Server\n- Focused DataModel in the viewport: Client",
+  "errors": 0,
+  "unestablished": null,
+  "error": null,
+  "backInEdit": true,
+  "warnings": 0,
+  "sources": {
+   "console": {
+    "errors": 0,
+    "warnings": 0
+   },
+   "logServer": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   },
+   "logClient": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   }
+  }
+ },
+ "functionalChecks": {
+  "defined": false
+ },
+ "aborted": null,
+ "files": {
+  "request.txt": {
+   "sha256": "4537293b78c9576f50f4d486e5b4339332b804ac2effdd56fe3c48a9c741f86c",
+   "bytes": 83
+  },
+  "reply.md": {
+   "sha256": "a52636c1fa3b097a63559684e46fd9747294c8e4c4c2940d91df213acc837696",
+   "bytes": 272
+  },
+  "steps.json": {
+   "sha256": "6e778da2aff4c19d4266402ecfaf226047bf454272d2327bc6d7c730e90168ea",
+   "bytes": 20173
+  },
+  "credits.json": {
+   "sha256": "d376c6ef229a29774cf4742391903f9e51098f919cfefb8d3fc922562fdcfce2",
+   "bytes": 822
+  },
+  "timing.json": {
+   "sha256": "37a5379ce1a3b832811df34f087590bf519298d44e2f358336f4fa72710e883c",
+   "bytes": 1740
+  },
+  "console.txt": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  "shots/overview.jpg": {
+   "sha256": "f1d98c118458127d088bb4ca4b71ba3351c7ed672b2fe633fda50e3ebe3780d7",
+   "bytes": 205090
+  },
+  "shots/three-quarter.jpg": {
+   "sha256": "6e85aab82bfbb4715c2de9ae6d58db94d4184de54559a90e9bae3db856bcdfcf",
+   "bytes": 207269
+  },
+  "shots/close-up.jpg": {
+   "sha256": "1b2dc0ed64d5a5faeaec250ff8fb9bbccfc6061a5e35e336a83e28ec08a22bb9",
+   "bytes": 324587
+  },
+  "shots/spawn-eye.jpg": {
+   "sha256": "5f06b9ab9cc6fa626643f09eb94fa165e32d4836d107bc202b3526c39c999447",
+   "bytes": 332071
+  },
+  "shots/ui-1554x623.jpg": {
+   "sha256": "eac408c2ca004241d837e8a21e89bbf1d0a8d0864b4bba452c1dde358e778bc2",
+   "bytes": 220542
+  },
+  "shots/play-1.jpg": {
+   "sha256": "b6e314512b58708b78bcded997e6552ffeb530a5905392b2827938f466ec6910",
+   "bytes": 248668
+  },
+  "shots/play-2.jpg": {
+   "sha256": "9de0d40d3620854f16ca54109fb1a715232d290df4eaf30f78b831b0d8c6c7c1",
+   "bytes": 248575
+  },
+  "shots/play-3.jpg": {
+   "sha256": "458fd35d862bc4a71905f85a7de8c59cab48c7ddddf348dcfbc7ed5438bde2b4",
+   "bytes": 248577
+  }
+ }
+}

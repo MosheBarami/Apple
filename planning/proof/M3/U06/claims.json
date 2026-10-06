@@ -1,0 +1,44 @@
+{
+ "claims": [
+  {
+   "claim": "Played as a real player, opened and closed settings, no errors",
+   "verdict": "supported",
+   "evidence": "play_check ok, 0 errors, empty console."
+  },
+  {
+   "claim": "Settings button and close button both worked",
+   "verdict": "unsupported",
+   "evidence": "play_check_ui ok but no output; some press steps failed."
+  },
+  {
+   "claim": "Music volume, SFX volume and quality toggle all working",
+   "verdict": "unsupported",
+   "evidence": "play_check_ui press on QualityToggle and MusicRow failed (not buttons); no evidence of working."
+  },
+  {
+   "claim": "Sound wired to the sliders",
+   "verdict": "unsupported",
+   "evidence": "insert_sound ok and scripts edited, but no test of slider effect."
+  },
+  {
+   "claim": "Loop is only settings on an empty baseplate",
+   "verdict": "supported",
+   "evidence": "Only SettingsGui and 1 script added."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "Settings button and close button both worked",
+   "why": "play_check_ui ok but no output; some press steps failed."
+  },
+  {
+   "claim": "Music volume, SFX volume and quality toggle all working",
+   "why": "play_check_ui press on QualityToggle and MusicRow failed (not buttons); no evidence of working."
+  },
+  {
+   "claim": "Sound wired to the sliders",
+   "why": "insert_sound ok and scripts edited, but no test of slider effect."
+  }
+ ],
+ "summary": "3 of 5 claims unsupported."
+}

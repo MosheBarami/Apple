@@ -1,0 +1,523 @@
+{
+ "harnessVersion": 2,
+ "capturedAt": "2026-10-06T03:19:36.761Z",
+ "studio": {
+  "id": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+ },
+ "inventory": {
+  "StarterPlayer": [
+   "StarterPlayer/StarterCharacterScripts#StarterCharacterScripts",
+   "StarterPlayer/StarterPlayerScripts#StarterPlayerScripts"
+  ],
+  "Lighting": [],
+  "ServerScriptService": [],
+  "StarterPack": [],
+  "MaterialService": [],
+  "ServerStorage": [],
+  "TextChatService": [
+   "TextChatService/BubbleChatConfiguration#BubbleChatConfiguration",
+   "TextChatService/ChannelTabsConfiguration#ChannelTabsConfiguration",
+   "TextChatService/ChatInputBarConfiguration#ChatInputBarConfiguration",
+   "TextChatService/ChatWindowConfiguration#ChatWindowConfiguration"
+  ],
+  "Workspace": [
+   "Workspace/Baseplate#Part",
+   "Workspace/SpawnLocation#SpawnLocation"
+  ],
+  "StarterGui": [],
+  "Teams": [],
+  "SoundService": [],
+  "ReplicatedFirst": [],
+  "ReplicatedStorage": []
+ },
+ "format": 2,
+ "terrainCells": 0,
+ "state": {
+  "TextChatService/ChatInputBarConfiguration#ChatInputBarConfiguration": {
+   "attrs": [],
+   "class": "ChatInputBarConfiguration",
+   "name": "ChatInputBarConfiguration",
+   "props": {
+    "KeyboardKeyCode": {
+     "v": [
+      "KeyCode",
+      "Slash"
+     ],
+     "t": "EnumItem"
+    },
+    "BackgroundTransparency": 0.2,
+    "TextColor3": {
+     "v": [
+      1,
+      1,
+      1
+     ],
+     "t": "Color3"
+    },
+    "Enabled": true,
+    "TextSize": 14,
+    "BackgroundColor3": {
+     "v": [
+      0.09803921729326248,
+      0.10588235408067703,
+      0.11372549086809158
+     ],
+     "t": "Color3"
+    }
+   }
+  },
+  "Lighting": {
+   "attrs": [],
+   "class": "Lighting",
+   "name": "Lighting",
+   "props": {
+    "ExposureCompensation": 0,
+    "ColorShift_Bottom": {
+     "v": [
+      0,
+      0,
+      0
+     ],
+     "t": "Color3"
+    },
+    "FogColor": {
+     "v": [
+      0.75,
+      0.75,
+      0.75
+     ],
+     "t": "Color3"
+    },
+    "FogEnd": 100000,
+    "ShadowSoftness": 0.5,
+    "EnvironmentDiffuseScale": 0,
+    "EnvironmentSpecularScale": 0,
+    "GlobalShadows": false,
+    "FogStart": 0,
+    "Ambient": {
+     "v": [
+      0.5,
+      0.5,
+      0.5
+     ],
+     "t": "Color3"
+    },
+    "OutdoorAmbient": {
+     "v": [
+      0.5,
+      0.5,
+      0.5
+     ],
+     "t": "Color3"
+    },
+    "GeographicLatitude": 41.733299255371094,
+    "Brightness": 1,
+    "ColorShift_Top": {
+     "v": [
+      0,
+      0,
+      0
+     ],
+     "t": "Color3"
+    },
+    "ClockTime": 14
+   }
+  },
+  "ReplicatedFirst": {
+   "attrs": [],
+   "class": "ReplicatedFirst",
+   "name": "ReplicatedFirst",
+   "props": []
+  },
+  "StarterPack": {
+   "attrs": [],
+   "class": "StarterPack",
+   "name": "StarterPack",
+   "props": []
+  },
+  "ServerStorage": {
+   "attrs": [],
+   "class": "ServerStorage",
+   "name": "ServerStorage",
+   "props": []
+  },
+  "Workspace": {
+   "attrs": [],
+   "class": "Workspace",
+   "name": "Workspace",
+   "props": {
+    "PrimaryPart": {
+     "v": [],
+     "t": "nil"
+    },
+    "Gravity": 196.1999969482422
+   }
+  },
+  "StarterGui": {
+   "attrs": [],
+   "class": "StarterGui",
+   "name": "StarterGui",
+   "props": {
+    "ShowDevelopmentGui": true
+   }
+  },
+  "StarterPlayer/StarterCharacterScripts#StarterCharacterScripts": {
+   "attrs": [],
+   "class": "StarterCharacterScripts",
+   "name": "StarterCharacterScripts",
+   "props": []
+  },
+  "TextChatService": {
+   "attrs": [],
+   "class": "TextChatService",
+   "name": "TextChatService",
+   "props": []
+  },
+  "TextChatService/ChatWindowConfiguration#ChatWindowConfiguration": {
+   "attrs": [],
+   "class": "ChatWindowConfiguration",
+   "name": "ChatWindowConfiguration",
+   "props": {
+    "Enabled": true,
+    "WidthScale": 1,
+    "BackgroundTransparency": 0.3,
+    "TextColor3": {
+     "v": [
+      1,
+      1,
+      1
+     ],
+     "t": "Color3"
+    },
+    "VerticalAlignment": {
+     "v": [
+      "VerticalAlignment",
+      "Top"
+     ],
+     "t": "EnumItem"
+    },
+    "HorizontalAlignment": {
+     "v": [
+      "HorizontalAlignment",
+      "Left"
+     ],
+     "t": "EnumItem"
+    },
+    "TextSize": 14,
+    "BackgroundColor3": {
+     "v": [
+      0.09803921729326248,
+      0.10588235408067703,
+      0.11372549086809158
+     ],
+     "t": "Color3"
+    }
+   }
+  },
+  "SoundService": {
+   "attrs": [],
+   "class": "SoundService",
+   "name": "SoundService",
+   "props": {
+    "DefaultListenerLocation": {
+     "v": [
+      "ListenerLocation",
+      "Default"
+     ],
+     "t": "EnumItem"
+    },
+    "AmbientReverb": {
+     "v": [
+      "ReverbType",
+      "NoReverb"
+     ],
+     "t": "EnumItem"
+    },
+    "AcousticSimulationEnabled": false,
+    "DopplerScale": 1,
+    "RolloffScale": 1,
+    "DistanceFactor": 3.3299999237060547
+   }
+  },
+  "TextChatService/ChannelTabsConfiguration#ChannelTabsConfiguration": {
+   "attrs": [],
+   "class": "ChannelTabsConfiguration",
+   "name": "ChannelTabsConfiguration",
+   "props": {
+    "Enabled": false,
+    "BackgroundTransparency": 0,
+    "TextColor3": {
+     "v": [
+      0.686274528503418,
+      0.686274528503418,
+      0.686274528503418
+     ],
+     "t": "Color3"
+    },
+    "TextSize": 18,
+    "BackgroundColor3": {
+     "v": [
+      0.09803921729326248,
+      0.10588235408067703,
+      0.11372549086809158
+     ],
+     "t": "Color3"
+    }
+   }
+  },
+  "TextChatService/BubbleChatConfiguration#BubbleChatConfiguration": {
+   "attrs": [],
+   "class": "BubbleChatConfiguration",
+   "name": "BubbleChatConfiguration",
+   "props": {
+    "Enabled": true,
+    "Font": {
+     "v": [
+      "Font",
+      "GothamMedium"
+     ],
+     "t": "EnumItem"
+    },
+    "BackgroundTransparency": 0.1,
+    "TextColor3": {
+     "v": [
+      0.2235294133424759,
+      0.23137255012989044,
+      0.239215686917305
+     ],
+     "t": "Color3"
+    },
+    "MaxDistance": 100,
+    "TextSize": 16,
+    "BackgroundColor3": {
+     "v": [
+      0.9803921580314636,
+      0.9803921580314636,
+      0.9803921580314636
+     ],
+     "t": "Color3"
+    }
+   }
+  },
+  "Workspace/Baseplate#Part": {
+   "attrs": [],
+   "class": "Part",
+   "name": "Baseplate",
+   "props": {
+    "CanQuery": true,
+    "Color": {
+     "v": [
+      0.3803921639919281,
+      0.4000000059604645,
+      0.41960784792900085
+     ],
+     "t": "Color3"
+    },
+    "Anchored": true,
+    "Locked": false,
+    "Material": {
+     "v": [
+      "Material",
+      "Grass"
+     ],
+     "t": "EnumItem"
+    },
+    "Size": {
+     "v": [
+      512,
+      1,
+      512
+     ],
+     "t": "Vector3"
+    },
+    "Friction": 0.30000001192092896,
+    "BottomSurface": {
+     "v": [
+      "SurfaceType",
+      "Inlet"
+     ],
+     "t": "EnumItem"
+    },
+    "CanCollide": true,
+    "Shape": {
+     "v": [
+      "PartType",
+      "Block"
+     ],
+     "t": "EnumItem"
+    },
+    "CustomPhysicalProperties": {
+     "v": [],
+     "t": "nil"
+    },
+    "Massless": false,
+    "Elasticity": 0.5,
+    "Transparency": 0,
+    "Rotation": {
+     "v": [
+      0,
+      0,
+      0
+     ],
+     "t": "Vector3"
+    },
+    "CFrame": {
+     "v": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": "CFrame"
+    },
+    "CanTouch": true,
+    "Reflectance": 0,
+    "CastShadow": true,
+    "TopSurface": {
+     "v": [
+      "SurfaceType",
+      "Studs"
+     ],
+     "t": "EnumItem"
+    }
+   }
+  },
+  "Workspace/SpawnLocation#SpawnLocation": {
+   "attrs": [],
+   "class": "SpawnLocation",
+   "name": "SpawnLocation",
+   "props": {
+    "CanQuery": true,
+    "Color": {
+     "v": [
+      0.6392157077789307,
+      0.6352941393852234,
+      0.6470588445663452
+     ],
+     "t": "Color3"
+    },
+    "Anchored": true,
+    "Locked": false,
+    "Material": {
+     "v": [
+      "Material",
+      "Plastic"
+     ],
+     "t": "EnumItem"
+    },
+    "Size": {
+     "v": [
+      6,
+      1,
+      6
+     ],
+     "t": "Vector3"
+    },
+    "Friction": 0.30000001192092896,
+    "BottomSurface": {
+     "v": [
+      "SurfaceType",
+      "Inlet"
+     ],
+     "t": "EnumItem"
+    },
+    "CanCollide": true,
+    "Rotation": {
+     "v": [
+      0,
+      0,
+      0
+     ],
+     "t": "Vector3"
+    },
+    "Massless": false,
+    "CustomPhysicalProperties": {
+     "v": [],
+     "t": "nil"
+    },
+    "Shape": {
+     "v": [
+      "PartType",
+      "Block"
+     ],
+     "t": "EnumItem"
+    },
+    "Elasticity": 0.5,
+    "Transparency": 0,
+    "Enabled": true,
+    "Reflectance": 0,
+    "CFrame": {
+     "v": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": "CFrame"
+    },
+    "CanTouch": true,
+    "CastShadow": true,
+    "TopSurface": {
+     "v": [
+      "SurfaceType",
+      "Studs"
+     ],
+     "t": "EnumItem"
+    }
+   }
+  },
+  "Teams": {
+   "attrs": [],
+   "class": "Teams",
+   "name": "Teams",
+   "props": []
+  },
+  "MaterialService": {
+   "attrs": [],
+   "class": "MaterialService",
+   "name": "MaterialService",
+   "props": []
+  },
+  "StarterPlayer": {
+   "attrs": [],
+   "class": "StarterPlayer",
+   "name": "StarterPlayer",
+   "props": []
+  },
+  "StarterPlayer/StarterPlayerScripts#StarterPlayerScripts": {
+   "attrs": [],
+   "class": "StarterPlayerScripts",
+   "name": "StarterPlayerScripts",
+   "props": []
+  },
+  "ServerScriptService": {
+   "attrs": [],
+   "class": "ServerScriptService",
+   "name": "ServerScriptService",
+   "props": []
+  },
+  "ReplicatedStorage": {
+   "attrs": [],
+   "class": "ReplicatedStorage",
+   "name": "ReplicatedStorage",
+   "props": []
+  }
+ }
+}

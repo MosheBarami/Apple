@@ -1,0 +1,117 @@
+{
+ "piece": {
+  "id": "U06",
+  "category": "ui"
+ },
+ "rubric": {
+  "version": "v1",
+  "sha256": "c74de28ae18f469a5910f76f6e201d3ef4ef8fb087b7833fa5a0ea1d884cfaaf"
+ },
+ "attempts": 1,
+ "criticProblems": null,
+ "shotsGiven": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ],
+ "requestId": "U06",
+ "pass": false,
+ "status": "fail",
+ "passIgnoringFunctionalChecks": false,
+ "reasons": [
+  "delivers: the lower score 2 is below 8 (A 2, B 2)",
+  "visual: the lower score 3 is below 8 (A 3, B 3)",
+  "layout: the lower score 2 is below 8 (A 2, B 2)",
+  "ui: the lower score 2 is below 8 (A 2, B 2)",
+  "life: the lower score 2 is below 8 (A 2, B 2)",
+  "polish: the lower score 3 is below 8 (A 3, B 3)",
+  "severe flaw 1 (critic A): all shots: only a dim 'Settings' button on the right; no settings window, sliders or quality toggle visible",
+  "severe flaw 1 (critic B): all shots: only a dim 'Settings' button on the right; no settings window, sliders or quality toggle visible",
+  "claim audit: 3 unsupported claims",
+  "functional checks: none are defined for this request yet (the block engine adds them in M5), so this clause cannot be established and the piece cannot pass"
+ ],
+ "threshold": 8,
+ "lower": {
+  "delivers": 2,
+  "visual": 3,
+  "layout": 2,
+  "ui": 2,
+  "life": 2,
+  "polish": 3
+ },
+ "na": [],
+ "critics": {
+  "a": {
+   "scores": {
+    "delivers": 2,
+    "visual": 3,
+    "layout": 2,
+    "ui": 2,
+    "life": 2,
+    "polish": 3
+   },
+   "na": [],
+   "severeFlaws": [
+    {
+     "flaw": 1,
+     "evidence": "all shots: only a dim 'Settings' button on the right; no settings window, sliders or quality toggle visible"
+    }
+   ]
+  },
+  "b": {
+   "scores": {
+    "delivers": 2,
+    "visual": 3,
+    "layout": 2,
+    "ui": 2,
+    "life": 2,
+    "polish": 3
+   },
+   "na": [],
+   "severeFlaws": [
+    {
+     "flaw": 1,
+     "evidence": "all shots: only a dim 'Settings' button on the right; no settings window, sliders or quality toggle visible"
+    }
+   ]
+  }
+ },
+ "nonCritic": {
+  "playTest": {
+   "errors": 0,
+   "warnings": 0
+  },
+  "screenshots": {
+   "planned": [
+    "ui"
+   ],
+   "missing": []
+  },
+  "functionalChecks": {
+   "defined": false
+  },
+  "claimAudit": {
+   "unsupported": 3
+  },
+  "runEndedBy": "done"
+ },
+ "functionalChecksEstablished": false,
+ "claims": {
+  "unsupported": [
+   {
+    "claim": "Settings button and close button both worked",
+    "why": "play_check_ui ok but no output; some press steps failed."
+   },
+   {
+    "claim": "Music volume, SFX volume and quality toggle all working",
+    "why": "play_check_ui press on QualityToggle and MusicRow failed (not buttons); no evidence of working."
+   },
+   {
+    "claim": "Sound wired to the sliders",
+    "why": "insert_sound ok and scripts edited, but no test of slider effect."
+   }
+  ]
+ },
+ "singleCritic": true
+}

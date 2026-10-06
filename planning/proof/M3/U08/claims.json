@@ -1,0 +1,34 @@
+{
+ "claims": [
+  {
+   "claim": "The playtest recorded 23 item cards",
+   "verdict": "unsupported",
+   "evidence": "No output shows the count."
+  },
+  {
+   "claim": "Four per row, rarity colors, vertical scrolling",
+   "verdict": "unsupported",
+   "evidence": "No evidence shown of layout or scrolling behaviour."
+  },
+  {
+   "claim": "No client or server errors",
+   "verdict": "unsupported",
+   "evidence": "Measured errors=1; console shows Infinite yield on ReplicatedStorage:WaitForChild(\"Shared\") in InventoryLogic."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The playtest recorded 23 item cards",
+   "why": "No output shows the count."
+  },
+  {
+   "claim": "Four per row, rarity colors, vertical scrolling",
+   "why": "No evidence shown of layout or scrolling behaviour."
+  },
+  {
+   "claim": "No client or server errors",
+   "why": "Measured errors=1; console shows Infinite yield on ReplicatedStorage:WaitForChild(\"Shared\") in InventoryLogic."
+  }
+ ],
+ "summary": "3 of 3 claims unsupported."
+}

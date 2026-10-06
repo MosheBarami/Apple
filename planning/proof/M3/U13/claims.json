@@ -1,0 +1,57 @@
+{
+ "claims": [
+  {
+   "claim": "The playtest had no errors",
+   "verdict": "supported",
+   "evidence": "measured.playTest errors 0."
+  },
+  {
+   "claim": "The QuestProgressUI script connects the quest panel to the server",
+   "verdict": "unsupported",
+   "evidence": "The steps show edit_script on QuestUI, not a script named QuestProgressUI; no read-back of the wiring."
+  },
+  {
+   "claim": "The panel opened on the QUESTS button press",
+   "verdict": "unsupported",
+   "evidence": "Play shots show only the QUESTS button, no panel open; no click recorded."
+  },
+  {
+   "claim": "It displayed \"Coin Collector 1/5\", \"Jump Champion 0/10\" and \"Pad Explorer 1/1\" with a CLAIM badge",
+   "verdict": "unsupported",
+   "evidence": "No screenshot shows any quest card text."
+  },
+  {
+   "claim": "Values updated as the player collected a coin and stepped on the pad",
+   "verdict": "unsupported",
+   "evidence": "No evidence of a player interaction; play frames are static and show uncollected coins."
+  },
+  {
+   "claim": "Three cards show real-time values / verified",
+   "verdict": "unsupported",
+   "evidence": "8 steps failed and no verification of live values."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The QuestProgressUI script connects the quest panel to the server",
+   "why": "The steps show edit_script on QuestUI, not a script named QuestProgressUI; no read-back of the wiring."
+  },
+  {
+   "claim": "The panel opened on the QUESTS button press",
+   "why": "Play shots show only the QUESTS button, no panel open; no click recorded."
+  },
+  {
+   "claim": "It displayed \"Coin Collector 1/5\", \"Jump Champion 0/10\" and \"Pad Explorer 1/1\" with a CLAIM badge",
+   "why": "No screenshot shows any quest card text."
+  },
+  {
+   "claim": "Values updated as the player collected a coin and stepped on the pad",
+   "why": "No evidence of a player interaction; play frames are static and show uncollected coins."
+  },
+  {
+   "claim": "Three cards show real-time values / verified",
+   "why": "8 steps failed and no verification of live values."
+  }
+ ],
+ "summary": "No quest panel or values shown in any frame."
+}

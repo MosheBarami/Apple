@@ -1,0 +1,1 @@
+StudPilot stopped because it kept doing the same thing again and again. It worked on the on-screen parts, removed objects, how things look, how the game works, a model and new objects. Everything it made is in your place.

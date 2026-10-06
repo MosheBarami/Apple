@@ -1,0 +1,341 @@
+{
+ "harness": {
+  "name": "studpilot-eval",
+  "version": 2,
+  "node": "v26.8.1",
+  "startedAt": "2026-10-06T04:51:15.419Z",
+  "finishedAt": "2026-10-06T05:04:15.990Z",
+  "dryRun": false
+ },
+ "milestone": "M3",
+ "request": {
+  "id": "U14",
+  "category": "ui",
+  "text": "make me a gamepass store with 4 passes and robux prices, x2 coins as the featured one",
+  "devSetSha256": "466afbf7d0ceee766c8e9afc7942a67fc53510d90828f499ec46a913c9cab114"
+ },
+ "project": {
+  "id": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d",
+  "name": "Owner benchmark (E2E)"
+ },
+ "userId": "8722e4df-ab9c-47f6-8a57-02f5a5dd1d44",
+ "deploy": {
+  "apiBase": "https://studpilot.app",
+  "buildSha": "d3d68c71",
+  "healthTime": "2026-10-06T04:51:15.512Z"
+ },
+ "studio": {
+  "serverInfo": {
+   "name": "RobloxStudio",
+   "version": "1.0.0"
+  },
+  "studioId": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit",
+  "studiosListed": 1,
+  "probes": [
+   {
+    "id": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+    "name": "EvalBaseplate.rbxlx",
+    "ok": true,
+    "text": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+   }
+  ]
+ },
+ "plugin": {
+  "connected": true,
+  "pluginVersion": "1.5.0",
+  "paired": true,
+  "openPlace": {
+   "placeName": "EvalBaseplate.rbxlx",
+   "placeId": 0,
+   "gameId": 0,
+   "isRunMode": false
+  },
+  "queuedOps": 0,
+  "messagesBefore": 0,
+  "agentStatus": "idle"
+ },
+ "baseline": {
+  "file": "planning/proof/M3/place-baseline.json",
+  "sha256": "3faad99a431bc3d7d872c733c29b710e270f49d4cda92378d940b88273fda978",
+  "capturedAt": "2026-10-06T03:19:36.761Z"
+ },
+ "reset": {
+  "removedInstances": 109,
+  "removedByService": {
+   "StarterPlayer": 1,
+   "Workspace": 7,
+   "StarterGui": 99,
+   "ServerScriptService": 1,
+   "MaterialService": 1
+  },
+  "restored": [],
+  "rebuilt": [],
+  "restoreFailed": [],
+  "terrainCleared": false,
+  "verifyAfter": {
+   "extra": 0,
+   "missing": 0,
+   "propDiffs": 0
+  },
+  "clean": true
+ },
+ "conversation": {
+  "cleared": true,
+  "route": "POST /api/admin/conversation-reset/:id",
+  "status": 200,
+  "removedMessages": 2,
+  "memoryCleared": false,
+  "planCleared": null,
+  "ledgerCleared": true,
+  "messagesAfter": 0,
+  "at": "2026-10-06T04:51:16.059Z"
+ },
+ "spend": {
+  "before": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 90624,
+   "dayPending": 0,
+   "monthBillableNeurons": 437164,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.4336,
+   "estimatedMonthUsd": 4.8088,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  },
+  "after": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 100901,
+   "dayPending": 0,
+   "monthBillableNeurons": 447441,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.36936875,
+   "estimatedMonthUsd": 4.9219,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  }
+ },
+ "run": {
+  "startedAt": "2026-10-06T04:51:17.816Z",
+  "startConfirmed": true,
+  "startError": null,
+  "endedBy": "done",
+  "stopReason": "done",
+  "minutes": 12.74,
+  "timeoutMinutes": 15,
+  "requestEchoed": true,
+  "creditsSpentLedger": 342,
+  "error": null
+ },
+ "build": {
+  "kind": "ui",
+  "emptyScreenGuis": [],
+  "addedParts": 0,
+  "screenGuis": [
+   {
+    "enabled": true,
+    "guiObjects": 40,
+    "name": "GamepassStore",
+    "texts": 15
+   }
+  ],
+  "addedInstances": 115,
+  "framing": {
+   "includesTerrain": false,
+   "hiddenParts": 0,
+   "hugeParts": 0
+  },
+  "terrainCells": 0,
+  "addedByService": {
+   "StarterPlayer": 1,
+   "ServerScriptService": 2,
+   "StarterGui": 111,
+   "ReplicatedStorage": 1
+  },
+  "addedScripts": 4,
+  "viewport": [
+   1554,
+   623
+  ],
+  "terrain": {
+   "cells": 0,
+   "edited": false,
+   "baselineCells": 0
+  },
+  "spawn": {
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "source": "pristine",
+   "position": [
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "captures": [
+  {
+   "name": "ui",
+   "file": "shots/ui-1554x623.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 144183,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "target": null
+  }
+ ],
+ "ui": {
+  "requested": [
+   "1920x1080",
+   "1280x720"
+  ],
+  "viewportReported": [
+   1554,
+   623
+  ],
+  "captured": "1554x623",
+  "met": null,
+  "switchedOff": [],
+  "enabledForCapture": [],
+  "enableError": null,
+  "restoreError": null,
+  "note": "captured at 1554x623, which is not a target size; it is named by the pixels actually captured"
+ },
+ "playTest": {
+  "started": true,
+  "serverAnswered": true,
+  "frames": [
+   {
+    "name": "play-1",
+    "file": "shots/play-1.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 241889
+   },
+   {
+    "name": "play-2",
+    "file": "shots/play-2.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 241771
+   },
+   {
+    "name": "play-3",
+    "file": "shots/play-3.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 242221
+   }
+  ],
+  "consoleChars": 0,
+  "console": {
+   "errors": 0,
+   "warnings": 0,
+   "errorLines": [],
+   "warningLines": []
+  },
+  "logServer": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "logClient": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "stateAfterStart": "- Current Studio Mode: Play\n- Available DataModels: Client, Server\n- Focused DataModel in the viewport: Client",
+  "errors": 0,
+  "unestablished": null,
+  "error": null,
+  "backInEdit": true,
+  "warnings": 0,
+  "sources": {
+   "console": {
+    "errors": 0,
+    "warnings": 0
+   },
+   "logServer": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   },
+   "logClient": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   }
+  }
+ },
+ "functionalChecks": {
+  "defined": false
+ },
+ "aborted": null,
+ "files": {
+  "request.txt": {
+   "sha256": "1fdcb42faf3872ddd0d0bc6f5535ec39b329f48a7bc0419752e808ba6e6b0496",
+   "bytes": 86
+  },
+  "reply.md": {
+   "sha256": "70977375c8fcd1bc0f32cfda2d3f3df41ccad4fe103840768c53ad297c296d67",
+   "bytes": 561
+  },
+  "steps.json": {
+   "sha256": "560f6b646e67b39ba1f74a0ab995733e688afe83bfdee1715801380c6297de6a",
+   "bytes": 12114
+  },
+  "credits.json": {
+   "sha256": "7ac96103f8126835c5b4845d5c4e8f0ec22ac612401f4d386ca09e252d053b08",
+   "bytes": 822
+  },
+  "timing.json": {
+   "sha256": "8162b599d223abe3ce5133c0f2fbaf155f33f59ff44f3011ef5c72e19d6cc7e8",
+   "bytes": 1733
+  },
+  "console.txt": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  "shots/ui-1554x623.jpg": {
+   "sha256": "535553f9a6634a0bb10eb5c0ac6d14accf0f5d0134d5e6f61c51ba9b1b78e7b9",
+   "bytes": 144183
+  },
+  "shots/play-1.jpg": {
+   "sha256": "8d85b46221380b595b5de3b2fa102662faa033835b7b779c5cc3f0dbefeb575a",
+   "bytes": 241889
+  },
+  "shots/play-2.jpg": {
+   "sha256": "79866559c9ed69a9a119e7190f3e58c7dfec62ad5b5a29a2d09c54acc07d14ea",
+   "bytes": 241771
+  },
+  "shots/play-3.jpg": {
+   "sha256": "67514e9386cb89027180da356f43670e35038b13eaca7b8260bc1707174c9476",
+   "bytes": 242221
+  }
+ }
+}

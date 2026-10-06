@@ -1,0 +1,16 @@
+{
+ "claims": [
+  {
+   "claim": "The run stopped because it kept changing the same thing",
+   "verdict": "supported",
+   "evidence": "Run ended incomplete after 119 calls."
+  },
+  {
+   "claim": "It worked on screen parts, models, copies and new objects",
+   "verdict": "supported",
+   "evidence": "286 instances, 102 parts, RebirthGui present."
+  }
+ ],
+ "unsupported": [],
+ "summary": "0 of 2 claims unsupported."
+}

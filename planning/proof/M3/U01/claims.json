@@ -1,0 +1,21 @@
+{
+ "claims": [
+  {
+   "claim": "The run stopped because it repeated itself",
+   "verdict": "supported",
+   "evidence": "Run ended incomplete after 92 calls, 11 failed."
+  },
+  {
+   "claim": "It removed objects and worked on screen parts and new objects",
+   "verdict": "supported",
+   "evidence": "delete_instances ok; build_studded_ui ok."
+  },
+  {
+   "claim": "Everything it made is in your place",
+   "verdict": "supported",
+   "evidence": "Measured 222 added instances incl. ShopGui."
+  }
+ ],
+ "unsupported": [],
+ "summary": "0 of 3 claims unsupported."
+}

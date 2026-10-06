@@ -1,0 +1,1 @@
+The loading screen is done and verified with a real playtest: the player saw "MY GAME" in the logo area with the bar filling to "Loading... 100%", then the screen faded out and disappeared with no errors. The logo text is a placeholder — just edit the Title's text to your game's real name.

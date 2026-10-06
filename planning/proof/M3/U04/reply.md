@@ -1,0 +1,1 @@
+StudPilot stopped because it kept changing the same thing over and over. It worked on the on-screen parts, how the game works, 2 models, copies of objects, new objects, moved or resized objects and more. Tell it what should look different and it will carry on from there.

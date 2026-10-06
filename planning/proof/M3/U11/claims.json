@@ -1,0 +1,58 @@
+{
+ "claims": [
+  {
+   "claim": "The playtest ran with no errors",
+   "verdict": "supported",
+   "evidence": "measured.playTest errors 0, warnings 0, all three log sources read."
+  },
+  {
+   "claim": "A loading screen with \"MY GAME\" in a logo area and a \"Loading...\" bar was built",
+   "verdict": "supported",
+   "evidence": "ui-1554x623.jpg shows MY GAME in the logo area and \"Loading... 0%\" at the bottom; step 3 build_studded_ui ok."
+  },
+  {
+   "claim": "In the playtest the player saw \"MY GAME\" in the logo area",
+   "verdict": "unsupported",
+   "evidence": "play-1/2/3.jpg show only the character on a baseplate, no loading screen at all."
+  },
+  {
+   "claim": "The bar filled to \"Loading... 100%\"",
+   "verdict": "unsupported",
+   "evidence": "No screenshot shows anything above 0%; the play frames show no UI. No log of the value."
+  },
+  {
+   "claim": "The screen then faded out and disappeared",
+   "verdict": "unsupported",
+   "evidence": "No frame or log shows a fade; the play frames simply show no screen."
+  },
+  {
+   "claim": "The loading screen is done and verified with a real playtest",
+   "verdict": "unsupported",
+   "evidence": "No evidence of the loading behaviour; only a 0% static capture."
+  },
+  {
+   "claim": "The logo text is a placeholder editable via the Title text",
+   "verdict": "supported",
+   "evidence": "Title shows \"MY GAME\" and set_properties on Header.Title succeeded; reasonable description."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "In the playtest the player saw \"MY GAME\" in the logo area",
+   "why": "play-1/2/3.jpg show only the character on a baseplate, no loading screen at all."
+  },
+  {
+   "claim": "The bar filled to \"Loading... 100%\"",
+   "why": "No screenshot shows anything above 0%; the play frames show no UI. No log of the value."
+  },
+  {
+   "claim": "The screen then faded out and disappeared",
+   "why": "No frame or log shows a fade; the play frames simply show no screen."
+  },
+  {
+   "claim": "The loading screen is done and verified with a real playtest",
+   "why": "No evidence of the loading behaviour; only a 0% static capture."
+  }
+ ],
+ "summary": "Static 0% loading screen only; fade and 100% claims unsupported."
+}

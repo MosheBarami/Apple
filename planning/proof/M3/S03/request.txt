@@ -1,0 +1,1 @@
+upgrades that increase coins per click, with costs going up each level

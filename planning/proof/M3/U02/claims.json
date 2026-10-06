@@ -1,0 +1,66 @@
+{
+ "claims": [
+  {
+   "claim": "The menu is confirmed working end to end",
+   "verdict": "unsupported",
+   "evidence": "Only play_check/play_check_ui ok statuses; no outputs show end-to-end behaviour."
+  },
+  {
+   "claim": "A real player sees the PLAY, SETTINGS and SHOP buttons",
+   "verdict": "unsupported",
+   "evidence": "No log or screenshot output confirming visible buttons."
+  },
+  {
+   "claim": "The \"STUDDED WORLD\" title is shown",
+   "verdict": "unsupported",
+   "evidence": "No evidence of title text."
+  },
+  {
+   "claim": "Panels open and close with no errors",
+   "verdict": "unsupported",
+   "evidence": "No evidence of open/close test; zero errors measured only."
+  },
+  {
+   "claim": "Plaza zones and welcome arch are in place",
+   "verdict": "supported",
+   "evidence": "Workspace parts 35 added; zone sign set_properties ok."
+  },
+  {
+   "claim": "Sign colors set blue for Play, red for Shop and Settings",
+   "verdict": "unsupported",
+   "evidence": "set_properties ok but values not shown; earlier colour sets refused."
+  },
+  {
+   "claim": "The game is ready to play",
+   "verdict": "unsupported",
+   "evidence": "No evidence."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The menu is confirmed working end to end",
+   "why": "Only play_check/play_check_ui ok statuses; no outputs show end-to-end behaviour."
+  },
+  {
+   "claim": "A real player sees the PLAY, SETTINGS and SHOP buttons",
+   "why": "No log or screenshot output confirming visible buttons."
+  },
+  {
+   "claim": "The \"STUDDED WORLD\" title is shown",
+   "why": "No evidence of title text."
+  },
+  {
+   "claim": "Panels open and close with no errors",
+   "why": "No evidence of open/close test; zero errors measured only."
+  },
+  {
+   "claim": "Sign colors set blue for Play, red for Shop and Settings",
+   "why": "set_properties ok but values not shown; earlier colour sets refused."
+  },
+  {
+   "claim": "The game is ready to play",
+   "why": "No evidence."
+  }
+ ],
+ "summary": "6 of 7 claims unsupported."
+}

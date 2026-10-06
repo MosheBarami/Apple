@@ -1,0 +1,33 @@
+{
+ "scores": {
+  "delivers": 3,
+  "visual": 5,
+  "layout": 4,
+  "ui": 3,
+  "life": 2.5,
+  "polish": 2
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 2,
+   "evidence": "all shots: top HUD bar labelled with raw name 'RebirthProgress'; REBIRTH panel in play shots is an empty orange box"
+  }
+ ],
+ "topFixes": [
+  "Fill the panel with current multiplier, next multiplier, cost and a progress bar",
+  "Replace the raw 'RebirthProgress' label with a real value like 0 / 100",
+  "Clarify x1 / x2 chips with labels and remove duplicate X buttons"
+ ],
+ "notes": "Rebirth window opens as an empty orange body with only a title; multiplier/cost/progress are only hinted by small HUD chips (x1, 100, x2) and a bar labelled with a raw instance name. A locked Rebirth button reads as locked but the panel itself delivers little.",
+ "shotsViewed": [
+  "close-up.jpg",
+  "overview.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "spawn-eye.jpg",
+  "three-quarter.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

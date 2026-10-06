@@ -1,0 +1,1 @@
+quest list with 3 daily quests and progress bars

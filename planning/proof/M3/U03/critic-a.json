@@ -1,0 +1,24 @@
+{
+ "scores": {
+  "delivers": 7.5,
+  "visual": 6.5,
+  "layout": 7,
+  "ui": 6.5,
+  "life": 3,
+  "polish": 6.5
+ },
+ "na": [],
+ "severeFlaws": [],
+ "topFixes": [
+  "Show nonzero values and a partially filled level bar with XP numbers",
+  "Make the bar style consistent (dark empty vs green in ui shot) and add a level badge",
+  "Add gain pop or pulse on coin/gem change"
+ ],
+ "notes": "Coins, gems and a Level 1 bar sit at the top in a coherent studded orange/green skin with readable numbers. All values are 0 and the bar looks empty or unlabelled for progress; play frames are identical, so it feels static.",
+ "shotsViewed": [
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

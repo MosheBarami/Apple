@@ -1,0 +1,1 @@
+pet eggs: buy an egg for 100 coins, hatch a random pet with shown odds, pets boost income

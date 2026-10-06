@@ -1,0 +1,338 @@
+{
+ "harness": {
+  "name": "studpilot-eval",
+  "version": 2,
+  "node": "v26.8.1",
+  "startedAt": "2026-10-06T03:58:59.970Z",
+  "finishedAt": "2026-10-06T04:04:07.578Z",
+  "dryRun": false
+ },
+ "milestone": "M3",
+ "request": {
+  "id": "U06",
+  "category": "ui",
+  "text": "settings window with music volume, sfx volume and a graphics quality toggle",
+  "devSetSha256": "466afbf7d0ceee766c8e9afc7942a67fc53510d90828f499ec46a913c9cab114"
+ },
+ "project": {
+  "id": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d",
+  "name": "Owner benchmark (E2E)"
+ },
+ "userId": "8722e4df-ab9c-47f6-8a57-02f5a5dd1d44",
+ "deploy": {
+  "apiBase": "https://studpilot.app",
+  "buildSha": "d3d68c71",
+  "healthTime": "2026-10-06T03:59:00.058Z"
+ },
+ "studio": {
+  "serverInfo": {
+   "name": "RobloxStudio",
+   "version": "1.0.0"
+  },
+  "studioId": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit",
+  "studiosListed": 1,
+  "probes": [
+   {
+    "id": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+    "name": "EvalBaseplate.rbxlx",
+    "ok": true,
+    "text": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+   }
+  ]
+ },
+ "plugin": {
+  "connected": true,
+  "pluginVersion": "1.5.0",
+  "paired": true,
+  "openPlace": {
+   "placeName": "EvalBaseplate.rbxlx",
+   "placeId": 0,
+   "gameId": 0,
+   "isRunMode": false
+  },
+  "queuedOps": 0,
+  "messagesBefore": 0,
+  "agentStatus": "idle"
+ },
+ "baseline": {
+  "file": "planning/proof/M3/place-baseline.json",
+  "sha256": "3faad99a431bc3d7d872c733c29b710e270f49d4cda92378d940b88273fda978",
+  "capturedAt": "2026-10-06T03:19:36.761Z"
+ },
+ "reset": {
+  "removedInstances": 140,
+  "removedByService": {
+   "ServerScriptService": 4,
+   "StarterPlayer": 1,
+   "StarterGui": 135
+  },
+  "restored": [],
+  "rebuilt": [],
+  "restoreFailed": [],
+  "terrainCleared": false,
+  "verifyAfter": {
+   "extra": 0,
+   "missing": 0,
+   "propDiffs": 0
+  },
+  "clean": true
+ },
+ "conversation": {
+  "cleared": true,
+  "route": "POST /api/admin/conversation-reset/:id",
+  "status": 200,
+  "removedMessages": 2,
+  "memoryCleared": true,
+  "planCleared": null,
+  "ledgerCleared": true,
+  "messagesAfter": 0,
+  "at": "2026-10-06T03:59:00.611Z"
+ },
+ "spend": {
+  "before": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 42840,
+   "dayPending": 0,
+   "monthBillableNeurons": 389380,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.7322500000000001,
+   "estimatedMonthUsd": 4.2832,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  },
+  "after": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 49455,
+   "dayPending": 0,
+   "monthBillableNeurons": 395995,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.69090625,
+   "estimatedMonthUsd": 4.3559,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  }
+ },
+ "run": {
+  "startedAt": "2026-10-06T03:59:02.441Z",
+  "startConfirmed": true,
+  "startError": null,
+  "endedBy": "done",
+  "stopReason": "done",
+  "minutes": 4.86,
+  "timeoutMinutes": 15,
+  "requestEchoed": true,
+  "creditsSpentLedger": 220,
+  "error": null
+ },
+ "build": {
+  "kind": "ui",
+  "emptyScreenGuis": [],
+  "addedParts": 0,
+  "screenGuis": [
+   {
+    "enabled": true,
+    "guiObjects": 24,
+    "name": "SettingsGui",
+    "texts": 9
+   }
+  ],
+  "addedInstances": 70,
+  "framing": {
+   "includesTerrain": false,
+   "hiddenParts": 0,
+   "hugeParts": 0
+  },
+  "terrainCells": 0,
+  "addedByService": {
+   "StarterPlayer": 1,
+   "SoundService": 2,
+   "StarterGui": 67
+  },
+  "addedScripts": 1,
+  "viewport": [
+   1554,
+   623
+  ],
+  "terrain": {
+   "cells": 0,
+   "edited": false,
+   "baselineCells": 0
+  },
+  "spawn": {
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "source": "pristine",
+   "position": [
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "captures": [
+  {
+   "name": "ui",
+   "file": "shots/ui-1554x623.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 135336,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "target": null
+  }
+ ],
+ "ui": {
+  "requested": [
+   "1920x1080",
+   "1280x720"
+  ],
+  "viewportReported": [
+   1554,
+   623
+  ],
+  "captured": "1554x623",
+  "met": null,
+  "switchedOff": [],
+  "enabledForCapture": [],
+  "enableError": null,
+  "restoreError": null,
+  "note": "captured at 1554x623, which is not a target size; it is named by the pixels actually captured"
+ },
+ "playTest": {
+  "started": true,
+  "serverAnswered": true,
+  "frames": [
+   {
+    "name": "play-1",
+    "file": "shots/play-1.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 235089
+   },
+   {
+    "name": "play-2",
+    "file": "shots/play-2.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 234833
+   },
+   {
+    "name": "play-3",
+    "file": "shots/play-3.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 235118
+   }
+  ],
+  "consoleChars": 0,
+  "console": {
+   "errors": 0,
+   "warnings": 0,
+   "errorLines": [],
+   "warningLines": []
+  },
+  "logServer": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "logClient": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "stateAfterStart": "- Current Studio Mode: Play\n- Available DataModels: Client, Server\n- Focused DataModel in the viewport: Client",
+  "errors": 0,
+  "unestablished": null,
+  "error": null,
+  "backInEdit": true,
+  "warnings": 0,
+  "sources": {
+   "console": {
+    "errors": 0,
+    "warnings": 0
+   },
+   "logServer": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   },
+   "logClient": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   }
+  }
+ },
+ "functionalChecks": {
+  "defined": false
+ },
+ "aborted": null,
+ "files": {
+  "request.txt": {
+   "sha256": "1485bdb0a35bfa83ea3a1c7f046cdf4ba6bcf49852fd7a2142bdb150ab677c94",
+   "bytes": 76
+  },
+  "reply.md": {
+   "sha256": "2de0d5747b21d661dd4f4b3d069f87cdda131b91d78c9d4484e7b0c597483ca9",
+   "bytes": 570
+  },
+  "steps.json": {
+   "sha256": "b0c19b82ee5913a4279d1ba17eeb8f88bce8c67eefb6ed4dff9f13d51e0f0ca5",
+   "bytes": 8725
+  },
+  "credits.json": {
+   "sha256": "24bed0757c0ca2f75455bb893533507ce45a710be729aaefef345b26e69ae92f",
+   "bytes": 822
+  },
+  "timing.json": {
+   "sha256": "5d9effd02f6e4e29307332c2cbbd7e86782146c7ff4d0988fdd5e4b7cc20145a",
+   "bytes": 1728
+  },
+  "console.txt": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  "shots/ui-1554x623.jpg": {
+   "sha256": "6700dfec6557bc08bb39dd3546bb36bf27ca731a2e8f9fca2e6fcd8af79a8d4f",
+   "bytes": 135336
+  },
+  "shots/play-1.jpg": {
+   "sha256": "aafb12e496cb9566f6b9fc135a2054065ec945dee76de44125884334264ffb4d",
+   "bytes": 235089
+  },
+  "shots/play-2.jpg": {
+   "sha256": "7d68013e4047fa2c54388ecd7e0fae3066fff625a3828ba6dae206624ac4769f",
+   "bytes": 234833
+  },
+  "shots/play-3.jpg": {
+   "sha256": "7cbdb74d5105e62173555c401a9feab4e46417ce5f3fc17d9bd75a9ce8f682f6",
+   "bytes": 235118
+  }
+ }
+}

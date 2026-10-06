@@ -1,0 +1,33 @@
+{
+ "scores": {
+  "delivers": 2,
+  "visual": 5,
+  "layout": 3.5,
+  "ui": 2,
+  "life": 2.5,
+  "polish": 3
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 1,
+   "evidence": "all shots: only coin counter and three buttons (X, Upgrades, up-arrow Upgrades); no upgrades list, levels, effects or buy buttons"
+  }
+ ],
+ "topFixes": [
+  "Show the upgrades window with 5 rows of level, effect and Buy button",
+  "Show a greyed-out unaffordable state",
+  "Remove the duplicate Upgrades buttons and stray X"
+ ],
+ "notes": "A coin counter and three redundant buttons (two labelled Upgrades plus an X) with a small green pad in the world. The upgrades menu with 5 upgrades never appears, so greying states are absent.",
+ "shotsViewed": [
+  "close-up.jpg",
+  "overview.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "spawn-eye.jpg",
+  "three-quarter.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

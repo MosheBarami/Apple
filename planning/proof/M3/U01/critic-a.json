@@ -1,0 +1,33 @@
+{
+ "scores": {
+  "delivers": 2,
+  "visual": 4,
+  "layout": 2.5,
+  "ui": 2,
+  "life": 2,
+  "polish": 3
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 1,
+   "evidence": "all shots: only a GEMS counter and SHOP button over a bare baseplate with a small blue egg; no shop screen, no 6 eggs, no gem prices, no featured egg"
+  }
+ ],
+ "topFixes": [
+  "Show the shop window with 6 eggs, gem prices and a large featured egg",
+  "Open the shop state for the screenshots",
+  "Replace bare baseplate backdrop behind world egg"
+ ],
+ "notes": "Only a HUD gem counter and Shop button are visible, plus one tiny egg in the world. The shop screen the request asks for never appears. HUD skin is clean but nothing else delivered.",
+ "shotsViewed": [
+  "close-up.jpg",
+  "overview.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "spawn-eye.jpg",
+  "three-quarter.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

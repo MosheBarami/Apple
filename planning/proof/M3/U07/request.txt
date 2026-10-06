@@ -1,0 +1,1 @@
+upgrades menu with 5 upgrades, each with level, effect and a buy button that greys out when you can't afford it

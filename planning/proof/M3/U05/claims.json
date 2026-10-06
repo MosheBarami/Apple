@@ -1,0 +1,43 @@
+{
+ "claims": [
+  {
+   "claim": "The veil appears over the claimed day",
+   "verdict": "unsupported",
+   "evidence": "play_check_ui ok but no output; ClaimedOverlay background set was refused."
+  },
+  {
+   "claim": "The CLAIMED label was hidden on screen",
+   "verdict": "unsupported",
+   "evidence": "No evidence output."
+  },
+  {
+   "claim": "Claim payout coins 0 to 50 recorded",
+   "verdict": "unsupported",
+   "evidence": "No recorded output shows it."
+  },
+  {
+   "claim": "Button changes to Come back tomorrow!",
+   "verdict": "unsupported",
+   "evidence": "No recorded output shows it."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The veil appears over the claimed day",
+   "why": "play_check_ui ok but no output; ClaimedOverlay background set was refused."
+  },
+  {
+   "claim": "The CLAIMED label was hidden on screen",
+   "why": "No evidence output."
+  },
+  {
+   "claim": "Claim payout coins 0 to 50 recorded",
+   "why": "No recorded output shows it."
+  },
+  {
+   "claim": "Button changes to Come back tomorrow!",
+   "why": "No recorded output shows it."
+  }
+ ],
+ "summary": "4 of 4 claims unsupported."
+}

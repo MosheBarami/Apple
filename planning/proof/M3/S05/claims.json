@@ -1,0 +1,57 @@
+{
+ "claims": [
+  {
+   "claim": "Playtest had no errors",
+   "verdict": "supported",
+   "evidence": "measured errors 0, console empty and all sources read."
+  },
+  {
+   "claim": "Coins tick up automatically",
+   "verdict": "unsupported",
+   "evidence": "Frames show Coins 0 throughout."
+  },
+  {
+   "claim": "The Eggs button opens the shop with Mystery Egg and its odds",
+   "verdict": "unsupported",
+   "evidence": "No panel shown open in any frame; no click."
+  },
+  {
+   "claim": "Buy Egg sends the purchase to the server, Pets button opens the pet list",
+   "verdict": "unsupported",
+   "evidence": "No click evidence."
+  },
+  {
+   "claim": "The test player had about 18 coins and the 100-coin egg was correctly declined",
+   "verdict": "unsupported",
+   "evidence": "Shots show 0 coins; no log of 18 or a declined purchase."
+  },
+  {
+   "claim": "The game is playable end to end; hatch random pet with odds; pets boost income shown live in the star counter",
+   "verdict": "unsupported",
+   "evidence": "No hatching or boost observed; star counter shows static +1/s."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "Coins tick up automatically",
+   "why": "Frames show Coins 0 throughout."
+  },
+  {
+   "claim": "The Eggs button opens the shop with Mystery Egg and its odds",
+   "why": "No panel shown open in any frame; no click."
+  },
+  {
+   "claim": "Buy Egg sends the purchase to the server, Pets button opens the pet list",
+   "why": "No click evidence."
+  },
+  {
+   "claim": "The test player had about 18 coins and the 100-coin egg was correctly declined",
+   "why": "Shots show 0 coins; no log of 18 or a declined purchase."
+  },
+  {
+   "claim": "The game is playable end to end; hatch random pet with odds; pets boost income shown live in the star counter",
+   "why": "No hatching or boost observed; star counter shows static +1/s."
+  }
+ ],
+ "summary": "Coins stayed 0 and no panel, purchase or hatch was shown, contradicting the reply."
+}

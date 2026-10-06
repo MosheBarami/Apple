@@ -1,0 +1,1 @@
+daily reward calendar with 7 days, today highlighted and claimed days greyed out

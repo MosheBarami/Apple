@@ -1,0 +1,84 @@
+{
+ "claims": [
+  {
+   "claim": "The playtest had no errors",
+   "verdict": "supported",
+   "evidence": "measured.playTest errors 0, warnings 0."
+  },
+  {
+   "claim": "The player saw both demo toasts \"+10 Coins\" and \"Day 1 streak bonus claimed\" on screen",
+   "verdict": "unsupported",
+   "evidence": "play-1 shows a toast panel with \"Daily reward\" and \"Day 1 streak bonus claimed\" and no \"+10 Coins\" text; play-2 shows \"Coin\", \"Daily reward\", \"Day 1 streak...\" Never \"+10 Coins\" or \"Coins earned\" visible."
+  },
+  {
+   "claim": "A toast slides in from the bottom-right corner",
+   "verdict": "unsupported",
+   "evidence": "Panels appear at bottom-right in the shots but no frame shows sliding; the reply itself admits this was not checked."
+  },
+  {
+   "claim": "Toast has icon, a title like \"Coins earned\" and a message like \"+10 Coins\"",
+   "verdict": "unsupported",
+   "evidence": "Shots show icon \"R\", and titles \"Coin\"/\"Daily reward\" with empty or placeholder cards, not \"Coins earned\" / \"+10 Coins\"."
+  },
+  {
+   "claim": "It plays a pop sound",
+   "verdict": "unsupported",
+   "evidence": "insert_sound succeeded but nothing shows the sound plays."
+  },
+  {
+   "claim": "It slides away after a few seconds",
+   "verdict": "unsupported",
+   "evidence": "No frame shows dismissal timing; admitted unchecked."
+  },
+  {
+   "claim": "Up to five stack neatly with older ones shifting up",
+   "verdict": "unsupported",
+   "evidence": "No test showed stacking; the shots show a stack of overlapping template cards, not behaviour."
+  },
+  {
+   "claim": "Any server script can send one by calling the notify helper with kind, title, message",
+   "verdict": "unsupported",
+   "evidence": "Script edits succeeded but the API was never exercised or read back."
+  },
+  {
+   "claim": "The audit tool only flagged things about the empty baseplate scene",
+   "verdict": "unsupported",
+   "evidence": "audit_build output is not shown."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The player saw both demo toasts \"+10 Coins\" and \"Day 1 streak bonus claimed\" on screen",
+   "why": "play-1 shows a toast panel with \"Daily reward\" and \"Day 1 streak bonus claimed\" and no \"+10 Coins\" text; play-2 shows \"Coin\", \"Daily reward\", \"Day 1 streak...\" Never \"+10 Coins\" or \"Coins earned\" visible."
+  },
+  {
+   "claim": "A toast slides in from the bottom-right corner",
+   "why": "Panels appear at bottom-right in the shots but no frame shows sliding; the reply itself admits this was not checked."
+  },
+  {
+   "claim": "Toast has icon, a title like \"Coins earned\" and a message like \"+10 Coins\"",
+   "why": "Shots show icon \"R\", and titles \"Coin\"/\"Daily reward\" with empty or placeholder cards, not \"Coins earned\" / \"+10 Coins\"."
+  },
+  {
+   "claim": "It plays a pop sound",
+   "why": "insert_sound succeeded but nothing shows the sound plays."
+  },
+  {
+   "claim": "It slides away after a few seconds",
+   "why": "No frame shows dismissal timing; admitted unchecked."
+  },
+  {
+   "claim": "Up to five stack neatly with older ones shifting up",
+   "why": "No test showed stacking; the shots show a stack of overlapping template cards, not behaviour."
+  },
+  {
+   "claim": "Any server script can send one by calling the notify helper with kind, title, message",
+   "why": "Script edits succeeded but the API was never exercised or read back."
+  },
+  {
+   "claim": "The audit tool only flagged things about the empty baseplate scene",
+   "why": "audit_build output is not shown."
+  }
+ ],
+ "summary": "Toast text and slide behaviour not shown; shots contradict claimed text."
+}

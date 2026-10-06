@@ -1,0 +1,29 @@
+{
+ "scores": {
+  "delivers": 2,
+  "visual": 3,
+  "layout": 2,
+  "ui": 2,
+  "life": 2,
+  "polish": 3
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 1,
+   "evidence": "all shots: only a dim 'Settings' button on the right; no settings window, sliders or quality toggle visible"
+  }
+ ],
+ "topFixes": [
+  "Show the settings window with music and sfx sliders and a graphics quality toggle",
+  "Open the window state in the screenshots",
+  "Use the same bright studded skin as other UI"
+ ],
+ "notes": "Only a dark, low-contrast Settings button is visible over an empty baseplate. No sliders or toggle appear anywhere.",
+ "shotsViewed": [
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

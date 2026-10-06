@@ -1,0 +1,1 @@
+leaderboard panel showing top 10 players with avatars and their wins

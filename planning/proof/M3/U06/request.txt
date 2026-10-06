@@ -1,0 +1,1 @@
+settings window with music volume, sfx volume and a graphics quality toggle

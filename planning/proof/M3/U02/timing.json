@@ -1,0 +1,78 @@
+{
+ "startedAt": "2026-10-06T03:34:44.677Z",
+ "finishedAt": "2026-10-06T03:40:09.814Z",
+ "totalMs": 325137,
+ "agentRunMinutes": 5.12,
+ "steps": [
+  {
+   "name": "preflight",
+   "startedAt": "2026-10-06T03:34:44.678Z",
+   "ms": 271,
+   "ok": true,
+   "note": null
+  },
+  {
+   "name": "reset",
+   "startedAt": "2026-10-06T03:34:44.949Z",
+   "ms": 214,
+   "ok": true,
+   "note": "removed 222, restored 0, rebuilt 0"
+  },
+  {
+   "name": "conversation",
+   "startedAt": "2026-10-06T03:34:45.163Z",
+   "ms": 259,
+   "ok": true,
+   "note": "2 messages removed, memory was empty, ledger cleared"
+  },
+  {
+   "name": "credits",
+   "startedAt": "2026-10-06T03:34:45.422Z",
+   "ms": 1543,
+   "ok": true,
+   "note": "plan free, granted 3000 ledger units (20 credits), event eval-M3-U02-20261006033446"
+  },
+  {
+   "name": "agent-run",
+   "startedAt": "2026-10-06T03:34:46.965Z",
+   "ms": 307373,
+   "ok": true,
+   "note": "5.12 min, done"
+  },
+  {
+   "name": "messages",
+   "startedAt": "2026-10-06T03:39:54.338Z",
+   "ms": 163,
+   "ok": true,
+   "note": "41 steps, stopReason done, 226 ledger units"
+  },
+  {
+   "name": "credits-after",
+   "startedAt": "2026-10-06T03:39:54.501Z",
+   "ms": 813,
+   "ok": true,
+   "note": "1.51 credits by the message, 226 ledger units by the balance"
+  },
+  {
+   "name": "measure",
+   "startedAt": "2026-10-06T03:39:55.314Z",
+   "ms": 70,
+   "ok": true,
+   "note": "both: 157 instances, 35 parts, 1 screen UI(s)"
+  },
+  {
+   "name": "captures",
+   "startedAt": "2026-10-06T03:39:55.384Z",
+   "ms": 2518,
+   "ok": true,
+   "note": "5 of 5 captured"
+  },
+  {
+   "name": "play-test",
+   "startedAt": "2026-10-06T03:39:57.902Z",
+   "ms": 11800,
+   "ok": true,
+   "note": "0 errors, 0 warnings, 3 of 3 frames"
+  }
+ ]
+}

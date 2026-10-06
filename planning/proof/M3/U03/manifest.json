@@ -1,0 +1,351 @@
+{
+ "harness": {
+  "name": "studpilot-eval",
+  "version": 2,
+  "node": "v26.8.1",
+  "startedAt": "2026-10-06T03:40:20.421Z",
+  "finishedAt": "2026-10-06T03:42:59.594Z",
+  "dryRun": false
+ },
+ "milestone": "M3",
+ "request": {
+  "id": "U03",
+  "category": "ui",
+  "text": "HUD showing coins, gems and a level bar at the top of the screen",
+  "devSetSha256": "466afbf7d0ceee766c8e9afc7942a67fc53510d90828f499ec46a913c9cab114"
+ },
+ "project": {
+  "id": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d",
+  "name": "Owner benchmark (E2E)"
+ },
+ "userId": "8722e4df-ab9c-47f6-8a57-02f5a5dd1d44",
+ "deploy": {
+  "apiBase": "https://studpilot.app",
+  "buildSha": "d3d68c71",
+  "healthTime": "2026-10-06T03:40:20.512Z"
+ },
+ "studio": {
+  "serverInfo": {
+   "name": "RobloxStudio",
+   "version": "1.0.0"
+  },
+  "studioId": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit",
+  "studiosListed": 1,
+  "probes": [
+   {
+    "id": "8dc56016-97e0-4665-ab11-e5ff6d324840",
+    "name": "EvalBaseplate.rbxlx",
+    "ok": true,
+    "text": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+   }
+  ]
+ },
+ "plugin": {
+  "connected": true,
+  "pluginVersion": "1.5.0",
+  "paired": true,
+  "openPlace": {
+   "placeName": "EvalBaseplate.rbxlx",
+   "placeId": 0,
+   "gameId": 0,
+   "isRunMode": false
+  },
+  "queuedOps": 0,
+  "messagesBefore": 0,
+  "agentStatus": "idle"
+ },
+ "baseline": {
+  "file": "planning/proof/M3/place-baseline.json",
+  "sha256": "3faad99a431bc3d7d872c733c29b710e270f49d4cda92378d940b88273fda978",
+  "capturedAt": "2026-10-06T03:19:36.761Z"
+ },
+ "reset": {
+  "removedInstances": 157,
+  "removedByService": {
+   "StarterPlayer": 1,
+   "Workspace": 53,
+   "StarterGui": 97,
+   "Lighting": 4,
+   "SoundService": 1,
+   "MaterialService": 1
+  },
+  "restored": [
+   "Lighting.Ambient",
+   "Lighting.Brightness",
+   "Lighting.ClockTime",
+   "Lighting.ColorShift_Bottom",
+   "Lighting.ColorShift_Top",
+   "Lighting.GeographicLatitude",
+   "Lighting.GlobalShadows",
+   "Lighting.OutdoorAmbient",
+   "Lighting.ShadowSoftness"
+  ],
+  "rebuilt": [],
+  "restoreFailed": [],
+  "terrainCleared": false,
+  "verifyAfter": {
+   "extra": 0,
+   "missing": 0,
+   "propDiffs": 0
+  },
+  "clean": true
+ },
+ "conversation": {
+  "cleared": true,
+  "route": "POST /api/admin/conversation-reset/:id",
+  "status": 200,
+  "removedMessages": 2,
+  "memoryCleared": true,
+  "planCleared": null,
+  "ledgerCleared": true,
+  "messagesAfter": 0,
+  "at": "2026-10-06T03:40:21.214Z"
+ },
+ "spend": {
+  "before": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 18874,
+   "dayPending": 0,
+   "monthBillableNeurons": 365414,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.8820375,
+   "estimatedMonthUsd": 4.0196,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  },
+  "after": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 22199,
+   "dayPending": 0,
+   "monthBillableNeurons": 368739,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.8612562500000001,
+   "estimatedMonthUsd": 4.0561,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  }
+ },
+ "run": {
+  "startedAt": "2026-10-06T03:40:22.475Z",
+  "startConfirmed": true,
+  "startError": null,
+  "endedBy": "done",
+  "stopReason": "done",
+  "minutes": 2.4,
+  "timeoutMinutes": 15,
+  "requestEchoed": true,
+  "creditsSpentLedger": 111,
+  "error": null
+ },
+ "build": {
+  "kind": "ui",
+  "emptyScreenGuis": [],
+  "addedParts": 0,
+  "screenGuis": [
+   {
+    "enabled": true,
+    "guiObjects": 21,
+    "name": "HudGui",
+    "texts": 7
+   }
+  ],
+  "addedInstances": 59,
+  "framing": {
+   "includesTerrain": false,
+   "hiddenParts": 0,
+   "hugeParts": 0
+  },
+  "terrainCells": 0,
+  "addedByService": {
+   "ServerScriptService": 1,
+   "StarterPlayer": 1,
+   "StarterGui": 57
+  },
+  "addedScripts": 2,
+  "viewport": [
+   1554,
+   623
+  ],
+  "terrain": {
+   "cells": 0,
+   "edited": false,
+   "baselineCells": 0
+  },
+  "spawn": {
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "source": "pristine",
+   "position": [
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "captures": [
+  {
+   "name": "ui",
+   "file": "shots/ui-1554x623.jpg",
+   "width": 1554,
+   "height": 623,
+   "bytes": 160460,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "target": null
+  }
+ ],
+ "ui": {
+  "requested": [
+   "1920x1080",
+   "1280x720"
+  ],
+  "viewportReported": [
+   1554,
+   623
+  ],
+  "captured": "1554x623",
+  "met": null,
+  "switchedOff": [],
+  "enabledForCapture": [],
+  "enableError": null,
+  "restoreError": null,
+  "note": "captured at 1554x623, which is not a target size; it is named by the pixels actually captured"
+ },
+ "playTest": {
+  "started": true,
+  "serverAnswered": true,
+  "frames": [
+   {
+    "name": "play-1",
+    "file": "shots/play-1.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 255225
+   },
+   {
+    "name": "play-2",
+    "file": "shots/play-2.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 254024
+   },
+   {
+    "name": "play-3",
+    "file": "shots/play-3.jpg",
+    "error": null,
+    "width": 1879,
+    "height": 623,
+    "bytes": 254246
+   }
+  ],
+  "consoleChars": 0,
+  "console": {
+   "errors": 0,
+   "warnings": 0,
+   "errorLines": [],
+   "warningLines": []
+  },
+  "logServer": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "logClient": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "stateAfterStart": "- Current Studio Mode: Play\n- Available DataModels: Client, Server\n- Focused DataModel in the viewport: Client",
+  "errors": 0,
+  "unestablished": null,
+  "error": null,
+  "backInEdit": true,
+  "warnings": 0,
+  "sources": {
+   "console": {
+    "errors": 0,
+    "warnings": 0
+   },
+   "logServer": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   },
+   "logClient": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   }
+  }
+ },
+ "functionalChecks": {
+  "defined": false
+ },
+ "aborted": null,
+ "files": {
+  "request.txt": {
+   "sha256": "311d29f72e992d1371bef193fcf412ba33021a4c2858c9358bbe0e81a2fc4245",
+   "bytes": 65
+  },
+  "reply.md": {
+   "sha256": "9a4dbe23b63b8fff2622575387a789574e062bbc83662f78d8234afe6a969ac1",
+   "bytes": 449
+  },
+  "steps.json": {
+   "sha256": "4b4c3da2c506940635219e51a2daab23b692f3c0c0130937c8aaad78d76bb3c6",
+   "bytes": 4940
+  },
+  "credits.json": {
+   "sha256": "94496001ef447ac62f3b2152c8c11ad09d2aac429f6469b36183de02da9cb7d6",
+   "bytes": 826
+  },
+  "timing.json": {
+   "sha256": "a6cf9645e7abb3d95b490b285ae564ae6db9d5df7173cb54d76699fcbb145c1c",
+   "bytes": 1726
+  },
+  "console.txt": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  "shots/ui-1554x623.jpg": {
+   "sha256": "8fa23e7e910a23148bd30ea0103fa3596e42f8bc41128cffe2565e1917fbf348",
+   "bytes": 160460
+  },
+  "shots/play-1.jpg": {
+   "sha256": "ff591013ba9a5d6ba16f2bb7286d4345ebaaed9d132a8a4388dd9b75065ba8e1",
+   "bytes": 255225
+  },
+  "shots/play-2.jpg": {
+   "sha256": "b6b5786ea2ec7ab1865ad742bdb28ede7e62197ec6c641d67b70ee64ae0e0c36",
+   "bytes": 254024
+  },
+  "shots/play-3.jpg": {
+   "sha256": "40b1d4b3cc9fb8c430402119c92ce80c08d0a2fdaaf27149d39c54d2ed79caf8",
+   "bytes": 254246
+  }
+ }
+}

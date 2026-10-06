@@ -1,0 +1,24 @@
+{
+ "scores": {
+  "delivers": 8,
+  "visual": 7,
+  "layout": 7,
+  "ui": 7,
+  "life": 5.5,
+  "polish": 6.5
+ },
+ "na": [],
+ "severeFlaws": [],
+ "topFixes": [
+  "Show real values in the first frame instead of 'Cash' and 'Cash/s' placeholders",
+  "Make rebirth button more prominent and legible (small grey text)",
+  "Give cash bars hierarchy: they are very wide and empty"
+ ],
+ "notes": "Studded top bar with cash (40, 70, 90 ticking up), cash/s 10/s and a purple Rebirth button with progress bar. Cohesive style and live counting; the bars are overly wide, the rebirth text is small and low contrast, and the first ui frame shows placeholder labels.",
+ "shotsViewed": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ]
+}

@@ -1,0 +1,29 @@
+{
+ "scores": {
+  "delivers": 5,
+  "visual": 6.5,
+  "layout": 3,
+  "ui": 5,
+  "life": 3,
+  "polish": 4
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 3,
+   "evidence": "play-1/2/3: calendar panel is cut off at the top and bottom; Day 7 card is clipped at the bottom edge"
+  }
+ ],
+ "topFixes": [
+  "Fit the calendar inside the screen so all 7 days and the title are visible",
+  "Show claimed days greyed with a check, today highlighted distinctly",
+  "Add a close button and make Claim button primary"
+ ],
+ "notes": "A 3-column grid of day cards with star icons, Day 1 highlighted yellow, and a Claim Day 1 button. The panel overflows the screen so Day 7 is clipped, and no greyed claimed days are visible; the Claim button floats far from the grid.",
+ "shotsViewed": [
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

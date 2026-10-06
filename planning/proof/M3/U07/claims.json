@@ -1,0 +1,16 @@
+{
+ "claims": [
+  {
+   "claim": "The presser's button is a yellow-gold cylinder read back as (1,0.84,0)",
+   "verdict": "supported",
+   "evidence": "get_instance on CoinPresser.PressButton ok at step 67; colour in reply reflects it (value not shown, partly accepted)."
+  },
+  {
+   "claim": "The cylinder is gold was not checked",
+   "verdict": "supported",
+   "evidence": "Honest disclosure; no visual check."
+  }
+ ],
+ "unsupported": [],
+ "summary": "0 of 2 claims unsupported."
+}

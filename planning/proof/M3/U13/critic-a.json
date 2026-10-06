@@ -1,0 +1,37 @@
+{
+ "scores": {
+  "delivers": 2,
+  "visual": 3.5,
+  "layout": 3,
+  "ui": 2,
+  "life": 2,
+  "polish": 2.5
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 1,
+   "evidence": "ui/overview/play frames: only a 'QUESTS' button; no quest list or progress bars visible"
+  },
+  {
+   "flaw": 2,
+   "evidence": "overview/close-up: stray cyan slab, yellow spheres and grey debris floating on baseplate"
+  }
+ ],
+ "topFixes": [
+  "Show the quest list with 3 quests and progress bars",
+  "Remove stray cyan plane and yellow blobs",
+  "Add progress states and claim buttons"
+ ],
+ "notes": "Only a green QUESTS button is shown; the requested 3 daily quests with progress bars are never visible. Unrelated cyan slab and yellow spheres sit on the grey baseplate.",
+ "shotsViewed": [
+  "ui-1554x623.jpg",
+  "close-up.jpg",
+  "overview.jpg",
+  "spawn-eye.jpg",
+  "three-quarter.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ]
+}

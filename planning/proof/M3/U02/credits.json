@@ -1,0 +1,40 @@
+{
+ "ledgerPerCredit": 150,
+ "plan": "free",
+ "grant": {
+  "amountLedger": 3000,
+  "amountCredits": 20,
+  "eventId": "eval-M3-U02-20261006033446",
+  "status": 200,
+  "granted": 3000,
+  "replayed": false
+ },
+ "before": {
+  "plan": "free",
+  "creditsRemaining": 8387,
+  "creditsUsedToday": 404,
+  "creditsUsedThisMonth": 866,
+  "allowanceRemaining": 346,
+  "grantBalance": 8041
+ },
+ "afterGrant": {
+  "plan": "free",
+  "creditsRemaining": 11387,
+  "creditsUsedToday": 404,
+  "creditsUsedThisMonth": 866,
+  "allowanceRemaining": 346,
+  "grantBalance": 11041
+ },
+ "after": {
+  "plan": "free",
+  "creditsRemaining": 11161,
+  "creditsUsedToday": 630,
+  "creditsUsedThisMonth": 1092,
+  "allowanceRemaining": 120,
+  "grantBalance": 11041
+ },
+ "spentLedger": 226,
+ "spentCredits": 1.51,
+ "balanceDeltaLedger": 226,
+ "dryRun": false
+}

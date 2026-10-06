@@ -1,0 +1,24 @@
+{
+ "scores": {
+  "delivers": 5,
+  "visual": 5.5,
+  "layout": 5,
+  "ui": 6,
+  "life": 4,
+  "polish": 5
+ },
+ "na": [],
+ "severeFlaws": [],
+ "topFixes": [
+  "Stack notifications with clear titles, icons and amounts",
+  "Fix the first frame where icon circles overlap ('R','C') and text is tiny",
+  "Add slide-in/out motion and colour per notification type"
+ ],
+ "notes": "Studded orange notification stack in the bottom-right corner, with cards for Coin and Daily reward. Cards are mostly empty, text small and first frame shows overlapping icons; notification content is vague. The ui shot shows none.",
+ "shotsViewed": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ]
+}

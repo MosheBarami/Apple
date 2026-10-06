@@ -1,0 +1,29 @@
+{
+ "scores": {
+  "delivers": 1.5,
+  "visual": 2,
+  "layout": 2,
+  "ui": 2,
+  "life": 2,
+  "polish": 2
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 1,
+   "evidence": "all shots: nothing on screen but sky, baseplate and the player; no inventory grid or UI at all"
+  }
+ ],
+ "topFixes": [
+  "Render the inventory grid UI at 4 per row with rarity-coloured slots",
+  "Add an open button and scroll area",
+  "Make sure the UI is shown at capture time"
+ ],
+ "notes": "No UI of any kind is visible in any frame; the place is an empty Baseplate.",
+ "shotsViewed": [
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg",
+  "ui-1554x623.jpg"
+ ]
+}

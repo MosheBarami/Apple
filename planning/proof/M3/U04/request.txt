@@ -1,0 +1,1 @@
+rebirth panel showing current multiplier, next multiplier, cost and a progress bar

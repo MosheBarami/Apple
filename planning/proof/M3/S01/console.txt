@@ -1,0 +1,4 @@
+[Collectibles] managing 10
+[CoinManager] ready with 10 coins
+[Profile] gave up after 4 tries: ServerScriptService.Profile:81: attempt to index nil with 'UpdateAsync'
+[CoinManager] could not load saved coins for Mr_NoAmX; this session will not save

@@ -1,0 +1,4 @@
+Infinite yield possible on 'ReplicatedStorage:WaitForChild("Shared")'
+Stack Begin
+Script 'Players.Mr_NoAmX.PlayerScripts.InventoryLogic', Line 24
+Stack End

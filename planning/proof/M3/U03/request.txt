@@ -1,0 +1,1 @@
+HUD showing coins, gems and a level bar at the top of the screen

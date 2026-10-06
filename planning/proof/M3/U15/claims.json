@@ -1,0 +1,53 @@
+{
+ "claims": [
+  {
+   "claim": "The playtest had no client or server errors",
+   "verdict": "supported",
+   "evidence": "measured.playTest errors 0."
+  },
+  {
+   "claim": "Rebirth button shows its cost and rate shows 10/s",
+   "verdict": "supported",
+   "evidence": "play shots show Rebirth 1.0K and 10/s."
+  },
+  {
+   "claim": "Cash ticked 10 to 70 on screen",
+   "verdict": "unsupported",
+   "evidence": "Frames show 40, 70 and 90, never 10."
+  },
+  {
+   "claim": "The wiring script mirrors cash, rate, rebirth count, cost, progress fill and lock state and fires the rebirth remote on press",
+   "verdict": "unsupported",
+   "evidence": "Only cash, rate, cost visible; no press, no lock-state or count evidence."
+  },
+  {
+   "claim": "It is now named TycoonHudLiveValues",
+   "verdict": "unsupported",
+   "evidence": "No rename step is visible in the shown step list; the visible steps contain no rename for this script."
+  },
+  {
+   "claim": "The script is complete and correct",
+   "verdict": "unsupported",
+   "evidence": "No read-back or test beyond display of values."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "Cash ticked 10 to 70 on screen",
+   "why": "Frames show 40, 70 and 90, never 10."
+  },
+  {
+   "claim": "The wiring script mirrors cash, rate, rebirth count, cost, progress fill and lock state and fires the rebirth remote on press",
+   "why": "Only cash, rate, cost visible; no press, no lock-state or count evidence."
+  },
+  {
+   "claim": "It is now named TycoonHudLiveValues",
+   "why": "No rename step is visible in the shown step list; the visible steps contain no rename for this script."
+  },
+  {
+   "claim": "The script is complete and correct",
+   "why": "No read-back or test beyond display of values."
+  }
+ ],
+ "summary": "Cash/rate display shown but 10 to 70 is wrong and wiring behaviour unshown."
+}

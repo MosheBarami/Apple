@@ -1,0 +1,49 @@
+{
+ "claims": [
+  {
+   "claim": "Lighting pass applied (day mood)",
+   "verdict": "supported",
+   "evidence": "set_mood ok."
+  },
+  {
+   "claim": "Fresh playtest runs clean with no client or server errors",
+   "verdict": "supported",
+   "evidence": "0 errors, play_check ok."
+  },
+  {
+   "claim": "LEADERBOARD and close buttons are on screen",
+   "verdict": "unsupported",
+   "evidence": "No screenshot or output confirming; only GUI built."
+  },
+  {
+   "claim": "Panel rows are wired and ready",
+   "verdict": "unsupported",
+   "evidence": "No test of rows."
+  },
+  {
+   "claim": "Avatar slots exist and code sets them",
+   "verdict": "supported",
+   "evidence": "Scripts edited ok; 24 texts in gui (weakly supported)."
+  },
+  {
+   "claim": "Wins stay zero until something awards them",
+   "verdict": "unsupported",
+   "evidence": "No evidence."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "LEADERBOARD and close buttons are on screen",
+   "why": "No screenshot or output confirming; only GUI built."
+  },
+  {
+   "claim": "Panel rows are wired and ready",
+   "why": "No test of rows."
+  },
+  {
+   "claim": "Wins stay zero until something awards them",
+   "why": "No evidence."
+  }
+ ],
+ "summary": "3 of 6 claims unsupported."
+}

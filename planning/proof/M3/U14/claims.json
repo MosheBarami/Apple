@@ -1,0 +1,53 @@
+{
+ "claims": [
+  {
+   "claim": "A STORE button is on screen at join with no errors on client or server",
+   "verdict": "supported",
+   "evidence": "play shots show STORE button; measured errors 0."
+  },
+  {
+   "claim": "Opening it shows all four passes (x2 Coins featured, x2 Luck, Auto Collect, VIP)",
+   "verdict": "unsupported",
+   "evidence": "No screenshot shows the store open; the play frames show only the closed STORE button."
+  },
+  {
+   "claim": "Pressing a buy button visibly responds and asks the server to show the real Roblox purchase prompt",
+   "verdict": "unsupported",
+   "evidence": "No press shown in any frame or log; behaviour unexercised."
+  },
+  {
+   "claim": "The passes show \"SOON\" until IDs are set in MonetizationConfig",
+   "verdict": "unsupported",
+   "evidence": "No screenshot or read output shows SOON."
+  },
+  {
+   "claim": "The gamepass store is complete and verified working",
+   "verdict": "unsupported",
+   "evidence": "Only the closed button was observed."
+  },
+  {
+   "claim": "How it looks on screen was not checked",
+   "verdict": "supported",
+   "evidence": "This is a limitation statement; nothing contradicts it."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "Opening it shows all four passes (x2 Coins featured, x2 Luck, Auto Collect, VIP)",
+   "why": "No screenshot shows the store open; the play frames show only the closed STORE button."
+  },
+  {
+   "claim": "Pressing a buy button visibly responds and asks the server to show the real Roblox purchase prompt",
+   "why": "No press shown in any frame or log; behaviour unexercised."
+  },
+  {
+   "claim": "The passes show \"SOON\" until IDs are set in MonetizationConfig",
+   "why": "No screenshot or read output shows SOON."
+  },
+  {
+   "claim": "The gamepass store is complete and verified working",
+   "why": "Only the closed button was observed."
+  }
+ ],
+ "summary": "Only the closed STORE button observed; store contents and purchase behaviour unshown."
+}

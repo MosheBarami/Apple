@@ -1,0 +1,29 @@
+{
+ "scores": {
+  "delivers": 2.5,
+  "visual": 4,
+  "layout": 4,
+  "ui": 3,
+  "life": 2,
+  "polish": 4
+ },
+ "na": [],
+ "severeFlaws": [
+  {
+   "flaw": 1,
+   "evidence": "ui and play frames: only a 'STORE' button; no passes, robux prices or featured x2 coins shown"
+  }
+ ],
+ "topFixes": [
+  "Show the store panel with 4 passes and Robux prices",
+  "Make x2 coins visibly featured",
+  "Open state shown in screenshots"
+ ],
+ "notes": "Only a green STORE button is visible; the actual gamepass store with four passes is never shown, so the request is not evidenced. Button skin is clean but generic.",
+ "shotsViewed": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ]
+}

@@ -1,0 +1,25 @@
+{
+ "claims": [
+  {
+   "claim": "The coin got oversized from scaling",
+   "verdict": "unsupported",
+   "evidence": "No evidence in step list or measured data (the final message is an in-progress narration)."
+  },
+  {
+   "claim": "Setting it to a deliberate size and fixing the floating signpost",
+   "verdict": "unsupported",
+   "evidence": "Run ended \"stopped\" and the reply describes an action, no result shown; floating signpost not confirmed."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "The coin got oversized from scaling",
+   "why": "No evidence in step list or measured data (the final message is an in-progress narration)."
+  },
+  {
+   "claim": "Setting it to a deliberate size and fixing the floating signpost",
+   "why": "Run ended \"stopped\" and the reply describes an action, no result shown; floating signpost not confirmed."
+  }
+ ],
+ "summary": "Reply is only an in-progress narration with no verifiable result."
+}

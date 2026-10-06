@@ -1,0 +1,143 @@
+{
+ "piece": {
+  "id": "U13",
+  "category": "ui"
+ },
+ "rubric": {
+  "version": "v1",
+  "sha256": "c74de28ae18f469a5910f76f6e201d3ef4ef8fb087b7833fa5a0ea1d884cfaaf"
+ },
+ "attempts": 1,
+ "criticProblems": null,
+ "shotsGiven": [
+  "overview.jpg",
+  "three-quarter.jpg",
+  "close-up.jpg",
+  "spawn-eye.jpg",
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ],
+ "requestId": "U13",
+ "pass": false,
+ "status": "fail",
+ "passIgnoringFunctionalChecks": false,
+ "reasons": [
+  "delivers: the lower score 2 is below 8 (A 2, B 2)",
+  "visual: the lower score 3.5 is below 8 (A 3.5, B 3.5)",
+  "layout: the lower score 3 is below 8 (A 3, B 3)",
+  "ui: the lower score 2 is below 8 (A 2, B 2)",
+  "life: the lower score 2 is below 8 (A 2, B 2)",
+  "polish: the lower score 2.5 is below 8 (A 2.5, B 2.5)",
+  "severe flaw 1 (critic A): ui/overview/play frames: only a 'QUESTS' button; no quest list or progress bars visible",
+  "severe flaw 2 (critic A): overview/close-up: stray cyan slab, yellow spheres and grey debris floating on baseplate",
+  "severe flaw 1 (critic B): ui/overview/play frames: only a 'QUESTS' button; no quest list or progress bars visible",
+  "severe flaw 2 (critic B): overview/close-up: stray cyan slab, yellow spheres and grey debris floating on baseplate",
+  "claim audit: 5 unsupported claims",
+  "functional checks: none are defined for this request yet (the block engine adds them in M5), so this clause cannot be established and the piece cannot pass"
+ ],
+ "threshold": 8,
+ "lower": {
+  "delivers": 2,
+  "visual": 3.5,
+  "layout": 3,
+  "ui": 2,
+  "life": 2,
+  "polish": 2.5
+ },
+ "na": [],
+ "critics": {
+  "a": {
+   "scores": {
+    "delivers": 2,
+    "visual": 3.5,
+    "layout": 3,
+    "ui": 2,
+    "life": 2,
+    "polish": 2.5
+   },
+   "na": [],
+   "severeFlaws": [
+    {
+     "flaw": 1,
+     "evidence": "ui/overview/play frames: only a 'QUESTS' button; no quest list or progress bars visible"
+    },
+    {
+     "flaw": 2,
+     "evidence": "overview/close-up: stray cyan slab, yellow spheres and grey debris floating on baseplate"
+    }
+   ]
+  },
+  "b": {
+   "scores": {
+    "delivers": 2,
+    "visual": 3.5,
+    "layout": 3,
+    "ui": 2,
+    "life": 2,
+    "polish": 2.5
+   },
+   "na": [],
+   "severeFlaws": [
+    {
+     "flaw": 1,
+     "evidence": "ui/overview/play frames: only a 'QUESTS' button; no quest list or progress bars visible"
+    },
+    {
+     "flaw": 2,
+     "evidence": "overview/close-up: stray cyan slab, yellow spheres and grey debris floating on baseplate"
+    }
+   ]
+  }
+ },
+ "nonCritic": {
+  "playTest": {
+   "errors": 0,
+   "warnings": 0
+  },
+  "screenshots": {
+   "planned": [
+    "overview",
+    "three-quarter",
+    "close-up",
+    "spawn-eye",
+    "ui"
+   ],
+   "missing": []
+  },
+  "functionalChecks": {
+   "defined": false
+  },
+  "claimAudit": {
+   "unsupported": 5
+  },
+  "runEndedBy": "done"
+ },
+ "functionalChecksEstablished": false,
+ "claims": {
+  "unsupported": [
+   {
+    "claim": "The QuestProgressUI script connects the quest panel to the server",
+    "why": "The steps show edit_script on QuestUI, not a script named QuestProgressUI; no read-back of the wiring."
+   },
+   {
+    "claim": "The panel opened on the QUESTS button press",
+    "why": "Play shots show only the QUESTS button, no panel open; no click recorded."
+   },
+   {
+    "claim": "It displayed \"Coin Collector 1/5\", \"Jump Champion 0/10\" and \"Pad Explorer 1/1\" with a CLAIM badge",
+    "why": "No screenshot shows any quest card text."
+   },
+   {
+    "claim": "Values updated as the player collected a coin and stepped on the pad",
+    "why": "No evidence of a player interaction; play frames are static and show uncollected coins."
+   },
+   {
+    "claim": "Three cards show real-time values / verified",
+    "why": "8 steps failed and no verification of live values."
+   }
+  ]
+ },
+ "singleCritic": true
+}

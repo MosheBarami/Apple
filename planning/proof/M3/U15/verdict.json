@@ -1,0 +1,108 @@
+{
+ "piece": {
+  "id": "U15",
+  "category": "ui"
+ },
+ "rubric": {
+  "version": "v1",
+  "sha256": "c74de28ae18f469a5910f76f6e201d3ef4ef8fb087b7833fa5a0ea1d884cfaaf"
+ },
+ "attempts": 1,
+ "criticProblems": null,
+ "shotsGiven": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ],
+ "requestId": "U15",
+ "pass": false,
+ "status": "fail",
+ "passIgnoringFunctionalChecks": false,
+ "reasons": [
+  "visual: the lower score 7 is below 8 (A 7, B 7)",
+  "layout: the lower score 7 is below 8 (A 7, B 7)",
+  "ui: the lower score 7 is below 8 (A 7, B 7)",
+  "life: the lower score 5.5 is below 8 (A 5.5, B 5.5)",
+  "polish: the lower score 6.5 is below 8 (A 6.5, B 6.5)",
+  "claim audit: 4 unsupported claims",
+  "functional checks: none are defined for this request yet (the block engine adds them in M5), so this clause cannot be established and the piece cannot pass"
+ ],
+ "threshold": 8,
+ "lower": {
+  "delivers": 8,
+  "visual": 7,
+  "layout": 7,
+  "ui": 7,
+  "life": 5.5,
+  "polish": 6.5
+ },
+ "na": [],
+ "critics": {
+  "a": {
+   "scores": {
+    "delivers": 8,
+    "visual": 7,
+    "layout": 7,
+    "ui": 7,
+    "life": 5.5,
+    "polish": 6.5
+   },
+   "na": [],
+   "severeFlaws": []
+  },
+  "b": {
+   "scores": {
+    "delivers": 8,
+    "visual": 7,
+    "layout": 7,
+    "ui": 7,
+    "life": 5.5,
+    "polish": 6.5
+   },
+   "na": [],
+   "severeFlaws": []
+  }
+ },
+ "nonCritic": {
+  "playTest": {
+   "errors": 0,
+   "warnings": 0
+  },
+  "screenshots": {
+   "planned": [
+    "ui"
+   ],
+   "missing": []
+  },
+  "functionalChecks": {
+   "defined": false
+  },
+  "claimAudit": {
+   "unsupported": 4
+  },
+  "runEndedBy": "done"
+ },
+ "functionalChecksEstablished": false,
+ "claims": {
+  "unsupported": [
+   {
+    "claim": "Cash ticked 10 to 70 on screen",
+    "why": "Frames show 40, 70 and 90, never 10."
+   },
+   {
+    "claim": "The wiring script mirrors cash, rate, rebirth count, cost, progress fill and lock state and fires the rebirth remote on press",
+    "why": "Only cash, rate, cost visible; no press, no lock-state or count evidence."
+   },
+   {
+    "claim": "It is now named TycoonHudLiveValues",
+    "why": "No rename step is visible in the shown step list; the visible steps contain no rename for this script."
+   },
+   {
+    "claim": "The script is complete and correct",
+    "why": "No read-back or test beyond display of values."
+   }
+  ]
+ },
+ "singleCritic": true
+}

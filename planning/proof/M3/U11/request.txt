@@ -1,0 +1,1 @@
+a loading screen with the game logo area and a progress bar

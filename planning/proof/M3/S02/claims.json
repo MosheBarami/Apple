@@ -1,0 +1,44 @@
+{
+ "claims": [
+  {
+   "claim": "No client or server errors",
+   "verdict": "supported",
+   "evidence": "measured errors 0, warnings 0."
+  },
+  {
+   "claim": "A player pressed CLICK five times and the counter went 0 to 5, matching the server balance",
+   "verdict": "unsupported",
+   "evidence": "All frames show 0; no press evidence."
+  },
+  {
+   "claim": "The cooldown held the pace so no click was double-paid",
+   "verdict": "unsupported",
+   "evidence": "No log or test of cooldown."
+  },
+  {
+   "claim": "The game is ready to open and play",
+   "verdict": "unsupported",
+   "evidence": "Only a static CLICK! button and 0 balance seen."
+  },
+  {
+   "claim": "A CLICK! button and coin counter exist on screen",
+   "verdict": "supported",
+   "evidence": "play-1/3 show them."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "A player pressed CLICK five times and the counter went 0 to 5, matching the server balance",
+   "why": "All frames show 0; no press evidence."
+  },
+  {
+   "claim": "The cooldown held the pace so no click was double-paid",
+   "why": "No log or test of cooldown."
+  },
+  {
+   "claim": "The game is ready to open and play",
+   "why": "Only a static CLICK! button and 0 balance seen."
+  }
+ ],
+ "summary": "Counter stayed 0 in all frames; clicking and cooldown unshown."
+}

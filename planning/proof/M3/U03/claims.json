@@ -1,0 +1,48 @@
+{
+ "claims": [
+  {
+   "claim": "HUD with coins counter, gems counter and Level 1 bar across the top",
+   "verdict": "unsupported",
+   "evidence": "HudGui built (7 texts) but no visual or log evidence of content/placement."
+  },
+  {
+   "claim": "All live from the player's stats with no errors",
+   "verdict": "unsupported",
+   "evidence": "Zero errors measured but no evidence of live stat updates."
+  },
+  {
+   "claim": "Layout tightened so nothing runs off a portrait phone screen",
+   "verdict": "unsupported",
+   "evidence": "check_ui_layout ran but no output shown for portrait."
+  },
+  {
+   "claim": "Low-contrast warnings remain because library controls colours",
+   "verdict": "supported",
+   "evidence": "set_properties_bulk TextColor3 refused by D-UIONLY-1."
+  },
+  {
+   "claim": "Text now has a dark outline",
+   "verdict": "unsupported",
+   "evidence": "The TextStrokeColor3 set was refused (step 18); no successful step shows it."
+  }
+ ],
+ "unsupported": [
+  {
+   "claim": "HUD with coins counter, gems counter and Level 1 bar across the top",
+   "why": "HudGui built (7 texts) but no visual or log evidence of content/placement."
+  },
+  {
+   "claim": "All live from the player's stats with no errors",
+   "why": "Zero errors measured but no evidence of live stat updates."
+  },
+  {
+   "claim": "Layout tightened so nothing runs off a portrait phone screen",
+   "why": "check_ui_layout ran but no output shown for portrait."
+  },
+  {
+   "claim": "Text now has a dark outline",
+   "why": "The TextStrokeColor3 set was refused (step 18); no successful step shows it."
+  }
+ ],
+ "summary": "4 of 5 claims unsupported."
+}

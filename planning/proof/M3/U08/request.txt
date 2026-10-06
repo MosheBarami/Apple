@@ -1,0 +1,1 @@
+inventory grid that scrolls, 4 per row, with rarity colors on each slot

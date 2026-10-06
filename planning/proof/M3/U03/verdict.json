@@ -1,0 +1,109 @@
+{
+ "piece": {
+  "id": "U03",
+  "category": "ui"
+ },
+ "rubric": {
+  "version": "v1",
+  "sha256": "c74de28ae18f469a5910f76f6e201d3ef4ef8fb087b7833fa5a0ea1d884cfaaf"
+ },
+ "attempts": 1,
+ "criticProblems": null,
+ "shotsGiven": [
+  "ui-1554x623.jpg",
+  "play-1.jpg",
+  "play-2.jpg",
+  "play-3.jpg"
+ ],
+ "requestId": "U03",
+ "pass": false,
+ "status": "fail",
+ "passIgnoringFunctionalChecks": false,
+ "reasons": [
+  "delivers: the lower score 7.5 is below 8 (A 7.5, B 7.5)",
+  "visual: the lower score 6.5 is below 8 (A 6.5, B 6.5)",
+  "layout: the lower score 7 is below 8 (A 7, B 7)",
+  "ui: the lower score 6.5 is below 8 (A 6.5, B 6.5)",
+  "life: the lower score 3 is below 8 (A 3, B 3)",
+  "polish: the lower score 6.5 is below 8 (A 6.5, B 6.5)",
+  "claim audit: 4 unsupported claims",
+  "functional checks: none are defined for this request yet (the block engine adds them in M5), so this clause cannot be established and the piece cannot pass"
+ ],
+ "threshold": 8,
+ "lower": {
+  "delivers": 7.5,
+  "visual": 6.5,
+  "layout": 7,
+  "ui": 6.5,
+  "life": 3,
+  "polish": 6.5
+ },
+ "na": [],
+ "critics": {
+  "a": {
+   "scores": {
+    "delivers": 7.5,
+    "visual": 6.5,
+    "layout": 7,
+    "ui": 6.5,
+    "life": 3,
+    "polish": 6.5
+   },
+   "na": [],
+   "severeFlaws": []
+  },
+  "b": {
+   "scores": {
+    "delivers": 7.5,
+    "visual": 6.5,
+    "layout": 7,
+    "ui": 6.5,
+    "life": 3,
+    "polish": 6.5
+   },
+   "na": [],
+   "severeFlaws": []
+  }
+ },
+ "nonCritic": {
+  "playTest": {
+   "errors": 0,
+   "warnings": 0
+  },
+  "screenshots": {
+   "planned": [
+    "ui"
+   ],
+   "missing": []
+  },
+  "functionalChecks": {
+   "defined": false
+  },
+  "claimAudit": {
+   "unsupported": 4
+  },
+  "runEndedBy": "done"
+ },
+ "functionalChecksEstablished": false,
+ "claims": {
+  "unsupported": [
+   {
+    "claim": "HUD with coins counter, gems counter and Level 1 bar across the top",
+    "why": "HudGui built (7 texts) but no visual or log evidence of content/placement."
+   },
+   {
+    "claim": "All live from the player's stats with no errors",
+    "why": "Zero errors measured but no evidence of live stat updates."
+   },
+   {
+    "claim": "Layout tightened so nothing runs off a portrait phone screen",
+    "why": "check_ui_layout ran but no output shown for portrait."
+   },
+   {
+    "claim": "Text now has a dark outline",
+    "why": "The TextStrokeColor3 set was refused (step 18); no successful step shows it."
+   }
+  ]
+ },
+ "singleCritic": true
+}
