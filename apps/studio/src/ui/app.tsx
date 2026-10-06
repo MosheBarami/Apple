@@ -20,6 +20,7 @@ import { getProject } from './api.ts';
 import { Projects } from './projects.tsx';
 import { authHeaders, useSession } from './session.ts';
 import { StudioStatus } from './studio-status.tsx';
+import { UndoChanges } from './undo.tsx';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -102,6 +103,7 @@ function Chat({ projectId }: { projectId: string }) {
             <Badge variant="secondary">Beta</Badge>
           </div>
           <div className="flex items-center gap-3">
+            <UndoChanges projectId={projectId} busy={busy} />
             <StudioStatus projectId={projectId} />
             <Status status={agent.status} />
             <Button

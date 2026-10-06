@@ -78,3 +78,13 @@ test('the team: the coordinator only reads, only the builder edits, the tester m
   const toolsOf = (role) => new RegExp(`${role}: \\{[^}]*?tools: ([A-Z]+),`, 's').exec(roles)?.[1];
   assert.deepEqual(['planner', 'builder', 'reviewer', 'tester'].map(toolsOf), ['READS', 'BUILD', 'READS', 'TEST']);
 });
+
+test('the undo the agent promises exists: the app restores the checkpoint the session labels', () => {
+  const api = read('../src/ui/api.ts');
+  const label = /STUDIO_CHECKPOINT_LABEL = '([^']+)'/.exec(api)?.[1];
+  assert.ok(label, 'the app no longer names the checkpoint it restores');
+  const session = read('../../worker/src/do/session.ts');
+  assert.ok(session.includes(`this.createCheckpoint('${label}'`), `the session no longer takes a checkpoint labelled "${label}"`);
+  assert.match(read('../src/ui/app.tsx'), /<UndoChanges projectId=\{projectId\} busy=\{busy\} \/>/);
+  assert.match(read('../src/agents/studpilot.ts'), /put back to a checkpoint/);
+});
