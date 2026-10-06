@@ -20,6 +20,8 @@ const READS = STUDIO_TOOL_SPECS.filter((t) => !t.writes).map((t) => t.name);
 export const BUILDER_TOOLS = ['build_blocks', 'edit_script', 'delete_instances', 'install_module', 'play_check', ...READS.filter((n) => n !== 'get_ui_construction' && n !== 'get_genre_kit')];
 const BUILD = STUDIO_TOOL_SPECS.map((t) => t.name).filter((n) => BUILDER_TOOLS.includes(n));
 const TEST = [...READS, 'play_check'];
+/** The coordinator reads the place but not the old UI recipes and genre kits: they steer towards hand-built screens. */
+const COORDINATOR_READS = READS.filter((n) => n !== 'get_ui_construction' && n !== 'get_genre_kit');
 /** The block menu, as build_blocks describes it: the planner plans in these ids. */
 const BLOCK_MENU = STUDIO_TOOL_SPECS.find((t) => t.name === 'build_blocks')?.description.split('Blocks:\n')[1] ?? '';
 
@@ -99,7 +101,7 @@ export function StudPilot({ id }: AgentProps) {
   // The id was checked at the route: its project part is the project the owner opened.
   const tools = studioTools(projectId);
   const pick = (names: readonly string[]) => tools.filter((t) => names.includes(t.name));
-  for (const tool of pick(READS)) useTool(tool);
+  for (const tool of pick(COORDINATOR_READS)) useTool(tool);
   for (const [name, role] of Object.entries(ROLES)) {
     useSubagent({
       name,
