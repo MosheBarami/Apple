@@ -10,3 +10,18 @@ body,
   height: 100%;
   margin: 0;
 }
+
+/* THE OWNER'S ACCENT, NOT KUMO'S. Kumo's brand is an azure blue and its brand text Cloudflare orange; the owner rejected both
+   hues for StudPilot (packages/design/src/web/tokens.test.mjs). The studio app takes the site's violet: #7240d8 as the fill
+   (white label 6.1:1, packages/design accents.json) in both modes, and the measured text tones per mode. */
+:root[data-mode='light'],
+:root[data-mode='dark'] {
+  --color-kumo-brand: #7240d8;
+  --color-kumo-brand-hover: #5f2fc4;
+}
+:root[data-mode='light'] {
+  --text-color-kumo-brand: #7240d8;
+}
+:root[data-mode='dark'] {
+  --text-color-kumo-brand: #a67cff;
+}
