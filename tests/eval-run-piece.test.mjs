@@ -50,6 +50,8 @@ function fakeApi(o = {}) {
     sessionInfo: async () => {
       // The status the worker reports is recorded with every read, so a test can say what the harness had last seen when it moved on.
       const read = () => {
+        // `lateStart`: the unanswered start reaches the worker after the harness's stop: this many reads after the stop, it is running.
+        if (s.lateIn > 0 && --s.lateIn === 0) { s.running = true; s.polls = -1_000_000; }
         if (s.stopping > 0) {
           s.stopping--;
           return { project: { name: 'Bench' }, agentStatus: 'stopping', messages: s.messages, pluginConnected: true };
@@ -88,6 +90,7 @@ function fakeApi(o = {}) {
     agentRun: async (...a) => {
       rec('agentRun', ...a);
       if (o.runStatus) return { status: o.runStatus, json: { ok: false, error: 'refused', code: 'account_not_approved' } };
+      if (o.lateStart) throw new Error('POST /api/admin/agent-run/x: no answer in 30000 ms');
       s.running = true;
       s.polls = 0;
       o.onAgentRun?.(s);
@@ -99,6 +102,7 @@ function fakeApi(o = {}) {
       rec('agentStop', ...a);
       if (o.stopFails) throw new Error('POST /api/admin/agent-stop/x: HTTP 500 boom');
       // `stoppingReads`: the worker answers 'stopping' (a tool is still finishing) for this many status reads after the stop, then idle.
+      if (o.lateStart && !s.lateArmed) { s.lateArmed = true; s.lateIn = o.lateStart; }
       if (!o.stopIgnored) {
         s.running = false;
         s.stopping = o.stoppingReads ?? 0;
@@ -509,6 +513,19 @@ test('a run that never showed itself is stopped too: a late start must not run o
   assert.equal(r.manifest.run.endedBy, 'never-started');
   assert.equal(calls(api, 'agentStop').length, 1);
   assert.match(r.manifest.run.stop.reason, /never showed as running/);
+});
+
+test('A START THAT REACHES THE WORKER AFTER THE STOP (S07, 2026-10-06) IS CAUGHT AND STOPPED before the next piece can start', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const api = fakeApi({ lateStart: 3 });
+  const r = await runPiece(opts, deps(api, {}));
+  assert.equal(r.ok, false);
+  assert.equal(r.manifest.run.lateStart, true);
+  assert.equal(calls(api, 'agentStop').length, 2, 'the late run is stopped as well');
+  assert.match(r.manifest.aborted.message, /started after the first stop and was stopped again/);
+  assert.match(r.manifest.aborted.message, /stopped and is idle/);
+  assert.equal((await api.sessionInfo()).agentStatus, 'idle', 'nothing is left running for the next piece');
 });
 
 // ---------------------------------------------------------------------------------------------- the run lifecycle, second review
