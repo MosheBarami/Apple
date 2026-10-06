@@ -1,0 +1,60 @@
+{
+  "id": "currency",
+  "kind": "system",
+  "summary": "Server-owned currencies per player (leaderstats), granted and spent only by the server, saved with a versioned record.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "currencies": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "start"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+              "default": "Coins",
+              "description": "Shown in leaderstats, e.g. Coins, Gems, Cash"
+            },
+            "start": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0,
+              "description": "What a new player starts with"
+            }
+          }
+        },
+        "default": [
+          {
+            "name": "Coins",
+            "start": 0
+          }
+        ]
+      },
+      "saveKey": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "StudPilotSave1",
+        "description": "DataStore name; change it only to start everyone fresh"
+      }
+    }
+  },
+  "provides": [
+    "Currency.grant",
+    "Currency.spend",
+    "Currency.get",
+    "Currency.getData",
+    "Currency.setData",
+    "Currency.Changed"
+  ],
+  "depends": []
+}

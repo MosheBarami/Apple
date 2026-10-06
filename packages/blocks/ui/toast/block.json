@@ -1,0 +1,90 @@
+{
+  "id": "toast",
+  "kind": "ui",
+  "summary": "Popups that stack in a screen corner when the player earns something (any leaderstat going up), then fade.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Toasts",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "corner": {
+        "type": "string",
+        "enum": [
+          "bottom-right",
+          "top-right",
+          "bottom-left"
+        ],
+        "default": "bottom-right",
+        "description": "Where the stack sits"
+      },
+      "seconds": {
+        "type": "number",
+        "minimum": 1.5,
+        "maximum": 10,
+        "default": 3.5,
+        "description": "How long each popup stays"
+      },
+      "samples": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "icon",
+            "text",
+            "colour"
+          ],
+          "properties": {
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "💰",
+              "description": "One emoji or symbol"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "default": "+100 Coins",
+              "description": "What the popup says"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "yellow",
+              "description": "Popup colour"
+            }
+          }
+        },
+        "default": [
+          {
+            "icon": "💰",
+            "text": "+100 Coins",
+            "colour": "yellow"
+          }
+        ],
+        "description": "How popups look: shown in Studio while editing; in the game each real popup copies the first one"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

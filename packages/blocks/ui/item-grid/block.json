@@ -14,10 +14,10 @@
       },
       "currency": {
         "type": "string",
-        "minLength": 1,
+        "minLength": 0,
         "maxLength": 4,
         "default": "💎",
-        "description": "Symbol before each price"
+        "description": "Symbol before each price (may be empty)"
       },
       "cellWidth": {
         "type": "integer",

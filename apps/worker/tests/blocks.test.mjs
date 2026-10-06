@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { loadBlocks } from '../../../scripts/gen-blocks.mjs';
 import { BLOCKS } from '../src/blocks.generated.ts';
 import { validateParams } from '../src/block-schema.ts';
-import { runBlocks, runOrder, fill, fillSource, luauLiteral, MAX_REPAIRS } from '../src/recipe.ts';
+import { runBlocks, runOrder, fill, fillSource, luauLiteral, stepOps, MAX_REPAIRS } from '../src/recipe.ts';
 import { intake, parseIntake, blockMenu } from '../src/intake.ts';
 import { fillParams, checkFill, repairParam, MAX_FILL_RETRIES } from '../src/plan-fill.ts';
 import { checkCustomCode, proveCustomCode, writeCustomCode } from '../src/custom-code.ts';
@@ -346,4 +346,28 @@ test('build_blocks: sheets first, field errors before anything is built, a refus
   assert.equal(created[1].items[0].parent, 'game.StarterGui.EggShop.Window.Content');
   const json = JSON.stringify(created[1]);
   assert.ok(json.includes('"Item2"') && json.includes('Lava Egg') && !json.includes('{{'), 'every card is real, every slot filled');
+});
+
+// ---- the shipped Luau parses ------------------------------------------------------------------------------------
+test('every block\'s Luau, filled with its default parameters, parses (SYNTAX only; skipped without luau-analyze)', (t) => {
+  const has = spawnSync('luau-analyze', ['--help'], { encoding: 'utf8' });
+  if (has.error) { t.skip('luau-analyze is not installed'); return; }
+  const dir = mkdtempSync(join(tmpdir(), 'block-luau-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const bad = [];
+  let parsed = 0;
+  for (const [id, b] of Object.entries(BLOCKS)) {
+    const params = validateParams(b.block, {}).params;
+    for (const step of b.recipe.steps) {
+      if (step.op !== 'edit_script') continue;
+      const file = join(dir, `${id}-${step.id}.luau`);
+      writeFileSync(file, stepOps(step, b, params)[0].source);
+      const r = spawnSync('luau-analyze', ['--mode=nonstrict', file], { encoding: 'utf8' });
+      const syntax = `${r.stdout}${r.stderr}`.split('\n').filter((l) => /SyntaxError/.test(l));
+      if (syntax.length) bad.push(`${id}/${step.file}: ${syntax.join(' | ')}`);
+      parsed += 1;
+    }
+  }
+  assert.ok(parsed >= 5, `only ${parsed} sources parsed`);
+  assert.deepEqual(bad, []);
 });
