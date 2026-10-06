@@ -3,12 +3,12 @@ import { BUILD_COSTS } from "@/lib/site-data";
 import { PricingCards } from "./pricing-cards";
 import { Reveal } from "./reveal";
 
-export function PricingSection({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
-  const H = headingLevel === 1 ? "h1" : "h2";
+export function PricingSection({ withHeading = true }: { withHeading?: boolean }) {
   return (
     <section
-      aria-labelledby="pricing-title"
-      className="relative isolate overflow-hidden bg-ink py-20 text-white lg:py-28"
+      aria-label={withHeading ? undefined : "Plans and prices"}
+      aria-labelledby={withHeading ? "pricing-title" : undefined}
+      className="relative isolate overflow-hidden bg-ink text-white py-16 lg:py-24"
       id="pricing"
     >
       <div
@@ -17,6 +17,8 @@ export function PricingSection({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
       />
       <div aria-hidden className="studs absolute -inset-y-[300px] right-0 left-0 -z-10 opacity-20" data-parallax="0.06" />
       <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8">
+        {withHeading ? null : <h2 className="sr-only">Plans</h2>}
+        {withHeading ? (
         <Reveal className="max-w-2xl">
           <p className="inline-flex items-center gap-2 font-display font-semibold text-lg text-sun">
             Pricing
@@ -24,16 +26,18 @@ export function PricingSection({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
               Beta
             </span>
           </p>
-          <H className="mt-2 font-display font-semibold text-[32px] leading-[1.1] md:text-[46px]" id="pricing-title">
+          <h2 className="mt-2 font-display font-semibold text-[32px] leading-[1.1] md:text-[46px]" id="pricing-title">
             Start free. Add credits when you need more.
-          </H>
+          </h2>
           <p className="mt-4 text-[1.05rem] text-white/85 leading-relaxed">
             StudPilot is in beta. Pro, Max and the top-up are listed so you can plan ahead, but
             checkout is off for now, so every button here takes you to sign-in.
           </p>
         </Reveal>
 
-        <div className="mt-12">
+        ) : null}
+
+        <div className={withHeading ? "mt-12" : ""}>
           <PricingCards />
         </div>
 

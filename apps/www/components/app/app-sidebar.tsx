@@ -36,7 +36,7 @@ export function AppSidebar() {
   }, [projects, query]);
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar aria-label="Chats and account" collapsible="icon" role="complementary">
       <SidebarHeader className="gap-3 p-3">
         <Link
           aria-label="StudPilot"

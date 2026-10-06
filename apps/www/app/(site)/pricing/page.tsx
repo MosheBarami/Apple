@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CtaBand } from "@/components/site/cta-band";
+import { PageHeader } from "@/components/site/page-header";
 import { FaqList } from "@/components/site/faq-list";
 import { PricingSection } from "@/components/site/pricing-section";
 import { Reveal } from "@/components/site/reveal";
@@ -24,7 +25,11 @@ const ITEMS = [
 export default function PricingPage() {
   return (
     <>
-      <PricingSection headingLevel={1} />
+      <PageHeader kicker="Beta" title="Start free, add credits later">
+        StudPilot is in beta. Pro, Max and the top-up are listed so you can plan ahead, but checkout
+        is off for now, so every button takes you to sign-in.
+      </PageHeader>
+      <PricingSection withHeading={false} />
       <section aria-labelledby="pricing-faq" className="bg-ice py-20 text-ink lg:py-24">
         <div className="mx-auto w-full max-w-[860px] px-5 sm:px-8">
           <Reveal>

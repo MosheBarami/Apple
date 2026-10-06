@@ -51,8 +51,7 @@ export function PrivacyBody() {
   <p>
     Roblox tells us who you are when you sign in. With your consent
     on Roblox's own consent screen it is also a connection: StudPilot becomes an app authorized on
-    your Roblox account, which you can remove. We ask Roblox only for the <code>openid</code> and
-    <code>profile</code> permissions, and from what Roblox answers we keep only your Roblox user id and
+    your Roblox account, which you can remove. We ask Roblox only for the <code>openid</code> and <code>profile</code> permissions, and from what Roblox answers we keep only your Roblox user id and
     username. We never see your Roblox password, Roblox sends us no email address, and we do not ask
     for permission to your assets, experiences, friends or inventory.
   </p>
@@ -291,8 +290,7 @@ export function PrivacyBody() {
 
   <h2>Governing law &amp; contact</h2>
   <p>
-    This policy is governed by the laws of the State of Israel. Questions, requests, worries:
-    <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
+    This policy is governed by the laws of the State of Israel. Questions, requests, worries: <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
   </p>
 
     </>

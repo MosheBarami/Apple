@@ -24,8 +24,7 @@ export function TermsBody() {
   <p>
     StudPilot lets you describe changes to a Roblox place in natural language and have an AI agent
     apply them inside Roblox Studio via the StudPilot plugin. The service includes the web app, the
-    API, and the Studio plugin. StudPilot is an independent product — we are
-    <strong>not affiliated with or endorsed by Roblox Corporation</strong>, and your use of Roblox
+    API, and the Studio plugin. StudPilot is an independent product — we are <strong>not affiliated with or endorsed by Roblox Corporation</strong>, and your use of Roblox
     and Roblox Studio remains governed by Roblox's own terms.
   </p>
 
@@ -116,8 +115,7 @@ export function TermsBody() {
   <h2>11. Governing law &amp; contact</h2>
   <p>
     These terms are governed by the laws of the State of Israel, and disputes belong to the
-    competent courts there. Questions first, though:
-    <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
+    competent courts there. Questions first, though: <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
   </p>
 
     </>
