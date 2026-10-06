@@ -40,3 +40,8 @@ system, and follows the layout of cloudflare/agents-starter. They are dependenci
 ## Not used
 
 madebyshaurya/stud is AGPL-3.0: no code of it is in StudPilot (owner decision pending, planning/proof/BLOCKED.md N10).
+
+## vercel/chatbot (apps/www)
+Copyright 2024 Vercel, Inc. Licensed under the Apache License, Version 2.0. apps/www starts from
+https://github.com/vercel/chatbot at commit c2f8235e1f3ea903ad8b7f61447c4f74164b5c58; the licence text is apps/www/LICENSE,
+and apps/www/TEMPLATE.md lists what was changed.

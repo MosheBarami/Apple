@@ -260,6 +260,9 @@ jobs:
         # file that is not there was itself not in CI. A guard that does not run is a comment.
         run: node scripts/check-ci-references.mjs
 
+      - name: apps/www takes nothing from the old front-ends (planning/WEB-REBUILD.md §1)
+        run: node scripts/check-www.mjs
+
       - name: Ledger is well-formed
         run: node scripts/gate-check.mjs --lint
 

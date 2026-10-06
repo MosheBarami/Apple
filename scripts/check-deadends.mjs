@@ -85,6 +85,7 @@ const EXCEPTIONS = [
   { glob: '**/*.config.*', why: 'loaded by the build tool by name, not imported by source' },
   { glob: 'packages/corpus/raw/**', why: 'vendored third-party source; not ours to wire or delete' },
   { glob: 'apps/benchmark/**', why: 'a benchmark place is built by Rojo, not imported by the product' },
+  { glob: 'apps/www/**', why: 'a Next.js app: its route files are entry points and it imports through the @/ alias, which this graph does not resolve' },
   { glob: 'tools/repo-chat/**', why: 'a standalone Next.js app outside the pnpm workspace (its own npm lockfile): Next loads app/ routes by convention and its imports go through `@/` aliases this graph does not resolve, so every file reads as unimported' },
   { glob: 'docs/**', why: 'documents: the .js under docs/handoff are archived workflow scripts kept as handoff records, run by hand from the record if ever, imported by nothing by design' },
   { glob: 'research/**', why: 'research notes: the two helper scripts there (tools-add-witness-docs.mjs, tools-docids.sh) were run by hand once to feed the corpus and are kept beside the notes they produced, imported by nothing by design' },
@@ -142,6 +143,7 @@ const isExcepted = (rel) =>
   rel.startsWith('packages/corpus/raw/') ||
   rel.startsWith('packages/evals/') ||
   rel.startsWith('apps/benchmark/') ||
+  rel.startsWith('apps/www/') ||
   rel.startsWith('tools/repo-chat/') ||
   rel.startsWith('docs/') ||
   rel.startsWith('research/') ||
