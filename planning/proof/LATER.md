@@ -28,3 +28,8 @@
 - Tile icons could overflow their tiles more, like R01's basket.
 - Italic card titles (R01) need `FontFace` on the plugin allowlist (a Font value type in the op protocol).
 - Weaker pack icons: clover (flat), bolt, rebirth, lock (realistic), map (flat parchment), paw (dark grey).
+
+## World kit (W03 render, 2026-10-06, own read about 4-5 on style)
+- Grass reads neon: the CandyColour saturation (+0.15) on top of #4FAE2C. Calm the ground or the grade for worlds.
+- The scene is sparse and the stall small next to the trees: a zone needs a denser centre and a bigger landmark.
+- The stall's floating title sits over the trees from the spawn view; place titles by the landmark's facing.
