@@ -1,0 +1,14 @@
+[
+  {
+    "id": "made",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.Workspace.{{name}}",
+    "describes": "the market-stall is in Workspace"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the market-stall has no errors"
+  }
+]

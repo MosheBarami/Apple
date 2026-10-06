@@ -1,0 +1,23 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.Workspace",
+     "world": "flowers",
+     "name": "{{name}}",
+     "at": [
+      "{{x}}",
+      "{{z}}"
+     ],
+     "width": "{{width}}",
+     "depth": "{{depth}}",
+     "colour": "{{colour}}",
+     "colour2": "{{colour2}}"
+    }
+   ]
+  }
+ ]
+}

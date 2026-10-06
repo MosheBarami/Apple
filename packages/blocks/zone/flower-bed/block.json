@@ -1,0 +1,71 @@
+{
+  "id": "flower-bed",
+  "kind": "zone",
+  "summary": "A raised wooden flower bed full of round candy-coloured flowers.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Flowers",
+        "description": "Its name in Workspace"
+      },
+      "x": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 10,
+        "description": "x"
+      },
+      "z": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": -20,
+        "description": "z"
+      },
+      "width": {
+        "type": "number",
+        "minimum": 4,
+        "maximum": 30,
+        "default": 10
+      },
+      "depth": {
+        "type": "number",
+        "minimum": 3,
+        "maximum": 12,
+        "default": 5
+      },
+      "colour": {
+        "type": "string",
+        "enum": [
+          "red",
+          "berry",
+          "sun",
+          "lime",
+          "sky",
+          "grape",
+          "white"
+        ],
+        "default": "berry"
+      },
+      "colour2": {
+        "type": "string",
+        "enum": [
+          "red",
+          "berry",
+          "sun",
+          "lime",
+          "sky",
+          "grape",
+          "white"
+        ],
+        "default": "sun"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}
