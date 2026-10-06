@@ -7,3 +7,12 @@
   `open-next.config.ts` and `wrangler.jsonc`; `@opennextjs/cloudflare`, `wrangler` and `@opentelemetry/api`; a hoisted
   install (`.npmrc`). Preview: https://studpilot-www-preview.moshe-barami111.workers.dev
 - AI Elements parts come only from `npx ai-elements@latest add <name>`.
+
+## Step 2 (planning/WEB-REBUILD.md section 4): what was swapped out
+- Removed: Auth.js and the guest flow, Drizzle/Postgres and the chat history tables, Vercel Blob, Redis, the model
+  selector, the Vercel AI Gateway, the document/artifact/suggestion/weather tools, the editors, telemetry and bot
+  protection, the template's Playwright tests and CI files.
+- Added: Supabase sign-in (`@supabase/ssr`; `/login`, `/auth/callback`, `middleware.ts`), the chat on the Studio agent
+  (`@flue/react`, `/studio/api/agents/studpilot/<project>`), the Studio light, the credits meter, and `lib/proxy.ts`,
+  which forwards `/api/*` and `/studio/api/*` to `STUDPILOT_API_ORIGIN` (default https://studpilot.app) for the preview.
+- Install with `pnpm install --ignore-workspace` (a plain `pnpm install` here resolves the repo root workspace instead).

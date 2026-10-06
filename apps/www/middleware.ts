@@ -1,51 +1,51 @@
+import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { guestRegex, isDevelopmentEnvironment } from "./lib/constants";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase-config";
+
+const PUBLIC_PATHS = ["/login", "/auth/"];
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  let response = NextResponse.next({ request });
 
-  if (pathname.startsWith("/ping")) {
-    return new Response("pong", { status: 200 });
-  }
-
-  if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
-  }
-
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-    secureCookie: !isDevelopmentEnvironment,
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookies) => {
+        for (const { name, value } of cookies) {
+          request.cookies.set(name, value);
+        }
+        response = NextResponse.next({ request });
+        for (const { name, value, options } of cookies) {
+          response.cookies.set(name, value, options);
+        }
+      },
+    },
   });
 
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  // Verifies the token against the project's signing keys (refreshing it when it is close to expiry).
+  const { data } = await supabase.auth.getClaims();
+  const signedIn = Boolean(data?.claims);
+  const { pathname } = request.nextUrl;
+  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
-  if (!token) {
-    const redirectUrl = encodeURIComponent(new URL(request.url).pathname);
-
-    return NextResponse.redirect(
-      new URL(`${base}/api/auth/guest?redirectUrl=${redirectUrl}`, request.url)
-    );
+  const redirectTo = signedIn
+    ? pathname === "/login"
+      ? "/"
+      : null
+    : isPublic
+      ? null
+      : "/login";
+  if (!redirectTo) {
+    return response;
   }
-
-  const isGuest = guestRegex.test(token?.email ?? "");
-
-  if (token && !isGuest && ["/login", "/register"].includes(pathname)) {
-    return NextResponse.redirect(new URL(`${base}/`, request.url));
+  const redirect = NextResponse.redirect(new URL(redirectTo, request.url));
+  for (const cookie of response.cookies.getAll()) {
+    redirect.cookies.set(cookie);
   }
-
-  return NextResponse.next();
+  return redirect;
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/chat/:id",
-    "/api/:path*",
-    "/login",
-    "/register",
-
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
-  ],
+  // The two API prefixes are proxied to the StudPilot worker and carry their own bearer token.
+  matcher: ["/((?!api/|studio/api/|_next/static|_next/image|favicon.ico).*)"],
 };
