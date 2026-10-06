@@ -27,6 +27,8 @@ test('the human-made check refuses AI words and unknown creators from 2024 on', 
   assert.equal(aiCheck({ title: 'Meshy oak tree', created: '2019-03-01', creator: 'kenney' }, known).pass, false);
   assert.equal(aiCheck({ title: 'Tree', tags: ['AI generated'], created: '2019-01-01' }, known).pass, false);
   assert.equal(aiCheck({ title: 'Tree' }, known).pass, false, 'no date, no pass');
+  assert.equal(aiCheck({ title: 'Cube Pets: cat', created: '2019-01-01' }, known).pass, true, 'Kenney Cube Pets is not Roblox Cube');
+  assert.equal(aiCheck({ title: 'Sword made with Roblox Cube', created: '2019-01-01' }, known).pass, false);
 });
 
 const good = () => ({
@@ -38,6 +40,7 @@ const good = () => ({
 
 test('a complete item passes; missing provenance, a mismatched class or a failed ai_check do not', () => {
   assert.deepEqual(validateItem(good()), []);
+  assert.ok(validateItem({ ...good(), title: 'Meshy sword' }).some((e) => /Meshy/.test(e)), 'a stale ai_check cannot pass an AI title');
   const a = good(); delete a.licence_url; delete a.file_sha256;
   assert.ok(validateItem(a).some((e) => /licence_url/.test(e)));
   assert.ok(validateItem(a).some((e) => /file_sha256/.test(e)));

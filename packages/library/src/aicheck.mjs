@@ -1,6 +1,6 @@
 // Master plan §4.1 L1: human-made only. An item whose own words mention an AI tool is refused; an upload from 2024 on
 // needs a creator on the known-human list. The result is kept on the item as `ai_check`. Pure.
-export const AI_WORDS = /\b(ai|a\.i\.|cube|assistant|meshy|tripo|luma|midjourney|dall[·.\- ]?e|stable diffusion|sdxl|generated|text[- ]to[- ](3d|image|mesh))\b/i;
+export const AI_WORDS = /\b(ai|a\.i\.|roblox cube|cube[- ]?3d|assistant|meshy|tripo|luma|midjourney|dall[·.\- ]?e|stable diffusion|sdxl|generated|text[- ]to[- ](3d|image|mesh))\b/i;
 
 /**
  * { pass, reasons, checked_at }. `item` carries title, description, tags, created (ISO date) and creator; `known` is the
