@@ -155,6 +155,7 @@ test('GLM runs at the product loop\'s settings (low reasoning effort, temperatur
   assert.match(fn, /reasoning_effort: inputs\.reasoning_effort \?\? 'low'/);
   assert.match(fn, /temperature: inputs\.temperature \?\? 0\.25/);
   assert.match(fn, /max_tokens: 6500/);
+  assert.match(fn, /Math\.min\(n, 6500\)/, "Flue's own max_completion_tokens is capped too, so a step fits the step cap");
   const gateway = read('../../worker/src/gateway.ts');
   assert.match(gateway, /agent: \{ id: '@cf\/zai-org\/glm-5\.3-flash'[^}]*maxTokens: 6500[^}]*temperature: 0\.25, reasoningEffort: 'low'/, 'the same settings as the product loop');
 });

@@ -27,11 +27,17 @@ const bound = env as unknown as Env;
  */
 export function withAgentDefaults(model: string, inputs: Record<string, unknown>): Record<string, unknown> {
   if (!/glm/i.test(model)) return inputs;
+  // Flue asks for the model's whole output window (max_completion_tokens); reserved at that size, the builder's step
+  // passed the 1,200-neuron step cap and was refused before it ran (U01, 2026-10-06). The output is capped at 6500.
+  const cap = (n: unknown) => (typeof n === 'number' ? Math.min(n, 6500) : n);
+  const out = inputs.max_tokens === undefined && inputs.max_completion_tokens === undefined
+    ? { max_tokens: 6500 }
+    : { ...(inputs.max_tokens !== undefined ? { max_tokens: cap(inputs.max_tokens) } : {}), ...(inputs.max_completion_tokens !== undefined ? { max_completion_tokens: cap(inputs.max_completion_tokens) } : {}) };
   return {
     ...inputs,
     reasoning_effort: inputs.reasoning_effort ?? 'low',
     temperature: inputs.temperature ?? 0.25,
-    ...(inputs.max_tokens === undefined && inputs.max_completion_tokens === undefined ? { max_tokens: 6500 } : {}),
+    ...out,
   };
 }
 

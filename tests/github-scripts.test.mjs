@@ -59,7 +59,7 @@ test('the staged manifest is renamed, public, linked to the repo and has no life
 test('main.json is well formed and every required check is a job name in ci.yml', () => {
   assert.deepEqual(validateRuleset(ruleset), []);
   const contexts = requiredContexts(ruleset);
-  assert.equal(contexts.length, 6);
+  assert.equal(contexts.length, 4);
   assert.deepEqual(contextsNotInWorkflow(contexts, ci), []);
   // The detector must be able to fail: a name nobody reports is reported.
   assert.deepEqual(contextsNotInWorkflow(['Not a job'], ci), ['Not a job']);

@@ -225,7 +225,8 @@ def report_stale_fixtures(fixtures: dict, matched: set) -> bool:
     left every stale test green, because the only test covering it happened to reach the
     other branch. Two copies of a check are one check and one blind spot.
     """
-    stale = [k for k in fixtures if k not in matched]
+    # A range scan sees only a pull request's own blobs, so an unmatched declaration there says nothing.
+    stale = [k for k in fixtures if k not in matched] if not SCAN_RANGE else []
     if not stale:
         return False
     print("\nRESULT: A FIXTURE DECLARATION MATCHES NOTHING")
@@ -235,6 +236,11 @@ def report_stale_fixtures(fixtures: dict, matched: set) -> bool:
         e = fixtures[(pth, vsha)]
         print(f"::error::[{e['pattern']}] stale fixture declaration for {pth}  value {vsha[:12]}")
     return True
+
+
+# A pull request scans only its own commits (SECRET_SCAN_RANGE=<base>..HEAD, set by CI); main scans every ref. A range
+# sees only some blobs, so the checks that a fixture or an accepted exposure still matches something run on main only.
+SCAN_RANGE = os.environ.get("SECRET_SCAN_RANGE", "").strip()
 
 
 def sh(*args: str) -> bytes:
@@ -287,7 +293,7 @@ def main() -> int:
     fixtures = load_fixtures()
     exposures = set(load_register())
     conflicts: set[tuple[str, str]] = set()
-    objects = sh("git", "rev-list", "--all", "--objects").splitlines()
+    objects = sh("git", "rev-list", *(SCAN_RANGE.split() if SCAN_RANGE else ["--all"]), "--objects").splitlines()
     findings: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
     declared: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
     matched_fixtures: set[tuple[str, str]] = set()
@@ -452,7 +458,7 @@ def main() -> int:
         # "a register entry that stops matching anything fails the run" false in the
         # one situation that produces it — a history rewrite that purged every match.
         register = load_register()
-        if register and "--record-exposures" not in sys.argv:
+        if register and "--record-exposures" not in sys.argv and not SCAN_RANGE:
             print("\nRESULT: THE EXPOSURE REGISTER IS STALE")
             print("Nothing on any ref matches any accepted blob. Re-record the register.")
             for blob, e in sorted(register.items())[:10]:
@@ -531,7 +537,7 @@ def main() -> int:
                 print(f"   {path}  ~  {fragment}...  blob {blob[:12]}")
         return 1
 
-    if stale:
+    if stale and not SCAN_RANGE:
         print("\nRESULT: THE EXPOSURE REGISTER IS STALE")
         print("These blobs are accepted but no longer match anything. Re-record the register.")
         for b in sorted(stale)[:10]:
