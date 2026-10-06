@@ -69,6 +69,8 @@ export interface Env {
   SENTRY_DSN?: string;
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
+  /** Retired AI Gateways (comma-separated) whose logs the nightly retention also prunes until they are deleted. */
+  AI_GATEWAY_RETIRED_IDS?: string;
   ADMIN_KEY?: string;
   /**
    * Secret: comma-separated Supabase auth user ids (the JWT `sub`) allowed to switch their OWN account
