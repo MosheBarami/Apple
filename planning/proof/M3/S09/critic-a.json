@@ -1,0 +1,15 @@
+{
+ "judge": "orchestrating session (owner instruction 2026-10-06: capture the Studio viewports and judge them yourself)",
+ "scores": { "delivers": 4, "visual": 2, "layout": 3, "ui": 5, "life": 1, "polish": 2 },
+ "na": [],
+ "severeFlaws": [
+  { "flaw": 2, "evidence": "all HUD shots: the Stage counter carries a green '+' button that has nothing to add; a leftover control" }
+ ],
+ "topFixes": [
+  "Make it an obby: gaps and height between platforms, a start and an end, not flat slabs on the baseplate",
+  "Use real platform materials and colours instead of neon cyan slabs; checkpoints visibly distinct (flag or pad with a number)",
+  "Remove the '+' on the stage counter; finish with a final answer, not a status line"
+ ],
+ "notes": "Checkpoints and a Stage counter exist, but the course is five flat neon-cyan slabs at ground level with coloured tiles between, so nothing reads as an obby. 2 play-test errors. The reply ends mid-work ('Now fixing the two audit defects'), so it is not an account of the result.",
+ "shotsViewed": ["overview.jpg", "three-quarter.jpg", "play-1.jpg"]
+}

@@ -1,0 +1,17 @@
+{
+ "judge": "orchestrating session (owner instruction 2026-10-06: capture the Studio viewports and judge them yourself)",
+ "scores": { "delivers": 2, "visual": 2, "layout": 2, "ui": 2, "life": 1, "polish": 1 },
+ "na": [],
+ "severeFlaws": [
+  { "flaw": 2, "evidence": "play-1/play-2: every rank circle shows a placeholder '#', the row bodies are empty (no player name, no coin total), and the rows are labelled with raw instance names Row1..Row8" },
+  { "flaw": 3, "evidence": "play-1/play-2: the leaderboard panel is taller than the screen and is clipped at top and bottom; its title is off screen" },
+  { "flaw": 2, "evidence": "overview/close-up: the world board is a blank green stud wall on two poles with nothing written on it; coin pieces lie tilted at random on a bare baseplate" }
+ ],
+ "topFixes": [
+  "Fit the board to the screen (header visible, 10 rows inside 1280x720 with room for the top bar)",
+  "Fill rows with a name and a coin total (sample data in Studio, since DataStores need a published place); no '#' or instance-name labels",
+  "Put the board's text on the world stand, or drop the stand"
+ ],
+ "notes": "A leaderboard was attempted (orange stud panel, coloured rank chips), but what a player sees is an unreadable placeholder: no header in view, no names, no scores, and raw RowN labels. The reply's 'Row1 through Row10 visible' is literally true and misleading. 1 play-test error.",
+ "shotsViewed": ["overview.jpg", "close-up.jpg", "ui-1554x623.jpg", "play-1.jpg", "play-2.jpg"]
+}
