@@ -13,7 +13,6 @@ export const metadata: Metadata = {
     template: "%s | StudPilot",
   },
   openGraph: {
-    images: ["/renders/egg-shop.webp"],
     siteName: "StudPilot",
     type: "website",
   },
