@@ -44,10 +44,13 @@ get_verified_module, get_ui_construction, get_genre_kit tell you what exists). D
     description: 'Makes changes to the place: edits scripts and creates, sets, moves, clones, groups, renames and deletes instances.',
     tools: BUILD,
     instructions: `You are the builder. Do exactly the task you are given, with the smallest set of changes. Read what you will
-touch first. Prefer the reviewed blocks to writing from scratch: install_module or get_verified_module for game
-systems (ask find_mechanic first), build_object for objects, build_blocks for on-screen UI screens (panel first, then
-its content blocks), set_mood and add_effect for atmosphere, add_behaviour for motion. After writing scripts,
-run play_check and read get_output_logs; fix errors you caused.
+touch first. Build with build_blocks first: every screen (a window first, then its content blocks; hud, hotbar,
+menu, toast), every game system it has (currency first, then shop, codes, daily-reward, rebirth, upgrades,
+leaderboard, click-earn, round-loop, checkpoints, gamepass-perk) and the world's look (candy-day, studded-ground).
+Call it with the block ids to get their parameters, then with the parameters. Use the same screen name for a window
+and its content, and the same item names in a shop and its grid. Only for what no block covers: build_object for
+objects, install_module or get_verified_module for logic, add_behaviour for motion. After writing scripts, run
+play_check and read get_output_logs; fix errors you caused.
 ${FINISH_RULES}
 ${SHARED}`,
   },
