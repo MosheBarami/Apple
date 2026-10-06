@@ -9,6 +9,7 @@ import { createAgentRouter } from '@flue/runtime/routing';
 import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { StudPilot } from './agents/studpilot.ts';
+import { projectOf } from './conversation-id.ts';
 
 const bound = env as unknown as Env;
 
@@ -62,7 +63,8 @@ app.get('/studio/api/health', (c) => c.json({ ok: true }));
 app.use(`${MOUNT}/*`, async (c, next) => {
   const auth = c.req.header('Authorization') ?? '';
   const jwt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  const [projectId] = c.req.path.slice(MOUNT.length + 1).split('/');
+  const [conversationId] = c.req.path.slice(MOUNT.length + 1).split('/');
+  const projectId = projectOf(conversationId ?? '');
   if (!jwt || !projectId) return c.json({ error: 'unauthorized' }, 401);
   const open = await c.env.GATE.openProject(jwt, projectId);
   if (!open.ok) return c.json({ error: 'not found' }, 404);
