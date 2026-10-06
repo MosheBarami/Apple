@@ -78,6 +78,10 @@ import { designBrief } from '../design-brief';
 import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, scrubEngineIdentity, recoverJsonObject, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
+import { STUDIO_TOOLS, isStudioWriteTool } from '../studio-surface';
+
+/** A Studio-agent write takes a fresh checkpoint when the last one is older than this (one per working session). */
+const STUDIO_CHECKPOINT_GAP_MS = 10 * 60_000;
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { skillCardsForRun, skillSteerForStep } from '../skill-cards';
 import { WORLD_BUILDING_TOOLS, type SkillPushState } from '../skill-push';
@@ -2733,6 +2737,37 @@ export class SessionDO extends DurableObject<Env> {
         return json({ error: `${typeof tool === 'string' ? tool : 'that tool'} is not on the MCP surface.` }, 403);
       }
       const out = await runTool(this.agentCtx(), tool, JSON.stringify(args ?? {}));
+      return json(out);
+    }
+
+    //[[ THE STUDIO AGENT'S TOOLS (rebuild R2), reached only through StudioGate after the owner check.
+    //
+    //   The list is STUDIO_TOOLS (studio-surface.ts) and nothing else, checked here as well as in the gate,
+    //   for the reason `/companion-op` gives: a check in the receiver is a property of the route. A WRITE
+    //   is refused for an owner who may not build (the gate `/agent-run` applies) and while the product's own
+    //   agent is mid-run, and the first write in a STUDIO_CHECKPOINT_GAP_MS window is preceded by a
+    //   checkpoint, so whatever the Studio agent changes can be put back in one click. ]]
+    if (path === '/studio-tool' && req.method === 'POST') {
+      const { tool, args } = (await req.json().catch(() => ({}))) as { tool?: unknown; args?: unknown };
+      if (typeof tool !== 'string' || !STUDIO_TOOLS.includes(tool)) {
+        return json({ ok: false, error: `${typeof tool === 'string' ? tool : 'that tool'} is not a Studio tool.` }, 403);
+      }
+      const ctx = this.agentCtx();
+      if (isStudioWriteTool(tool)) {
+        const bind = await this.bind();
+        if (!bind || !buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
+        const running = await this.ctx.storage.get<AgentState>('agent');
+        if (running && running.status !== 'idle') return json({ ok: false, error: 'StudPilot is already building in this project; wait for it to finish.' }, 409);
+        const last = (await this.ctx.storage.get<number>('studioCheckpointAt')) ?? 0;
+        if (Date.now() - last > STUDIO_CHECKPOINT_GAP_MS) {
+          const checkpoint = await this.createCheckpoint('before StudPilot Studio changes', 'pre_agent', {
+            description: 'StudPilot Studio was about to change the place.',
+          });
+          if ('error' in checkpoint) return json({ ok: false, error: "Couldn't save a copy of the place first, so nothing was changed." }, 409);
+          await this.ctx.storage.put('studioCheckpointAt', Date.now());
+        }
+      }
+      const out = await runTool(ctx, tool, JSON.stringify(args ?? {}));
       return json(out);
     }
 

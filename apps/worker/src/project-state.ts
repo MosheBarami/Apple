@@ -25,6 +25,7 @@ export const STORAGE_KEYS = {
   placeMirrored: 'reset',
   pluginSelection: 'reset',
   opQueue: 'reset',
+  studioCheckpointAt: 'reset', // when the Studio agent last checkpointed; a fresh start makes its next write checkpoint again
   bind: 'keep',
   pluginClient: 'keep',
   pluginLastSeen: 'keep',
