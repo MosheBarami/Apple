@@ -89,41 +89,6 @@ export const BUILD_COSTS = [
   { label: "Typical build", credits: "about 1.4 credits" },
   { label: "Big build: a system or an area", credits: "4 to 12 credits (an estimate)" },
 ] as const;
-
-export type RenderKind = "screen" | "system" | "prop" | "area";
-
-export interface RenderItem {
-  id: string;
-  title: string;
-  kind: RenderKind;
-  alt: string;
-  /** Shown on the "All" tab. */
-  featured: boolean;
-}
-
-export const KIND_LABEL: Record<RenderKind, string> = {
-  screen: "Screens",
-  system: "Systems",
-  prop: "Props",
-  area: "Areas",
-};
-
-export const RENDERS: RenderItem[] = [
-  { id: "egg-shop", title: "Egg shop", kind: "screen", featured: true, alt: "An egg shop window with a featured Void Egg and five more eggs, each with a gem price." },
-  { id: "main-menu", title: "Main menu", kind: "screen", featured: true, alt: "A game main menu with a title and three stacked buttons: Play, Settings and Shop." },
-  { id: "gamepasses", title: "Gamepasses", kind: "screen", featured: true, alt: "A gamepass window with a featured double-coins pass and three smaller passes with prices." },
-  { id: "shop-hud", title: "Shop with a HUD", kind: "screen", featured: false, alt: "A shop window with tabs at the top, icon tiles on the left, currency at the bottom left and a hotbar." },
-  { id: "inventory", title: "Inventory grid", kind: "screen", featured: true, alt: "An inventory window with a grid of animal cards, each with a rarity and an Equip button." },
-  { id: "daily-quests", title: "Daily quests", kind: "system", featured: true, alt: "A daily quests window with three quests, progress bars and Claim buttons." },
-  { id: "daily-rewards", title: "Daily rewards", kind: "system", featured: true, alt: "A seven-day rewards window with claimed days, today's reward and locked days." },
-  { id: "upgrades", title: "Upgrades", kind: "system", featured: true, alt: "An upgrades window with five upgrades, each with a level, a progress bar and a price." },
-  { id: "rebirth", title: "Rebirth", kind: "system", featured: false, alt: "A rebirth window showing the current and next multiplier, a cost and a progress bar." },
-  { id: "park-props", title: "Park props", kind: "prop", featured: true, alt: "Blocky trees, a rock, two benches and a lamp post standing on studded grass." },
-  { id: "park-wide", title: "Props in place", kind: "prop", featured: false, alt: "A wide view of a small park: a clump of trees, benches and a flag on a green baseplate." },
-  { id: "pet-shop-area", title: "Pet shop area", kind: "area", featured: true, alt: "A brick path leading to a striped market stall under a Pet Shop sign, with a flower bed beside it." },
-  { id: "pet-shop-wide", title: "Pet shop, wide", kind: "area", featured: false, alt: "A wide view of the pet shop area ringed by rounded green hills under a blue sky." },
-];
-
 export const FAQ = [
   {
     q: "What does StudPilot build?",

@@ -23,22 +23,6 @@ export default function LoginPage() {
             >
               Welcome back, builder
             </h2>
-            <figure className="float-slow m-0 max-w-md" style={{ "--float": "8px" } as React.CSSProperties}>
-              <div className="overflow-hidden rounded-[7px] border-[3px] border-ink shadow-[0_8px_0_var(--color-ink)]">
-                {/* biome-ignore lint/performance/noImgElement: static render, fixed size */}
-                <img
-                  alt="A daily rewards window with seven days of rewards, some claimed."
-                  className="block w-full"
-                  decoding="async"
-                  height={623}
-                  src="/renders/daily-rewards.webp"
-                  width={1174}
-                />
-              </div>
-              <figcaption className="mt-4 font-medium text-sm">
-                Rendered by StudPilot's kit in Roblox Studio
-              </figcaption>
-            </figure>
           </div>
           <p className="font-medium text-sm">Free to start. 5 credits a day, no card.</p>
         </div>
