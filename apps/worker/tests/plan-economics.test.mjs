@@ -292,15 +292,15 @@ test('the DO and the arithmetic carry no plan figure of their own', () => {
   assert.match(readFileSync(join(WORKER, 'src/quota-math.ts'), 'utf8'), /PLAN_LIMITS\[i\.plan\]/);
 });
 
-test('every plan fits under the whole-service daily ceiling, which this change leaves alone', () => {
+test('every plan fits under the whole-service daily ceiling', () => {
   for (const id of PLAN_IDS) {
     const neuronsADay = PLAN_LIMITS[id].creditsPerDay * NEURONS_PER_CREDIT;
     assert.ok(neuronsADay <= DAILY_NEURON_CEILING, `${id} grants ${neuronsADay} neurons a day against a ${DAILY_NEURON_CEILING} ceiling`);
   }
   // The headroom, stated as a number instead of a hope: how many Free accounts spending their whole
-  // day the ceiling serves. It was 23 at 231 a day and is 7 at 750.
+  // day the ceiling serves. It was 23 at 231 a day and 7 at 750; 13 since the owner raised the daily ceiling (X3, 2026-10-06).
   const freeNeuronsADay = PLAN_LIMITS.free.creditsPerDay * NEURONS_PER_CREDIT;
-  assert.equal(Math.floor(DAILY_NEURON_CEILING / freeNeuronsADay), 7);
+  assert.equal(Math.floor(DAILY_NEURON_CEILING / freeNeuronsADay), 13);
   assert.ok(PLAN_TABLE.builder.creditsPerDay >= PLAN_TABLE.free.creditsPerDay, 'a paid plan never grants less per day than Free');
   assert.ok(PLAN_TABLE.studio.creditsPerDay >= BUILD_COSTS.find((b) => b.id === 'big').creditsHigh, 'a paid day affords the biggest estimated build');
 });

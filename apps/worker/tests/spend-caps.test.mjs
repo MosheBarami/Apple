@@ -12,7 +12,7 @@ import { BILLABLE_NEURONS_PER_DAY, BILLABLE_NEURONS_PER_MONTH, USD_PER_NEURON } 
 
 const USD_PER_1000_NEURONS = 0.011; // Cloudflare Workers AI list price
 const OWNER_APPROVED_USD_PER_MONTH = 25;
-const OWNER_APPROVED_USD_PER_DAY = 1.65;
+const OWNER_APPROVED_USD_PER_DAY = 3.3; // owner decision X3, 2026-10-06 (was 1.65)
 
 test('the price the caps are computed with is the Workers AI list price', () => {
   assert.equal(USD_PER_NEURON, USD_PER_1000_NEURONS / 1000);

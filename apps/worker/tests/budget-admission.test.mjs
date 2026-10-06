@@ -49,7 +49,8 @@ const FREE_PER_DAY = 10_000;
 // live product refused every build and the owner could not use it. See the long note there.
 // RESTATED 2026-10-04 (StudPilot handoff 0.5): the caps lifted on 2026-09-29 ($11,000/day) are
 // restored to the planner's figures, $1.65/day and $24.97/month; pricing.ts carries the decision.
-const BILLABLE_PER_DAY = 150_000;
+// OWNER DECISION X3 (2026-10-06): the daily figure is 300,000 ($3.30); the monthly backstop is unchanged.
+const BILLABLE_PER_DAY = 300_000;
 const BILLABLE_PER_MONTH = 2_270_000;
 const CEILING = FREE_PER_DAY + BILLABLE_PER_DAY;
 const MAX_PER_REQUEST = 1_200;

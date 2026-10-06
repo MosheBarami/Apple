@@ -282,7 +282,8 @@ test('THE FAQ DEFINES A CREDIT from CREDIT_USD and the unit, at the question tha
 test('THE SHARED-POOL SENTENCE gives the whole-service ceiling in credits and the accounts it serves, from the worker\'s own number', () => {
   const pool = Math.floor(DAILY_NEURON_CEILING / (NEURONS_PER_CREDIT * INTERNAL_PER_CREDIT));
   const accounts = Math.floor(pool / PLAN_TABLE.free.creditsPerDay);
-  assert.deepEqual([pool, accounts], [35, 7], 'the service-wide ceiling moved: decide what the page may say');
+  // DECIDED 2026-10-06 (owner decision X3, 300,000 billable neurons a day): the page may say about 68 Credits and roughly 13 accounts.
+  assert.deepEqual([pool, accounts], [68, 13], 'the service-wide ceiling moved: decide what the page may say');
   const n = note('A second, shared limit');
   assert.ok(n.includes(`shared pool of about ${pool} Credits of building a day across the whole service`), `the pool is not ${pool} Credits: ${n.slice(0, 140)}`);
   assert.ok(n.includes(`roughly ${accounts} accounts building flat out`), `the page does not say ${accounts} accounts`);
