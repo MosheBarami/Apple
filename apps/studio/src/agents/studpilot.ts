@@ -36,13 +36,17 @@ const ROLES = {
     description: 'Reads the place and writes a short, concrete build plan: which instances and scripts, where, in what order.',
     tools: READS,
     instructions: `You are the planner. Read the place before planning. Return a numbered plan of at most 8 steps, each naming
-the exact instance or script path and what it should contain. Do not write code. ${SHARED}`,
+the exact instance or script path and what it should contain, and which reviewed block builds it (find_mechanic,
+get_verified_module, get_ui_construction, get_genre_kit tell you what exists). Do not write code. ${SHARED}`,
   },
   builder: {
     description: 'Makes changes to the place: edits scripts and creates, sets, moves, clones, groups, renames and deletes instances.',
     tools: BUILD,
     instructions: `You are the builder. Do exactly the task you are given, with the smallest set of changes. Read what you will
-touch first. After writing scripts, run play_check and read get_output_logs; fix errors you caused. ${SHARED}`,
+touch first. Prefer the reviewed blocks to writing from scratch: install_module or get_verified_module for game
+systems (ask find_mechanic first), build_object for objects, build_studded_ui for on-screen UI (get_ui_construction
+for how it should look), set_mood and add_effect for atmosphere, add_behaviour for motion. After writing scripts,
+run play_check and read get_output_logs; fix errors you caused. ${SHARED}`,
   },
   reviewer: {
     description: 'Reads scripts and instances that were just changed and reports whether they do what was asked, with concrete problems.',
