@@ -1,5 +1,8 @@
 # StudPilot Style Bible v1: the hard target look
 
+> **2026-10-07:** §3, §6.2 and §7 are superseded by `planning/UI-SPEC-v2.md`; the owner's master plan is `planning/MASTER-PLAN-2026-10-07.md`.
+
+
 Written by the planner, 2026-10-06, from the owner's 29 reference images. **This file is the law for how StudPilot output looks.** A build that does not look like it came from the same game as the reference images fails, however well it works.
 
 ## 0. Owner decisions (2026-10-06)
@@ -64,6 +67,8 @@ These IDs go in the private store. File names are as the owner saved them.
 **The critic's reference board** is fixed: R01, R02, R04, R07 for UI builds; R10, R11, R12, R13 for world builds. Changing the board needs a new rubric version.
 
 ## 3. The UI recipe (measured from R01, R02 and R04 at 1920×1080)
+> **SUPERSEDED 2026-10-07** by `planning/UI-SPEC-v2.md` (Premium Studs) and `planning/MASTER-PLAN-2026-10-07.md` §6. Kept as history; do not build to this section.
+
 
 ### 3.1 The seven signatures
 Every UI in the references has **all seven**. A StudPilot UI that misses any of them fails "style".
@@ -178,7 +183,7 @@ GLM may only use the **names**, never hex values.
    - Every text has a UIStroke.
    - No default fonts (SourceSans, Legacy, Arial).
    - No raw grey (saturation < 0.15) outside the `slate` token and disabled states.
-2. **Colour gate, on each final screenshot (the same maths as §1.4):**
+2. **Colour gate, on each final screenshot (the same maths as §1.4):** *(SUPERSEDED 2026-10-07 as §6.2: the gates are now `scripts/eval/ui-metrics.py` per `planning/UI-SPEC-v2.md`.)*
 
    | Shot type | Mean saturation | Grey share | Vivid share |
    |---|---|---|---|
@@ -189,6 +194,8 @@ GLM may only use the **names**, never hex values.
 3. **Opened-state proof.** For UI builds, the screenshot step must show each panel **open**. Each block gets a `proofOpen` hook that the harness calls before the `ui-1554x623` and `play-*` shots. A build whose panels are never seen open fails `delivers`.
 
 ## 7. The critic's new "style" area (rubric v2)
+> **SUPERSEDED 2026-10-07** by `planning/UI-SPEC-v2.md` (Premium Studs) and `planning/MASTER-PLAN-2026-10-07.md` §6. Kept as history; do not build to this section.
+
 The critic sees the reference board (§2) first, then the build's shots, and scores **style** from 0 to 10:
 
 | Score | Meaning |
