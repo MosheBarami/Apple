@@ -1,5 +1,6 @@
 "use client";
 
+import { CoinsIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type Credits, fetchCredits } from "@/lib/api";
 
@@ -27,24 +28,42 @@ export function CreditsMeter() {
     };
   }, []);
 
-  let text = "Checking credits";
+  let value: string | null = null;
+  let label = "Checking credits";
+  let extra: string | null = null;
   if (credits === null) {
-    text = "Credits unavailable";
+    label = "Credits unavailable";
   } else if (credits?.unmetered) {
-    text = "Credits: not metered";
+    label = "Credits: not metered";
   } else if (credits) {
-    text = `${two(credits.allowance)} credits left today`;
+    value = two(credits.allowance);
+    label = "credits left today";
     if (credits.purchased > 0) {
-      text += `, ${two(credits.purchased)} purchased`;
+      extra = `+ ${two(credits.purchased)} purchased`;
     }
   }
 
   return (
-    <p
-      className="px-2 text-sidebar-foreground/70 text-xs group-data-[collapsible=icon]:hidden"
+    <div
+      className="flex items-center gap-3 rounded-md border border-sidebar-border bg-background px-3 py-2.5 group-data-[collapsible=icon]:hidden"
       data-testid="credits-meter"
     >
-      {text}
-    </p>
+      <CoinsIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <p className="min-w-0 text-sm leading-tight">
+        {value ? (
+          <>
+            <span className="font-semibold tabular-nums">{value}</span>{" "}
+            <span className="text-muted-foreground">{label}</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">{label}</span>
+        )}
+        {extra ? (
+          <span className="mt-0.5 block text-muted-foreground text-xs tabular-nums">
+            {extra}
+          </span>
+        ) : null}
+      </p>
+    </div>
   );
 }

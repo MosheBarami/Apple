@@ -1,0 +1,123 @@
+import Link from "next/link";
+
+export const TERMS_UPDATED = "October 2026";
+
+export function TermsBody() {
+  return (
+    <>
+  <p>
+    These terms govern your use of StudPilot, the AI building service for Roblox operated by
+    StudPilot. By creating an account or using the service you agree to them. They are short on
+    purpose — please actually read them.
+  </p>
+
+  <div className="callout">
+    <p>
+      <strong>The short version:</strong> StudPilot is for people aged 13 and older. It is a beta,
+      provided as-is, and free while in beta. Your projects are yours. Keep your own backups of
+      anything you cannot afford to lose. Don't abuse the service or use it to break Roblox's rules.
+      We can change or end the beta, and you can leave — with your data — at any time.
+    </p>
+  </div>
+
+  <h2>1. The service</h2>
+  <p>
+    StudPilot lets you describe changes to a Roblox place in natural language and have an AI agent
+    apply them inside Roblox Studio via the StudPilot plugin. The service includes the web app, the
+    API, and the Studio plugin. StudPilot is an independent product — we are <strong>not affiliated with or endorsed by Roblox Corporation</strong>, and your use of Roblox
+    and Roblox Studio remains governed by Roblox's own terms.
+  </p>
+
+  <h2>2. Beta status — provided as-is</h2>
+  <p>
+    StudPilot is a <strong>beta service, provided "as-is" and "as available"</strong>, without
+    warranties of any kind, express or implied. AI systems make mistakes: StudPilot may write incorrect
+    code, misunderstand a request, or modify your place in a way you did not intend. We built undo
+    waypoints and checkpoints precisely because of this — use them, and keep independent backups of
+    any place you care about. To the maximum extent permitted by law, StudPilot is not liable for
+    lost data, lost revenue, or any indirect or consequential damages arising from use of the beta.
+  </p>
+
+  <h2>3. Your account</h2>
+  <ul>
+    <li>You must be 13 or older to create an account or use StudPilot. If we learn that an account belongs to someone under 13, we will delete it, and we will delete it if you report one to us.</li>
+    <li>You need an email address, or a Roblox account, to create an account, and you are responsible for what happens under it.</li>
+    <li>One person, one account. Creating multiple accounts to multiply the free quota is a fast way to lose all of them.</li>
+  </ul>
+
+  <h2>4. Signing in with Roblox</h2>
+  <p>
+    If you sign in with Roblox, you authorize StudPilot through Roblox's own consent screen to
+    identify you by your Roblox user id and username. That authorization is yours to withdraw: in
+    Settings → Connections, <strong>Disconnect Roblox</strong> asks Roblox to revoke it, then removes
+    the token and the link StudPilot holds; your sign-in identity, which carries your Roblox user id and
+    username, is kept. You can also remove StudPilot from the apps authorized on your Roblox account.
+    If Roblox is the only way you sign in, which is true of every account that signs in with Roblox
+    today, Settings does not offer Disconnect, because the account would have no way back in; you can
+    remove StudPilot in your Roblox settings, or delete the account. Roblox's own terms still govern your Roblox account. What we hold, and what happens
+    to it, is in the <Link href="/privacy">Privacy Policy</Link>.
+  </p>
+
+  <h2>5. Your content stays yours</h2>
+  <p>
+    You retain all rights to your projects, scripts, prompts and anything StudPilot generates for you
+    in your project. You grant us only the limited license needed to operate the service — to
+    store, process and transmit your content in order to do the things you ask StudPilot to do.
+    We collect no improvement data today. If we ever do, it will be anonymised, opt-out and announced
+    first, as the <Link href="/privacy">Privacy Policy</Link> describes, and the Privacy Policy controls.
+    Data that comes from Roblox is never used for AI training. To the extent StudPilot's output is
+    protectable, we assign any interest we might have in it to you.
+  </p>
+
+  <h2>6. Quotas and fair use</h2>
+  <p>
+    StudPilot is free while it is in beta. The Free plan includes 5 Credits a day <em>and</em> up to 30 a month;
+    you have whichever is lower at the time, which on the Free plan is 6 days at the full daily rate.
+    Quotas, rate limits and queueing exist so that the Free plan can exist. We may adjust these numbers; the pricing page
+    always shows the current ones. Attempting to evade quotas, automate accounts, or resell access breaks these terms.
+  </p>
+
+  <h2>7. Acceptable use</h2>
+  <p>Don't use StudPilot to:</p>
+  <ul>
+    <li>build content that violates Roblox's Community Standards or Terms of Use;</li>
+    <li>generate malware, scams, or experiences designed to harm or deceive players;</li>
+    <li>attack, probe or overload the service itself;</li>
+    <li>infringe someone else's intellectual property.</li>
+  </ul>
+  <p>We may suspend accounts that do. Where practical we will warn first.</p>
+
+  <h2>8. Payments</h2>
+  <p>
+    StudPilot collects <strong>no payment</strong> today. Checkout is not open, so there are no
+    purchases, no subscriptions and therefore no refunds — there is nothing to refund. Paid plans
+    start later: they are <em>published</em> — Pro at $9.99 a month and Max at $24.99 a month — but publishing a price is not an offer to sell, and
+    nothing on this site can charge you while checkout is closed. When it opens, those prices and
+    their refund terms apply, and no subscription will ever start without a checkout you confirm.
+  </p>
+
+  <h2>9. Changes and termination</h2>
+  <p>
+    We may modify or discontinue features of the beta at any time. If we ever plan to shut the
+    service down entirely, we will give account holders reasonable notice and a window to export
+    their data. You can stop using StudPilot and delete your account whenever you like — deletion
+    works as described in the <Link href="/privacy">Privacy Policy</Link>.
+  </p>
+
+  <h2>10. Changes to these terms</h2>
+  <p>
+    If these terms change materially, the date at the top changes and we will email account holders
+    before the change takes effect; an account that signs in only with Roblox has no email address on
+    file, so we will tell those accounts in the app. That in-app notice does not exist yet; it will be
+    built before the first change that needs it. Continued use after the effective date is acceptance.
+  </p>
+
+  <h2>11. Governing law &amp; contact</h2>
+  <p>
+    These terms are governed by the laws of the State of Israel, and disputes belong to the
+    competent courts there. Questions first, though: <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
+  </p>
+
+    </>
+  );
+}

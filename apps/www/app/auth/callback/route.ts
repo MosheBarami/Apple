@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = searchParams.get("next");
   // Only a path on this site, never another address.
-  const target = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+  const target = next?.startsWith("/") && !next.startsWith("//") ? next : "/app";
 
   if (code) {
     const cookieStore = await cookies();

@@ -28,7 +28,6 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import {
   Task,
   TaskContent,
@@ -50,9 +49,10 @@ import {
   restoreCheckpoint,
 } from "@/lib/api";
 import { authHeaders } from "@/lib/supabase";
-import { Composer, STARTERS } from "./composer";
+import { Composer } from "./composer";
 import { CREDITS_REFRESH_EVENT } from "./credits-meter";
 import { useProjects } from "./projects-provider";
+import { StarterGrid } from "./starters";
 import { TopBar } from "./top-bar";
 
 type ToolPart = Extract<FlueConversationPart, { type: "dynamic-tool" }>;
@@ -117,6 +117,40 @@ export function ChatView({
     }
   }, [busy, wasBusy]);
 
+  return (
+    <ChatScreen
+      busy={busy}
+      error={agent.error?.message ?? null}
+      messages={visible}
+      onSend={(text) => agent.sendMessage(text)}
+      pair={pair}
+      ready={agent.historyReady}
+      projectId={projectId}
+      title={title}
+    />
+  );
+}
+
+/** The chat's page: top bar, transcript and composer. It holds no agent state, so the design review page can feed it sample messages. */
+export function ChatScreen({
+  title,
+  projectId,
+  pair,
+  messages: visible,
+  busy,
+  ready,
+  error,
+  onSend,
+}: {
+  title: string;
+  projectId: string;
+  pair: boolean;
+  messages: FlueConversationMessage[];
+  busy: boolean;
+  ready: boolean;
+  error: string | null;
+  onSend: (text: string) => void;
+}) {
   const last = visible.at(-1);
   const waiting =
     busy &&
@@ -129,17 +163,14 @@ export function ChatView({
     <div className="flex h-dvh flex-col">
       <TopBar openStudioOnMount={pair} projectId={projectId} title={title} />
       <Conversation>
-        <ConversationContent className="mx-auto w-full max-w-3xl">
-          {agent.historyReady && visible.length === 0 && !busy ? (
-            <Suggestions>
-              {STARTERS.map((s) => (
-                <Suggestion
-                  key={s}
-                  onClick={() => agent.sendMessage(s)}
-                  suggestion={s}
-                />
-              ))}
-            </Suggestions>
+        <ConversationContent className="mx-auto min-h-full w-full max-w-3xl">
+          {ready && visible.length === 0 && !busy ? (
+            <div className="my-auto space-y-5 py-8">
+              <h2 className="text-center font-semibold text-xl tracking-tight">
+                What should StudPilot build?
+              </h2>
+              <StarterGrid onPick={onSend} />
+            </div>
           ) : null}
           {visible.map((m, i) => (
             <Turn
@@ -149,9 +180,9 @@ export function ChatView({
             />
           ))}
           {waiting ? <Shimmer>Working...</Shimmer> : null}
-          {agent.error ? (
+          {error ? (
             <p className="text-destructive text-sm" role="alert">
-              {agent.error.message}
+              {error}
             </p>
           ) : null}
           <UndoCheckpoint busy={busy} projectId={projectId} />
@@ -159,13 +190,16 @@ export function ChatView({
         <ConversationScrollButton />
       </Conversation>
       <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-        <Composer busy={busy} onSend={(text) => agent.sendMessage(text)} />
+        <Composer busy={busy} onSend={onSend} />
+        <p className="mt-2 text-center text-muted-foreground text-xs">
+          StudPilot works in your place. Look at what it built in Studio.
+        </p>
       </div>
     </div>
   );
 }
 
-function Turn({
+export function Turn({
   message,
   live,
 }: {

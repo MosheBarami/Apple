@@ -176,7 +176,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-[13px] leading-[1.65] transition-colors hover:text-foreground",
+          "flex w-fit items-center gap-2 rounded-sm text-muted-foreground text-[13px] leading-[1.65] transition-colors hover:text-foreground",
           className
         )}
         {...props}
@@ -218,12 +218,12 @@ export const ReasoningContent = memo(
     return (
       <div
         className={cn(
-          "mt-2 animate-in fade-in-0 duration-200 text-muted-foreground/60 [overflow-anchor:none]",
+          "mt-2 animate-in fade-in-0 duration-200 text-muted-foreground [overflow-anchor:none]",
           className
         )}
       >
         <div
-          className="max-h-[200px] overflow-y-auto rounded-lg border border-border/20 bg-muted/30 px-3 py-2 text-[11px] leading-relaxed"
+          className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-relaxed"
           ref={scrollRef}
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >

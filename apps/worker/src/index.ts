@@ -7524,6 +7524,10 @@ app.notFound(async (c) => {
   //   A second branch here would read like a defence and could not be reached by any request, so
   //   it is not written. The property it would protect is asserted directly instead: see the
   //   "an unknown /v1 path is a JSON 404" test, which drives POST /v1 among other shapes. ]]
+  // The website and the chat are apps/www (planning/WEB-REBUILD.md; owner 2026-10-06: deploy on studpilot.app, never on a
+  // temporary address): every page this worker does not answer goes to the studpilot-www worker over the WWW binding,
+  // the new app at /app included (old /app/projects/<id> links are still answered above).
+  if (c.env.WWW) return c.env.WWW.fetch(c.req.raw);
   return serveStatic(c.env, c.req.raw);
 });
 
