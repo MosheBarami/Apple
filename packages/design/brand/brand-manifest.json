@@ -2,42 +2,42 @@
   "note": "Written by scripts/make-brand-assets.mjs; never edit by hand. inputs: sha256 of what each render is made from. outputs: sha256 of each PNG as written. renderedOn: the platform whose fonts drew og.png.",
   "renderedOn": "darwin",
   "inputs": {
-    "icon": "2185e765ee76ff563d944ee77122ab449c33cb05c8008853ec141cda801f1094",
-    "iconSquare": "d767248b96d0ea54c07d1ab52c8a5f5b677f959b8fee99241e0e27224a960db1",
-    "og": "6e0f508b78ead6a0e9449b00344a9fca5cdf0f9bcbe7d615e8ef52bb7970e86d"
+    "icon": "d1e6cdd15c01cf1be99bec1b5de0a6576b456f7e3c63e329e0c0c01a8d046f7a",
+    "iconSquare": "34787347ad2f83618db9d1029f7378bf83cd24c92ed9ebba4bd103a6ec0d4586",
+    "og": "594a2f6b61de3abe6a0b8038fa5331bd99225da917fa2eafe93a41afa63bcff2"
   },
   "outputs": {
     "packages/design/brand/icon-16.png": {
       "input": "icon",
-      "sha256": "fbc9a65b5331e63896c2a615c3abf7e1253b264a7293bb0f6e8cbf4274e3023f"
+      "sha256": "104df7c55f0815a2fe36007eb50007bf31b58f0c1a376cb9422145ec24aff10b"
     },
     "packages/design/brand/icon-32.png": {
       "input": "icon",
-      "sha256": "41a592ff93b6878cdefd0bde1752fe1353cccbee8450b9ffd0de75de3578478c"
+      "sha256": "ba2059d401e66a07ee015c3bae0e7dddf7b14989a8b681d61373267a5135bd19"
     },
     "packages/design/brand/icon-180.png": {
       "input": "iconSquare",
-      "sha256": "646740760c36668565a693e6982ef19db4655106a9c3f2a5e897bada49b40917"
+      "sha256": "9459af34999b228a8903187bc9f52172a77eec00388d21701ce5a286709cdd0b"
     },
     "packages/design/brand/icon-512.png": {
       "input": "icon",
-      "sha256": "9b921c7b7f52aae081e5ed7153cd12507f0ebd890ed7b7e376eaeb228314dceb"
+      "sha256": "c7d3344510eb57cc95f5c1b1d1abbb010c0043be50f7af851fb52b338d3ccbc3"
     },
     "apps/site/public/apple-touch-icon.png": {
       "input": "iconSquare",
-      "sha256": "646740760c36668565a693e6982ef19db4655106a9c3f2a5e897bada49b40917"
+      "sha256": "9459af34999b228a8903187bc9f52172a77eec00388d21701ce5a286709cdd0b"
     },
     "apps/site/public/icon-192.png": {
       "input": "icon",
-      "sha256": "aa38da192d2f3c42e660a5066934b0bfdb7ce5a59b6de685fb070d9283b97e28"
+      "sha256": "1747ac6826355423d74e85e9a4f8e7d4e891d7beec0341620aa0039f0d028a76"
     },
     "apps/site/public/icon-512.png": {
       "input": "icon",
-      "sha256": "9b921c7b7f52aae081e5ed7153cd12507f0ebd890ed7b7e376eaeb228314dceb"
+      "sha256": "c7d3344510eb57cc95f5c1b1d1abbb010c0043be50f7af851fb52b338d3ccbc3"
     },
     "apps/site/public/og.png": {
       "input": "og",
-      "sha256": "207364871adf046b690beedbd9d718ec9523d36fa10351b9bc22e18787621b0c"
+      "sha256": "492f750f1d4fd169d6a12bf5fb457c878a6235b094e9ef84b6de746ef8b5e158"
     }
   }
 }

@@ -423,7 +423,8 @@ test('the guard has teeth: a label in the wrong ink on the accent is reported, t
     host.innerHTML = [
       `<button id="t-bad" style="background:var(--accent);color:var(--muted)">${icon}Send</button>`,
       `<button id="t-ok" style="background:var(--accent);color:var(--accent-ink)">${icon}Send</button>`,
-      `<button id="t-mix" style="background:color-mix(in srgb,var(--accent) 90%,transparent);color:var(--accent-ink)">${icon}Send</button>`,
+      // 93%, not 90%: over Kumo's darker paper (2026-10-06) a 90% mix lands 25 from the accent, one past TOLERANCE.
+      `<button id="t-mix" style="background:color-mix(in srgb,var(--accent) 93%,transparent);color:var(--accent-ink)">${icon}Send</button>`,
       '<div id="t-blur" style="backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)">pane</div><div id="t-clear" style="backdrop-filter:none">pane</div>',
     ].join('');
     document.body.appendChild(host);
