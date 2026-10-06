@@ -50,18 +50,15 @@ through the stand-in until 2027-01-02.
 
 ## Anytime
 
-### N10. Copy code from stud (AGPL-3.0), or use its ideas only?
-madebyshaurya/stud is AGPL-3.0. Copying its code into StudPilot would require the whole hosted product to be
-offered under the AGPL, source included, to every user. Until the owner decides, the rebuild takes its
-ideas only (planning/REBUILD-PLAN.md). The other three named projects are MIT and are used.
+### N10. RESOLVED 2026-10-06: stud is ideas only
+Owner decision: madebyshaurya/stud (AGPL-3.0) is used for ideas only; no code of it is copied into StudPilot
+(THIRD_PARTY_NOTICES.md says so). The other three named projects are MIT and are used.
 
-### N11. Unlock the Mac once so Studio can be paired (2026-10-06)
-The M3 baseline, the M4 smoke test and the rebuild's R6 switch all need Roblox Studio paired to the test project.
-Studio is open on the owner's Mac, but the screen has been locked since 2026-10-05 22:00 UTC, and computer use cannot reach a window
-on a locked screen. Once it is unlocked, Claude Code mints the code (`node scripts/eval/pair.mjs`) and types it into the plugin.
+### N11. RESOLVED 2026-10-06: the Mac is unlocked and Studio is paired
+The owner unlocked the Mac with Studio open; Claude Code paired the plugin to the test project and runs the M3 baseline.
 
-### X3 (from the handoff). The daily spend ceiling, and what it means for testing (noted 2026-10-06)
-`BILLABLE_NEURONS_PER_DAY = 150_000` (about $1.65 a day, the planner default the handoff left for the owner to approve or
-replace). Measured: one M3 piece uses about 8,000 neurons, so the shared capacity allows about 20 pieces a day; the 60-piece
-M3 baseline therefore takes 3 days, and every later measurement (the R6 smoke test, M5) shares the same allowance. The month
-so far is $5.57 of the $20 test ceiling. Raising the daily ceiling is the owner's decision; nothing waits on it except speed.
+### X3. RESOLVED 2026-10-06: the daily spend ceiling is 300,000 neurons ($3.30); the month stays at 2,270,000 ($24.97)
+Owner decision. `BILLABLE_NEURONS_PER_DAY = 300_000` in apps/worker/src/pricing.ts; `BILLABLE_NEURONS_PER_MONTH` unchanged, so the
+monthly backstop now binds after about 7 days at the daily ceiling (docs/COST-MODEL.md). At about 8,000 neurons a piece, evaluation
+gets about 37 pieces a day. Test spend still stays at or below $20 a month (the harness's --max-month-usd).
+

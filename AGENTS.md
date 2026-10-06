@@ -253,9 +253,8 @@ one PATCH of a profile's display name; everything else still travels with the ca
 them. Two once sat unapplied while the code that needed them shipped, and the dashboard showed loading skeletons
 forever. **If a query 400s on a missing column, look here first.**
 
-**Spend caps.** `apps/worker/src/pricing.ts` caps billable neurons at 150,000 a day and 2,270,000 a month (about
-$1.65 and $24.97), restored in M0 and asserted by `apps/worker/tests/spend-caps.test.mjs`. The figures wait for the
-owner's approval (X3). Workers AI spend for testing stays at or below $20 a month; read `/api/admin/spend` before
+**Spend caps.** `apps/worker/src/pricing.ts` caps billable neurons at 300,000 a day and 2,270,000 a month (about
+$3.30 and $24.97; the owner's decision X3, 2026-10-06), asserted by `apps/worker/tests/spend-caps.test.mjs`. Workers AI spend for testing stays at or below $20 a month; read `/api/admin/spend` before
 and after a test batch and log it to `planning/proof/ops/spend.md`.
 
 **Deploy** only through `infra/deploy-worker.mjs studpilot` from a clean

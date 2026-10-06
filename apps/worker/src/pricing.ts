@@ -150,8 +150,11 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  *
  *   The handoff wrote these as 150_000_000 and 2_270_000_000 "(≈ $1.65/day, ≈ $25/month)". The dollar
  *   figures are the decision and the neuron figures were 1,000× off: at $0.011 per 1,000 neurons,
- *   2,270,000,000 is $24,970. 150,000 × $0.000011 = $1.65 a day. ]]*/
-export const BILLABLE_NEURONS_PER_DAY = 150_000;
+ *   2,270,000,000 is $24,970. 150,000 × $0.000011 = $1.65 a day.
+ *
+ *   OWNER DECISION X3 (2026-10-06): the daily figure is 300,000 neurons, 300,000 × $0.000011 = $3.30 a day, so
+ *   evaluation can run about 37 pieces a day instead of 20. The monthly backstop below is unchanged. ]]*/
+export const BILLABLE_NEURONS_PER_DAY = 300_000;
 
 /**
  * Independent monthly backstop: 2,270,000 × $0.011/1000 = $24.97 (restored 2026-10-04, see above;

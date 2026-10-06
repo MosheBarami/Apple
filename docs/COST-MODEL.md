@@ -76,7 +76,7 @@ happening, and the neuron figures above are what we actually pay.
 
 **Cost per quality-gated build:** ~16 steps at ~145 neurons plus 1–2 critiques ≈ **2,300 neurons
 ($0.025)**, against 511 ($0.0056) for the old build-blind path. The daily ceiling is
-160,000 neurons (see "Caps restored" below), about 69 such builds a day service-wide.
+310,000 neurons (see "Caps restored" below), about 134 such builds a day service-wide.
 
 <!--[[ THE CEILING DID MOVE, ON 2026-09-20, AND THIS SAID OTHERWISE FOR A DAY.
        This paragraph read "The ceiling has not moved — the hard maximum is still $10.06/month",
@@ -96,7 +96,8 @@ owner lifted the limits altogether ("no StudPilot cap", commit de1117b8), which 
 The StudPilot plan restores them: `BILLABLE_NEURONS_PER_DAY` = 150,000 ($1.65 a day) and
 `BILLABLE_NEURONS_PER_MONTH` = 2,270,000 ($24.97 a month), the planner's defaults pending the
 owner's approval (task X3). `apps/worker/tests/spend-caps.test.mjs` holds the approved dollar
-figures. The figures below are what those constants arithmetically permit, not an expected bill.
+figures. The owner decided X3 on 2026-10-06: the daily figure is 300,000 ($3.30 a day); the monthly
+backstop stays at 2,270,000 ($24.97). The figures below are what those constants arithmetically permit, not an expected bill.
 
 **Art-direction prompt saving, re-measured 2026-09-25.** The older 7,406-character brief and its
 proposed 430-neuron saving were a historical estimate, not a current reduction. Moving the brief
@@ -147,11 +148,11 @@ Credit allowances are denominated in.
 |---|---|---|---|---|
 | **Low** — ~4 builds or ~100 questions/day service-wide | ~10,000 | 0 | $0.00 | **$5.00** |
 | **Medium** — ~15 builds/day | ~35,000 | 25,000 | $8.25 | **$13.25** |
-| **Heavy** — demand at the daily ceiling, every day | 160,000 (the ceiling) | 150,000 | $24.97 | **$29.97** |
+| **Heavy** — demand at the daily ceiling, every day | 310,000 (the ceiling) | 300,000 | $24.97 | **$29.97** |
 
 The heavy row is the arithmetic maximum, not a forecast. At the daily cap the AI spend is
-**$1.65 a day**, so thirty such days would be $49.50; the monthly backstop stops it at $24.97. The
-month's cap is reached on **day 15**, after which generation is refused until the month turns. The
+**$3.30 a day**, so thirty such days would be $99.00; the monthly backstop stops it at $24.97. The
+month's cap is reached on **day 7**, after which generation is refused until the month turns. The
 Low and Medium rows are unchanged and are what the measured load looks like.
 
 These caps bind: the measured load of early October 2026 (80,000 to 120,000 billable neurons on a
@@ -189,7 +190,7 @@ Four independent gates, each proven against production:
 | Gate | Value | Proven |
 |---|---|---|
 | Per-request ceiling | 1,200 neurons | a 190k-char prompt is refused before any call |
-| Daily ceiling | 160,000 neurons (10k free + 150,000 billable; restored 2026-10-04) | proven at the old 25,000 figure; the restored figure is unit-tested (`budget-admission.test.mjs`), not yet observed refusing in production |
+| Daily ceiling | 310,000 neurons (10k free + 300,000 billable; owner decision X3, 2026-10-06) | proven at the old 25,000 figure; the restored figure is unit-tested (`budget-admission.test.mjs`), not yet observed refusing in production |
 | Monthly billable cap | 2,270,000 neurons ($24.97; restored 2026-10-04) | proven at the old 460,000 figure; the restored figure is unit-tested, not yet observed refusing in production |
 | Kill switch | instant | flipped on → next call refused; flipped off → calls resume |
 

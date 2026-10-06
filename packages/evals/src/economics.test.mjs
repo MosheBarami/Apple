@@ -153,9 +153,10 @@ test('service gate constants match apps/worker/src/pricing.ts', () => {
   assert.equal(FREE_NEURONS_PER_DAY_ACCOUNT_WIDE, 10_000);
   // RESTATED 2026-10-04: caps restored (StudPilot handoff 0.5; were 1,000,000,000 / 30,000,000,000
   // from 2026-09-29, and 90,000 / 1,800,000 before that).
-  assert.equal(BILLABLE_NEURONS_PER_DAY, 150_000);
+  // OWNER DECISION X3 (2026-10-06): 300,000 a day; the monthly backstop is unchanged.
+  assert.equal(BILLABLE_NEURONS_PER_DAY, 300_000);
   assert.equal(BILLABLE_NEURONS_PER_MONTH, 2_270_000);
-  assert.equal(DAILY_NEURON_CEILING, 160_000);   // 10,000 free + 150,000 billable
+  assert.equal(DAILY_NEURON_CEILING, 310_000);   // 10,000 free + 300,000 billable
   assert.equal(MAX_NEURONS_PER_REQUEST, 1_200);
 });
 
@@ -443,11 +444,12 @@ test('the shipped spend gates cap the bill at the hard maximum, always', () => {
 // 10-day month is still bound by the daily gate and a 30-day month now by the monthly one.
 test('the two spend gates compose, and the tighter one wins', () => {
   const cross = BILLABLE_NEURONS_PER_MONTH / BILLABLE_NEURONS_PER_DAY;
-  assert.ok(cross > 10 && cross < 30, `the gates cross at ${cross} days, outside (10, 30); re-derive the cases below`);
-  //   10-day month: daily gate x 10 < monthly -> daily binds
-  assert.equal(maxBillableNeuronsPerMonth(10), BILLABLE_NEURONS_PER_DAY * 10);
-  assert.ok(maxBillableNeuronsPerMonth(10) < BILLABLE_NEURONS_PER_MONTH);
-  near(maxUsdPerMonth(10), BILLABLE_NEURONS_PER_DAY * 10 * USD_PER_NEURON + 5, 1e-6, '10 days of the daily gate + $5.00');
+  // RESTATED 2026-10-06 (owner decision X3: 300,000 a day, the month unchanged): the gates now cross at ~7.6 days, not ~15.
+  assert.ok(cross > 5 && cross < 30, `the gates cross at ${cross} days, outside (5, 30); re-derive the cases below`);
+  //   5-day month: daily gate x 5 < monthly -> daily binds
+  assert.equal(maxBillableNeuronsPerMonth(5), BILLABLE_NEURONS_PER_DAY * 5);
+  assert.ok(maxBillableNeuronsPerMonth(5) < BILLABLE_NEURONS_PER_MONTH);
+  near(maxUsdPerMonth(5), BILLABLE_NEURONS_PER_DAY * 5 * USD_PER_NEURON + 5, 1e-6, '5 days of the daily gate + $5.00');
   //   30-day month: past the crossover, the monthly backstop binds = the documented maximum
   assert.equal(maxBillableNeuronsPerMonth(30), BILLABLE_NEURONS_PER_MONTH);
   near(maxUsdPerMonth(30), HARD_MAX_USD_PER_MONTH, 1e-6, 'monthly backstop = the documented maximum');
