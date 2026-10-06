@@ -16,7 +16,10 @@ import {
 } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Streamdown } from 'streamdown';
+import { getProject } from './api.ts';
+import { Projects } from './projects.tsx';
 import { authHeaders, useSession } from './session.ts';
+import { StudioStatus } from './studio-status.tsx';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -48,15 +51,7 @@ export function App() {
       </Centered>
     );
   }
-  if (!projectId) {
-    return (
-      <Centered title="Open a project first">
-        <Button variant="primary" onClick={() => (location.href = '/app')}>
-          Your projects
-        </Button>
-      </Centered>
-    );
-  }
+  if (!projectId) return <Projects />;
   return <Chat projectId={projectId} />;
 }
 
@@ -78,6 +73,10 @@ function Chat({ projectId }: { projectId: string }) {
   );
   const agent = useFlueAgent({ client });
   const [input, setInput] = useState('');
+  const [projectName, setProjectName] = useState('');
+  useEffect(() => {
+    void getProject(projectId).then((p) => setProjectName(p?.name ?? ''));
+  }, [projectId]);
   const end = useRef<HTMLDivElement>(null);
   const busy = agent.status === 'submitted' || agent.status === 'streaming';
   const visible = agent.messages.filter((m) => m.display === 'visible');
@@ -95,11 +94,15 @@ function Chat({ projectId }: { projectId: string }) {
     <div className="flex h-full flex-col bg-kumo-elevated">
       <header className="border-b border-kumo-line bg-kumo-base px-5 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <a href="/app" className="flex items-center gap-2 text-kumo-default no-underline">
-            <Text variant="heading3" as="span">StudPilot</Text>
-            <Badge variant="secondary">Studio preview</Badge>
-          </a>
+          <div className="flex min-w-0 items-center gap-3">
+            <a href="/studio/" className="text-kumo-default no-underline">
+              <Text variant="heading3" as="span">StudPilot</Text>
+            </a>
+            <span className="truncate text-sm text-kumo-subtle">{projectName}</span>
+            <Badge variant="secondary">Beta</Badge>
+          </div>
           <div className="flex items-center gap-3">
+            <StudioStatus projectId={projectId} />
             <Status status={agent.status} />
             <Button
               variant="ghost"
