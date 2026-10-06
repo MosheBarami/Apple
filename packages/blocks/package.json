@@ -1,0 +1,10 @@
+{
+  "name": "@studpilot/blocks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reviewed, parameterised game blocks (plan section 3.3) that the worker's recipe interpreter runs. Compiled by scripts/gen-blocks.mjs.",
+  "scripts": {
+    "test": "node ../../scripts/gen-blocks.mjs --check"
+  }
+}

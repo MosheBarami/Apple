@@ -271,6 +271,8 @@ importers:
 
   packages/asset-library: {}
 
+  packages/blocks: {}
+
   packages/components: {}
 
   packages/corpus:

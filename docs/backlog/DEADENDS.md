@@ -915,3 +915,14 @@ the M5 blocks (`shop`, `plots`, `currency+save`, `upgrades`), and `packages/comp
 are kept for the same reason. It is exercised by `tests/plot-sim.test.mjs` and `tests/composer-kit.test.mjs`. When the M5 block engine
 (`packages/blocks`, `recipe.ts`) takes what it needs from it, this becomes a WIRE (or a DELETE of what the blocks replaced) and this
 entry goes.
+
+## The M5 5.0 block engine — WIRE, 2026-10-06
+
+- `apps/worker/src/intake.ts` — WIRE; picks blocks (model call 1).
+- `apps/worker/src/plan-fill.ts` — WIRE; fills block parameters (model call 2).
+- `apps/worker/src/recipe.ts` — WIRE; runs and checks the selected blocks.
+- `apps/worker/src/custom-code.ts` — WIRE; writes and proves logic no block covers.
+
+Built and unit-tested first (`apps/worker/tests/blocks.test.mjs`, the handoff's 5.0 "Verify" line). M5a wires them into
+the Studio agent as one tool that takes the place of `build_studded_ui`, so the offer stays at 25 tools, and records each
+run's report in the evidence ledger.
