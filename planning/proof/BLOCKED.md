@@ -50,13 +50,20 @@ and put them here; until then this item waits on O-GROUP.
 ### O-KEY. A group Open Cloud API key with only the scopes the pipeline needs (§4.5.3)
 1. https://create.roblox.com/dashboard/credentials → **API Keys** → **Create API Key**.
 2. Owner: the **StudPilot group** (never your personal account).
-3. Access: **Assets** API, read and write (nothing else; more scopes later, one at a time, with a reason).
+3. Access, only these two:
+   - **Assets** API: read and write (uploads of files that are not already on Roblox, to the group).
+   - **Creator Store** (`creator-store-product:read`): searching the Creator Store through the official Open Cloud
+     API (research 2026-10-07: the search endpoint takes an API key with this scope, 1,000 calls a minute).
+   Nothing else; more scopes later, one at a time, with a reason.
 4. Accepted IP addresses: 0.0.0.0/0 for now, no expiry or 90 days.
 5. Paste it yourself into `~/Developer/StudPilot/.env` as `ROBLOX_GROUP_ASSETS_KEY=...` and the group ID as
    `ROBLOX_GROUP_ID=...`. Tell Claude Code "group key in".
 
-### O-TOOLBOX. A Creator Store (Toolbox Service) key, if the API needs one (§4.5.4)
-Claude Code is confirming with research whether searching the Creator Store needs a key; the clicks go here if so.
+### O-TOOLBOX. Covered by O-KEY (§4.5.4)
+Research (planning/library/research/roblox-rules.md): the official search is POST
+https://apis.roblox.com/toolbox-service/v2/assets:search with an API key carrying `creator-store-product:read`. Add that
+scope to the group key in O-KEY; no second key is needed. The older harvest used an unauthenticated internal endpoint,
+which the master plan's L9 does not allow, so it is re-checked through the official API once the key exists.
 
 ### O-WORKFLOW. Larger research workflows (§4.5.5)
 If library research is slowed by the workflow size limit: in a `claude` terminal run `/config` → **Dynamic workflow
