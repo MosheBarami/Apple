@@ -17,6 +17,27 @@
         "default": false,
         "description": "Show each row's progress bar"
       },
+      "showDetail": {
+        "type": "boolean",
+        "default": true,
+        "description": "Show each row's second line (false for a leaderboard)"
+      },
+      "feed": {
+        "type": "string",
+        "enum": [
+          "none",
+          "leaderboard",
+          "upgrades"
+        ],
+        "default": "none",
+        "description": "leaderboard: rows fill from the leaderboard block; upgrades: buttons buy from the upgrades block"
+      },
+      "stat": {
+        "type": "string",
+        "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
+        "default": "",
+        "description": "For feed leaderboard: the ranked stat; for upgrades: the currency"
+      },
       "showButton": {
         "type": "boolean",
         "default": false,
@@ -24,7 +45,7 @@
       },
       "rowHeight": {
         "type": "integer",
-        "minimum": 60,
+        "minimum": 66,
         "maximum": 110,
         "default": 76,
         "description": "Pixels"
@@ -52,7 +73,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "⭐",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "label": {
               "type": "string",

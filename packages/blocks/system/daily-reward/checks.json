@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Daily",
+    "contains": "function Daily.claim",
+    "describes": "the server decides each claim from the saved streak"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the daily reward has no errors"
+  }
+]

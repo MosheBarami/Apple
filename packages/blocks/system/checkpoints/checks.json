@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Checkpoints",
+    "contains": "CharacterAdded",
+    "describes": "players respawn at their saved stage"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with checkpoints has no errors"
+  }
+]

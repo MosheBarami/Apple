@@ -1,0 +1,35 @@
+{
+  "id": "leaderboard",
+  "kind": "system",
+  "summary": "A global top-10 for one currency or saved stat, kept by the server and published for screens.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "stat": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+        "default": "Coins",
+        "description": "A currency from the currency block"
+      },
+      "size": {
+        "type": "integer",
+        "minimum": 3,
+        "maximum": 25,
+        "default": 10,
+        "description": "How many places"
+      },
+      "every": {
+        "type": "integer",
+        "minimum": 30,
+        "maximum": 600,
+        "default": 60,
+        "description": "Seconds between refreshes"
+      }
+    }
+  },
+  "provides": [
+    "Leaderboard"
+  ],
+  "depends": []
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "server",
+    "kind": "script_has",
+    "after": "server",
+    "path": "game.ServerScriptService.Leaderboard",
+    "contains": "GetSortedAsync",
+    "describes": "the server reads the global ranking"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the leaderboard has no errors"
+  }
+]

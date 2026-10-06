@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Rebirth",
+    "contains": "function Rebirth.multiplier",
+    "describes": "the server owns rebirths and the multiplier"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with rebirth has no errors"
+  }
+]

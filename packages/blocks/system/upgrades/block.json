@@ -1,0 +1,78 @@
+{
+  "id": "upgrades",
+  "kind": "system",
+  "summary": "Levelled upgrades bought on the server with a growing cost and a max level; other scripts read the level.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+        "default": "Coins",
+        "description": "A currency from the currency block"
+      },
+      "upgrades": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 12,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "cost",
+            "growth",
+            "max"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 26,
+              "default": "Upgrade",
+              "description": "Exactly the label the row-list row shows"
+            },
+            "cost": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000000,
+              "default": 100,
+              "description": "Cost of level 1"
+            },
+            "growth": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1.5,
+              "description": "Each level costs this many times the last"
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 10,
+              "description": "Highest level"
+            }
+          }
+        },
+        "default": [
+          {
+            "name": "Upgrade",
+            "cost": 100,
+            "growth": 1.5,
+            "max": 10
+          }
+        ]
+      }
+    }
+  },
+  "provides": [
+    "Upgrades.buy",
+    "Upgrades.level",
+    "UpgradeBuy"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

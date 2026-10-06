@@ -234,6 +234,9 @@
               "ImageTransparency": 0.55,
               "ZIndex": 2
              },
+             "attributes": {
+              "Stat": "{{item.stat}}"
+             },
              "children": [
               {
                "className": "UICorner",
@@ -995,6 +998,16 @@
      ]
     }
    ]
+  },
+  {
+   "id": "live",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.HudLive",
+   "file": "src/HudLive.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
   }
  ]
 }

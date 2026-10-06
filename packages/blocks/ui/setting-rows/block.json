@@ -26,6 +26,7 @@
             "switch",
             "value",
             "state",
+            "options",
             "colour"
           ],
           "properties": {
@@ -41,7 +42,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "🎵",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "slider": {
               "type": "boolean",
@@ -63,9 +64,16 @@
             "state": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 24,
+              "maxLength": 12,
               "default": "On",
-              "description": "Switch words separated by / (first is shown), e.g. On/Off or High/Medium/Low; ignored for a slider"
+              "description": "The switch word shown now, e.g. On or High; ignored for a slider"
+            },
+            "options": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "default": "On/Off",
+              "description": "All the switch words separated by /, e.g. On/Off or High/Medium/Low; ignored for a slider"
             },
             "colour": {
               "type": "string",
@@ -93,6 +101,7 @@
             "switch": false,
             "value": 0.8,
             "state": "On",
+            "options": "On/Off",
             "colour": "blue"
           }
         ]

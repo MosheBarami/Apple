@@ -68,7 +68,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "▶",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "colour": {
               "type": "string",

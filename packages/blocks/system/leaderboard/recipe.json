@@ -1,0 +1,14 @@
+{
+ "steps": [
+  {
+   "id": "server",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.Leaderboard",
+   "file": "src/Leaderboard.luau",
+   "create": {
+    "className": "Script",
+    "parent": "game.ServerScriptService"
+   }
+  }
+ ]
+}

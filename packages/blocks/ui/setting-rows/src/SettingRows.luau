@@ -29,7 +29,7 @@ for _, row in list:GetChildren() do
 	elseif switch and switch.Visible then
 		local face = switch.Face
 		local words = string.split(face:GetAttribute("States") or "On/Off", "/")
-		local at = 1
+		local at = table.find(words, face.Text.Text) or 1
 		local function show()
 			face.Text.Text = words[at]
 			gui:SetAttribute(nameOf(row), words[at])

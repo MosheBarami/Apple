@@ -22,7 +22,8 @@
           "required": [
             "icon",
             "value",
-            "colour"
+            "colour",
+            "stat"
           ],
           "properties": {
             "icon": {
@@ -30,7 +31,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "💰",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "value": {
               "type": "string",
@@ -54,6 +55,12 @@
               ],
               "default": "yellow",
               "description": "Pill colour"
+            },
+            "stat": {
+              "type": "string",
+              "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
+              "default": "",
+              "description": "A currency name to follow live (e.g. Coins), or \"\" for fixed text"
             }
           }
         },
@@ -61,7 +68,8 @@
           {
             "icon": "💰",
             "value": "0",
-            "colour": "yellow"
+            "colour": "yellow",
+            "stat": ""
           }
         ]
       },
@@ -90,7 +98,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "🛒",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "colour": {
               "type": "string",

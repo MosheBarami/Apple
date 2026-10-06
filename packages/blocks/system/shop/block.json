@@ -1,0 +1,64 @@
+{
+  "id": "shop",
+  "kind": "system",
+  "summary": "Server-checked purchases: a buy request is refused unless the item exists, is not owned and can be afforded.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+        "default": "Coins",
+        "description": "A currency from the currency block"
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 24,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "price"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 22,
+              "default": "Item",
+              "description": "Exactly the name the item-grid card shows"
+            },
+            "price": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000000,
+              "default": 100,
+              "description": "Cost in the currency"
+            }
+          }
+        },
+        "default": [
+          {
+            "name": "Item",
+            "price": 100
+          }
+        ]
+      },
+      "once": {
+        "type": "boolean",
+        "default": true,
+        "description": "Each item can be bought once (passes, skins); false for repeat buys"
+      }
+    }
+  },
+  "provides": [
+    "Shop.buy",
+    "ShopBuy"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Upgrades",
+    "contains": "function Upgrades.level",
+    "describes": "the server owns upgrade levels and prices"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with upgrades has no errors"
+  }
+]

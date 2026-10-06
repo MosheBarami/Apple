@@ -479,7 +479,7 @@
            },
            "attributes": {
             "UI_Click": true,
-            "States": "{{item.state}}"
+            "States": "{{item.options}}"
            },
            "children": [
             {
@@ -545,7 +545,7 @@
                ]
               },
               "BackgroundTransparency": 1,
-              "Text": "",
+              "Text": "{{item.state}}",
               "Font": {
                "t": "EnumItem",
                "v": "Enum.Font.FredokaOne"

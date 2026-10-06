@@ -19,6 +19,12 @@
         "default": "💎",
         "description": "Symbol before each price (may be empty)"
       },
+      "payWith": {
+        "type": "string",
+        "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
+        "default": "",
+        "description": "The currency the prices are in (with the currency and shop blocks), or \"\""
+      },
       "cellWidth": {
         "type": "integer",
         "minimum": 120,
@@ -68,7 +74,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "⭐",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "colour": {
               "type": "string",
@@ -157,7 +163,7 @@
               "minLength": 1,
               "maxLength": 4,
               "default": "⭐",
-              "description": "One emoji or symbol"
+              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
             },
             "colour": {
               "type": "string",

@@ -40,6 +40,10 @@
       },
       "ZIndex": 2
      },
+     "attributes": {
+      "Feed": "{{feed}}",
+      "Stat": "{{stat}}"
+     },
      "children": [
       {
        "className": "UIListLayout",
@@ -278,130 +282,16 @@
          ]
         },
         {
-         "className": "TextLabel",
-         "name": "Label",
-         "props": {
-          "Size": {
-           "t": "UDim2",
-           "v": [
-            0.5,
-            -76,
-            0,
-            28
-           ]
-          },
-          "BackgroundTransparency": 1,
-          "Text": "{{item.label}}",
-          "Font": {
-           "t": "EnumItem",
-           "v": "Enum.Font.FredokaOne"
-          },
-          "TextScaled": true,
-          "TextColor3": "#ffffff",
-          "TextXAlignment": {
-           "t": "EnumItem",
-           "v": "Enum.TextXAlignment.Left"
-          },
-          "Position": {
-           "t": "UDim2",
-           "v": [
-            0,
-            74,
-            0,
-            8
-           ]
-          }
-         },
-         "children": [
-          {
-           "className": "UIStroke",
-           "name": "Ink",
-           "props": {
-            "Thickness": 3,
-            "Color": "#000000",
-            "LineJoinMode": {
-             "t": "EnumItem",
-             "v": "Enum.LineJoinMode.Bevel"
-            }
-           }
-          },
-          {
-           "className": "UITextSizeConstraint",
-           "name": "Fit",
-           "props": {
-            "MaxTextSize": 26
-           }
-          }
-         ]
-        },
-        {
-         "className": "TextLabel",
-         "name": "Detail",
-         "props": {
-          "Size": {
-           "t": "UDim2",
-           "v": [
-            0.5,
-            -76,
-            0,
-            20
-           ]
-          },
-          "BackgroundTransparency": 1,
-          "Text": "{{item.detail}}",
-          "Font": {
-           "t": "EnumItem",
-           "v": "Enum.Font.FredokaOne"
-          },
-          "TextScaled": true,
-          "TextColor3": "#cfe0ff",
-          "TextXAlignment": {
-           "t": "EnumItem",
-           "v": "Enum.TextXAlignment.Left"
-          },
-          "Position": {
-           "t": "UDim2",
-           "v": [
-            0,
-            74,
-            0,
-            36
-           ]
-          }
-         },
-         "children": [
-          {
-           "className": "UIStroke",
-           "name": "Ink",
-           "props": {
-            "Thickness": 2,
-            "Color": "#000000",
-            "LineJoinMode": {
-             "t": "EnumItem",
-             "v": "Enum.LineJoinMode.Bevel"
-            }
-           }
-          },
-          {
-           "className": "UITextSizeConstraint",
-           "name": "Fit",
-           "props": {
-            "MaxTextSize": 18
-           }
-          }
-         ]
-        },
-        {
          "className": "Frame",
-         "name": "Bar",
+         "name": "Texts",
          "props": {
           "Size": {
            "t": "UDim2",
            "v": [
-            0.42,
+            0.55,
+            -76,
             0,
-            0,
-            12
+            0
            ]
           },
           "Position": {
@@ -409,66 +299,155 @@
            "v": [
             0,
             74,
-            1,
-            -12
+            0.5,
+            0
            ]
           },
           "AnchorPoint": {
            "t": "Vector2",
            "v": [
             0,
-            1
+            0.5
            ]
           },
-          "BackgroundColor3": "#0e1830",
-          "BorderSizePixel": 0,
-          "Visible": "{{showProgress}}"
+          "AutomaticSize": {
+           "t": "EnumItem",
+           "v": "Enum.AutomaticSize.Y"
+          },
+          "BackgroundTransparency": 1
          },
          "children": [
           {
-           "className": "UICorner",
-           "name": "Corner",
+           "className": "UIListLayout",
+           "name": "Stack",
            "props": {
-            "CornerRadius": {
+            "Padding": {
              "t": "UDim",
              "v": [
               0,
-              6
+              3
              ]
-            }
-           }
-          },
-          {
-           "className": "UIStroke",
-           "name": "Outline",
-           "props": {
-            "Thickness": 2,
-            "Color": "#000000",
-            "ApplyStrokeMode": {
-             "t": "EnumItem",
-             "v": "Enum.ApplyStrokeMode.Border"
             },
-            "LineJoinMode": {
+            "SortOrder": {
              "t": "EnumItem",
-             "v": "Enum.LineJoinMode.Round"
+             "v": "Enum.SortOrder.LayoutOrder"
             }
            }
           },
           {
-           "className": "Frame",
-           "name": "Fill",
+           "className": "TextLabel",
+           "name": "Label",
            "props": {
             "Size": {
              "t": "UDim2",
              "v": [
-              "{{item.progress}}",
-              0,
               1,
-              0
+              0,
+              0,
+              26
              ]
             },
-            "BackgroundColor3": "#ffffff",
-            "BorderSizePixel": 0
+            "BackgroundTransparency": 1,
+            "Text": "{{item.label}}",
+            "Font": {
+             "t": "EnumItem",
+             "v": "Enum.Font.FredokaOne"
+            },
+            "TextScaled": true,
+            "TextColor3": "#ffffff",
+            "TextXAlignment": {
+             "t": "EnumItem",
+             "v": "Enum.TextXAlignment.Left"
+            }
+           },
+           "children": [
+            {
+             "className": "UIStroke",
+             "name": "Ink",
+             "props": {
+              "Thickness": 3,
+              "Color": "#000000",
+              "LineJoinMode": {
+               "t": "EnumItem",
+               "v": "Enum.LineJoinMode.Bevel"
+              }
+             }
+            },
+            {
+             "className": "UITextSizeConstraint",
+             "name": "Fit",
+             "props": {
+              "MaxTextSize": 26
+             }
+            }
+           ]
+          },
+          {
+           "className": "TextLabel",
+           "name": "Detail",
+           "props": {
+            "Size": {
+             "t": "UDim2",
+             "v": [
+              1,
+              0,
+              0,
+              18
+             ]
+            },
+            "BackgroundTransparency": 1,
+            "Text": "{{item.detail}}",
+            "Font": {
+             "t": "EnumItem",
+             "v": "Enum.Font.FredokaOne"
+            },
+            "TextScaled": true,
+            "TextColor3": "#cfe0ff",
+            "TextXAlignment": {
+             "t": "EnumItem",
+             "v": "Enum.TextXAlignment.Left"
+            },
+            "Visible": "{{showDetail}}"
+           },
+           "children": [
+            {
+             "className": "UIStroke",
+             "name": "Ink",
+             "props": {
+              "Thickness": 2,
+              "Color": "#000000",
+              "LineJoinMode": {
+               "t": "EnumItem",
+               "v": "Enum.LineJoinMode.Bevel"
+              }
+             }
+            },
+            {
+             "className": "UITextSizeConstraint",
+             "name": "Fit",
+             "props": {
+              "MaxTextSize": 18
+             }
+            }
+           ]
+          },
+          {
+           "className": "Frame",
+           "name": "Bar",
+           "props": {
+            "Size": {
+             "t": "UDim2",
+             "v": [
+              1,
+              0,
+              0,
+              10
+             ]
+            },
+            "BackgroundColor3": "#0e1830",
+            "BorderSizePixel": 0,
+            "Visible": "{{showProgress}}",
+            "LayoutOrder": 3
            },
            "children": [
             {
@@ -479,30 +458,78 @@
                "t": "UDim",
                "v": [
                 0,
-                6
+                5
                ]
               }
              }
             },
             {
-             "className": "UIGradient",
-             "name": "Tint",
+             "className": "UIStroke",
+             "name": "Outline",
              "props": {
-              "Color": {
-               "t": "ColorSequence",
+              "Thickness": 2,
+              "Color": "#000000",
+              "ApplyStrokeMode": {
+               "t": "EnumItem",
+               "v": "Enum.ApplyStrokeMode.Border"
+              },
+              "LineJoinMode": {
+               "t": "EnumItem",
+               "v": "Enum.LineJoinMode.Round"
+              }
+             }
+            },
+            {
+             "className": "Frame",
+             "name": "Fill",
+             "props": {
+              "Size": {
+               "t": "UDim2",
                "v": [
-                [
-                 0,
-                 "{{item.colour.top}}"
-                ],
-                [
-                 1,
-                 "{{item.colour.bottom}}"
-                ]
+                "{{item.progress}}",
+                0,
+                1,
+                0
                ]
               },
-              "Rotation": 90
-             }
+              "BackgroundColor3": "#ffffff",
+              "BorderSizePixel": 0
+             },
+             "children": [
+              {
+               "className": "UICorner",
+               "name": "Corner",
+               "props": {
+                "CornerRadius": {
+                 "t": "UDim",
+                 "v": [
+                  0,
+                  5
+                 ]
+                }
+               }
+              },
+              {
+               "className": "UIGradient",
+               "name": "Tint",
+               "props": {
+                "Color": {
+                 "t": "ColorSequence",
+                 "v": [
+                  [
+                   0,
+                   "{{item.colour.top}}"
+                  ],
+                  [
+                   1,
+                   "{{item.colour.bottom}}"
+                  ]
+                 ]
+                },
+                "Rotation": 90
+               }
+              }
+             ]
             }
            ]
           }
@@ -861,6 +888,16 @@
      "parent": "game.StarterGui.{{screen}}.Window.Content"
     }
    ]
+  },
+  {
+   "id": "wire",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.RowFeed",
+   "file": "src/RowFeed.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
   }
  ]
 }

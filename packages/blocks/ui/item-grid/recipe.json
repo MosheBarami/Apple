@@ -40,6 +40,9 @@
       },
       "ZIndex": 2
      },
+     "attributes": {
+      "PayWith": "{{payWith}}"
+     },
      "children": [
       {
        "className": "UIListLayout",
@@ -997,10 +1000,10 @@
               "Size": {
                "t": "UDim2",
                "v": [
-                0,
-                64,
-                0,
-                64
+                1,
+                -16,
+                1,
+                -104
                ]
               },
               "Position": {
@@ -1009,7 +1012,7 @@
                 0.5,
                 0,
                 0,
-                10
+                8
                ]
               },
               "AnchorPoint": {
@@ -1104,6 +1107,30 @@
                  }
                 }
                ]
+              },
+              {
+               "className": "UIAspectRatioConstraint",
+               "name": "Square",
+               "props": {
+                "AspectRatio": 1,
+                "DominantAxis": {
+                 "t": "EnumItem",
+                 "v": "Enum.DominantAxis.Height"
+                }
+               }
+              },
+              {
+               "className": "UISizeConstraint",
+               "name": "Limit",
+               "props": {
+                "MaxSize": {
+                 "t": "Vector2",
+                 "v": [
+                  72,
+                  72
+                 ]
+                }
+               }
               }
              ]
             },
@@ -1117,7 +1144,7 @@
                 1,
                 -14,
                 0,
-                26
+                24
                ]
               },
               "BackgroundTransparency": 1,
@@ -1137,15 +1164,15 @@
                "v": [
                 0.5,
                 0,
-                0,
-                80
+                1,
+                -70
                ]
               },
               "AnchorPoint": {
                "t": "Vector2",
                "v": [
                 0.5,
-                0
+                1
                ]
               },
               "ZIndex": 3
@@ -1182,7 +1209,7 @@
                 1,
                 -14,
                 0,
-                18
+                16
                ]
               },
               "BackgroundTransparency": 1,
@@ -1202,15 +1229,15 @@
                "v": [
                 0.5,
                 0,
-                0,
-                106
+                1,
+                -53
                ]
               },
               "AnchorPoint": {
                "t": "Vector2",
                "v": [
                 0.5,
-                0
+                1
                ]
               },
               "ZIndex": 3
@@ -1247,7 +1274,7 @@
                 1,
                 -20,
                 0,
-                46
+                42
                ]
               },
               "BackgroundTransparency": 1,
@@ -1493,6 +1520,16 @@
      "parent": "game.StarterGui.{{screen}}.Window.Content"
     }
    ]
+  },
+  {
+   "id": "wire",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.GridShop",
+   "file": "src/GridShop.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
   }
  ]
 }
