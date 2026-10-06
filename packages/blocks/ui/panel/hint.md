@@ -1,1 +1,4 @@
-A plain window on screen: a coloured header with a title over a dark rounded body. Use it as the frame for a shop, inventory or settings screen; other UI blocks place their content inside its Body. `name` must be unique in StarterGui. Keep `title` short (a word or two). The size is in pixels for a 1280×720 screen.
+The window a menu screen lives in: a studded header with the title over a dark-blue body, and a red close button.
+Choose it first for any shop, inventory, upgrades, rewards, settings, codes, quests or leaderboard screen; the content
+blocks (item-grid, row-list, progress-panel, code-entry, setting-rows) go inside it on the same `screen`. One panel per
+screen. Keep the title to one or two words. It is open when the game starts.

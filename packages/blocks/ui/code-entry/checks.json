@@ -1,0 +1,21 @@
+[
+  {
+    "id": "box",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Window.Content.Codes.Box",
+    "describes": "the code box is in the panel"
+  },
+  {
+    "id": "wired",
+    "kind": "script_has",
+    "path": "game.StarterGui.{{screen}}.CodeEntry",
+    "contains": "RedeemCode",
+    "describes": "Redeem asks the server to check the code"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the codes box has no errors"
+  }
+]

@@ -1,8 +1,9 @@
--- PROOF ONLY (never shipped): after the panel recipe ran with its defaults, the window is on the player's screen.
+-- PROOF ONLY (never shipped): after the recipe ran with its defaults, a player sees it.
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
-local gui = player:WaitForChild("PlayerGui"):WaitForChild("Panel", 10)
-assert(gui, "the Panel ScreenGui was not copied into PlayerGui")
-local title = gui:FindFirstChild("Title", true)
-assert(title and title.Text == "Menu", "the header does not show the default title")
-print("STUDPILOT_PROOF_OK panel")
+local gui = player:WaitForChild("PlayerGui"):WaitForChild("Shop", 10)
+assert(gui, "Shop was not copied into PlayerGui")
+assert(gui:FindFirstChild("Window", true), "Window is missing")
+assert(gui:FindFirstChild("Content", true), "Content is missing")
+assert(gui:FindFirstChild("Title", true), "Title is missing")
+print("STUDPILOT_PROOF_OK Shop")

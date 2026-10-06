@@ -321,6 +321,30 @@ local PROTECTED_CONTAINER_CLASSES = {
 -- every Content/asset property are absent on purpose.  Keep this table explicit: accepting any
 -- property that happens to exist on an Instance turns a typo into a new capability.
 local PROPERTY_ALLOW = {
+	-- M5a UI blocks (clean-stud look, packages/blocks/ui): bevelled text strokes, inner strokes, padding, text-size
+	-- limits and the ScreenGui settings a menu needs. Presentation only; no content, no references.
+	PlaceholderColor3 = true,
+	AutoButtonColor = true,
+	AutomaticSize = true,
+	ScrollBarImageColor3 = true,
+	ScrollingDirection = true,
+	DisplayOrder = true,
+	LineJoinMode = true,
+	BorderStrokePosition = true,
+	ApplyStrokeMode = true,
+	ClipsDescendants = true,
+	PaddingTop = true,
+	PaddingBottom = true,
+	PaddingLeft = true,
+	PaddingRight = true,
+	MaxTextSize = true,
+	MinTextSize = true,
+	MaxSize = true,
+	MinSize = true,
+	ResetOnSpawn = true,
+	ZIndexBehavior = true,
+	IgnoreGuiInset = true,
+	ScreenInsets = true,
 	Anchored = true,
 	CanCollide = true,
 	CanQuery = true,
@@ -667,6 +691,30 @@ local PROPERTY_ALLOW = {
 -- Reading uses the same safe names plus no secret/internal fields.  This bounded list keeps a
 -- tree useful without turning it into a dump of every engine property.
 local READ_PROPERTIES = {
+	-- M5a UI blocks (clean-stud look, packages/blocks/ui): bevelled text strokes, inner strokes, padding, text-size
+	-- limits and the ScreenGui settings a menu needs. Presentation only; no content, no references.
+	PlaceholderColor3 = true,
+	AutoButtonColor = true,
+	AutomaticSize = true,
+	ScrollBarImageColor3 = true,
+	ScrollingDirection = true,
+	DisplayOrder = true,
+	LineJoinMode = true,
+	BorderStrokePosition = true,
+	ApplyStrokeMode = true,
+	ClipsDescendants = true,
+	PaddingTop = true,
+	PaddingBottom = true,
+	PaddingLeft = true,
+	PaddingRight = true,
+	MaxTextSize = true,
+	MinTextSize = true,
+	MaxSize = true,
+	MinSize = true,
+	ResetOnSpawn = true,
+	ZIndexBehavior = true,
+	IgnoreGuiInset = true,
+	ScreenInsets = true,
 	Anchored = true,
 	CanCollide = true,
 	CanQuery = true,
@@ -1055,6 +1103,12 @@ CONTENT_PROPERTY.Texture.Beam = CONTENT_PROPERTY.Texture.ParticleEmitter
 CONTENT_PROPERTY.Texture.Trail = CONTENT_PROPERTY.Texture.ParticleEmitter
 
 local ENUM_ALLOW = {
+	-- M5a UI blocks: the enums of the properties above.
+	LineJoinMode = true,
+	BorderStrokePosition = true,
+	ApplyStrokeMode = true,
+	ZIndexBehavior = true,
+	ScreenInsets = true,
 	Material = true,
 	PartType = true,
 	SurfaceType = true,

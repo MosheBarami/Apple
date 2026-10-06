@@ -1,0 +1,58 @@
+{
+  "id": "code-entry",
+  "kind": "ui",
+  "summary": "A codes box inside a panel: prompt, text box, Redeem button and a status line.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Codes",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "prompt": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 48,
+        "default": "Enter a code for free rewards!",
+        "description": "Line above the box"
+      },
+      "placeholder": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 24,
+        "default": "Type a code...",
+        "description": "Grey text in the empty box"
+      },
+      "action": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 12,
+        "default": "Redeem",
+        "description": "Button text"
+      },
+      "actionColour": {
+        "type": "string",
+        "enum": [
+          "green",
+          "yellow",
+          "orange",
+          "pink",
+          "blue",
+          "purple",
+          "red",
+          "cream",
+          "grey"
+        ],
+        "default": "green",
+        "description": "Button colour"
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "panel"
+  ]
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "top",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Top.Counters",
+    "describes": "the HUD bar is in StarterGui"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the HUD has no errors"
+  }
+]

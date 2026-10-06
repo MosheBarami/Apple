@@ -45,8 +45,8 @@ get_verified_module, get_ui_construction, get_genre_kit tell you what exists). D
     tools: BUILD,
     instructions: `You are the builder. Do exactly the task you are given, with the smallest set of changes. Read what you will
 touch first. Prefer the reviewed blocks to writing from scratch: install_module or get_verified_module for game
-systems (ask find_mechanic first), build_object for objects, build_studded_ui for on-screen UI (get_ui_construction
-for how it should look), set_mood and add_effect for atmosphere, add_behaviour for motion. After writing scripts,
+systems (ask find_mechanic first), build_object for objects, build_blocks for on-screen UI screens (panel first, then
+its content blocks), set_mood and add_effect for atmosphere, add_behaviour for motion. After writing scripts,
 run play_check and read get_output_logs; fix errors you caused.
 ${FINISH_RULES}
 ${SHARED}`,

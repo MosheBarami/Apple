@@ -1,0 +1,21 @@
+[
+  {
+    "id": "bar",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Bar.Fill",
+    "describes": "the loading bar is in StarterGui"
+  },
+  {
+    "id": "runs",
+    "kind": "script_has",
+    "path": "game.StarterGui.{{screen}}.LoadingBar",
+    "contains": "TweenService",
+    "describes": "the bar fills and the screen hides when done"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the loading screen has no errors"
+  }
+]

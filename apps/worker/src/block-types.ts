@@ -1,6 +1,7 @@
 /** The shape of one compiled block (packages/blocks/README.md; compiled by scripts/gen-blocks.mjs). */
 export interface ParamSchema {
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'array';
+  /** `object` only as the items of a list: one entry of a list a block repeats (`each`). */
+  type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
   enum?: unknown[];
   minimum?: number;
   maximum?: number;
@@ -10,6 +11,9 @@ export interface ParamSchema {
   items?: ParamSchema;
   minItems?: number;
   maxItems?: number;
+  properties?: Record<string, ParamSchema>;
+  required?: string[];
+  additionalProperties?: false;
   default?: unknown;
   description?: string;
 }

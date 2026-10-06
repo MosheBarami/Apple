@@ -12,15 +12,43 @@
  * create step first removes what it created. Every failure is reported with what the check describes and what was found.
  */
 import type { OpResult, PropValue, StudioOp } from '@studpilot/shared';
-import { BLOCKS } from './blocks.generated.ts';
+import { BLOCKS, PALETTE } from './blocks.generated.ts';
 import type { Block, BlockCheck, RecipeStep } from './block-types.ts';
 import { validateParams } from './block-schema.ts';
 import { summarisePlayCheck } from './playtest.ts';
 import { propValue, typed } from './typed-spec.ts';
 
 export const MAX_REPAIRS = 2;
-const SLOT = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
-const EXACT_SLOT = /^\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}$/;
+const NAME = '[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*){0,2}';
+const SLOT = new RegExp(`\\{\\{(${NAME})\\}\\}`, 'g');
+const EXACT_SLOT = new RegExp(`^\\{\\{(${NAME})\\}\\}$`);
+
+/**
+ * A slot's value: `name`; `item.field` inside a repeated (`each`) entry; `colour.shade` for a palette colour parameter
+ * (and `item.colour.shade` for an entry's colour).
+ */
+const lookup = (params: Record<string, unknown>, name: string): unknown => {
+  const [head, ...rest] = name.split('.');
+  let v: unknown = params[head!];
+  for (const part of rest) v = typeof v === 'string' ? PALETTE[v]?.[part] : (v as Record<string, unknown> | undefined)?.[part];
+  return v;
+};
+
+const HEX = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+const rgb = (v: unknown): unknown => {
+  const m = typeof v === 'string' ? HEX.exec(v) : null;
+  return m ? [parseInt(m[1]!, 16) / 255, parseInt(m[2]!, 16) / 255, parseInt(m[3]!, 16) / 255] : v;
+};
+
+/** Hex colours written inside typed values (a gradient's keypoints, a typed Color3) as the 0..1 triples the plugin takes. */
+function hexToRgb(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(hexToRgb);
+  if (!value || typeof value !== 'object') return value;
+  const o = value as Record<string, unknown>;
+  if (o.t === 'Color3') return { t: 'Color3', v: rgb(o.v) };
+  if (o.t === 'ColorSequence' && Array.isArray(o.v)) return { t: 'ColorSequence', v: o.v.map((k) => (Array.isArray(k) ? [k[0], rgb(k[1])] : k)) };
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, hexToRgb(v)]));
+}
 
 export interface RunDeps {
   exec(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
@@ -52,19 +80,35 @@ export function runOrder(selected: string[], blocks: Record<string, Block> = BLO
   return { ok: true, order };
 }
 
-/** A recipe or check value with its `{{slots}}` filled. Pure; throws when a value would add a path segment. */
-export function fill(value: unknown, params: Record<string, unknown>): unknown {
+/**
+ * A recipe or check value with its `{{slots}}` filled. Pure; throws when a value would add a path segment.
+ *
+ * An object in a list with `"each": "<list parameter>"` is repeated once per entry of that list, with `{{item.<field>}}`
+ * the entry's field and `{{index}}` its position from 1 (so a card template becomes one real card per item).
+ */
+/** Fields that name a place in the game: a value slotted into one may not add a path segment. */
+const PATH_FIELDS = new Set(['path', 'parent', 'paths', 'name']);
+
+export function fill(value: unknown, params: Record<string, unknown>, key = ''): unknown {
   if (typeof value === 'string') {
     const exact = EXACT_SLOT.exec(value);
-    if (exact) return params[exact[1]!];
+    if (exact && !PATH_FIELDS.has(key)) return lookup(params, exact[1]!);
     return value.replace(SLOT, (_, name: string) => {
-      const v = String(params[name]);
-      if (/[.[\]]/.test(v)) throw new Error(`parameter ${name} ("${v}") would change a path`);
+      const v = String(lookup(params, name));
+      if (PATH_FIELDS.has(key) && /[.[\]]/.test(v)) throw new Error(`parameter ${name} ("${v}") would change a path`);
       return v;
     });
   }
-  if (Array.isArray(value)) return value.map((v) => fill(v, params));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(v, params)]));
+  if (Array.isArray(value)) {
+    return value.flatMap((v) => {
+      const each = v && typeof v === 'object' && !Array.isArray(v) ? (v as { each?: unknown }).each : undefined;
+      if (typeof each !== 'string') return [fill(v, params, key)];
+      const { each: _, ...template } = v as Record<string, unknown>;
+      const list = params[each];
+      return Array.isArray(list) ? list.map((item, i) => fill(template, { ...params, item, index: i + 1 }, key)) : [];
+    });
+  }
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(v, params, k)]));
   return value;
 }
 
@@ -74,11 +118,12 @@ export function luauLiteral(v: unknown): string {
   if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '0';
   if (typeof v === 'boolean') return String(v);
   if (Array.isArray(v)) return `{${v.map(luauLiteral).join(', ')}}`;
+  if (v && typeof v === 'object') return `{${Object.entries(v).map(([k, x]) => `[${luauLiteral(k)}] = ${luauLiteral(x)}`).join(', ')}}`;
   return 'nil';
 }
 
 export function fillSource(source: string, params: Record<string, unknown>): string {
-  return source.replace(SLOT, (_, name: string) => luauLiteral(params[name]));
+  return source.replace(SLOT, (_, name: string) => luauLiteral(lookup(params, name)));
 }
 
 function typedProps(props: Record<string, unknown>): Record<string, PropValue> {
@@ -89,7 +134,7 @@ function typedProps(props: Record<string, unknown>): Record<string, PropValue> {
 
 /** The ops one step sends. Pure. */
 export function stepOps(step: RecipeStep, block: Block, params: Record<string, unknown>): StudioOp[] {
-  const s = fill(step, params) as RecipeStep;
+  const s = hexToRgb(fill(step, params)) as RecipeStep;
   switch (s.op) {
     case 'create_instances':
       return [{ op: 'create_instances', items: (s.items as Array<{ parent: string } & Parameters<typeof typed>[0]>).map((item) => ({ ...typed(item), parent: item.parent })) }];

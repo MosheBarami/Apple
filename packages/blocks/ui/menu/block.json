@@ -1,0 +1,109 @@
+{
+  "id": "menu",
+  "kind": "ui",
+  "summary": "A full-screen main menu: backdrop, big game title and a column of large studded buttons.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "MainMenu",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 28,
+        "default": "My Game",
+        "description": "The game name, large"
+      },
+      "subtitle": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 40,
+        "default": "",
+        "description": "A line under the title (may be empty)"
+      },
+      "accent": {
+        "type": "string",
+        "enum": [
+          "green",
+          "yellow",
+          "orange",
+          "pink",
+          "blue",
+          "purple",
+          "red",
+          "cream",
+          "grey"
+        ],
+        "default": "blue",
+        "description": "Backdrop colour"
+      },
+      "buttons": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "icon",
+            "colour",
+            "closes"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16,
+              "default": "Play",
+              "description": "Button text"
+            },
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "▶",
+              "description": "One emoji or symbol"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "green",
+              "description": "Button colour"
+            },
+            "closes": {
+              "type": "boolean",
+              "default": false,
+              "description": "Pressing it hides the menu (true for Play)"
+            }
+          }
+        },
+        "default": [
+          {
+            "label": "Play",
+            "icon": "▶",
+            "colour": "green",
+            "closes": true
+          }
+        ]
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

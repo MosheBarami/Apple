@@ -1,0 +1,14 @@
+[
+  {
+    "id": "bar",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Window.Content.Progress.Bar.Fill",
+    "describes": "the progress bar is in the panel"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the progress panel has no errors"
+  }
+]

@@ -1,0 +1,212 @@
+{
+  "id": "item-grid",
+  "kind": "ui",
+  "summary": "Cards in a scrolling grid inside a panel: icon, name, note and a price button each, plus an optional featured card.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Shop",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "currency": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4,
+        "default": "💎",
+        "description": "Symbol before each price"
+      },
+      "cellWidth": {
+        "type": "integer",
+        "minimum": 120,
+        "maximum": 260,
+        "default": 160,
+        "description": "Card width in pixels"
+      },
+      "cellHeight": {
+        "type": "integer",
+        "minimum": 150,
+        "maximum": 300,
+        "default": 190,
+        "description": "Card height in pixels"
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 24,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "price",
+            "icon",
+            "colour",
+            "note",
+            "button"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 22,
+              "default": "Item",
+              "description": "Shown on the card"
+            },
+            "price": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "default": "100",
+              "description": "Shown on the button, e.g. 250 or Owned"
+            },
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "⭐",
+              "description": "One emoji or symbol"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "blue",
+              "description": "Card colour (rarity, state)"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 18,
+              "default": "",
+              "description": "Small line under the name, e.g. Legendary, Today, Claimed (may be empty)"
+            },
+            "button": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "green",
+              "description": "Button colour; grey for something that cannot be bought now"
+            }
+          }
+        },
+        "default": [
+          {
+            "name": "Starter Pack",
+            "price": "100",
+            "icon": "⭐",
+            "colour": "blue",
+            "note": "",
+            "button": "green"
+          }
+        ]
+      },
+      "featured": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "price",
+            "icon",
+            "colour",
+            "note",
+            "button"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 22,
+              "default": "Item",
+              "description": "Shown on the card"
+            },
+            "price": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "default": "100",
+              "description": "Shown on the button, e.g. 250 or Owned"
+            },
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "⭐",
+              "description": "One emoji or symbol"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "blue",
+              "description": "Card colour (rarity, state)"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 18,
+              "default": "",
+              "description": "Small line under the name, e.g. Legendary, Today, Claimed (may be empty)"
+            },
+            "button": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "green",
+              "description": "Button colour; grey for something that cannot be bought now"
+            }
+          }
+        },
+        "default": [],
+        "description": "At most one big card above the grid"
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "panel"
+  ]
+}

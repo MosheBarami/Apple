@@ -1,0 +1,11 @@
+{
+  "green":  { "top": "#5dff7a", "bottom": "#14c24a", "edge": "#b4ffc4", "dark": "#0b6e3e" },
+  "yellow": { "top": "#ffe14d", "bottom": "#ff9f1a", "edge": "#fff3a8", "dark": "#a85a12" },
+  "orange": { "top": "#ffb347", "bottom": "#e0731a", "edge": "#ffd9a3", "dark": "#8a3f16" },
+  "pink":   { "top": "#ff6fd8", "bottom": "#c2187a", "edge": "#ffc2ee", "dark": "#721463" },
+  "blue":   { "top": "#5fd3ff", "bottom": "#1f6fff", "edge": "#b8ecff", "dark": "#163a9e" },
+  "purple": { "top": "#c56bff", "bottom": "#6a1fd1", "edge": "#e6c4ff", "dark": "#3f1488" },
+  "red":    { "top": "#ff5a5a", "bottom": "#c41616", "edge": "#ffb3b3", "dark": "#721226" },
+  "cream":  { "top": "#fff6dc", "bottom": "#f2d9a6", "edge": "#ffffff", "dark": "#a88a5e" },
+  "grey":   { "top": "#d7dde2", "bottom": "#8f9aa3", "edge": "#f2f5f7", "dark": "#4f5966" }
+}

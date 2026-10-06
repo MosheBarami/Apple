@@ -1,0 +1,145 @@
+{
+  "id": "row-list",
+  "kind": "ui",
+  "summary": "Rows in a scrolling list inside a panel: icon chip, label, detail, value, optional progress bar and button.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Shop",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "showProgress": {
+        "type": "boolean",
+        "default": false,
+        "description": "Show each row's progress bar"
+      },
+      "showButton": {
+        "type": "boolean",
+        "default": false,
+        "description": "Show each row's button"
+      },
+      "rowHeight": {
+        "type": "integer",
+        "minimum": 60,
+        "maximum": 110,
+        "default": 76,
+        "description": "Pixels"
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "icon",
+            "label",
+            "detail",
+            "value",
+            "colour",
+            "progress",
+            "button",
+            "buttonColour"
+          ],
+          "properties": {
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "⭐",
+              "description": "One emoji or symbol"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 26,
+              "default": "Row",
+              "description": "Main text, e.g. a player name, quest or upgrade"
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 40,
+              "default": "",
+              "description": "Second line, e.g. +10% speed, 3/5 collected (may be empty)"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 14,
+              "default": "",
+              "description": "Right side, e.g. 1,250 wins, Lv 3 (may be empty)"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "blue",
+              "description": "Icon chip colour"
+            },
+            "progress": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "Bar fill, 0 to 1"
+            },
+            "button": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 12,
+              "default": "",
+              "description": "Button text, e.g. Buy 500 (may be empty)"
+            },
+            "buttonColour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "green",
+              "description": "Grey when it cannot be pressed now"
+            }
+          }
+        },
+        "default": [
+          {
+            "icon": "⭐",
+            "label": "First",
+            "detail": "",
+            "value": "",
+            "colour": "blue",
+            "progress": 0,
+            "button": "",
+            "buttonColour": "green"
+          }
+        ]
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "panel"
+  ]
+}

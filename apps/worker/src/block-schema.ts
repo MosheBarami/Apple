@@ -13,6 +13,15 @@ function checkValue(path: string, schema: ParamSchema, v: unknown, errors: strin
     case 'number': if (typeof v !== 'number' || !Number.isFinite(v)) return fail('must be a number'); break;
     case 'integer': if (!Number.isInteger(v)) return fail('must be a whole number'); break;
     case 'array': if (!Array.isArray(v)) return fail('must be a list'); break;
+    case 'object': {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return fail('must be an object');
+      const o = v as Record<string, unknown>;
+      const fields = schema.properties ?? {};
+      for (const key of Object.keys(o)) if (!(key in fields)) fail(`has no field ${key} (it has ${Object.keys(fields).join(', ')})`);
+      for (const key of schema.required ?? []) if (!(key in o)) fail(`needs ${key}`);
+      for (const [key, sub] of Object.entries(fields)) if (key in o) checkValue(`${path}.${key}`, sub, o[key], errors);
+      return;
+    }
   }
   if (schema.enum && !schema.enum.some((e) => e === v)) fail(`must be one of ${schema.enum.map((e) => JSON.stringify(e)).join(', ')}`);
   if (typeof v === 'number') {

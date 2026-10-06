@@ -1,0 +1,21 @@
+[
+  {
+    "id": "rows",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Window.Content.Settings.Setting1",
+    "describes": "the first setting is in the panel"
+  },
+  {
+    "id": "wired",
+    "kind": "script_has",
+    "path": "game.StarterGui.{{screen}}.SettingRows",
+    "contains": "SetAttribute",
+    "describes": "sliders drag and switches cycle, and each choice is kept as an attribute"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the settings has no errors"
+  }
+]

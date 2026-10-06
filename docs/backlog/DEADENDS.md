@@ -918,11 +918,8 @@ entry goes.
 
 ## The M5 5.0 block engine — WIRE, 2026-10-06
 
-- `apps/worker/src/intake.ts` — WIRE; picks blocks (model call 1).
-- `apps/worker/src/plan-fill.ts` — WIRE; fills block parameters (model call 2).
-- `apps/worker/src/recipe.ts` — WIRE; runs and checks the selected blocks.
-- `apps/worker/src/custom-code.ts` — WIRE; writes and proves logic no block covers.
+- `apps/worker/src/custom-code.ts` — WIRE; writes and proves logic no block covers. Unit-tested in
+  `apps/worker/tests/blocks.test.mjs`; M5b wires it beside the system blocks, whose APIs it must call.
 
-Built and unit-tested first (`apps/worker/tests/blocks.test.mjs`, the handoff's 5.0 "Verify" line). M5a wires them into
-the Studio agent as one tool that takes the place of `build_studded_ui`, so the offer stays at 25 tools, and records each
-run's report in the evidence ledger.
+`intake.ts`, `plan-fill.ts` and `recipe.ts` are wired: the Studio agent's `build_blocks` tool (`apps/worker/src/blocks-tool.ts`)
+uses them.

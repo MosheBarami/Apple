@@ -1,0 +1,127 @@
+{
+  "id": "progress-panel",
+  "kind": "ui",
+  "summary": "Stat lines, a big labelled progress bar and one action button inside a panel (rebirth, level-up, goal screens).",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Shop",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "stats": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "value",
+            "colour"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 24,
+              "default": "Multiplier",
+              "description": "Left text"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 14,
+              "default": "x1",
+              "description": "Right text, large"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "yellow",
+              "description": "Value colour"
+            }
+          }
+        },
+        "default": [
+          {
+            "label": "Multiplier",
+            "value": "x1",
+            "colour": "yellow"
+          }
+        ]
+      },
+      "barLabel": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 32,
+        "default": "0 / 100",
+        "description": "Text on the bar"
+      },
+      "progress": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "default": 0.4,
+        "description": "Bar fill, 0 to 1"
+      },
+      "barColour": {
+        "type": "string",
+        "enum": [
+          "green",
+          "yellow",
+          "orange",
+          "pink",
+          "blue",
+          "purple",
+          "red",
+          "cream",
+          "grey"
+        ],
+        "default": "purple",
+        "description": "Bar colour"
+      },
+      "action": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 18,
+        "default": "Go",
+        "description": "Button text, e.g. Rebirth"
+      },
+      "actionColour": {
+        "type": "string",
+        "enum": [
+          "green",
+          "yellow",
+          "orange",
+          "pink",
+          "blue",
+          "purple",
+          "red",
+          "cream",
+          "grey"
+        ],
+        "default": "green",
+        "description": "Button colour; grey when not ready"
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "panel"
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "id": "setting-rows",
+  "kind": "ui",
+  "summary": "Settings rows inside a panel: each a labelled slider (volumes) or a switch that cycles words (On/Off, High/Low).",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Settings",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "settings": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 8,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "icon",
+            "slider",
+            "switch",
+            "value",
+            "state",
+            "colour"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 22,
+              "default": "Music",
+              "description": "Setting name"
+            },
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "🎵",
+              "description": "One emoji or symbol"
+            },
+            "slider": {
+              "type": "boolean",
+              "default": true,
+              "description": "true for a 0-1 slider (then switch is false)"
+            },
+            "switch": {
+              "type": "boolean",
+              "default": false,
+              "description": "true for a switch that cycles its state words (then slider is false)"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.8,
+              "description": "Slider start, 0 to 1 (ignored for a switch)"
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 24,
+              "default": "On",
+              "description": "Switch words separated by / (first is shown), e.g. On/Off or High/Medium/Low; ignored for a slider"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "blue",
+              "description": "Slider fill or switch colour"
+            }
+          }
+        },
+        "default": [
+          {
+            "label": "Music",
+            "icon": "🎵",
+            "slider": true,
+            "switch": false,
+            "value": 0.8,
+            "state": "On",
+            "colour": "blue"
+          }
+        ]
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "panel"
+  ]
+}

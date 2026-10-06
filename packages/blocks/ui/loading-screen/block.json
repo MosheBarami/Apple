@@ -1,0 +1,79 @@
+{
+  "id": "loading-screen",
+  "kind": "ui",
+  "summary": "A full-screen loading screen: game logo area, tagline and a filling progress bar, hidden when it completes.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Loading",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 28,
+        "default": "My Game",
+        "description": "Game name in the logo area"
+      },
+      "tagline": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 48,
+        "default": "",
+        "description": "A line under the logo (may be empty)"
+      },
+      "icon": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4,
+        "default": "⭐",
+        "description": "One emoji or symbol"
+      },
+      "accent": {
+        "type": "string",
+        "enum": [
+          "green",
+          "yellow",
+          "orange",
+          "pink",
+          "blue",
+          "purple",
+          "red",
+          "cream",
+          "grey"
+        ],
+        "default": "purple",
+        "description": "Backdrop and logo colour"
+      },
+      "barColour": {
+        "type": "string",
+        "enum": [
+          "green",
+          "yellow",
+          "orange",
+          "pink",
+          "blue",
+          "purple",
+          "red",
+          "cream",
+          "grey"
+        ],
+        "default": "green",
+        "description": "Bar colour"
+      },
+      "seconds": {
+        "type": "number",
+        "minimum": 2,
+        "maximum": 30,
+        "default": 8,
+        "description": "How long the bar takes to fill"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

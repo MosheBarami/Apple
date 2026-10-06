@@ -1,53 +1,650 @@
 {
-  "steps": [
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
     {
-      "id": "create",
-      "op": "create_instances",
-      "items": [
+     "parent": "game.StarterGui",
+     "className": "ScreenGui",
+     "name": "{{screen}}",
+     "props": {
+      "ResetOnSpawn": false,
+      "ZIndexBehavior": {
+       "t": "EnumItem",
+       "v": "Enum.ZIndexBehavior.Sibling"
+      }
+     },
+     "children": [
+      {
+       "className": "Frame",
+       "name": "Window",
+       "props": {
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          0.5,
+          0.5
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0.5,
+          0,
+          0.53,
+          0
+         ]
+        },
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          "{{width}}",
+          0,
+          "{{height}}",
+          0
+         ]
+        },
+        "BackgroundTransparency": 1
+       },
+       "children": [
         {
-          "className": "ScreenGui",
-          "name": "{{name}}",
-          "parent": "game.StarterGui",
-          "children": [
-            {
-              "className": "Frame",
-              "name": "Body",
-              "props": {
-                "AnchorPoint": { "t": "Vector2", "v": [0.5, 0.5] },
-                "Position": { "t": "UDim2", "v": [0.5, 0, 0.5, 0] },
-                "Size": { "t": "UDim2", "v": [0, "{{width}}", 0, "{{height}}"] },
-                "BackgroundColor3": "#16213a",
-                "BackgroundTransparency": 0.08,
-                "BorderSizePixel": 0
-              },
-              "children": [
-                { "className": "UICorner", "name": "Corner", "props": { "CornerRadius": { "t": "UDim", "v": [0, 12] } } },
-                { "className": "UIStroke", "name": "Outline", "props": { "Thickness": 3, "Color": "#000000" } },
-                {
-                  "className": "Frame",
-                  "name": "Header",
-                  "props": { "Size": { "t": "UDim2", "v": [1, 0, 0, 48] }, "BackgroundColor3": "{{accent}}", "BorderSizePixel": 0 },
-                  "children": [
-                    { "className": "UICorner", "name": "Corner", "props": { "CornerRadius": { "t": "UDim", "v": [0, 12] } } },
-                    {
-                      "className": "TextLabel",
-                      "name": "Title",
-                      "props": {
-                        "Size": { "t": "UDim2", "v": [1, -24, 1, -12] },
-                        "Position": { "t": "UDim2", "v": [0, 12, 0, 6] },
-                        "BackgroundTransparency": 1,
-                        "Text": "{{title}}",
-                        "TextColor3": "#ffffff",
-                        "TextScaled": true
-                      }
-                    }
-                  ]
-                }
-              ]
+         "className": "UISizeConstraint",
+         "name": "Limits",
+         "props": {
+          "MinSize": {
+           "t": "Vector2",
+           "v": [
+            340,
+            280
+           ]
+          },
+          "MaxSize": {
+           "t": "Vector2",
+           "v": [
+            960,
+            640
+           ]
+          }
+         }
+        },
+        {
+         "className": "Frame",
+         "name": "Body",
+         "props": {
+          "Size": {
+           "t": "UDim2",
+           "v": [
+            1,
+            0,
+            1,
+            -24
+           ]
+          },
+          "Position": {
+           "t": "UDim2",
+           "v": [
+            0,
+            0,
+            0,
+            24
+           ]
+          },
+          "BackgroundColor3": "#1b2b4f",
+          "BackgroundTransparency": 0.08,
+          "BorderSizePixel": 0,
+          "ZIndex": 1
+         },
+         "children": [
+          {
+           "className": "UICorner",
+           "name": "Corner",
+           "props": {
+            "CornerRadius": {
+             "t": "UDim",
+             "v": [
+              0,
+              14
+             ]
             }
-          ]
+           }
+          },
+          {
+           "className": "UIStroke",
+           "name": "Outline",
+           "props": {
+            "Thickness": 5,
+            "Color": "#000000",
+            "ApplyStrokeMode": {
+             "t": "EnumItem",
+             "v": "Enum.ApplyStrokeMode.Border"
+            },
+            "LineJoinMode": {
+             "t": "EnumItem",
+             "v": "Enum.LineJoinMode.Round"
+            }
+           }
+          }
+         ]
+        },
+        {
+         "className": "Frame",
+         "name": "HeaderShadow",
+         "props": {
+          "Size": {
+           "t": "UDim2",
+           "v": [
+            1,
+            -40,
+            0,
+            60
+           ]
+          },
+          "Position": {
+           "t": "UDim2",
+           "v": [
+            0.5,
+            0,
+            0,
+            6
+           ]
+          },
+          "AnchorPoint": {
+           "t": "Vector2",
+           "v": [
+            0.5,
+            0
+           ]
+          },
+          "BackgroundColor3": "{{accent.dark}}",
+          "BorderSizePixel": 0,
+          "ZIndex": 2
+         },
+         "children": [
+          {
+           "className": "UICorner",
+           "name": "Corner",
+           "props": {
+            "CornerRadius": {
+             "t": "UDim",
+             "v": [
+              0,
+              12
+             ]
+            }
+           }
+          },
+          {
+           "className": "UIStroke",
+           "name": "Outline",
+           "props": {
+            "Thickness": 5,
+            "Color": "#000000",
+            "ApplyStrokeMode": {
+             "t": "EnumItem",
+             "v": "Enum.ApplyStrokeMode.Border"
+            },
+            "LineJoinMode": {
+             "t": "EnumItem",
+             "v": "Enum.LineJoinMode.Round"
+            }
+           }
+          }
+         ]
+        },
+        {
+         "className": "ImageLabel",
+         "name": "Header",
+         "props": {
+          "Size": {
+           "t": "UDim2",
+           "v": [
+            1,
+            -40,
+            0,
+            60
+           ]
+          },
+          "BackgroundColor3": "#ffffff",
+          "BorderSizePixel": 0,
+          "Image": "rbxassetid://6927295847",
+          "ScaleType": {
+           "t": "EnumItem",
+           "v": "Enum.ScaleType.Tile"
+          },
+          "TileSize": {
+           "t": "UDim2",
+           "v": [
+            0,
+            48,
+            0,
+            48
+           ]
+          },
+          "ImageTransparency": 0.55,
+          "Position": {
+           "t": "UDim2",
+           "v": [
+            0.5,
+            0,
+            0,
+            0
+           ]
+          },
+          "AnchorPoint": {
+           "t": "Vector2",
+           "v": [
+            0.5,
+            0
+           ]
+          },
+          "ZIndex": 3
+         },
+         "children": [
+          {
+           "className": "UICorner",
+           "name": "Corner",
+           "props": {
+            "CornerRadius": {
+             "t": "UDim",
+             "v": [
+              0,
+              12
+             ]
+            }
+           }
+          },
+          {
+           "className": "UIGradient",
+           "name": "Tint",
+           "props": {
+            "Color": {
+             "t": "ColorSequence",
+             "v": [
+              [
+               0,
+               "{{accent.top}}"
+              ],
+              [
+               1,
+               "{{accent.bottom}}"
+              ]
+             ]
+            },
+            "Rotation": 90
+           }
+          },
+          {
+           "className": "UIStroke",
+           "name": "Edge",
+           "props": {
+            "Thickness": 4,
+            "Color": "{{accent.edge}}",
+            "ApplyStrokeMode": {
+             "t": "EnumItem",
+             "v": "Enum.ApplyStrokeMode.Border"
+            },
+            "BorderStrokePosition": {
+             "t": "EnumItem",
+             "v": "Enum.BorderStrokePosition.Inner"
+            }
+           }
+          },
+          {
+           "className": "TextLabel",
+           "name": "Title",
+           "props": {
+            "Size": {
+             "t": "UDim2",
+             "v": [
+              1,
+              -32,
+              1,
+              -14
+             ]
+            },
+            "BackgroundTransparency": 1,
+            "Text": "{{title}}",
+            "Font": {
+             "t": "EnumItem",
+             "v": "Enum.Font.FredokaOne"
+            },
+            "TextScaled": true,
+            "TextColor3": "#ffffff",
+            "TextXAlignment": {
+             "t": "EnumItem",
+             "v": "Enum.TextXAlignment.Center"
+            },
+            "Position": {
+             "t": "UDim2",
+             "v": [
+              0.5,
+              0,
+              0.5,
+              0
+             ]
+            },
+            "AnchorPoint": {
+             "t": "Vector2",
+             "v": [
+              0.5,
+              0.5
+             ]
+            },
+            "ZIndex": 4
+           },
+           "children": [
+            {
+             "className": "UIStroke",
+             "name": "Ink",
+             "props": {
+              "Thickness": 4,
+              "Color": "#000000",
+              "LineJoinMode": {
+               "t": "EnumItem",
+               "v": "Enum.LineJoinMode.Bevel"
+              }
+             }
+            },
+            {
+             "className": "UITextSizeConstraint",
+             "name": "Fit",
+             "props": {
+              "MaxTextSize": 40
+             }
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "className": "Frame",
+         "name": "Content",
+         "props": {
+          "Size": {
+           "t": "UDim2",
+           "v": [
+            1,
+            -32,
+            1,
+            -104
+           ]
+          },
+          "Position": {
+           "t": "UDim2",
+           "v": [
+            0,
+            16,
+            0,
+            88
+           ]
+          },
+          "BackgroundTransparency": 1,
+          "ZIndex": 2
+         }
+        },
+        {
+         "className": "Frame",
+         "name": "Close",
+         "props": {
+          "Size": {
+           "t": "UDim2",
+           "v": [
+            0,
+            54,
+            0,
+            54
+           ]
+          },
+          "Position": {
+           "t": "UDim2",
+           "v": [
+            1,
+            12,
+            0,
+            -8
+           ]
+          },
+          "AnchorPoint": {
+           "t": "Vector2",
+           "v": [
+            1,
+            0
+           ]
+          },
+          "BackgroundTransparency": 1,
+          "ZIndex": 5,
+          "Visible": "{{closable}}"
+         },
+         "children": [
+          {
+           "className": "Frame",
+           "name": "Shadow",
+           "props": {
+            "Size": {
+             "t": "UDim2",
+             "v": [
+              1,
+              0,
+              1,
+              -5
+             ]
+            },
+            "Position": {
+             "t": "UDim2",
+             "v": [
+              0,
+              0,
+              0,
+              5
+             ]
+            },
+            "BackgroundColor3": "#721226",
+            "BorderSizePixel": 0,
+            "ZIndex": 5
+           },
+           "children": [
+            {
+             "className": "UICorner",
+             "name": "Corner",
+             "props": {
+              "CornerRadius": {
+               "t": "UDim",
+               "v": [
+                0,
+                12
+               ]
+              }
+             }
+            },
+            {
+             "className": "UIStroke",
+             "name": "Outline",
+             "props": {
+              "Thickness": 4,
+              "Color": "#000000",
+              "ApplyStrokeMode": {
+               "t": "EnumItem",
+               "v": "Enum.ApplyStrokeMode.Border"
+              },
+              "LineJoinMode": {
+               "t": "EnumItem",
+               "v": "Enum.LineJoinMode.Round"
+              }
+             }
+            }
+           ]
+          },
+          {
+           "className": "ImageButton",
+           "name": "Button",
+           "props": {
+            "Size": {
+             "t": "UDim2",
+             "v": [
+              1,
+              0,
+              1,
+              -5
+             ]
+            },
+            "BackgroundColor3": "#ffffff",
+            "BorderSizePixel": 0,
+            "Image": "rbxassetid://6927295847",
+            "ScaleType": {
+             "t": "EnumItem",
+             "v": "Enum.ScaleType.Tile"
+            },
+            "TileSize": {
+             "t": "UDim2",
+             "v": [
+              0,
+              48,
+              0,
+              48
+             ]
+            },
+            "ImageTransparency": 0.55,
+            "ZIndex": 6,
+            "AutoButtonColor": false
+           },
+           "attributes": {
+            "UI_Click": true
+           },
+           "children": [
+            {
+             "className": "UICorner",
+             "name": "Corner",
+             "props": {
+              "CornerRadius": {
+               "t": "UDim",
+               "v": [
+                0,
+                12
+               ]
+              }
+             }
+            },
+            {
+             "className": "UIGradient",
+             "name": "Tint",
+             "props": {
+              "Color": {
+               "t": "ColorSequence",
+               "v": [
+                [
+                 0,
+                 "#ff5a5a"
+                ],
+                [
+                 1,
+                 "#c41616"
+                ]
+               ]
+              },
+              "Rotation": 90
+             }
+            },
+            {
+             "className": "UIStroke",
+             "name": "Edge",
+             "props": {
+              "Thickness": 4,
+              "Color": "#ffb3b3",
+              "ApplyStrokeMode": {
+               "t": "EnumItem",
+               "v": "Enum.ApplyStrokeMode.Border"
+              },
+              "BorderStrokePosition": {
+               "t": "EnumItem",
+               "v": "Enum.BorderStrokePosition.Inner"
+              }
+             }
+            },
+            {
+             "className": "TextLabel",
+             "name": "X",
+             "props": {
+              "Size": {
+               "t": "UDim2",
+               "v": [
+                0.7,
+                0,
+                0.7,
+                0
+               ]
+              },
+              "BackgroundTransparency": 1,
+              "Text": "X",
+              "Font": {
+               "t": "EnumItem",
+               "v": "Enum.Font.FredokaOne"
+              },
+              "TextScaled": true,
+              "TextColor3": "#ffffff",
+              "TextXAlignment": {
+               "t": "EnumItem",
+               "v": "Enum.TextXAlignment.Center"
+              },
+              "Position": {
+               "t": "UDim2",
+               "v": [
+                0.5,
+                0,
+                0.5,
+                0
+               ]
+              },
+              "AnchorPoint": {
+               "t": "Vector2",
+               "v": [
+                0.5,
+                0.5
+               ]
+              },
+              "ZIndex": 7
+             },
+             "children": [
+              {
+               "className": "UIStroke",
+               "name": "Ink",
+               "props": {
+                "Thickness": 3,
+                "Color": "#000000",
+                "LineJoinMode": {
+                 "t": "EnumItem",
+                 "v": "Enum.LineJoinMode.Bevel"
+                }
+               }
+              },
+              {
+               "className": "UITextSizeConstraint",
+               "name": "Fit",
+               "props": {
+                "MaxTextSize": 40
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
         }
-      ]
+       ]
+      }
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "id": "close",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.PanelClose",
+   "file": "src/PanelClose.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
+  }
+ ]
 }

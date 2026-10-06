@@ -38,13 +38,22 @@ const LIB = { base: fixture('base', { provides: ['Base.add'] }), top: fixture('t
 /** A fake Studio: records every op; `fail(op)` returns an error string to make that op fail. */
 function studio({ fail = () => null, missing = () => false, play = { serverErrors: [], clientErrors: [] } } = {}) {
   const ops = [];
+  const made = new Map(); // path -> the typed props it was created with
+  const remember = (item, parent) => {
+    const path = `${parent}.${item.name}`;
+    made.set(path, item.props ?? {});
+    (item.children ?? []).forEach((c) => remember(c, path));
+  };
   return {
     ops,
     exec: async (op) => {
       ops.push(op);
       const err = fail(op);
       if (err) return { id: 'x', ok: false, error: err };
-      if (op.op === 'get_instance') return missing(op.path) ? { id: 'x', ok: false, error: 'not found' } : { id: 'x', ok: true, data: { props: {} } };
+      if (op.op === 'create_instances') op.items.forEach((i) => remember(i, i.parent));
+      if (op.op === 'edit_script') made.set(op.path, {});
+      if (op.op === 'read_script') return { id: 'x', ok: true, data: { source: ops.findLast((o) => o.op === 'edit_script' && o.path === op.path)?.source ?? '' } };
+      if (op.op === 'get_instance') return missing(op.path) ? { id: 'x', ok: false, error: 'not found' } : { id: 'x', ok: true, data: { props: made.get(op.path) ?? {} } };
       if (op.op === 'play_check') return { id: 'x', ok: true, data: { serverErrors: play.serverErrors.map((message) => ({ message })), clientErrors: play.clientErrors.map((message) => ({ message })) } };
       return { id: 'x', ok: true, data: {} };
     },
@@ -114,14 +123,16 @@ test('schema validation fills defaults and reports field-level errors', () => {
   assert.ok(bad.errors.some((e) => e.startsWith('extra: x has no such parameter')));
   assert.equal(validateParams(contract('x'), { n: 9 }).errors[0], 'n: must be at most 5');
   const panel = BLOCKS.panel.block;
-  assert.equal(validateParams(panel, { accent: 'red' }).ok, false, 'the panel accent must be a hex colour');
+  assert.equal(validateParams(panel, { accent: 'teal' }).ok, false, 'the panel accent must be a palette colour');
   assert.equal(validateParams(panel, { name: 'a.b' }).ok, false, 'a name cannot carry a path segment');
 });
 
 test('slots keep a value\'s type, refuse a path segment, and become Luau literals in code', () => {
   assert.deepEqual(fill({ v: [0, '{{n}}'] }, { n: 480 }), { v: [0, 480] });
-  assert.equal(fill('game.Workspace.{{label}}', { label: 'Shop' }), 'game.Workspace.Shop');
-  assert.throws(() => fill('game.Workspace.{{label}}', { label: 'x.Parent' }), /would change a path/);
+  assert.deepEqual(fill({ path: 'game.Workspace.{{label}}' }, { label: 'Shop' }), { path: 'game.Workspace.Shop' });
+  assert.throws(() => fill({ path: 'game.Workspace.{{label}}' }, { label: 'x.Parent' }), /would change a path/);
+  assert.throws(() => fill({ name: '{{label}}' }, { label: 'a.b' }), /would change a path/, 'a whole-name slot is checked too');
+  assert.deepEqual(fill({ Text: 'Lv. {{label}}' }, { label: '3.5' }), { Text: 'Lv. 3.5' }, 'display text may hold dots');
   assert.equal(fillSource('local t = {{label}}', { label: '"); game:Destroy() --' }), 'local t = "\\"); game:Destroy() --"');
   assert.equal(luauLiteral([1, 'a', true]), '{1, "a", true}');
 });
@@ -308,4 +319,31 @@ test('every class and property a block writes is on the plugin\'s allowlists', (
   assert.deepEqual([...needs.classes].filter((c) => !classes.has(c)), [], 'classes the blocks create that the plugin refuses');
   assert.deepEqual([...needs.scripts].filter((c) => !scripts.has(c)), [], 'script classes the plugin refuses');
   assert.deepEqual([...needs.props].filter((p) => !props.has(p)), [], 'properties the blocks write that the plugin refuses');
+});
+
+// ---- the Studio agent's tool ------------------------------------------------------------------------------------
+test('build_blocks: sheets first, field errors before anything is built, a refused selection runs nothing, then a real build', async () => {
+  const { buildBlocks, BLOCKS_TOOL_DESCRIPTION } = await import('../src/blocks-tool.ts');
+  assert.match(BLOCKS_TOOL_DESCRIPTION, /^panel \(ui\):/m, 'the menu is in the description');
+  const s = studio();
+  const ctx = { execStudioOp: s.exec };
+  const sheets = await buildBlocks(ctx, { blocks: ['panel', 'item-grid'] });
+  assert.deepEqual(sheets.blocks.map((b) => b.id), ['panel', 'item-grid']);
+  assert.ok(sheets.blocks[1].params.items, 'the sheet carries the parameters');
+  assert.equal(s.ops.length, 0);
+  assert.match((await buildBlocks(ctx, { blocks: ['item-grid'] })).error, /item-grid needs panel/);
+  const bad = await buildBlocks(ctx, { blocks: ['panel'], params: { panel: { title: '' } } });
+  assert.ok(bad.fix.includes('panel.title: must be at least 1 characters'));
+  assert.equal(s.ops.length, 0, 'nothing is sent while a parameter is wrong');
+  const r = await buildBlocks(ctx, { blocks: ['panel', 'item-grid'], params: { panel: { screen: 'EggShop', title: 'Eggs' }, 'item-grid': { items: [
+    { name: 'Forest Egg', price: '250', icon: '🥚', colour: 'green', note: 'Common', button: 'green' },
+    { name: 'Lava Egg', price: '900', icon: '🔥', colour: 'red', note: 'Epic', button: 'grey' },
+  ] } } });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.changed, true);
+  const created = s.ops.filter((o) => o.op === 'create_instances');
+  assert.equal(created[0].items[0].parent, 'game.StarterGui');
+  assert.equal(created[1].items[0].parent, 'game.StarterGui.EggShop.Window.Content');
+  const json = JSON.stringify(created[1]);
+  assert.ok(json.includes('"Item2"') && json.includes('Lava Egg') && !json.includes('{{'), 'every card is real, every slot filled');
 });

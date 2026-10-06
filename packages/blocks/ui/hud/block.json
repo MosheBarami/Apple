@@ -1,0 +1,166 @@
+{
+  "id": "hud",
+  "kind": "ui",
+  "summary": "A top-of-screen HUD: currency counters, optional buttons beside them, and optional progress bars underneath.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "HUD",
+        "description": "The ScreenGui this belongs to (the panel's screen)"
+      },
+      "counters": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 4,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "icon",
+            "value",
+            "colour"
+          ],
+          "properties": {
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "💰",
+              "description": "One emoji or symbol"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 14,
+              "default": "0",
+              "description": "Starting text, e.g. 0 or 1.2K"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "yellow",
+              "description": "Pill colour"
+            }
+          }
+        },
+        "default": [
+          {
+            "icon": "💰",
+            "value": "0",
+            "colour": "yellow"
+          }
+        ]
+      },
+      "buttons": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 3,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "icon",
+            "colour"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 14,
+              "default": "Shop",
+              "description": "Button text"
+            },
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4,
+              "default": "🛒",
+              "description": "One emoji or symbol"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "green",
+              "description": "Button colour"
+            }
+          }
+        },
+        "default": []
+      },
+      "bars": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 2,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "progress",
+            "colour"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 28,
+              "default": "Level 1",
+              "description": "Text over the bar"
+            },
+            "progress": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.35,
+              "description": "Fill, 0 to 1"
+            },
+            "colour": {
+              "type": "string",
+              "enum": [
+                "green",
+                "yellow",
+                "orange",
+                "pink",
+                "blue",
+                "purple",
+                "red",
+                "cream",
+                "grey"
+              ],
+              "default": "blue",
+              "description": "Fill colour"
+            }
+          }
+        },
+        "default": []
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}
