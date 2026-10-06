@@ -317,6 +317,13 @@ COMPONENTS.billboard = (n) => ({
 });
 
 /**
+ * A ScrollingFrame's CanvasSize scale is a share of its PARENT's size, not its own (measured in Studio, 2026-10-06: a
+ * 0.62-tall stats list got a canvas 1/0.62 times its height and its last row fell outside). The canvas is the frame's
+ * own height scale times the layout's height.
+ */
+const canvasScale = (n: V) => (Array.isArray(n.size) && Number.isFinite(Number(n.size[2])) && Number(n.size[2]) > 0 ? Number(n.size[2]) : 1);
+
+/**
  * The size and place of every card a grid holds, so they fit the box they are in (U01 critique, 2026-10-06: a fixed
  * cell size cut the second row off under a hidden scroll bar). Units are the box's height; `ratio` is its width over
  * its height (a window's Content is 1.2 times the window's shape: 1.74 for the default 1.45). A `Featured` card takes a
@@ -358,7 +365,7 @@ COMPONENTS.grid = (n) => {
     className: 'ScrollingFrame', name: String(n.name ?? 'Grid'),
     props: {
       ...placeProps(n as Place), BackgroundTransparency: 1, BorderSizePixel: 0, ZIndex: 2,
-      CanvasSize: udim2(0, 0, L.height, 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
+      CanvasSize: udim2(0, 0, L.height * canvasScale(n), 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
       ScrollBarThickness: L.scroll ? 10 : 0, ScrollBarImageColor3: '#FFFFFF',
     },
     attributes: { ...tag('grid', 'layout'), ...((n.attributes as V | undefined) ?? {}) },
@@ -384,12 +391,12 @@ export function rowsLayout(count: number, ratio = 1.74, maxRow = 0.21, minRow = 
 /** A list of row cards that fits its box (rowsLayout); each row keeps its order for the scripts that read it. */
 COMPONENTS.rows = (n) => {
   const kids = (Array.isArray(n.children) ? n.children : []) as V[];
-  const L = rowsLayout(kids.length, Number(n.ratio ?? 1.74));
+  const L = rowsLayout(kids.length, Number(n.ratio ?? 1.74), Number(n.maxRow ?? 0.21));
   return {
     className: 'ScrollingFrame', name: String(n.name ?? 'List'),
     props: {
       ...placeProps(n as Place), BackgroundTransparency: 1, BorderSizePixel: 0, ZIndex: 2,
-      CanvasSize: udim2(0, 0, L.height, 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
+      CanvasSize: udim2(0, 0, L.height * canvasScale(n), 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
       ScrollBarThickness: L.scroll ? 10 : 0, ScrollBarImageColor3: '#FFFFFF',
     },
     attributes: { ...tag('rows', 'layout'), ...((n.attributes as V | undefined) ?? {}) },
