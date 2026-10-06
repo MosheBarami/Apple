@@ -383,3 +383,22 @@ test('every block\'s Luau, filled with its default parameters, parses (SYNTAX on
   assert.ok(parsed >= 5, `only ${parsed} sources parsed`);
   assert.deepEqual(bad, []);
 });
+
+// ---- world props ------------------------------------------------------------------------------------------------
+test('place_props: each prop through the tool, clustered around the centre and never on a grid', async () => {
+  const { clusterPositions } = await import('../src/recipe.ts');
+  const spots = clusterPositions([{ prop: 'tree_small', count: 4 }, { prop: 'rock', count: 3 }], [10, 0, -40], 24);
+  assert.equal(spots.length, 7);
+  assert.deepEqual(spots.map((s) => s.name).slice(0, 5), ['TreeSmall1', 'TreeSmall2', 'TreeSmall3', 'TreeSmall4', 'Rock1']);
+  for (const s of spots) assert.ok(Math.hypot(s.at[0] - 10, s.at[2] + 40) <= 24 * 1.2 + 0.1, 'every prop stands inside the cluster');
+  const xs = new Set(spots.map((s) => Math.round(s.at[0]))), zs = new Set(spots.map((s) => Math.round(s.at[2])));
+  assert.ok(xs.size >= 5 && zs.size >= 5, 'the props do not line up in rows or columns, so it is not a grid');
+  assert.deepEqual(clusterPositions([{ prop: 'rock', count: 2 }], [0, 0, 0], 10), clusterPositions([{ prop: 'rock', count: 2 }], [0, 0, 0], 10), 'deterministic');
+  const placed = [];
+  const r = await runBlocks({ selected: ['prop-cluster'], params: { 'prop-cluster': { props: [{ prop: 'bench', count: 2 }], x: 0, z: -30 } },
+    deps: { exec: studio().exec, placeProp: async (p) => { placed.push(p); return { ok: true }; } } });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.deepEqual(placed.map((p) => p.name), ['Bench1', 'Bench2']);
+  const none = await runBlocks({ selected: ['prop-cluster'], params: {}, deps: { exec: studio().exec } });
+  assert.match(none.blocks[0].steps[0].error, /only be placed through build_blocks/);
+});

@@ -1,0 +1,21 @@
+{
+ "steps": [
+  {
+   "id": "place",
+   "op": "place_props",
+   "items": [
+    {
+     "prop": "{{item.prop}}",
+     "count": "{{item.count}}",
+     "each": "props"
+    }
+   ],
+   "center": [
+    "{{x}}",
+    0,
+    "{{z}}"
+   ],
+   "radius": "{{radius}}"
+  }
+ ]
+}

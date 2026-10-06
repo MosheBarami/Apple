@@ -1,0 +1,88 @@
+{
+  "id": "prop-cluster",
+  "kind": "zone",
+  "summary": "A cluster of chunky world props (trees, benches, barrels, lamps, rocks...) gathered around a spot, never in a grid.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "props": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "prop",
+            "count"
+          ],
+          "properties": {
+            "prop": {
+              "type": "string",
+              "enum": [
+                "bench",
+                "barrel",
+                "well",
+                "flower_pot",
+                "lamp_post",
+                "fence",
+                "tree_small",
+                "tree_large",
+                "tree_autumn",
+                "pine_tree",
+                "rock",
+                "arch",
+                "mailbox",
+                "torch",
+                "picnic_table",
+                "weathervane"
+              ],
+              "default": "bench",
+              "description": "A prop from the world pack"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6,
+              "default": 2
+            }
+          }
+        },
+        "default": [
+          {
+            "prop": "tree_small",
+            "count": 3
+          },
+          {
+            "prop": "rock",
+            "count": 2
+          }
+        ]
+      },
+      "x": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 0,
+        "description": "Centre of the cluster (studs, east-west)"
+      },
+      "z": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": -40,
+        "description": "Centre of the cluster (studs, north-south)"
+      },
+      "radius": {
+        "type": "number",
+        "minimum": 8,
+        "maximum": 80,
+        "default": 26,
+        "description": "How far the cluster spreads"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

@@ -31,7 +31,9 @@ export type RecipeStep =
   | { id: string; op: 'create_instances'; items: unknown[] }
   | { id: string; op: 'set_props'; path: string; props: Record<string, unknown> }
   | { id: string; op: 'edit_script'; path: string; file: string; create: { className: 'Script' | 'LocalScript' | 'ModuleScript'; parent: string } }
-  | { id: string; op: 'clone_instances'; paths: string[]; parent?: string };
+  | { id: string; op: 'clone_instances'; paths: string[]; parent?: string }
+  /** World-pack props placed in clusters around `center` (never a grid), each `count` times. Run by the tool, not as one plugin op. */
+  | { id: string; op: 'place_props'; items: Array<{ prop: string; count: number | string; each?: string }>; center: Array<number | string>; radius: number | string };
 
 export type BlockCheck = { id: string; describes: string; after?: string; param?: string } & (
   | { kind: 'exists'; path: string }

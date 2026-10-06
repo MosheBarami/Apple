@@ -13,6 +13,7 @@ import { BLOCKS } from './blocks.generated.ts';
 import { blockMenu } from './intake.ts';
 import { checkFill } from './plan-fill.ts';
 import { runBlocks, runOrder } from './recipe.ts';
+import { WORLD_PROPS } from './studkit-icons.generated.ts';
 
 export const BLOCKS_TOOL_DESCRIPTION = `Builds with reviewed blocks. First call with {blocks: [ids]} to get each block's parameters; then call with {blocks, params: {id: {...}}} to build. Pick by structure, not by words. Blocks:\n${blockMenu()}`;
 
@@ -39,7 +40,21 @@ export async function buildBlocks(ctx: AgentCtx, a: Record<string, unknown>) {
   }
   const filled = checkFill(given, ids);
   if (!filled.ok) return { error: 'Fix these parameters and call again; nothing was built.', fix: filled.errors };
-  const report = await runBlocks({ selected: ids, params: filled.params, deps: { exec: (op, timeoutMs) => ctx.execStudioOp(op, timeoutMs) } });
+  const report = await runBlocks({
+    selected: ids, params: filled.params,
+    deps: {
+      exec: (op, timeoutMs) => ctx.execStudioOp(op, timeoutMs),
+      // A world-pack prop goes through the library's own path: staged, scanned, copied script-free, sized to player scale.
+      placeProp: async (p) => {
+        const row = WORLD_PROPS[p.prop];
+        if (!row) return { ok: false, error: `${p.prop} is not in the world pack` };
+        // Loaded when a prop is placed: the library path is large and only world blocks need it.
+        const { placeLibraryPiece } = await import('./library-object');
+        const r = await placeLibraryPiece(ctx, { source: 'store', name: p.name, id: `cs-${row.assetId}` }, { name: p.name, at: p.at, size: { size: row.size } }) as { error?: string };
+        return r.error ? { ok: false, error: r.error } : { ok: true };
+      },
+    },
+  });
   const changed = report.blocks.some((b) => b.steps.some((s) => s.ok || s.attempts > 0));
   return {
     ok: report.ok,
