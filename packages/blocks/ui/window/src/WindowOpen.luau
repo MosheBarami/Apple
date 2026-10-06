@@ -15,7 +15,17 @@ local function sync()
 		TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 end
-window.Visible = window:GetAttribute("StartOpen") ~= false
+-- A window some button opens (a menu button or HUD tile with Action open:<this screen>) waits for it, whatever StartOpen says:
+-- open at start, it would cover the very buttons that open it (U02 critique, 2026-10-06).
+local function opened()
+	task.wait() -- the other screens are copied into PlayerGui alongside this one
+	local root = gui.Parent
+	for _, d in (root and root:GetDescendants() or {}) do
+		if d:GetAttribute("Action") == "open:" .. gui.Name then return true end
+	end
+	return false
+end
+window.Visible = window:GetAttribute("StartOpen") ~= false and not opened()
 window:GetPropertyChangedSignal("Visible"):Connect(sync)
 sync()
 close.Activated:Connect(function() window.Visible = false end)

@@ -24,11 +24,21 @@ import { REPO_ROOT, getRequest } from './lib/dev-set.mjs';
 import { loadHarnessEnv, redact } from './lib/env.mjs';
 import { StudioMcpClient, listStudios, studioTools } from './lib/studio-mcp.mjs';
 import { BASELINE_FORMAT, baselineProblems, baselineWarnings, isClean, parseLuauJson, verifyCounts, worldScript } from './lib/world.mjs';
-import { colourVerdict, kitLintGate, measureImage, replyRule } from './lib/style-gates.mjs';
+import { colourVerdict, kitLintGate, layoutGate, measureImage, replyRule } from './lib/style-gates.mjs';
 
 // Rubric v2 (planning/STYLE-BIBLE.md §6): the opened-state proof and the kit lint, both read in Studio.
 const PROOF_OPEN_LUAU = readFileSync(join(REPO_ROOT, 'scripts', 'eval', 'luau', 'proof-open.luau'), 'utf8');
 const KIT_LINT_LUAU = readFileSync(join(REPO_ROOT, 'scripts', 'eval', 'luau', 'kit-lint.luau'), 'utf8');
+const LAYOUT_LINT_LUAU = readFileSync(join(REPO_ROOT, 'scripts', 'eval', 'luau', 'layout-lint.luau'), 'utf8');
+/** The layout lint of what is on screen now (scripts/eval/luau/layout-lint.luau), recorded against the picture taken of it. */
+async function layoutLint(tools, file) {
+  const r = await tools.luau(LAYOUT_LINT_LUAU, 'Edit', { timeoutMs: 60_000 }).catch((e) => ({ ok: false, text: String(e.message ?? e) }));
+  try {
+    return r.ok ? { file, ...parseLuauJson(r.text) } : { file, error: r.text.slice(0, 200) };
+  } catch {
+    return { file, error: 'unreadable answer' };
+  }
+}
 /** proofOpen: "list" the openable panels, "show" panel `index` only, or "restore" what "show" changed. Never throws. */
 async function proofOpen(tools, mode, index, side) {
   const code = `local MODE = ${JSON.stringify(mode)}\nlocal INDEX = ${Number(index) || 1}\nlocal SIDE = ${JSON.stringify(side)}\n${PROOF_OPEN_LUAU}`;
@@ -787,15 +797,28 @@ export async function runPiece(opts, deps) {
         manifest.proofOpen = { source: listed.source, panels: listed.panels ?? [], shots: [], error: listed.error ?? null };
         let rec;
         try {
+          manifest.layoutLint = [];
+          // The screen under the panels (a menu, a HUD), photographed before any panel is opened over it.
+          if (listed.panels?.length) {
+            const base = await proofOpen(tools, 'base', 1, 'edit');
+            if (base.bounds) {
+              const shot = await save('ui-base', null);
+              shot.uiArea = { bounds: base.bounds, viewport: base.viewport ?? null };
+              manifest.proofOpen.shots.push({ file: shot.file, panel: null });
+              manifest.layoutLint.push(await layoutLint(tools, shot.file));
+            }
+          }
           const first = listed.panels?.length ? await proofOpen(tools, 'show', 1, 'edit') : listed;
           rec = await save('ui', null);
           rec.uiArea = { bounds: first.bounds ?? null, viewport: first.viewport ?? null };
           manifest.proofOpen.shots.push({ file: rec.file, panel: listed.panels?.[0] ?? null });
+          manifest.layoutLint.push(await layoutLint(tools, rec.file));
           for (let i = 2; i <= (listed.panels?.length ?? 0); i++) {
             const shown = await proofOpen(tools, 'show', i, 'edit');
             const extra = await save(`ui-open-${i}`, null);
             extra.uiArea = { bounds: shown.bounds ?? null, viewport: shown.viewport ?? null };
             manifest.proofOpen.shots.push({ file: extra.file, panel: listed.panels[i - 1] });
+            manifest.layoutLint.push(await layoutLint(tools, extra.file));
           }
         } finally {
           if (listed.panels?.length) await proofOpen(tools, 'restore', 1, 'edit');
@@ -927,8 +950,9 @@ export async function runPiece(opts, deps) {
         kitLint: kitLintGate(manifest.kitLint),
         colour: { pass: colour.length > 0 && colourFails.length === 0, reasons: colour.length ? colourFails.map((c) => `${c.file}: ${c.reasons.join(', ')}`) : ['no picture to measure'], shots: colour },
         reply: replyRule(out.reply),
+        layout: layoutGate(manifest.layoutLint),
       };
-      entry.note = ['kitLint', 'colour', 'reply'].map((g) => `${g} ${manifest.gates[g].pass ? 'pass' : 'FAIL'}`).join(', ');
+      entry.note = ['kitLint', 'colour', 'reply', 'layout'].map((g) => `${g} ${manifest.gates[g].pass ? 'pass' : 'FAIL'}`).join(', ');
     });
   } catch (e) {
     manifest.aborted = { step: e.step ?? timer.steps.at(-1)?.name ?? 'unknown', message: redact(e.message ?? String(e), secrets) };

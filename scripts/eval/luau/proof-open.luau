@@ -1,10 +1,12 @@
 -- Opened-state proof (planning/STYLE-BIBLE.md §6.3), sent by scripts/eval/run-piece.mjs with three lines prepended:
---     local MODE = "list" | "show" | "restore"
+--     local MODE = "list" | "base" | "show" | "restore"
 --     local INDEX = <n>          -- for "show": which openable panel, from 1
 --     local SIDE = "edit" | "client"
 -- A panel is openable when a GuiObject carries the attribute ProofOpen = true (every StudKit window does: that is its
 -- proofOpen hook). A build without the hook falls back to the hidden top-level frames of its ScreenGuis. "show" opens
--- panel INDEX only (and switches its ScreenGui on), marking what it changed so "restore" puts exactly that back.
+-- panel INDEX only (and switches its ScreenGui on), marking what it changed so "restore" puts exactly that back. "base"
+-- hides every panel, so the screen under them (a menu, a HUD) is photographed too (U02 critique, 2026-10-06: the
+-- menu was hidden behind its own windows in every picture).
 -- Every mode answers with the panels and the screen area the UI covers, in viewport pixels, for the colour gate.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -62,6 +64,8 @@ if MODE == "restore" then
 		putBack(g)
 		for _, inst in g:GetDescendants() do putBack(inst) end
 	end
+elseif MODE == "base" then
+	for _, p in panels do if p.Visible then mark(p, "Visible", false) end end
 elseif MODE == "show" and #panels > 0 then
 	local target = panels[((INDEX - 1) % #panels) + 1]
 	for _, p in panels do if p ~= target and p.Visible then mark(p, "Visible", false) end end

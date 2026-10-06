@@ -303,3 +303,6 @@ packages/training/runs/
 
 # Private material that must never be committed (style bible S-2: the owner's reference images).
 /private/
+
+# Critique crops are cut from the proof shots by scripts/critique.mjs prepare; only critique.json and expected.json are kept.
+planning/proof/**/critique/crops/

@@ -35,3 +35,5 @@
 - The stall's floating title sits over the trees from the spawn view; place titles by the landmark's facing.
 - CI checkout: the tree is 311 MB (asset-library 120 MB, docs/evidence 59 MB, docs/gauntlet 30 MB); one shard's shallow fetch once took 4 min. Sparse checkout of docs/evidence and docs/gauntlet in the test jobs if it repeats.
 - check-escape-hatches: the checker still hangs now and then in a spawn (60 s locally on 2026-10-06, then the retry passed); the cause is unknown (see the notes in the test).
+- Menu (U02 render after the fix): the backdrop is a plain cyan gradient with no scene, the buttons are small (30 % wide), and the dark lip along the bottom is heavy.
+- The white egg (pack `egg`, 4829244230) is low resolution: its outline is jagged at 100 px and up (header, featured). Find a sharper tintable egg.

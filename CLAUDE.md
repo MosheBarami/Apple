@@ -8,6 +8,13 @@
 > (studpilot.app) is the product. Apple and Golem are former names of it.** No autonomy skill and no blocking hooks:
 > ask the owner before anything destructive, paid or external that is not already covered below.
 
+**Harsh critique (owner, 2026-10-06; the one blocking hook).** Every build in `planning/proof/` is judged from its own
+pictures before anything else: `node scripts/critique.mjs prepare <piece>` cuts them into zoomed crops, you Read every
+crop and write `critique/critique.json`, and `node scripts/critique.mjs check <piece>` refuses a critique that skips a
+crop, ignores a measured defect (`scripts/eval/luau/layout-lint.luau`, the kit lint, play errors) or scores past its
+cap. The Stop hook in `.claude/settings.json` blocks ending a turn while a build has no accepted critique. Then fix the
+worst defect it names.
+
 **Consent.** Already given by the owner (2026-10-02, handoff ground rule 6): changing and deleting Cloudflare, Supabase
 and Sentry resources; deleting GitHub branches and untracked files; removing every trace of the old names. Deleting data
 still waits 7 days after its replacement is verified (handoff M1). Everything else needs the owner's yes first: money

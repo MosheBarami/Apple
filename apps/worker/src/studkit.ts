@@ -88,7 +88,8 @@ export function label(component: string, name: string, text: unknown, opts: { in
     attributes: tag(component, name),
     children: [
       // Thick outlines (critics 2026-10-06: "outlines are too thin"): a seventh of the text's cap, between 4 and 7 px (Studio captures at high DPI and halves them).
-      { className: 'UIStroke', name: 'Outline', props: { Thickness: opts.stroke ?? Math.max(4, Math.min(7, (opts.max ?? 40) / 5.5)), Color: outline, LineJoinMode: enumOf('LineJoinMode', 'Round') } },
+      // Small labels (a cap of 30 or less) get 3 px: at their size 4+ px turned a note into a dark pill (U01 critique, 2026-10-06).
+      { className: 'UIStroke', name: 'Outline', props: { Thickness: opts.stroke ?? ((opts.max ?? 40) <= 30 ? 3 : Math.max(4, Math.min(7, (opts.max ?? 40) / 5.5))), Color: outline, LineJoinMode: enumOf('LineJoinMode', 'Round') } },
       { className: 'UITextSizeConstraint', name: 'Fit', props: { MaxTextSize: opts.max ?? 40 } },
     ],
   };
@@ -165,12 +166,15 @@ export function face(component: string, name: string, t: Token, opts: Place & { 
 }
 
 /** An icon from the pack by name: the curated image, or its glyph while the pack has no image for it. Overflows on purpose. */
-export function icon(component: string, name: unknown, opts: Place = {}): Spec {
+export function icon(component: string, name: unknown, opts: Place & { tint?: unknown } = {}): Spec {
   const entry = typeof name === 'string' ? ICONS[name] : undefined;
   if (entry?.image) {
+    // A white pack image (`tintable`) takes its item's colour, so a list of one kind of thing reads item by item.
+    // Without a tint of its own (a window's header icon) it is gold rather than an unfinished-looking white.
+    const tint = entry.tintable ? { ImageColor3: TOKENS[typeof opts.tint === 'string' && opts.tint in TOKENS ? (opts.tint as Token) : 'sun'][0] } : {};
     return {
       className: 'ImageLabel', name: 'Icon',
-      props: { Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Image: entry.image, ScaleType: enumOf('ScaleType', 'Fit'), ZIndex: opts.z ?? 8 },
+      props: { Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Image: entry.image, ScaleType: enumOf('ScaleType', 'Fit'), ZIndex: opts.z ?? 8, ...tint },
       attributes: tag(component, 'icon'),
     };
   }
@@ -195,12 +199,12 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
       label('tile', 'Label', n.text, { size: [1.2, 0, 0.32, 0], position: [0.5, 0, 1.04, 0], anchor: [0.5, 1], max: 26, z: 9 }),
     ],
   }),
-  /** A card: a coloured studded panel for content (offers, items, rows). */
-  card: (n) => face('card', String(n.name ?? 'Card'), token(n.token), { ...(n as Place), radius: 0.08, children: (n.children as Spec[] | undefined) ?? [], attributes: n.attributes as V | undefined }),
+  /** A card: a coloured glossy panel for content (offers, items, rows); no studs, which belong to headers and buttons. */
+  card: (n) => face('card', String(n.name ?? 'Card'), token(n.token), { ...(n as Place), radius: 0.08, studs: false, children: (n.children as Spec[] | undefined) ?? [], attributes: n.attributes as V | undefined }),
   /** Outlined text in a named ink (title, value, money, gem, gold). */
   text: (n) => label('text', String(n.name ?? 'Text'), n.text, { ...(n as Place), ink: (n.ink as Ink) ?? 'text', on: n.on ? token(n.on) : undefined, max: Number(n.max ?? 36), align: (n.align as 'Left') ?? 'Center', body: n.body === true }),
   /** An icon from the pack. */
-  icon: (n) => icon('icon', n.icon, n as Place),
+  icon: (n) => icon('icon', n.icon, { ...(n as Place), tint: n.tint }),
   /**
    * The window: a slate frame, a studded header of the token with the title (its icon overflowing on the left) and a
    * berry close button on the edge, and a Content frame for the window's blocks. Hidden-scrollbar content is the
@@ -226,7 +230,7 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
         size: [1, 0, 0.16, 0], radius: 0.14,
         children: [label('window', 'Title', n.title, { on: token(n.token), size: [0.62, 0, 0.72, 0], position: [0.19, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 48, z: 7 })],
         holderChildren: [
-          icon('window', n.icon, { size: [0.17, 0, 1.6, 0], position: [0.01, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }),
+          icon('window', n.icon, { size: [0.15, 0, 1.3, 0], position: [0.01, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }),
           face('window', 'Close', 'berry', {
             size: [1, 0, 0.9, 0], position: [1, 0, 0, 0], anchor: [0.62, 0.32], aspect: 1, studs: false, button: true, z: 10,
             children: [label('window', 'X', 'X', { on: 'berry', size: [0.7, 0, 0.7, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 40, z: 14 })],
@@ -235,7 +239,8 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
       }),
       {
         className: 'ImageLabel', name: 'Inner',
-        props: { Size: udim2(0.97, 0, 0.8, 0), Position: udim2(0.015, 0, 0.18, 0), BackgroundColor3: TOKENS.slate[2], BackgroundTransparency: 0.25, Image: STUD_IMAGE, ScaleType: enumOf('ScaleType', 'Tile'), TileSize: udim2(0, 24, 0, 24), ImageTransparency: 0.82, BorderSizePixel: 0, ZIndex: 1 },
+        // The body is a deep navy well (handoff M5a: "dark-blue translucent body"); studs stay on the header.
+        props: { Size: udim2(0.97, 0, 0.8, 0), Position: udim2(0.015, 0, 0.18, 0), BackgroundColor3: '#16233F', BackgroundTransparency: 0.1, ImageTransparency: 1, BorderSizePixel: 0, ZIndex: 1 },
         attributes: tag('window', 'slate'),
         children: [{ className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0.04, 0) } }],
       },
@@ -309,6 +314,56 @@ COMPONENTS.billboard = (n) => ({
   ],
 });
 
+/**
+ * The size and place of every card a grid holds, so they fit the box they are in (U01 critique, 2026-10-06: a fixed
+ * cell size cut the second row off under a hidden scroll bar). Units are the box's height; `ratio` is its width over
+ * its height (a window's Content is 1.2 times the window's shape: 1.74 for the default 1.45). A `Featured` card takes a
+ * full-width band on top. When the rows would make a card shorter than `minCard`, the box scrolls, with a visible bar.
+ * Pure.
+ */
+export function gridLayout(count: number, featured: boolean, columns: number, ratio = 1.74, minCard = 0.3) {
+  const pad = 0.03, gap = 0.035, band = featured ? 0.22 : 0;
+  const cols = Math.max(1, Math.min(columns, Math.max(1, count)));
+  const rows = Math.max(1, Math.ceil(count / cols));
+  const top = pad + (featured ? band + gap : 0);
+  const widthMax = (ratio - 2 * pad - gap * (cols - 1)) / cols;
+  let h = (1 - top - pad - gap * (rows - 1)) / rows;
+  h = Math.min(h, widthMax / 0.82); // never taller than about 1.2 times its width
+  const scroll = h < minCard;
+  if (scroll) h = Math.min(minCard, widthMax / 0.82);
+  const w = Math.min(widthMax, h * 1.25);
+  const height = scroll ? top + rows * h + (rows - 1) * gap + pad : 1;
+  const cards = Array.from({ length: count }, (_, i) => {
+    const row = Math.floor(i / cols);
+    const inRow = Math.min(cols, count - row * cols);
+    const x0 = (ratio - (inRow * w + (inRow - 1) * gap)) / 2;
+    return { x: (x0 + (i % cols) * (w + gap)) / ratio, y: (top + row * (h + gap)) / height, w: w / ratio, h: h / height };
+  });
+  return { scroll, height, featured: featured ? { x: pad / ratio, y: pad / height, w: (ratio - 2 * pad) / ratio, h: band / height } : null, cards };
+}
+
+/**
+ * A grid of cards that fits its box: the recipe gives the cards (a `Featured` one first, if any), the grid sizes and
+ * places them (gridLayout). It replaces a UIGridLayout, whose fixed cells cannot know how many rows there are.
+ */
+COMPONENTS.grid = (n) => {
+  const kids = (Array.isArray(n.children) ? n.children : []) as V[];
+  const feat = kids.filter((k) => k.name === 'Featured');
+  const cards = kids.filter((k) => k.name !== 'Featured');
+  const L = gridLayout(cards.length, feat.length > 0, Number(n.columns ?? 3), Number(n.ratio ?? 1.74));
+  const at = (k: V, b: { x: number; y: number; w: number; h: number }) => expandKit({ ...k, size: [b.w, 0, b.h, 0], position: [b.x, 0, b.y, 0], anchor: [0, 0] }) as Spec;
+  return {
+    className: 'ScrollingFrame', name: String(n.name ?? 'Grid'),
+    props: {
+      ...placeProps(n as Place), BackgroundTransparency: 1, BorderSizePixel: 0, ZIndex: 2,
+      CanvasSize: udim2(0, 0, L.height, 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
+      ScrollBarThickness: L.scroll ? 10 : 0, ScrollBarImageColor3: '#FFFFFF',
+    },
+    attributes: { ...tag('grid', 'layout'), ...((n.attributes as V | undefined) ?? {}) },
+    children: [...feat.slice(0, 1).map((k) => at(k, L.featured!)), ...cards.map((k, i) => at(k, L.cards[i]!))],
+  };
+};
+
 export const KIT_COMPONENTS = Object.keys(COMPONENTS);
 
 /** A recipe item with `kit` nodes anywhere in it, as plain instance specs. Pure. */
@@ -319,6 +374,10 @@ export function expandKit(node: unknown): unknown {
   if (typeof n.kit === 'string') {
     const make = COMPONENTS[n.kit];
     if (!make) throw new Error(`StudKit has no component "${n.kit}" (it has ${KIT_COMPONENTS.join(', ')})`);
+    // A grid places its cards itself, before they are expanded; every other component gets its children expanded.
+    // A component at the top of a recipe item keeps the item's place in the tree (`parent`).
+    const keep = (spec: Spec): Spec => (n.parent !== undefined ? ({ ...spec, parent: n.parent } as Spec) : spec);
+    if (n.kit === 'grid') return keep(make(n));
     const kids = Array.isArray(n.children) ? (n.children as unknown[]).map(expandKit) as Spec[] : undefined;
     const spec = make({ ...n, children: kids });
     // Extra children a recipe puts in a component go in its content: the Fill of a face, the Content of a window.
@@ -327,7 +386,7 @@ export function expandKit(node: unknown): unknown {
       host.children = [...(host.children ?? []), ...kids];
     }
     if (n.attributes && typeof n.attributes === 'object') spec.attributes = { ...(spec.attributes ?? {}), ...(n.attributes as V) };
-    return spec;
+    return keep(spec);
   }
   return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, k === 'children' || k === 'items' ? expandKit(v) : v]));
 }
