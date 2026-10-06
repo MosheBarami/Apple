@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.ClickEarn",
+    "contains": "COOLDOWN",
+    "describes": "the server enforces the click cooldown"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with click-to-earn has no errors"
+  }
+]

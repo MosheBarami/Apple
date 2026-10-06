@@ -1,0 +1,92 @@
+{
+  "id": "window",
+  "kind": "ui",
+  "summary": "A game window in the centre: slate frame, studded header with title and overflowing icon, close X. Others fill it.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Shop",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 24,
+        "default": "Shop",
+        "description": "Header text"
+      },
+      "icon": {
+        "type": "string",
+        "enum": [
+          "coin",
+          "coins",
+          "cash",
+          "money_bag",
+          "gem",
+          "gift",
+          "basket",
+          "book",
+          "gear",
+          "clover",
+          "rebirth",
+          "trophy",
+          "crown",
+          "star",
+          "heart",
+          "bolt",
+          "potion",
+          "egg",
+          "paw",
+          "sword",
+          "shield",
+          "chest",
+          "key",
+          "lock",
+          "check",
+          "close",
+          "info",
+          "clock",
+          "map",
+          "home",
+          "backpack",
+          "pickaxe",
+          "rocket",
+          "fire",
+          "ticket",
+          "calendar",
+          "scroll",
+          "arrow_up",
+          "magnet",
+          "boots"
+        ],
+        "default": "basket",
+        "description": "An icon from the kit's pack, by name"
+      },
+      "token": {
+        "type": "string",
+        "enum": [
+          "lime",
+          "sky",
+          "sun",
+          "berry",
+          "grape",
+          "teal",
+          "slate"
+        ],
+        "default": "berry",
+        "description": "Header colour"
+      },
+      "startOpen": {
+        "type": "boolean",
+        "default": true,
+        "description": "Open when the game starts; false for a window a HUD tile opens"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

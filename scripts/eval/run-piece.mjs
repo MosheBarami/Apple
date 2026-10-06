@@ -24,6 +24,30 @@ import { REPO_ROOT, getRequest } from './lib/dev-set.mjs';
 import { loadHarnessEnv, redact } from './lib/env.mjs';
 import { StudioMcpClient, listStudios, studioTools } from './lib/studio-mcp.mjs';
 import { BASELINE_FORMAT, baselineProblems, baselineWarnings, isClean, parseLuauJson, verifyCounts, worldScript } from './lib/world.mjs';
+import { colourVerdict, kitLintGate, measureImage, replyRule } from './lib/style-gates.mjs';
+
+// Rubric v2 (planning/STYLE-BIBLE.md §6): the opened-state proof and the kit lint, both read in Studio.
+const PROOF_OPEN_LUAU = readFileSync(join(REPO_ROOT, 'scripts', 'eval', 'luau', 'proof-open.luau'), 'utf8');
+const KIT_LINT_LUAU = readFileSync(join(REPO_ROOT, 'scripts', 'eval', 'luau', 'kit-lint.luau'), 'utf8');
+/** proofOpen: "list" the openable panels, "show" panel `index` only, or "restore" what "show" changed. Never throws. */
+async function proofOpen(tools, mode, index, side) {
+  const code = `local MODE = ${JSON.stringify(mode)}\nlocal INDEX = ${Number(index) || 1}\nlocal SIDE = ${JSON.stringify(side)}\n${PROOF_OPEN_LUAU}`;
+  const r = await tools.luau(code, side === 'client' ? 'Client' : 'Edit', { timeoutMs: 30_000 }).catch((e) => ({ ok: false, text: String(e.message ?? e) }));
+  if (!r.ok) return { panels: [], source: 'none', error: r.text.slice(0, 200) };
+  try {
+    return parseLuauJson(r.text);
+  } catch {
+    return { panels: [], source: 'none', error: 'unreadable answer' };
+  }
+}
+/** The UI area of a shot in the picture's own pixels, from the viewport box proofOpen reported. */
+function uiBox(area, width, height) {
+  if (!area?.bounds || !Array.isArray(area.viewport) || !area.viewport[0] || !area.viewport[1]) return null;
+  const sx = width / area.viewport[0];
+  const sy = height / area.viewport[1];
+  const [x0, y0, x1, y1] = area.bounds;
+  return [x0 * sx, y0 * sy, x1 * sx, y1 * sy];
+}
 
 export const HARNESS_VERSION = 2;
 /** The test account and its most recent project (handoff M3). Both are overridable and are echoed at the start of a run. */
@@ -699,6 +723,17 @@ export async function runPiece(opts, deps) {
       return { m, cls };
     });
 
+    // ----------------------------------------------------------------------------------------------- kit lint
+    await timer.step('kit-lint', async (entry) => {
+      const r = await tools.luau(KIT_LINT_LUAU, 'Edit', { timeoutMs: 60_000 }).catch((e) => ({ ok: false, text: String(e.message ?? e) }));
+      try {
+        manifest.kitLint = r.ok ? parseLuauJson(r.text) : { error: r.text.slice(0, 200) };
+      } catch {
+        manifest.kitLint = { error: 'unreadable answer' };
+      }
+      entry.note = manifest.kitLint.error ? `not read: ${manifest.kitLint.error}` : `${manifest.kitLint.findings?.length ?? 0} findings in ${manifest.kitLint.objects ?? 0} UI objects`;
+    });
+
     // ----------------------------------------------------------------------------------------------- captures
     await timer.step('captures', async (entry) => {
       let n = 0;
@@ -747,10 +782,23 @@ export async function runPiece(opts, deps) {
             deps.log(`[eval] could not switch the UI on for the capture: ${shown.enableError}`);
           }
         }
+        // The opened-state proof: every openable panel is photographed open, one at a time (the first in the `ui` picture).
+        const listed = await proofOpen(tools, 'list', 1, 'edit');
+        manifest.proofOpen = { source: listed.source, panels: listed.panels ?? [], shots: [], error: listed.error ?? null };
         let rec;
         try {
+          const first = listed.panels?.length ? await proofOpen(tools, 'show', 1, 'edit') : listed;
           rec = await save('ui', null);
+          rec.uiArea = { bounds: first.bounds ?? null, viewport: first.viewport ?? null };
+          manifest.proofOpen.shots.push({ file: rec.file, panel: listed.panels?.[0] ?? null });
+          for (let i = 2; i <= (listed.panels?.length ?? 0); i++) {
+            const shown = await proofOpen(tools, 'show', i, 'edit');
+            const extra = await save(`ui-open-${i}`, null);
+            extra.uiArea = { bounds: shown.bounds ?? null, viewport: shown.viewport ?? null };
+            manifest.proofOpen.shots.push({ file: extra.file, panel: listed.panels[i - 1] });
+          }
         } finally {
+          if (listed.panels?.length) await proofOpen(tools, 'restore', 1, 'edit');
           if (shown.enabledForCapture.length) {
             try {
               await luauJson(tools, 'ui-restore', null);
@@ -813,6 +861,10 @@ export async function runPiece(opts, deps) {
       for (let i = 1; i <= DEFAULTS.playFrames; i++) {
         if (i > 1) await deps.sleep(DEFAULTS.playFrameGapMs);
         const rec = { name: `play-${i}`, file: null, error: null };
+        // Each frame shows the next openable panel open, in the player's own screen (the opened-state proof).
+        const shown = await proofOpen(tools, 'show', i, 'client');
+        rec.uiArea = { bounds: shown.bounds ?? null, viewport: shown.viewport ?? null, panel: shown.panels?.length ? shown.panels[(i - 1) % shown.panels.length] : null };
+        if (shown.panels?.length) await deps.sleep(400);
         try {
           const { img, size } = pictureFrom(await tools.capture(`ScreenCapture_play_${i}`, null, { timeoutMs: 60_000 }));
           rec.file = `shots/play-${i}.${fileExtension(size)}`;
@@ -850,6 +902,33 @@ export async function runPiece(opts, deps) {
       play.backInEdit = await waitFor(deps, async () => (await tools.luau('return "edit"', 'Edit', { timeoutMs: 10_000 }).catch(() => ({ ok: false }))).ok, { timeoutMs: 40_000 });
       settle();
       entry.note = `${play.errors ?? 'NOT ESTABLISHED'} errors, ${play.warnings ?? '?'} warnings, ${play.frames.filter((f) => f.file).length} of ${DEFAULTS.playFrames} frames${play.backInEdit ? '' : ', STUDIO DID NOT RETURN TO EDIT MODE'}${play.unestablished ? ` (${play.unestablished.join('; ')})` : ''}`;
+    });
+    // ----------------------------------------------------------------------------------------------- style gates
+    // planning/STYLE-BIBLE.md §6: the kit lint, the colour of every final picture and the reply rule, before any critic.
+    await timer.step('style-gates', async (entry) => {
+      const kind = measured.cls.kind;
+      const pictures = [
+        ...manifest.captures.filter((c) => c.file && (kind === 'ui' ? c.name.startsWith('ui') : kind === 'world' ? WORLD_CAMERAS.includes(c.name) : true)),
+        ...(kind === 'ui' || kind === 'both' ? (manifest.playTest?.frames ?? []).filter((f) => f.file) : []),
+      ];
+      const colour = [];
+      for (const c of pictures) {
+        const isUi = c.name.startsWith('ui') || c.name.startsWith('play-');
+        try {
+          const bytes = readFileSync(join(pieceDir, c.file));
+          const m = await measureImage(bytes, isUi ? uiBox(c.uiArea, c.width, c.height) : null);
+          colour.push({ file: c.file, kind: isUi ? 'ui' : 'world', ...m, ...colourVerdict(isUi ? 'ui' : 'world', m) });
+        } catch (e) {
+          colour.push({ file: c.file, pass: false, reasons: [`not measured: ${String(e.message ?? e).slice(0, 120)}`] });
+        }
+      }
+      const colourFails = colour.filter((c) => !c.pass);
+      manifest.gates = {
+        kitLint: kitLintGate(manifest.kitLint),
+        colour: { pass: colour.length > 0 && colourFails.length === 0, reasons: colour.length ? colourFails.map((c) => `${c.file}: ${c.reasons.join(', ')}`) : ['no picture to measure'], shots: colour },
+        reply: replyRule(out.reply),
+      };
+      entry.note = ['kitLint', 'colour', 'reply'].map((g) => `${g} ${manifest.gates[g].pass ? 'pass' : 'FAIL'}`).join(', ');
     });
   } catch (e) {
     manifest.aborted = { step: e.step ?? timer.steps.at(-1)?.name ?? 'unknown', message: redact(e.message ?? String(e), secrets) };

@@ -1,0 +1,18 @@
+{
+  "id": "ui-fx",
+  "kind": "ui",
+  "summary": "The kit's motion on every screen: buttons grow on hover and squash on press, offers bob, shine sweeps.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "bob": {
+        "type": "boolean",
+        "default": true,
+        "description": "Offers and the loading tile bob slowly"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

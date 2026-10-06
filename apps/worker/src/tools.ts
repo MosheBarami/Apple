@@ -87,6 +87,7 @@ import { addBehaviour } from './behaviour-tool';
 import { lintScriptWrite } from './behaviour-review';
 import { modelAnatomy } from './model-anatomy';
 import { buildStuddedUi } from './studded-ui-tool';
+import { BLOCKS_TOOL_DESCRIPTION, buildBlocks } from './blocks-tool';
 import { addUpgrades } from './upgrades-tool';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { fetchLiveModel, liveAssetIdOf, searchLiveModels, LIVE_ID_PREFIX, type LiveModel } from './creator-store-live';
@@ -5429,6 +5430,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not add the behaviour' : 'Made it do something',
     run: addBehaviour,
+  },
+  build_blocks: {
+    def: {
+      name: 'build_blocks',
+      description: BLOCKS_TOOL_DESCRIPTION,
+      parameters: S({ blocks: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string' } }, params: { type: 'object', description: '{blockId: {parameter: value}}' } }, ['blocks']),
+    },
+    studio: true,
+    // play_check is the final check, not a requirement: without it the blocks are still built and the report says the play test did not run.
+    studioOps: ['create_instances', 'set_props', 'edit_script', 'clone_instances', 'delete_instances', 'get_instance', 'read_script'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, r, failed) => failed || (r as { ok?: unknown } | null)?.ok === false ? 'Could not finish the build' : 'Built it from reviewed blocks',
+    run: buildBlocks,
   },
   build_studded_ui: {
     def: {

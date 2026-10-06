@@ -1010,6 +1010,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'build_ui':
     case 'insert_ui_component':
     case 'build_studded_ui':
+    // build_blocks runs the reviewed block recipes the model chose (M5): it writes instances and scripts into the place.
+    case 'build_blocks':
     case 'add_upgrades':
     case 'animate_model':
     // add_behaviour writes a behaviours script into the model and installs the one script that plays it.
@@ -3026,6 +3028,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'add_behaviour',
     label: 'Give models behaviour',
     why: 'Adds a behaviours script to a model, and the script that plays it, so parts can open, spin, bob, glow, play a sound or launch a player when clicked, touched or approached.',
+    group: 'changes',
+  },
+  {
+    name: 'build_blocks',
+    label: 'Build from reviewed blocks',
+    why: 'Adds reviewed, checked pieces (game screens and their scripts) to the place, then plays it to check them.',
     group: 'changes',
   },
   {

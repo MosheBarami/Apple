@@ -35,7 +35,7 @@ export const STUDIO_WRITE_TOOLS = [
   // The reviewed blocks (plan section 3): the model picks one and fills in its parameters; the harness runs it.
   'install_module',
   'build_object',
-  'build_studded_ui',
+  'build_blocks',
   'set_mood',
   'add_effect',
   'add_behaviour',

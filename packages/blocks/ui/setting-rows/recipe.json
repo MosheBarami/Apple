@@ -1,0 +1,203 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.StarterGui.{{screen}}.Window.Content",
+     "className": "Frame",
+     "name": "Settings",
+     "props": {
+      "BackgroundTransparency": 1,
+      "Size": {
+       "t": "UDim2",
+       "v": [
+        1,
+        0,
+        1,
+        0
+       ]
+      },
+      "ZIndex": 2
+     },
+     "attributes": {
+      "StudKit": "settings.layout"
+     },
+     "children": [
+      {
+       "className": "UIListLayout",
+       "name": "Stack",
+       "props": {
+        "Padding": {
+         "t": "UDim",
+         "v": [
+          0,
+          12
+         ]
+        },
+        "SortOrder": {
+         "t": "EnumItem",
+         "v": "Enum.SortOrder.LayoutOrder"
+        },
+        "HorizontalAlignment": {
+         "t": "EnumItem",
+         "v": "Enum.HorizontalAlignment.Center"
+        }
+       }
+      },
+      {
+       "className": "UIPadding",
+       "name": "Room",
+       "props": {
+        "PaddingTop": {
+         "t": "UDim",
+         "v": [
+          0,
+          8
+         ]
+        },
+        "PaddingLeft": {
+         "t": "UDim",
+         "v": [
+          0,
+          14
+         ]
+        },
+        "PaddingRight": {
+         "t": "UDim",
+         "v": [
+          0,
+          6
+         ]
+        }
+       }
+      },
+      {
+       "kit": "card",
+       "name": "Setting{{index}}",
+       "token": "{{item.token}}",
+       "size": [
+        1,
+        -10,
+        0,
+        72
+       ],
+       "order": "{{index}}",
+       "children": [
+        {
+         "kit": "icon",
+         "icon": "{{item.icon}}",
+         "size": [
+          0,
+          64,
+          0,
+          64
+         ],
+         "position": [
+          0,
+          -4,
+          0.5,
+          0
+         ],
+         "anchor": [
+          0,
+          0.5
+         ],
+         "z": 8
+        },
+        {
+         "kit": "text",
+         "name": "Label",
+         "text": "{{item.label}}",
+         "on": "{{item.token}}",
+         "size": [
+          0.45,
+          -70,
+          0.55,
+          0
+         ],
+         "position": [
+          0,
+          68,
+          0.5,
+          0
+         ],
+         "anchor": [
+          0,
+          0.5
+         ],
+         "align": "Left",
+         "max": 28
+        },
+        {
+         "kit": "bar",
+         "name": "Slider",
+         "token": "sun",
+         "progress": "{{item.value}}",
+         "size": [
+          0.4,
+          0,
+          0.26,
+          0
+         ],
+         "position": [
+          0.96,
+          0,
+          0.5,
+          0
+         ],
+         "anchor": [
+          1,
+          0.5
+         ],
+         "visible": "{{item.slider}}",
+         "attributes": {
+          "Value": "{{item.value}}"
+         }
+        },
+        {
+         "kit": "button",
+         "name": "Switch",
+         "token": "lime",
+         "text": "{{item.state}}",
+         "size": [
+          0.26,
+          0,
+          0.62,
+          0
+         ],
+         "position": [
+          0.96,
+          0,
+          0.5,
+          0
+         ],
+         "anchor": [
+          1,
+          0.5
+         ],
+         "visible": "{{item.switch}}",
+         "attributes": {
+          "States": "{{item.options}}"
+         }
+        }
+       ],
+       "each": "settings"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wire",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.SettingRows",
+   "file": "src/SettingRows.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
+  }
+ ]
+}

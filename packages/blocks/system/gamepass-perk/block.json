@@ -1,0 +1,44 @@
+{
+  "id": "gamepass-perk",
+  "kind": "system",
+  "summary": "A gamepass perk checked on the server: faster walking, higher jumps or a currency multiplier for owners.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "passId": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 999999999999,
+        "default": 0,
+        "description": "The gamepass id; 0 is a placeholder until the creator makes the pass"
+      },
+      "perk": {
+        "type": "string",
+        "enum": [
+          "speed",
+          "jump",
+          "multiplier"
+        ],
+        "default": "speed"
+      },
+      "amount": {
+        "type": "number",
+        "minimum": 1.1,
+        "maximum": 10,
+        "default": 2,
+        "description": "How many times faster, higher or richer"
+      },
+      "testInStudio": {
+        "type": "boolean",
+        "default": true,
+        "description": "In Studio playtests everyone has the perk, so it can be tried before the pass exists"
+      }
+    }
+  },
+  "provides": [
+    "GamepassPerk.owns",
+    "GamepassPerk.multiplier"
+  ],
+  "depends": []
+}

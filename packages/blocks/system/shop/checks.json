@@ -1,0 +1,15 @@
+[
+  {
+    "id": "server",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Shop",
+    "contains": "Currency.spend",
+    "describes": "the server checks and charges every purchase"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the shop has no errors"
+  }
+]

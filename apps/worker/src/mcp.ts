@@ -350,6 +350,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   animate_model: 'Rigs a model and writes its animations as a script; excluded until the MCP surface has a reviewed rig-and-script scope.',
   add_behaviour: 'Writes a behaviours script into a model and installs a server script that plays it; excluded with animate_model until the MCP surface has a reviewed rig-and-script scope.',
   model_anatomy: 'Read-only (get_tree and read_script), but it is the first half of add_behaviour and means nothing on a surface that cannot add behaviour, so it is excluded with it.',
+  build_blocks: 'Writes the instances and scripts of reviewed blocks into the place and plays it to check them; excluded until the MCP surface has a reviewed block-building scope.',
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
   check_ui_layout: 'Changes nothing in the place, but it builds a temporary copy of a screen in Studio\'s own UI layer, and its plugin operation is opt-in, which MCP does not negotiate. Excluded for both reasons.',

@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "note": "Free Roblox Creator Store icons picked for the StudPilot UI kit. imageId is the Image asset id (use in ImageLabel.Image); sourceAssetId is the Decal asset id found in the store. Picked by eye from 150px thumbnails; community-uploaded, so creators are individual users. Never uploaded or paid. 'missing' entries are Roblox AI generation candidates.",
+  "icons": [
+    {
+      "name": "coin",
+      "imageId": "rbxassetid://17054123574",
+      "sourceAssetId": "17054123630",
+      "creator": "proaAhmet201016",
+      "store": "https://create.roblox.com/store/asset/17054123630",
+      "style": "gold coin with red-orange rim and dollar sign, glossy, 3/4 view"
+    },
+    {
+      "name": "coins",
+      "imageId": "rbxassetid://122885263338804",
+      "sourceAssetId": "91344841658831",
+      "creator": "Yoloalt202",
+      "store": "https://create.roblox.com/store/asset/91344841658831",
+      "style": "pile of glossy gold coins with thick black outline, simulator HUD look"
+    },
+    {
+      "name": "cash",
+      "imageId": "rbxassetid://11317276252",
+      "sourceAssetId": "11317276264",
+      "creator": "odahvi",
+      "store": "https://create.roblox.com/store/asset/11317276264",
+      "style": "green banded bundle of cash, shaded 3D block"
+    },
+    {
+      "name": "money_bag",
+      "imageId": "rbxassetid://586918318",
+      "sourceAssetId": "586918319",
+      "creator": "Godsavenger",
+      "store": "https://create.roblox.com/store/asset/586918319",
+      "style": "rendered brown-gold money sack with silver dollar sign and sparkles"
+    },
+    {
+      "name": "gem",
+      "imageId": "rbxassetid://126570981452515",
+      "sourceAssetId": "86450819070593",
+      "creator": "katorea_1",
+      "store": "https://create.roblox.com/store/asset/86450819070593",
+      "style": "faceted blue diamond, glossy highlights"
+    },
+    {
+      "name": "gift",
+      "imageId": "rbxassetid://591644027",
+      "sourceAssetId": "591644028",
+      "creator": "aleksis022",
+      "store": "https://create.roblox.com/store/asset/591644028",
+      "style": "red 3D gift box with white ribbon and bow"
+    },
+    {
+      "name": "basket",
+      "imageId": "rbxassetid://131257845174856",
+      "sourceAssetId": "125510463158051",
+      "creator": "coco732749",
+      "store": "https://create.roblox.com/store/asset/125510463158051",
+      "style": "red shopping basket with silver handle, dark outline"
+    },
+    {
+      "name": "book",
+      "imageId": "rbxassetid://90234444052958",
+      "sourceAssetId": "72788894953575",
+      "creator": "SigmaGames4Real",
+      "store": "https://create.roblox.com/store/asset/72788894953575",
+      "style": "glossy blue book with dark outline"
+    },
+    {
+      "name": "gear",
+      "imageId": "rbxassetid://91180931869357",
+      "sourceAssetId": "122011137552353",
+      "creator": "Timucin1234567890",
+      "store": "https://create.roblox.com/store/asset/122011137552353",
+      "style": "shaded grey 3D cog, metallic"
+    },
+    {
+      "name": "clover",
+      "imageId": "rbxassetid://16315291249",
+      "sourceAssetId": "16315291309",
+      "creator": "Den1zSENGUN",
+      "store": "https://create.roblox.com/store/asset/16315291309",
+      "style": "green gradient four-leaf clover with thick dark outline"
+    },
+    {
+      "name": "rebirth",
+      "imageId": "rbxassetid://18367579959",
+      "sourceAssetId": "18367579979",
+      "creator": "TherealTim_99",
+      "store": "https://create.roblox.com/store/asset/18367579979",
+      "style": "pink and blue circular arrows with thick dark outline (popular rebirth icon)"
+    },
+    {
+      "name": "trophy",
+      "imageId": "rbxassetid://109962967527967",
+      "sourceAssetId": "95831267035312",
+      "creator": "Tiamelek",
+      "store": "https://create.roblox.com/store/asset/95831267035312",
+      "style": "gold cup trophy, glossy 3D"
+    },
+    {
+      "name": "crown",
+      "imageId": "rbxassetid://116658997619348",
+      "sourceAssetId": "113763531212814",
+      "creator": "Mad_MooMan",
+      "store": "https://create.roblox.com/store/asset/113763531212814",
+      "style": "rendered gold crown with a blue band (blue accent, not pure gold)"
+    },
+    {
+      "name": "star",
+      "imageId": "rbxassetid://95139082764448",
+      "sourceAssetId": "79341959855583",
+      "creator": "Yoloalt202",
+      "store": "https://create.roblox.com/store/asset/79341959855583",
+      "style": "faceted gold star with thick black outline"
+    },
+    {
+      "name": "heart",
+      "imageId": "rbxassetid://17396419894",
+      "sourceAssetId": "17396419968",
+      "creator": "doggytohugeplshelp99",
+      "store": "https://create.roblox.com/store/asset/17396419968",
+      "style": "big glossy red 3D heart with highlight"
+    },
+    {
+      "name": "bolt",
+      "imageId": "rbxassetid://76057222759226",
+      "sourceAssetId": "73747812649931",
+      "creator": "diegoelcra3000",
+      "store": "https://create.roblox.com/store/asset/73747812649931",
+      "style": "glossy yellow-orange 3D lightning bolt"
+    },
+    {
+      "name": "potion",
+      "imageId": "rbxassetid://76554102159737",
+      "sourceAssetId": "115407082727363",
+      "creator": "NotchifromMinecraft",
+      "store": "https://create.roblox.com/store/asset/115407082727363",
+      "style": "round flask of red potion, orange cork, thick dark outline, cartoon"
+    },
+    {
+      "name": "egg",
+      "imageId": "rbxassetid://112987131135753",
+      "sourceAssetId": "131341036154460",
+      "creator": "Yoloalt202",
+      "store": "https://create.roblox.com/store/asset/131341036154460",
+      "style": "glossy golden egg with thick black outline"
+    },
+    {
+      "name": "paw",
+      "imageId": "rbxassetid://18315163318",
+      "sourceAssetId": "18315163357",
+      "creator": "petilecanYT",
+      "store": "https://create.roblox.com/store/asset/18315163357",
+      "style": "dark grey glossy 3D paw print (greyscale, not colourful)"
+    },
+    {
+      "name": "sword",
+      "imageId": "rbxassetid://9587464384",
+      "sourceAssetId": "9587464403",
+      "creator": "Holedaye_E",
+      "store": "https://create.roblox.com/store/asset/9587464403",
+      "style": "yellow glossy cartoon sword with dark outline"
+    },
+    {
+      "name": "shield",
+      "imageId": "rbxassetid://137896966343628",
+      "sourceAssetId": "75245587194588",
+      "creator": "lorenzo006130",
+      "store": "https://create.roblox.com/store/asset/75245587194588",
+      "style": "rendered wooden shield with silver rim"
+    },
+    {
+      "name": "chest",
+      "imageId": "rbxassetid://118258237448942",
+      "sourceAssetId": "130877733119179",
+      "creator": "MTA_0ver",
+      "store": "https://create.roblox.com/store/asset/130877733119179",
+      "style": "white-blue treasure chest with orange accents and thick dark outline"
+    },
+    {
+      "name": "key",
+      "imageId": "rbxassetid://129025974248357",
+      "sourceAssetId": "92923557885046",
+      "creator": "ZoomedInYou",
+      "store": "https://create.roblox.com/store/asset/92923557885046",
+      "style": "glossy gold key with dark blue outline and sparkle"
+    },
+    {
+      "name": "lock",
+      "imageId": "rbxassetid://11220243318",
+      "sourceAssetId": "11220243330",
+      "creator": "Feffie06",
+      "store": "https://create.roblox.com/store/asset/11220243330",
+      "style": "brass padlock, shaded 3D, realistic-leaning"
+    },
+    {
+      "name": "check",
+      "imageId": "rbxassetid://78078299898562",
+      "sourceAssetId": "133147872794996",
+      "creator": "Cataluña RP",
+      "store": "https://create.roblox.com/store/asset/133147872794996",
+      "style": "glossy green circle with white check mark"
+    },
+    {
+      "name": "close",
+      "imageId": "rbxassetid://8516027328",
+      "sourceAssetId": "8516027342",
+      "creator": "59995384",
+      "store": "https://create.roblox.com/store/asset/8516027342",
+      "style": "glossy red circle with white X"
+    },
+    {
+      "name": "info",
+      "imageId": "rbxassetid://17116440570",
+      "sourceAssetId": "17116440653",
+      "creator": "Rorodeli12",
+      "store": "https://create.roblox.com/store/asset/17116440653",
+      "style": "bright blue 'i' circle with thick dark outline"
+    },
+    {
+      "name": "clock",
+      "imageId": "rbxassetid://93354520570226",
+      "sourceAssetId": "72655596733689",
+      "creator": "Iooterrr",
+      "store": "https://create.roblox.com/store/asset/72655596733689",
+      "style": "blue 3D clock face with white dial"
+    },
+    {
+      "name": "map",
+      "imageId": "rbxassetid://10478300189",
+      "sourceAssetId": "10478300216",
+      "creator": "MicrowaveHumanoid",
+      "store": "https://create.roblox.com/store/asset/10478300216",
+      "style": "treasure map parchment with brown border, shaded; a rectangular sheet, flatter than the others"
+    },
+    {
+      "name": "home",
+      "imageId": "rbxassetid://111828988237589",
+      "sourceAssetId": "129393836499220",
+      "creator": "oipro800",
+      "store": "https://create.roblox.com/store/asset/129393836499220",
+      "style": "cute cartoon house with red roof and green bushes"
+    },
+    {
+      "name": "backpack",
+      "imageId": "rbxassetid://88156989101405",
+      "sourceAssetId": "82141314077722",
+      "creator": "Sm64cat",
+      "store": "https://create.roblox.com/store/asset/82141314077722",
+      "style": "red backpack with blue straps, thick dark outline"
+    },
+    {
+      "name": "pickaxe",
+      "imageId": "rbxassetid://84649374735196",
+      "sourceAssetId": "88849544550116",
+      "creator": "ratituiroblox",
+      "store": "https://create.roblox.com/store/asset/88849544550116",
+      "style": "diamond pickaxe with cyan head, thick dark outline"
+    },
+    {
+      "name": "fire",
+      "imageId": "rbxassetid://127710415047799",
+      "sourceAssetId": "136285199227362",
+      "creator": "Nyleonix",
+      "store": "https://create.roblox.com/store/asset/136285199227362",
+      "style": "glossy orange-yellow flame"
+    },
+    {
+      "name": "ticket",
+      "imageId": "rbxassetid://17368125421",
+      "sourceAssetId": "17368125451",
+      "creator": "Matt746_2",
+      "store": "https://create.roblox.com/store/asset/17368125451",
+      "style": "orange glossy ticket with yellow star and thick dark outline"
+    },
+    {
+      "name": "calendar",
+      "imageId": "rbxassetid://127173236987889",
+      "sourceAssetId": "127422083417653",
+      "creator": "Escapers Inc.",
+      "store": "https://create.roblox.com/store/asset/127422083417653",
+      "style": "red spiral-bound calendar with dark outline"
+    },
+    {
+      "name": "scroll",
+      "imageId": "rbxassetid://121588188091233",
+      "sourceAssetId": "77415395006201",
+      "creator": "srnatsuno",
+      "store": "https://create.roblox.com/store/asset/77415395006201",
+      "style": "cartoon parchment scroll tied with a purple ribbon, glossy"
+    },
+    {
+      "name": "arrow_up",
+      "imageId": "rbxassetid://110770057885112",
+      "sourceAssetId": "90973263112246",
+      "creator": "Mammoth1441",
+      "store": "https://create.roblox.com/store/asset/90973263112246",
+      "style": "green faceted up arrow with dark navy outline"
+    },
+    {
+      "name": "magnet",
+      "imageId": "rbxassetid://13905240521",
+      "sourceAssetId": "13905240588",
+      "creator": "KethuLol",
+      "store": "https://create.roblox.com/store/asset/13905240588",
+      "style": "red horseshoe magnet with white tips, glossy, cyan lines"
+    },
+    {
+      "name": "boots",
+      "imageId": "rbxassetid://86141670532057",
+      "sourceAssetId": "110839514992128",
+      "creator": "The Duelists",
+      "store": "https://create.roblox.com/store/asset/110839514992128",
+      "style": "gold-brown boots with a speed gauge and blue sparks (more realistic than cartoon)"
+    }
+  ],
+  "missing": [
+    {
+      "name": "rocket",
+      "tried": [
+        "rocket icon",
+        "rocket icon 3d cartoon",
+        "rocket ship icon",
+        "rocket icon glossy outline game",
+        "simulator rocket icon",
+        "jetpack icon"
+      ],
+      "note": "every free result was a flat white silhouette, had an opaque background, or was a realistic/pixel render; none was a transparent glossy 3D cartoon rocket. Candidate for Roblox AI generation."
+    }
+  ]
+}

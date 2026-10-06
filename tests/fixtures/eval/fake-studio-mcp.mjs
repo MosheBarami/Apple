@@ -96,7 +96,11 @@ function luau(code, dm) {
     if (scenario.logServerFails) return text('LogService is not available here', true);
     return text(JSON.stringify({ errors: scenario.serverErrors ?? 0, warnings: scenario.serverWarnings ?? 0, first: [] }));
   }
+  if (/Kit lint \(planning/.test(code)) return text(JSON.stringify(scenario.kitLint ?? { objects: 0, findings: [], counts: {} }));
+  if (/Kit lint \(planning/.test(code)) return text(JSON.stringify(scenario.kitLint ?? { objects: 0, findings: [], counts: {} }));
   const mode = /local MODE = "([\w-]+)"/.exec(code)?.[1];
+  if (mode === 'list' || mode === 'show' || mode === 'restore') return text(JSON.stringify({ panels: scenario.panels ?? [], source: scenario.panels ? 'hook' : 'none', viewport: [1280, 720], bounds: null }));
+  if (mode === 'list' || mode === 'show' || mode === 'restore') return text(JSON.stringify({ panels: scenario.panels ?? [], source: scenario.panels ? 'hook' : 'none', viewport: [1280, 720], bounds: null }));
   if (mode === 'capture') return text(JSON.stringify(baseline));
   if (mode === 'reset') return text(JSON.stringify({ removedInstances: scenario.removed ?? 0, removedByService: scenario.removed ? { Workspace: scenario.removed } : [], restored: [], rebuilt: [], terrainCleared: false }));
   if (mode === 'verify') return text(JSON.stringify(scenario.stuckDirty ? { extra: ['Workspace/Junk#Part'], missing: [], propDiffs: [] } : { extra: [], missing: [], propDiffs: [] }));

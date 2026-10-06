@@ -1,0 +1,38 @@
+{
+ "steps": [
+  {
+   "id": "colour",
+   "op": "set_props",
+   "path": "game.Workspace.{{ground}}",
+   "props": {
+    "Material": "SmoothPlastic",
+    "Color": "{{surface.top}}"
+   }
+  },
+  {
+   "id": "studs",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.Workspace.{{ground}}",
+     "className": "Texture",
+     "name": "Studs",
+     "props": {
+      "Texture": "rbxassetid://7447638591",
+      "Face": {
+       "t": "EnumItem",
+       "v": "Enum.NormalId.Top"
+      },
+      "StudsPerTileU": 2,
+      "StudsPerTileV": 2,
+      "Transparency": 0.2,
+      "Color3": "{{surface.dark}}"
+     },
+     "attributes": {
+      "StudKit": "ground.studs"
+     }
+    }
+   ]
+  }
+ ]
+}

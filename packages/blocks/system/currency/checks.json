@@ -1,0 +1,15 @@
+[
+  {
+    "id": "api",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Currency",
+    "contains": "function Currency.spend",
+    "describes": "the server API (grant, spend, get) is installed"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the currencies has no errors"
+  }
+]

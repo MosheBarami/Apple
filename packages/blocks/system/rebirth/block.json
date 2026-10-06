@@ -1,0 +1,52 @@
+{
+  "id": "rebirth",
+  "kind": "system",
+  "summary": "Rebirth: pay a growing cost to reset a currency and gain a permanent earnings multiplier.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "currency": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+        "default": "Coins",
+        "description": "A currency from the currency block"
+      },
+      "baseCost": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000000000000,
+        "default": 10000,
+        "description": "Cost of the first rebirth"
+      },
+      "costGrowth": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 2.5,
+        "description": "Each rebirth costs this many times the last"
+      },
+      "multiplierStep": {
+        "type": "number",
+        "minimum": 0.05,
+        "maximum": 10,
+        "default": 0.5,
+        "description": "Multiplier gained per rebirth (1 + rebirths x step), or the factor per rebirth when compound"
+      },
+      "compound": {
+        "type": "boolean",
+        "default": false,
+        "description": "true: each rebirth multiplies (step^rebirths, e.g. 1.5x each time)"
+      }
+    }
+  },
+  "provides": [
+    "Rebirth.rebirth",
+    "Rebirth.multiplier",
+    "Rebirth.cost",
+    "RebirthRequest"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

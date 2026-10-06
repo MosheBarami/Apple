@@ -1,0 +1,28 @@
+{
+  "id": "checkpoints",
+  "kind": "system",
+  "summary": "Obby checkpoints: touching the next numbered checkpoint saves the stage, and players respawn on their last one.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "folder": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Checkpoints",
+        "description": "Workspace folder holding parts named 1, 2, 3... (or Stage1, Stage2...)"
+      },
+      "skipAhead": {
+        "type": "boolean",
+        "default": false,
+        "description": "Allow jumping to any later checkpoint, not only the next one"
+      }
+    }
+  },
+  "provides": [
+    "Checkpoints.reach"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

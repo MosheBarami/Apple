@@ -1,0 +1,16 @@
+-- PROOF ONLY (never shipped): an upgrade is refused without money and at max; the cost grows.
+local Players = game:GetService("Players")
+local Currency = require(game.ServerScriptService:WaitForChild("Currency"))
+local Upgrades = require(game.ServerScriptService:WaitForChild("Upgrades"))
+local player = Players:GetPlayers()[1] or Players.PlayerAdded:Wait()
+repeat task.wait() until Currency.ready(player)
+local u = Upgrades.LIST[1]
+Currency.spend(player, Upgrades.CURRENCY, Currency.get(player, Upgrades.CURRENCY), "proof: empty")
+assert(Upgrades.buy(player, u.name) == false, "no money, no upgrade")
+local first = Upgrades.cost(player, u.name)
+Currency.grant(player, Upgrades.CURRENCY, first, "proof: fund")
+task.wait(0.4)
+assert(Upgrades.buy(player, u.name) == true and Upgrades.level(player, u.name) == 1, "a bought level counts")
+assert(Upgrades.cost(player, u.name) >= first, "the next level costs at least as much")
+assert(Upgrades.price(u, u.max) == nil, "nothing is sold past the max")
+print("STUDPILOT_PROOF_OK upgrades")

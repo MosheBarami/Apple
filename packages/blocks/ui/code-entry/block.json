@@ -1,0 +1,56 @@
+{
+  "id": "code-entry",
+  "kind": "ui",
+  "summary": "A codes box inside a window: prompt, a white text box and a Redeem button the server answers.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Codes",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "prompt": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40,
+        "default": "Enter a code for free rewards!",
+        "description": "Line above the box"
+      },
+      "placeholder": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 22,
+        "default": "Type a code...",
+        "description": "Grey text in the empty box"
+      },
+      "action": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 12,
+        "default": "Redeem",
+        "description": "Button text"
+      },
+      "actionToken": {
+        "type": "string",
+        "enum": [
+          "lime",
+          "sky",
+          "sun",
+          "berry",
+          "grape",
+          "teal",
+          "slate"
+        ],
+        "default": "lime",
+        "description": "Button colour"
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "window"
+  ]
+}

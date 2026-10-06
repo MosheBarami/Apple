@@ -1,0 +1,24 @@
+[
+  {
+    "id": "title",
+    "kind": "prop",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Title",
+    "prop": "Text",
+    "equals": "{{title}}",
+    "param": "title",
+    "describes": "the menu shows the game title"
+  },
+  {
+    "id": "closer",
+    "kind": "script_has",
+    "path": "game.StarterGui.{{screen}}.MenuButtons",
+    "contains": "Closes",
+    "describes": "a closing button hides the menu"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the menu has no errors"
+  }
+]

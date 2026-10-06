@@ -1,0 +1,212 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.StarterGui.{{screen}}.Window.Content",
+     "className": "Frame",
+     "name": "Codes",
+     "props": {
+      "BackgroundTransparency": 1,
+      "Size": {
+       "t": "UDim2",
+       "v": [
+        1,
+        0,
+        1,
+        0
+       ]
+      },
+      "ZIndex": 2
+     },
+     "attributes": {
+      "StudKit": "codes.layout"
+     },
+     "children": [
+      {
+       "kit": "text",
+       "name": "Prompt",
+       "text": "{{prompt}}",
+       "size": [
+        0.9,
+        0,
+        0.13,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.05,
+        0
+       ],
+       "anchor": [
+        0.5,
+        0
+       ],
+       "max": 32
+      },
+      {
+       "className": "TextBox",
+       "name": "Box",
+       "props": {
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.86,
+          0,
+          0.22,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0.5,
+          0,
+          0.24,
+          0
+         ]
+        },
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          0.5,
+          0
+         ]
+        },
+        "BackgroundColor3": "#FFFFFF",
+        "BorderSizePixel": 0,
+        "Text": "",
+        "PlaceholderText": "{{placeholder}}",
+        "PlaceholderColor3": "#8A94AD",
+        "TextColor3": "#23272F",
+        "Font": {
+         "t": "EnumItem",
+         "v": "Enum.Font.FredokaOne"
+        },
+        "TextScaled": true,
+        "ClearTextOnFocus": false,
+        "ZIndex": 4
+       },
+       "attributes": {
+        "StudKit": "codebox.white"
+       },
+       "children": [
+        {
+         "className": "UICorner",
+         "name": "Corner",
+         "props": {
+          "CornerRadius": {
+           "t": "UDim",
+           "v": [
+            0.2,
+            0
+           ]
+          }
+         }
+        },
+        {
+         "className": "UIStroke",
+         "name": "Border",
+         "props": {
+          "Thickness": 3,
+          "Color": "#23272F",
+          "ApplyStrokeMode": {
+           "t": "EnumItem",
+           "v": "Enum.ApplyStrokeMode.Border"
+          }
+         }
+        },
+        {
+         "className": "UITextSizeConstraint",
+         "name": "Fit",
+         "props": {
+          "MaxTextSize": 34
+         }
+        },
+        {
+         "className": "UIPadding",
+         "name": "Room",
+         "props": {
+          "PaddingLeft": {
+           "t": "UDim",
+           "v": [
+            0,
+            14
+           ]
+          },
+          "PaddingRight": {
+           "t": "UDim",
+           "v": [
+            0,
+            14
+           ]
+          }
+         }
+        }
+       ]
+      },
+      {
+       "kit": "button",
+       "name": "Redeem",
+       "token": "{{actionToken}}",
+       "text": "{{action}}",
+       "size": [
+        0.42,
+        0,
+        0.2,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.56,
+        0
+       ],
+       "anchor": [
+        0.5,
+        0
+       ],
+       "max": 40
+      },
+      {
+       "kit": "text",
+       "name": "Status",
+       "text": "",
+       "ink": "money",
+       "size": [
+        0.9,
+        0,
+        0.11,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.84,
+        0
+       ],
+       "anchor": [
+        0.5,
+        0
+       ],
+       "max": 28
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wire",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.CodeEntry",
+   "file": "src/CodeEntry.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
+  }
+ ]
+}

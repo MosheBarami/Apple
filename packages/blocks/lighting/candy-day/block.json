@@ -1,0 +1,20 @@
+{
+  "id": "candy-day",
+  "kind": "lighting",
+  "summary": "The bright \"Candy Day\" look of popular simulators: saturated colour, soft bloom and haze, a high sun.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "sun": {
+        "type": "number",
+        "minimum": 9,
+        "maximum": 16,
+        "default": 13.5,
+        "description": "Time of day, 9 to 16 (13.5 is early afternoon)"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

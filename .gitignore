@@ -300,3 +300,6 @@ packages/asset-library/vfx-store/
 packages/owner-corpus/
 docs/evidence/owner-corpus-*/
 packages/training/runs/
+
+# Private material that must never be committed (style bible S-2: the owner's reference images).
+/private/

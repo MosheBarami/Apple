@@ -1,0 +1,195 @@
+{
+  "id": "row-list",
+  "kind": "ui",
+  "summary": "Rows in a scrolling list inside a window: overflowing icon, label, detail, gold value, optional bar and button.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Shop",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "showProgress": {
+        "type": "boolean",
+        "default": false,
+        "description": "Show each row's bar (quests, goals)"
+      },
+      "showDetail": {
+        "type": "boolean",
+        "default": true,
+        "description": "Show each row's second line (false for a leaderboard)"
+      },
+      "showButton": {
+        "type": "boolean",
+        "default": false,
+        "description": "Show each row's button (upgrades, claims)"
+      },
+      "feed": {
+        "type": "string",
+        "enum": [
+          "none",
+          "leaderboard",
+          "upgrades"
+        ],
+        "default": "none",
+        "description": "leaderboard: rows fill from the leaderboard block; upgrades: buttons buy from the upgrades block"
+      },
+      "stat": {
+        "type": "string",
+        "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
+        "default": "",
+        "description": "A player attribute to follow live (a currency name such as Coins), or \"\""
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "icon",
+            "label",
+            "detail",
+            "value",
+            "token",
+            "progress",
+            "button",
+            "buttonToken"
+          ],
+          "properties": {
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "star",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 26,
+              "default": "Row",
+              "description": "Main text: a player name, quest or upgrade"
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 40,
+              "default": "",
+              "description": "Second line, e.g. +10% speed, 3/5 (may be empty)"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 14,
+              "default": "",
+              "description": "Right side, e.g. 1,250 wins, Lv 3 (may be empty)"
+            },
+            "token": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "sky",
+              "description": "Row colour"
+            },
+            "progress": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "Bar fill, 0 to 1"
+            },
+            "button": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 12,
+              "default": "",
+              "description": "Button text, e.g. Claim (may be empty)"
+            },
+            "buttonToken": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "lime",
+              "description": "Button colour; slate when it cannot be pressed now"
+            }
+          }
+        },
+        "default": [
+          {
+            "icon": "star",
+            "label": "First",
+            "detail": "",
+            "value": "",
+            "token": "sky",
+            "progress": 0,
+            "button": "",
+            "buttonToken": "lime"
+          }
+        ]
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "window"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+ "steps": [
+  {
+   "id": "module",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.Codes",
+   "file": "src/Codes.luau",
+   "create": {
+    "className": "ModuleScript",
+    "parent": "game.ServerScriptService"
+   }
+  },
+  {
+   "id": "start",
+   "op": "edit_script",
+   "path": "game.ServerScriptService.CodesStart",
+   "file": "src/CodesStart.luau",
+   "create": {
+    "className": "Script",
+    "parent": "game.ServerScriptService"
+   }
+  }
+ ]
+}

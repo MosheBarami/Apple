@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.GamepassPerk",
+    "contains": "UserOwnsGamePassAsync",
+    "describes": "the server checks ownership before giving the perk"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the perk has no errors"
+  }
+]

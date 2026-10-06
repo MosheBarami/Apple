@@ -62,7 +62,7 @@ export function uiRequiredBecause(piece) {
   return null;
 }
 
-export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [] } = {}) {
+export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [], rubricVersion = null } = {}) {
   const m = piece.manifest ?? {};
   // The play test counts only with the evidence that the place ran: a record that says `errors: 0` without it is not read as 0.
   const evidence = playTestEvidence(m.playTest);
@@ -85,6 +85,8 @@ export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [] 
     functionalChecks: m.functionalChecks,
     claims: unsupported ? { unsupported } : null,
     run: { endedBy: dryRun ? 'dry-run' : m.aborted ? 'aborted' : m.run?.endedBy ?? 'unknown' },
+    rubricVersion,
+    gates: m.gates ?? null,
   });
   verdict.reasons.push(...extraReasons);
   if (extraReasons.length && verdict.status === 'pass') verdict.status = 'unevaluable';
@@ -101,7 +103,7 @@ export function writeVerdicts(doc, { prepared = null, singleCritic = false } = {
     // ONE CRITIC (owner token rule, 2026-10-05): critic A stands for both sides of the "lower of the two" rule. That is a
     // weaker test than two independent critics, so every such verdict says so and the report prints it beside the numbers.
     const criticB = singleCritic ? r.criticA : r.criticB;
-    const verdict = verdictFor(piece, { criticA: r.criticA, criticB, claims: r.claims });
+    const verdict = verdictFor(piece, { criticA: r.criticA, criticB, claims: r.claims, rubricVersion });
     if (singleCritic) verdict.singleCritic = true;
     const out = (name, body) => writeFileSync(join(piece.dir, name), JSON.stringify(body, null, 1) + '\n');
     out('critic-a.json', r.criticA ?? null);
@@ -122,7 +124,7 @@ export function writeVerdicts(doc, { prepared = null, singleCritic = false } = {
     if (results.some((r) => resolve(r.dir) === resolve(s.dir))) continue;
     const piece = readPiece(s.dir);
     if (!piece.manifest?.run) continue; // no agent run was made: not attempted, no verdict
-    const verdict = verdictFor(piece, { extraReasons: [`not scored by critics: ${s.reason}`] });
+    const verdict = verdictFor(piece, { extraReasons: [`not scored by critics: ${s.reason}`], rubricVersion });
     writeFileSync(join(piece.dir, 'verdict.json'), JSON.stringify({ piece: { id: piece.id, category: piece.category }, rubric: { version: rubricVersion, sha256: rubricSha256 }, ...verdict }, null, 1) + '\n');
     skippedWithRun.push({ id: piece.id, status: verdict.status, reason: s.reason });
   }

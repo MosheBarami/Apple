@@ -1,0 +1,31 @@
+[
+  {
+    "id": "content",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Window.Content",
+    "describes": "the window and its content area are in StarterGui"
+  },
+  {
+    "id": "title",
+    "kind": "prop",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Window.Header.Fill.Title",
+    "prop": "Text",
+    "equals": "{{title}}",
+    "param": "title",
+    "describes": "the header shows the requested title"
+  },
+  {
+    "id": "closer",
+    "kind": "script_has",
+    "path": "game.StarterGui.{{screen}}.WindowOpen",
+    "contains": "Activated",
+    "describes": "the close button closes the window"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the window has no errors"
+  }
+]

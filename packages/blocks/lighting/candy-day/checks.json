@@ -1,0 +1,14 @@
+[
+  {
+    "id": "colour",
+    "kind": "exists",
+    "after": "effects",
+    "path": "game.Lighting.CandyColour",
+    "describes": "the colour correction is in Lighting"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the lighting has no errors"
+  }
+]

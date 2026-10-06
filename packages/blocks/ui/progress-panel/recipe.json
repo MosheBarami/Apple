@@ -1,0 +1,227 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.StarterGui.{{screen}}.Window.Content",
+     "className": "Frame",
+     "name": "Progress",
+     "props": {
+      "BackgroundTransparency": 1,
+      "Size": {
+       "t": "UDim2",
+       "v": [
+        1,
+        0,
+        1,
+        0
+       ]
+      },
+      "ZIndex": 2
+     },
+     "attributes": {
+      "StudKit": "progress.layout"
+     },
+     "children": [
+      {
+       "className": "Frame",
+       "name": "Stats",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          1,
+          0,
+          0.62,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0,
+          6,
+          0,
+          6
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "progress.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0.06,
+            0
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Center"
+          }
+         }
+        },
+        {
+         "kit": "card",
+         "name": "Stat{{index}}",
+         "token": "{{token}}",
+         "size": [
+          1,
+          -10,
+          0.2,
+          0
+         ],
+         "order": "{{index}}",
+         "children": [
+          {
+           "kit": "icon",
+           "icon": "{{item.icon}}",
+           "size": [
+            0,
+            0,
+            1.15,
+            0
+           ],
+           "position": [
+            0,
+            -4,
+            0.5,
+            0
+           ],
+           "anchor": [
+            0,
+            0.5
+           ],
+           "z": 8
+          },
+          {
+           "kit": "text",
+           "name": "Label",
+           "text": "{{item.label}}",
+           "on": "{{token}}",
+           "size": [
+            0.55,
+            0,
+            0.6,
+            0
+           ],
+           "position": [
+            0.14,
+            0,
+            0.5,
+            0
+           ],
+           "anchor": [
+            0,
+            0.5
+           ],
+           "align": "Left",
+           "max": 28
+          },
+          {
+           "kit": "text",
+           "name": "Value",
+           "text": "{{item.value}}",
+           "ink": "gold",
+           "size": [
+            0.3,
+            0,
+            0.75,
+            0
+           ],
+           "position": [
+            0.97,
+            0,
+            0.5,
+            0
+           ],
+           "anchor": [
+            1,
+            0.5
+           ],
+           "align": "Right",
+           "max": 40
+          }
+         ],
+         "each": "stats"
+        }
+       ]
+      },
+      {
+       "kit": "bar",
+       "name": "Bar",
+       "token": "{{barToken}}",
+       "progress": "{{progress}}",
+       "text": "{{barLabel}}",
+       "size": [
+        0.96,
+        0,
+        0.1,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.7,
+        0
+       ],
+       "anchor": [
+        0.5,
+        0
+       ]
+      },
+      {
+       "kit": "button",
+       "name": "Action",
+       "token": "{{actionToken}}",
+       "text": "{{action}}",
+       "size": [
+        0.42,
+        0,
+        0.15,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.98,
+        0
+       ],
+       "anchor": [
+        0.5,
+        1
+       ],
+       "max": 40,
+       "attributes": {
+        "Fires": "{{actionFires}}"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wire",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.ProgressAction",
+   "file": "src/ProgressAction.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
+  }
+ ]
+}

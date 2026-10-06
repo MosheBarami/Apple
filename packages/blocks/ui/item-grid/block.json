@@ -1,0 +1,285 @@
+{
+  "id": "item-grid",
+  "kind": "ui",
+  "summary": "Item cards in a scrolling grid inside a window: big overflowing icon, name, note, price button; optional featured card.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Shop",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "currency": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 4,
+        "default": "R$",
+        "description": "Text before each price, e.g. R$ or $ (may be empty)"
+      },
+      "payWith": {
+        "type": "string",
+        "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
+        "default": "",
+        "description": "A player attribute to follow live (a currency name such as Coins), or \"\""
+      },
+      "columns": {
+        "type": "integer",
+        "enum": [
+          3,
+          4
+        ],
+        "default": 3,
+        "description": "Cards per row"
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 24,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "price",
+            "icon",
+            "token",
+            "note",
+            "button"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "default": "Item",
+              "description": "Shown on the card"
+            },
+            "price": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "default": "100",
+              "description": "The button text: a number, or a word like Owned / Claim / Equip"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "star",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "token": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "sky",
+              "description": "Card colour (rarity or state; slate for claimed or locked)"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 18,
+              "default": "",
+              "description": "A short line under the name (may be empty)"
+            },
+            "button": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "lime",
+              "description": "Button colour; slate when it cannot be pressed now"
+            }
+          }
+        },
+        "default": [
+          {
+            "name": "Starter Pack",
+            "price": "99",
+            "icon": "gift",
+            "token": "sky",
+            "note": "",
+            "button": "lime"
+          }
+        ]
+      },
+      "featured": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "price",
+            "icon",
+            "token",
+            "note",
+            "button"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "default": "Item",
+              "description": "Shown on the card"
+            },
+            "price": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "default": "100",
+              "description": "The button text: a number, or a word like Owned / Claim / Equip"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "star",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "token": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "sky",
+              "description": "Card colour (rarity or state; slate for claimed or locked)"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 18,
+              "default": "",
+              "description": "A short line under the name (may be empty)"
+            },
+            "button": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "lime",
+              "description": "Button colour; slate when it cannot be pressed now"
+            }
+          }
+        },
+        "default": [],
+        "description": "At most one wide card above the grid"
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "window"
+  ]
+}

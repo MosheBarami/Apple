@@ -1,0 +1,466 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.StarterGui",
+     "className": "ScreenGui",
+     "name": "{{screen}}",
+     "props": {
+      "ResetOnSpawn": false,
+      "ZIndexBehavior": {
+       "t": "EnumItem",
+       "v": "Enum.ZIndexBehavior.Sibling"
+      }
+     },
+     "children": [
+      {
+       "className": "Frame",
+       "name": "Tabs",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.46,
+          0,
+          0.085,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0.5,
+          0,
+          0,
+          6
+         ]
+        },
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          0.5,
+          0
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "hud.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0.02,
+            0
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Center"
+          },
+          "FillDirection": {
+           "t": "EnumItem",
+           "v": "Enum.FillDirection.Horizontal"
+          }
+         }
+        },
+        {
+         "kit": "button",
+         "name": "Tab{{index}}",
+         "token": "{{item.token}}",
+         "text": "{{item.label}}",
+         "size": [
+          0.31,
+          0,
+          1,
+          0
+         ],
+         "order": "{{index}}",
+         "max": 40,
+         "attributes": {
+          "Action": "{{item.action}}"
+         },
+         "each": "tabs"
+        }
+       ]
+      },
+      {
+       "className": "Frame",
+       "name": "Bars",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.3,
+          0,
+          0.09,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0.5,
+          0,
+          0.1,
+          0
+         ]
+        },
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          0.5,
+          0
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "hud.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0,
+            6
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Center"
+          }
+         }
+        },
+        {
+         "kit": "bar",
+         "name": "Bar{{index}}",
+         "token": "{{item.token}}",
+         "progress": "{{item.progress}}",
+         "text": "{{item.label}}",
+         "size": [
+          1,
+          0,
+          0.42,
+          0
+         ],
+         "order": "{{index}}",
+         "each": "bars"
+        }
+       ]
+      },
+      {
+       "className": "Frame",
+       "name": "Tiles",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.07,
+          0,
+          0.6,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0,
+          16,
+          0.2,
+          0
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "hud.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0.1,
+            0
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Center"
+          }
+         }
+        },
+        {
+         "kit": "tile",
+         "name": "Tile{{index}}",
+         "token": "{{item.token}}",
+         "icon": "{{item.icon}}",
+         "text": "{{item.label}}",
+         "size": [
+          1,
+          0,
+          0.26,
+          0
+         ],
+         "order": "{{index}}",
+         "attributes": {
+          "Action": "{{item.action}}"
+         },
+         "each": "tiles"
+        }
+       ]
+      },
+      {
+       "className": "Frame",
+       "name": "Currencies",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.26,
+          0,
+          0.16,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          0,
+          14,
+          1,
+          -14
+         ]
+        },
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          0,
+          1
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "hud.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0.03,
+            0
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Left"
+          },
+          "VerticalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.VerticalAlignment.Bottom"
+          }
+         }
+        },
+        {
+         "kit": "currency",
+         "name": "Currency{{index}}",
+         "icon": "{{item.icon}}",
+         "text": "{{item.value}}",
+         "ink": "{{item.ink}}",
+         "size": [
+          1,
+          0,
+          0.32,
+          0
+         ],
+         "order": "{{index}}",
+         "attributes": {
+          "Stat": "{{item.stat}}"
+         },
+         "each": "currencies"
+        }
+       ]
+      },
+      {
+       "className": "Frame",
+       "name": "Offers",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.1,
+          0,
+          0.42,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          1,
+          -14,
+          0.2,
+          0
+         ]
+        },
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          1,
+          0
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "hud.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0.04,
+            0
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Center"
+          }
+         }
+        },
+        {
+         "className": "Frame",
+         "name": "Offer{{index}}",
+         "props": {
+          "BackgroundTransparency": 1,
+          "Size": {
+           "t": "UDim2",
+           "v": [
+            1,
+            0,
+            0.48,
+            0
+           ]
+          },
+          "LayoutOrder": "{{index}}"
+         },
+         "attributes": {
+          "StudKit": "offer.layout",
+          "Action": "{{item.action}}"
+         },
+         "children": [
+          {
+           "kit": "text",
+           "name": "Price",
+           "text": "{{item.price}}",
+           "ink": "money",
+           "size": [
+            1,
+            0,
+            0.24,
+            0
+           ],
+           "max": 30
+          },
+          {
+           "kit": "icon",
+           "icon": "{{item.icon}}",
+           "size": [
+            1,
+            0,
+            0.56,
+            0
+           ],
+           "position": [
+            0,
+            0,
+            0.2,
+            0
+           ]
+          },
+          {
+           "kit": "text",
+           "name": "Label",
+           "text": "{{item.label}}",
+           "ink": "gem",
+           "size": [
+            1,
+            0,
+            0.22,
+            0
+           ],
+           "position": [
+            0,
+            0,
+            0.78,
+            0
+           ],
+           "max": 24
+          }
+         ],
+         "each": "offers"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "live",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.HudLive",
+   "file": "src/HudLive.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
+  }
+ ]
+}

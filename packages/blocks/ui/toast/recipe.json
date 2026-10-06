@@ -1,0 +1,115 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.StarterGui",
+     "className": "ScreenGui",
+     "name": "{{screen}}",
+     "props": {
+      "ResetOnSpawn": false,
+      "ZIndexBehavior": {
+       "t": "EnumItem",
+       "v": "Enum.ZIndexBehavior.Sibling"
+      },
+      "DisplayOrder": 50
+     },
+     "attributes": {
+      "Seconds": "{{seconds}}"
+     },
+     "children": [
+      {
+       "className": "Frame",
+       "name": "Stack",
+       "props": {
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
+         "v": [
+          0.24,
+          0,
+          0.5,
+          0
+         ]
+        },
+        "Position": {
+         "t": "UDim2",
+         "v": [
+          1,
+          -16,
+          1,
+          -110
+         ]
+        },
+        "AnchorPoint": {
+         "t": "Vector2",
+         "v": [
+          1,
+          1
+         ]
+        }
+       },
+       "attributes": {
+        "StudKit": "toast.layout"
+       },
+       "children": [
+        {
+         "className": "UIListLayout",
+         "name": "Stack",
+         "props": {
+          "Padding": {
+           "t": "UDim",
+           "v": [
+            0,
+            10
+           ]
+          },
+          "SortOrder": {
+           "t": "EnumItem",
+           "v": "Enum.SortOrder.LayoutOrder"
+          },
+          "HorizontalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.HorizontalAlignment.Center"
+          },
+          "VerticalAlignment": {
+           "t": "EnumItem",
+           "v": "Enum.VerticalAlignment.Bottom"
+          }
+         }
+        },
+        {
+         "kit": "toast",
+         "name": "Toast{{index}}",
+         "token": "{{item.token}}",
+         "icon": "{{item.icon}}",
+         "text": "{{item.text}}",
+         "size": [
+          1,
+          0,
+          0,
+          58
+         ],
+         "order": "{{index}}",
+         "each": "samples"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "run",
+   "op": "edit_script",
+   "path": "game.StarterGui.{{screen}}.Toasts",
+   "file": "src/Toasts.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterGui.{{screen}}"
+   }
+  }
+ ]
+}

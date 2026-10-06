@@ -1,0 +1,59 @@
+{
+  "id": "codes",
+  "kind": "system",
+  "summary": "Redeemable codes checked on the server: each gives a currency reward once per player.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "codes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 30,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "currency",
+            "amount"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{3,20}$",
+              "default": "WELCOME",
+              "description": "Letters and digits; matched ignoring case"
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z ]{0,15}$",
+              "default": "Coins",
+              "description": "A currency from the currency block"
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000000,
+              "default": 100
+            }
+          }
+        },
+        "default": [
+          {
+            "code": "WELCOME",
+            "currency": "Coins",
+            "amount": 100
+          }
+        ]
+      }
+    }
+  },
+  "provides": [
+    "Codes.redeem",
+    "RedeemCode"
+  ],
+  "depends": [
+    "currency"
+  ]
+}

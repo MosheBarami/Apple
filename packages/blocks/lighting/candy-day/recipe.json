@@ -1,0 +1,70 @@
+{
+ "steps": [
+  {
+   "id": "light",
+   "op": "set_props",
+   "path": "game.Lighting",
+   "props": {
+    "Brightness": 2.4,
+    "ClockTime": "{{sun}}",
+    "GeographicLatitude": 28,
+    "Ambient": "#7C8AA6",
+    "OutdoorAmbient": "#A4B2D6",
+    "EnvironmentDiffuseScale": 1,
+    "EnvironmentSpecularScale": 0.8,
+    "GlobalShadows": true,
+    "ShadowSoftness": 0.35,
+    "ExposureCompensation": -0.1
+   }
+  },
+  {
+   "id": "effects",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.Lighting",
+     "className": "ColorCorrectionEffect",
+     "name": "CandyColour",
+     "props": {
+      "Saturation": 0.2,
+      "Contrast": 0.12,
+      "Brightness": 0,
+      "TintColor": "#FFFFFF"
+     }
+    },
+    {
+     "parent": "game.Lighting",
+     "className": "BloomEffect",
+     "name": "CandyBloom",
+     "props": {
+      "Intensity": 0.6,
+      "Threshold": 0.9,
+      "Size": 24
+     }
+    },
+    {
+     "parent": "game.Lighting",
+     "className": "SunRaysEffect",
+     "name": "CandyRays",
+     "props": {
+      "Intensity": 0.05,
+      "Spread": 0.6
+     }
+    },
+    {
+     "parent": "game.Lighting",
+     "className": "Atmosphere",
+     "name": "CandyAir",
+     "props": {
+      "Density": 0.26,
+      "Offset": 0.18,
+      "Haze": 1.1,
+      "Glare": 0.15,
+      "Color": "#C9E8FF",
+      "Decay": "#6C93B8"
+     }
+    }
+   ]
+  }
+ ]
+}

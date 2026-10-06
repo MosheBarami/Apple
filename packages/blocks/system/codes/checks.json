@@ -1,0 +1,15 @@
+[
+  {
+    "id": "module",
+    "kind": "script_has",
+    "after": "module",
+    "path": "game.ServerScriptService.Codes",
+    "contains": "Currency.grant",
+    "describes": "the server checks codes and pays the reward"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with codes has no errors"
+  }
+]

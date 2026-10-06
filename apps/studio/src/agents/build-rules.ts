@@ -14,9 +14,9 @@ export const FINISH_RULES = `Finishing rules (each one is a fault that failed ea
 - States: show which items are affordable, owned, locked or claimed (greyed, ticked, highlighted), and give a button
   press visible feedback (a tween, a colour change, a number that moves).
 - No duplicates and no strays: one close button, one open button; remove parts you made by mistake.
-- UI style: put screens under StarterGui in a ScreenGui (ResetOnSpawn false, IgnoreGuiInset true). Every frame gets a
-  UICorner (8 to 16 px) and UIPadding; one background family and ONE accent colour, never default grey; UIStroke at
-  1 px for depth; a clear size hierarchy in GothamBold/Gotham or BuilderSans; UIListLayout or UIGridLayout with padding;
-  scale-based UDim2 with AnchorPoint so it fits every screen, and a UIAspectRatioConstraint on fixed-shape panels.
+- UI only through build_blocks (StudPilot's kit, planning/STYLE-BIBLE.md): pick blocks and fill text, numbers, colour
+  names and icon names. Never write a UI colour, font, stroke, corner, gradient or size yourself.
+- The reply never says how something looks: no "verified", "looks", "beautiful" or "matches". Say what was built and
+  what a check reported.
 - In the world: give a scene a ground and a backdrop, not the bare baseplate; make an object look like what it is
   (an egg is rounded, not a block).`;

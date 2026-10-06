@@ -1,0 +1,14 @@
+[
+  {
+    "id": "rows",
+    "kind": "exists",
+    "after": "create",
+    "path": "game.StarterGui.{{screen}}.Window.Content.List.Row1",
+    "describes": "the first row is in the list"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the list has no errors"
+  }
+]

@@ -1,0 +1,153 @@
+{
+  "id": "setting-rows",
+  "kind": "ui",
+  "summary": "Settings rows inside a window: each a labelled slider (volumes) or a switch that cycles words (ON/OFF, High/Low).",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Settings",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "settings": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "icon",
+            "slider",
+            "switch",
+            "value",
+            "state",
+            "options",
+            "token"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "default": "Music",
+              "description": "Setting name"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "star",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "slider": {
+              "type": "boolean",
+              "default": true,
+              "description": "true for a 0-1 slider (then switch is false)"
+            },
+            "switch": {
+              "type": "boolean",
+              "default": false,
+              "description": "true for a switch that cycles its words (then slider is false)"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.8,
+              "description": "Slider start, 0 to 1"
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10,
+              "default": "ON",
+              "description": "The switch word shown now, e.g. ON or High"
+            },
+            "options": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "default": "ON/OFF",
+              "description": "All the switch words separated by /"
+            },
+            "token": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
+              ],
+              "default": "teal",
+              "description": "Row colour"
+            }
+          }
+        },
+        "default": [
+          {
+            "label": "Music",
+            "icon": "star",
+            "slider": true,
+            "switch": false,
+            "value": 0.8,
+            "state": "ON",
+            "options": "ON/OFF",
+            "token": "teal"
+          }
+        ]
+      }
+    }
+  },
+  "provides": [],
+  "depends": [
+    "window"
+  ]
+}

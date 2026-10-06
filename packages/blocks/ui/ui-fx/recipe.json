@@ -1,0 +1,14 @@
+{
+ "steps": [
+  {
+   "id": "install",
+   "op": "edit_script",
+   "path": "game.StarterPlayer.StarterPlayerScripts.StudPilotUiFx",
+   "file": "src/UiFx.luau",
+   "create": {
+    "className": "LocalScript",
+    "parent": "game.StarterPlayer.StarterPlayerScripts"
+   }
+  }
+ ]
+}

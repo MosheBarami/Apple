@@ -1,0 +1,115 @@
+{
+  "id": "loading-screen",
+  "kind": "ui",
+  "summary": "A full-screen loading screen: studded backdrop, a big icon tile, the game name in gold and a filling bar.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Loading",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 24,
+        "default": "My Game",
+        "description": "Game name"
+      },
+      "tagline": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 40,
+        "default": "",
+        "description": "A line under the name (may be empty)"
+      },
+      "icon": {
+        "type": "string",
+        "enum": [
+          "coin",
+          "coins",
+          "cash",
+          "money_bag",
+          "gem",
+          "gift",
+          "basket",
+          "book",
+          "gear",
+          "clover",
+          "rebirth",
+          "trophy",
+          "crown",
+          "star",
+          "heart",
+          "bolt",
+          "potion",
+          "egg",
+          "paw",
+          "sword",
+          "shield",
+          "chest",
+          "key",
+          "lock",
+          "check",
+          "close",
+          "info",
+          "clock",
+          "map",
+          "home",
+          "backpack",
+          "pickaxe",
+          "rocket",
+          "fire",
+          "ticket",
+          "calendar",
+          "scroll",
+          "arrow_up",
+          "magnet",
+          "boots"
+        ],
+        "default": "star",
+        "description": "An icon from the kit's pack, by name"
+      },
+      "token": {
+        "type": "string",
+        "enum": [
+          "lime",
+          "sky",
+          "sun",
+          "berry",
+          "grape",
+          "teal",
+          "slate"
+        ],
+        "default": "grape",
+        "description": "Backdrop and tile colour"
+      },
+      "barToken": {
+        "type": "string",
+        "enum": [
+          "lime",
+          "sky",
+          "sun",
+          "berry",
+          "grape",
+          "teal",
+          "slate"
+        ],
+        "default": "lime",
+        "description": "Bar colour"
+      },
+      "seconds": {
+        "type": "number",
+        "minimum": 2,
+        "maximum": 30,
+        "default": 8,
+        "description": "How long the bar takes to fill"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

@@ -34,10 +34,15 @@ const CRITIC_SCHEMA = {
   properties: {
     scores: {
       type: 'object',
-      properties: { delivers: SCORE, visual: SCORE, layout: SCORE, ui: SCORE, life: SCORE, polish: SCORE },
+      // style is rubric v2's seventh area (planning/STYLE-BIBLE.md §7); criticProblems requires it under v2.
+      properties: { delivers: SCORE, visual: SCORE, layout: SCORE, ui: SCORE, life: SCORE, polish: SCORE, style: SCORE },
       required: ['delivers', 'visual', 'layout', 'ui', 'life', 'polish'],
     },
     na: { type: 'array', items: { type: 'string', enum: ['ui'] } },
+    signatures: {
+      type: 'object',
+      properties: Object.fromEntries(['font', 'gloss', 'studs', 'borders', 'icons', 'colour', 'layout'].map((k) => [k, { type: 'string', enum: ['present', 'weak', 'missing'] }])),
+    },
     severeFlaws: {
       type: 'array',
       items: {
@@ -85,6 +90,7 @@ function criticProblems(c, shotNames) {
   const problems = []
   const na = Array.isArray(c.na) ? c.na : []
   for (const a of AREAS) if (typeof c.scores[a] !== 'number') problems.push(`${a} has no score`)
+  if (args.rubricVersion === 'v2' && typeof c.scores.style !== 'number') problems.push('style has no score')
   if (na.includes('ui') ? c.scores.ui !== null : typeof c.scores.ui !== 'number') problems.push('ui is neither scored nor marked N/A')
   const viewed = new Set(c.shotsViewed || [])
   const missing = shotNames.filter((n) => !viewed.has(n))
@@ -101,6 +107,9 @@ function criticPrompt(piece, reversed) {
     'THE REQUEST (exactly as the user typed it):',
     piece.request,
     '',
+    ...(Array.isArray(piece.board) && piece.board.length
+      ? ['THE REFERENCE BOARD (rubric v2: the target look; read each image with the Read tool BEFORE the screenshots):', ...piece.board.map((b) => `${b.id}. ${b.path}`), '']
+      : []),
     'THE SCREENSHOTS (read each image with the Read tool; read nothing else):',
     ...shots.map((s, i) => `${i + 1}. ${s.path}`),
   ].join('\n')
