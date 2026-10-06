@@ -5,6 +5,7 @@
 // and the session checkpoints before its first change (apps/worker/src/do/session.ts, /studio-tool).
 import { type AgentProps, useModel, useSubagent, useTool } from '@flue/runtime';
 import { STUDIO_TOOL_SPECS } from '../tools/generated.ts';
+import { projectOf } from '../conversation-id.ts';
 import { studioTools } from '../tools/studio.ts';
 
 const READS = STUDIO_TOOL_SPECS.filter((t) => !t.writes).map((t) => t.name);
@@ -56,10 +57,11 @@ line it names, and say plainly when the run was clean. Change nothing. ${SHARED}
   },
 } as const;
 
-/** One instance per StudPilot project: `id` is the project id (checked against its owner in app.ts). */
+/** One instance per conversation: `id` is `<project>` or `<project>~<chat>` (checked against its owner in app.ts). */
 export function StudPilot({ id }: AgentProps) {
   useModel('cloudflare/@cf/zai-org/glm-5.3-flash');
-  const tools = studioTools(id);
+  // The id was checked at the route: its project part is the project the owner opened.
+  const tools = studioTools(projectOf(id) ?? id);
   const pick = (names: readonly string[]) => tools.filter((t) => names.includes(t.name));
   for (const tool of pick(READS)) useTool(tool);
   for (const [name, role] of Object.entries(ROLES)) {
