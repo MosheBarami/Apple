@@ -1,6 +1,8 @@
 packages:
   - apps/*
   - packages/*
+  # apps/www is the new front end (planning/WEB-REBUILD.md): its own lockfile and a hoisted install, which OpenNext needs.
+  - '!apps/www'
 overrides:
   # Dependabot 2026-10-03: transitive copies (ajv's fast-uri, mermaid's dompurify, astro's devalue, unifont's undici 8) held to patched releases.
   fast-uri: '>=3.1.8 <4'
