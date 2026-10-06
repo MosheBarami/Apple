@@ -62,9 +62,10 @@ node scripts/check-old-names.mjs                           # old-name guard: exi
 node infra/deploy-worker.mjs studpilot                     # deploy; then check buildSha at studpilot.app/api/health
                                                            # then check buildSha at /api/health equals the main HEAD
 node infra/deploy-static.mjs                               # site + SPA into the D1 static store
+node infra/deploy-studio.mjs                               # the Studio worker (apps/studio, /studio); before deploy-worker when both change
 ```
 
-Deploy only through these two scripts, from a clean tree; both verify what they deployed. The worker's config is
+Deploy only through these three scripts, from a clean tree; each verifies what it deployed. The worker's config is
 `apps/worker/wrangler.studpilot.jsonc`.
 
 Many worker tests read source text and assert on it (a call must sit inside a guard's character window, a literal
