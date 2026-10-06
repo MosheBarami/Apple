@@ -140,11 +140,12 @@
     },
     {
       "name": "egg",
-      "imageId": "rbxassetid://112987131135753",
-      "sourceAssetId": "131341036154460",
-      "creator": "Yoloalt202",
-      "store": "https://create.roblox.com/store/asset/131341036154460",
-      "style": "glossy golden egg with thick black outline"
+      "imageId": "rbxassetid://4829244230",
+      "sourceAssetId": "4829244248",
+      "creator": "SmohoUploadsFoods",
+      "store": "https://create.roblox.com/store/asset/4829244248",
+      "style": "white glossy egg with thick black outline; tinted per item",
+      "tintable": true
     },
     {
       "name": "paw",
@@ -198,7 +199,7 @@
       "name": "check",
       "imageId": "rbxassetid://78078299898562",
       "sourceAssetId": "133147872794996",
-      "creator": "Cataluña RP",
+      "creator": "Catalu\u00f1a RP",
       "store": "https://create.roblox.com/store/asset/133147872794996",
       "style": "glossy green circle with white check mark"
     },
