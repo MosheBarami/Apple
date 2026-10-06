@@ -2,6 +2,8 @@ export interface Env {
   AI: Ai;
   /** The `studpilot-studio` worker (apps/studio), served at /studio. Optional until it is deployed. */
   STUDIO?: Fetcher;
+  /** apps/www (the website and the chat), reached for every page path the worker does not answer. */
+  WWW?: Fetcher;
   /** 'true' sends /app/projects/<id> to the rebuilt Studio app (R6). Unset or anything else: the /app workspace. */
   STUDIO_IS_DEFAULT?: string;
   CORPUS: D1Database;
