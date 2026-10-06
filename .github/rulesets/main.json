@@ -36,11 +36,9 @@
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           { "context": "Typecheck and tests" },
-          { "context": "Build site and web" },
           { "context": "Build and verify the Studio plugin (apps/studpilot-plugin)" },
           { "context": "Static checks" },
-          { "context": "Secrets and dependencies" },
-          { "context": "Playwright smoke" }
+          { "context": "Secrets and dependencies" }
         ]
       }
     }

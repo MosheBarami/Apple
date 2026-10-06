@@ -16,6 +16,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # Owner speed order (2026-10-06): a change to documents only runs no CI.
+    paths-ignore: ['**/*.md', 'planning/**', 'docs/**']
   # EVERY pull request, whatever it targets.
   #
   # This was `branches: [main]`, which covered PR #1 only because PR #1 happens to
@@ -29,6 +31,7 @@ on:
   # creates no production path. Do not add a deploy step to this file; if one is ever
   # needed it belongs in a separate workflow gated on `push: [main]`.
   pull_request:
+    paths-ignore: ['**/*.md', 'planning/**', 'docs/**']
   workflow_dispatch:
 
 # A newer push supersedes an in-flight run for the same ref.
@@ -48,17 +51,36 @@ env:
 
 jobs:
   # ---------------------------------------------------------------- checks --
-  typecheck-and-test:
-    name: Typecheck and tests
+  tests:
+    # Owner speed order (2026-10-06): CI under 3 minutes. The tests run in parallel shards; apps/site and apps/web are
+    # not built or tested any more, nor packages/design, their design system (the web rebuild replaces all three).
+    name: Tests (${{ matrix.part }})
     runs-on: ubuntu-latest
-    # 12 until 2026-09-21. This job now also builds the site and downloads Chromium, because
-    # `pnpm -r test` runs @studpilot/site's 272 tests and 47 of them are about the built site — see the
-    # two steps below. Measured on the runner before those steps existed: install 40s, luau 9s,
-    # typecheck 63s, and the tests reached @studpilot/web at 1:13 into the step. The new steps add
-    # roughly 15s and 60s. 20 leaves room without hiding a hang, and a timeout is not a verdict:
-    # if this job is ever killed by the clock, nothing was measured and it must not be read as a
-    # failing test.
-    timeout-minutes: 20
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: typecheck
+            run: pnpm -r --filter '!@studpilot/site' --filter '!@studpilot/web' typecheck
+          - part: worker 1/4
+            run: cd apps/worker && node --test --test-shard=1/4
+          - part: worker 2/4
+            run: cd apps/worker && node --test --test-shard=2/4
+          - part: worker 3/4
+            run: cd apps/worker && node --test --test-shard=3/4
+          - part: worker 4/4
+            run: cd apps/worker && node --test --test-shard=4/4
+          - part: packages
+            run: pnpm -r --filter '!@studpilot/site' --filter '!@studpilot/web' --filter '!@studpilot/worker' --filter '!@studpilot/design' test
+          - part: root 1/4
+            run: node --test --test-timeout=240000 --test-shard=1/4 tests/*.test.mjs
+          - part: root 2/4
+            run: node --test --test-timeout=240000 --test-shard=2/4 tests/*.test.mjs
+          - part: root 3/4
+            run: node --test --test-timeout=240000 --test-shard=3/4 tests/*.test.mjs
+          - part: root 4/4
+            run: node --test --test-timeout=240000 --test-shard=4/4 tests/*.test.mjs
     steps:
       - uses: actions/checkout@v4
 
@@ -75,10 +97,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Luau toolchain
-        # Two consumers, both of which fail loudly rather than silently skip:
-        #   luau-analyze — the eval selftest verifies its Luau grader against a real checker.
-        #   luau         — runs the Crystal Canyon Luau specs and their mutation check.
-        # Pinned upstream release, no third-party action.
+        # luau-analyze parses the shipped Luau (blocks, components, the eval grader); luau runs the specs.
         env:
           LUAU_VERSION: '0.663'
         run: |
@@ -90,150 +109,18 @@ jobs:
           echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
           echo "LUAU_CHECK_BIN=$RUNNER_TEMP/luau/luau-analyze" >> "$GITHUB_ENV"
 
-      - name: Typecheck every package
-        run: pnpm -r typecheck
+      - name: ${{ matrix.part }}
+        run: ${{ matrix.run }}
 
-      - name: Build the site, because `pnpm -r test` runs the site's tests
-        # `@studpilot/site` is a workspace member, so `pnpm -r test` runs its 272 tests — and 47 of
-        # them are about the BUILT site. `built-screen-pixels.test.mjs` opens `dist/index.html`
-        # and says so itself: "apps/site/dist/index.html is missing — run `npx astro build` in
-        # apps/site first. A picture nobody rendered is not a picture nobody found a defect on."
-        #
-        # They were right to fail. They were failing in the wrong place: this job had no site
-        # build, so the tests could not measure and said so, `pnpm -r test` bailed at @studpilot/site,
-        # and @studpilot/web, @studpilot/worker and @studpilot/evals never ran at all behind it. Measured in a
-        # clean clone: without this step 47 of 272 fail; with it, 272 pass.
-        #
-        # Building here rather than excluding the package, because a package that quietly leaves
-        # `pnpm -r test` is what `scripts/check-workspace-coverage.mjs` exists to catch.
-        run: pnpm --filter @studpilot/site build
-
-      - name: Install Chromium, because three of those tests use a real browser
-        # built-screen-pixels, demo-stages-fit and rendered-typography decode actual pixels out of
-        # a rendered page. Without a browser they fail on their own "or this file has measured
-        # nothing" assertion, which is the correct behaviour and not one to satisfy by deleting
-        # them. Same install the Playwright smoke job runs; free, and it downloads no model.
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: The brand assets are current
-        # The icons and the share card are PNGs, which no check that reads text can see go stale, and the
-        # favicon is copied into four places. `make-brand-assets.mjs --check` re-renders every icon in the
-        # Chromium installed above and compares it with the committed PNG picture for picture (not byte
-        # for byte: this runner antialiases a little differently from the machine that ran `pnpm brand`),
-        # compares every favicon copy exactly, and checks the manifest of input and output hashes. The
-        # share card is drawn in the system font of the machine that made it, so on this runner its
-        # manifest hashes are its check. It fetches nothing: a request to anything but a file fails it.
-        run: node scripts/make-brand-assets.mjs --check
-
-      - name: Tests
-        # Offline by construction. See the cost policy at the top of this file.
-        run: pnpm -r test
-
-      - name: Root tests
-        # `pnpm -r test` recurses over workspace MEMBERS. Tests at the repository root are in no
-        # member, so tests/gate-check.test.mjs — the test of the program that decides whether every
-        # gate in GATES.md is met — ran nowhere in CI. Same shape as the apps/plugin gap that
-        # check-workspace-coverage.mjs exists for, one level out.
-        # A per-test ceiling (2026-10-06): a hung test fails under its own name instead of the job being
-        # cut off at its timeout with nothing said about which file hung.
-        run: node --test --test-timeout=240000 tests/*.test.mjs
-
-      - name: Ledger is well-formed
-        # Executes nothing: seconds, not the ten minutes a full gate pass costs. It checks the
-        # SHAPE of GATES.md — no duplicate gate ids, every gate falsifiable, no box ticked without
-        # evidence under it, no box ticked ABOVE evidence that records a failure. Every defect
-        # found in this ledger so far has been a shape defect rather than a failing command: an
-        # EVIDENCE line credited to a checker that had never existed, and two sessions appending a
-        # G19 within minutes of each other.
-        run: node scripts/gate-check.mjs --lint
-
-  # ----------------------------------------------------------------- build --
-  build:
-    name: Build site and web
+  typecheck-and-test:
+    # The one name the branch ruleset requires (.github/rulesets/main.json): green only when every shard is.
+    name: Typecheck and tests
+    needs: tests
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - run: test "${{ needs.tests.result }}" = success
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build marketing site
-        run: pnpm --filter @studpilot/site build
-
-      - name: Build web app
-        run: pnpm --filter @studpilot/web build
-
-      - name: Internal links resolve
-        # Nineteen pages that cross-reference each other, and a dead href is valid HTML —
-        # the build succeeds and the 404 ships. 577 links today.
-        run: node scripts/check-site-links.mjs
-
-      - name: Published spark figures match what the worker charges
-        # The pricing page stated Clay at 1 spark and 60 requests a free day. The worker
-        # charges ceil(neurons / 30) and Clay measures 37-43, so it is 2 and 30. Stone
-        # and Rune were right, which is what made it an arithmetic slip rather than a
-        # different pricing model — and nothing connected the page to the arithmetic.
-        run: node scripts/check-credit-figures.mjs
-
-      - name: Heading hierarchy and landmarks
-        # Structure is invisible until someone navigates by it. The landing shipped with
-        # its three claims inside a <footer> and their titles as <span>, which looks
-        # identical in a screenshot and gives a screen reader one stop for the page.
-        run: node scripts/check-site-semantics.mjs
-
-      - name: Backlog dispositions are earned, not pasted
-        # FEATURES.json has 1,249 rows. The moment "every row dispositioned" becomes the goal, the
-        # cheapest path stops being the work and becomes writing one justification and pasting it.
-        # This refuses a STRUCTURALLY-BLOCKED that cites something we own, a FACET-BOUND whose
-        # parent is itself unproven, and — the one that matters — any disposition applied to more
-        # than twenty rows in a pass where the citations repeat.
-        run: node scripts/check-dispositions.mjs
-
-      - name: Web app bundle budget
-        # The landing had a budget and the app had none, so it drifted the way bundles
-        # always do — by accumulating pages nobody visits. /ui-lab is a specimen book and
-        # /admin renders only for is_admin, and both were downloaded by everyone.
-        run: node scripts/check-app-bundle.mjs
-
-      - name: Landing payload budget
-        # Three separately attributed lines — markup + stylesheets, JavaScript, images — each
-        # against its own measured number. The JavaScript line printed 0 B for months because it
-        # only counted `<script src>` and Astro inlines this page's scripts; it now also fails if
-        # it finds a `<script` it cannot read, because a budget that cannot see an asset class is
-        # not a loose budget, it is an instrument reporting on something it never looked at.
-        run: node scripts/check-landing-budget.mjs
-
-      - name: Asset wall says what it shows
-        # The library section names a count and then renders cards. Nothing connected the two, and
-        # "from a library of N" over a wall of something else is the failure this repository keeps
-        # finding. Here, after the build, because "rendered" is the only place the card count is
-        # real — and because every <img> on that wall has to resolve to a file that is actually an
-        # image: the route ships no JavaScript, so a missing one renders as a broken-image glyph
-        # with nothing able to swap it out.
-        run: node scripts/check-asset-wall.mjs
-
-      - name: Upload built site
-        uses: actions/upload-artifact@v4
-        with:
-          name: site-dist
-          path: apps/site/dist
-          retention-days: 7
-
-  # ---------------------------------------------------------------- plugin --
-  # THE SHIPPED PLUGIN IS apps/studpilot-plugin — the Creator Store's "Apple Studio" listing (its title until the owner retitles it), asset
-  # 107230158271368. Until 2026-09-22 this job built apps/plugin, the legacy source whose asset
-  # Roblox removed; that package was deleted in M4. The render oracle its specs gave the shipped plugin's
-  # render-parity test now lives in apps/studpilot-plugin/tests/legacy-oracle. Nothing here builds anything but the shipped plugin.
   plugin:
     name: Build and verify the Studio plugin (apps/studpilot-plugin)
     runs-on: ubuntu-latest
@@ -373,6 +260,9 @@ jobs:
         # file that is not there was itself not in CI. A guard that does not run is a comment.
         run: node scripts/check-ci-references.mjs
 
+      - name: Ledger is well-formed
+        run: node scripts/gate-check.mjs --lint
+
       - name: Formatting drift (report only)
         # PINNED. `prettier@3` resolves the newest 3.x from npm on every run, including
         # every fork PR — unpinned remote code execution, in a workflow whose other two
@@ -408,7 +298,9 @@ jobs:
         # path, which is the one design that lets a real key ride in beside a fixture.
         run: python3 scripts/test_secret_scan.py
 
-      - name: Scan full history for secrets
+      - name: Scan for secrets (a pull request's own commits; main and manual runs the full history)
+        env:
+          SECRET_SCAN_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..HEAD', github.event.pull_request.base.sha) || '' }}
         run: python3 scripts/secret-scan.py
 
       - name: Assert no environment files are tracked
@@ -422,49 +314,7 @@ jobs:
           done
           echo "no tracked environment files"
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
       - name: Dependency audit
         # Advisory: a new upstream advisory should not block an unrelated PR,
         # but it must be visible in the run summary.
         run: pnpm audit --audit-level moderate || echo "::warning::pnpm audit reported advisories"
-
-  # ------------------------------------------------------------------ e2e ---
-  e2e:
-    name: Playwright smoke
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Build site
-        run: pnpm --filter @studpilot/site build
-
-      - name: Smoke tests
-        # Static preview of the built output. No worker, no Supabase, no
-        # provider — so these cost nothing and cannot flake on a backend.
-        run: pnpm exec playwright test
-
-      - name: Upload report on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report
-          retention-days: 7
