@@ -9,6 +9,7 @@ import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, discon
 import { Hono } from 'hono';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { STUDIO_TOOLS } from './studio-surface';
+import { buildApproved } from './account-gate';
 import type { Context } from 'hono';
 import {
   verifyStripeSignature,
@@ -983,13 +984,15 @@ async function studioGrantedStub(env: Env, projectId: string): Promise<DurableOb
  * spends credits) for a project holding a live grant, and the session checkpoints before the first write.
  */
 export class StudioGate extends WorkerEntrypoint<Env> {
-  async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string } | { ok: false }> {
+  async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string; canBuild: boolean } | { ok: false }> {
     const user = await verifyJwt(this.env, jwt);
     if (!user) return { ok: false };
     const ctx = await withOwnedProject({ env: this.env, get: () => user }, projectId);
     if (!ctx) return { ok: false };
     await grantStudio(this.env, ctx.project.id);
-    return { ok: true, projectName: ctx.project.name };
+    // The Studio agent's model calls are not metered against Credits yet, so it answers only an owner who may build at all
+    // (the pre-launch gate `/agent-run` applies). Anyone else can read their conversation but not send to it.
+    return { ok: true, projectName: ctx.project.name, canBuild: buildApproved(this.env, ctx.project.owner_id) };
   }
 
   async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {

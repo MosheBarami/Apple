@@ -88,3 +88,11 @@ test('the undo the agent promises exists: the app restores the checkpoint the se
   assert.match(read('../src/ui/app.tsx'), /<UndoChanges projectId=\{projectId\} busy=\{busy\} \/>/);
   assert.match(read('../src/agents/studpilot.ts'), /put back to a checkpoint/);
 });
+
+test('only an owner who may build can send to the Studio agent (its model time is not metered against Credits yet)', () => {
+  const app = read('../src/app.ts');
+  assert.match(app, /if \(c\.req\.method === 'POST' && !open\.canBuild\) \{\s*return c\.json\(/);
+  const index = read('../../worker/src/index.ts');
+  const open = index.slice(index.indexOf('async openProject('), index.indexOf('async callTool('));
+  assert.match(open, /canBuild: buildApproved\(this\.env, ctx\.project\.owner_id\)/);
+});
