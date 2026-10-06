@@ -885,7 +885,7 @@ export function defaultDeps(opts) {
     // The rebuilt Studio agent (`--agent studio`): one fresh conversation per piece, reached with the test user's own session.
     studio: {
       session: (userId) => mintUserSession(userId, { managementToken: env.supabaseManagementToken }),
-      run: (args) => runStudioRequest({ repoRoot: REPO_ROOT, apiBase: env.apiBase, ...args }),
+      run: (args) => runStudioRequest({ apiBase: env.apiBase, ...args }),
     },
     devSetPath: undefined,
     envFile: env.envFile,

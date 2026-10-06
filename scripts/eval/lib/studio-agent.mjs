@@ -1,8 +1,6 @@
 // Drives the rebuilt Studio agent (apps/studio, a Flue agent at /studio/api/agents/studpilot/<project>~<chat>) for the harness's
 // `--agent studio` runs. The agent is reached exactly as the browser reaches it: with the test user's own Supabase session, minted
 // through the Supabase admin magic-link flow for that EXISTING user (no password, no new account). Nothing secret is printed.
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 const SUPABASE_REF = 'npqvyijsvzkuwddyhtpm';
 
@@ -34,8 +32,8 @@ export function evalConversationId(projectId, requestId, stamp) {
  * Sends one request and waits for the reply. Returns the reply text, the tool steps the conversation shows (top-level and
  * the coordinator's `task` delegations), and how it ended.
  */
-export async function runStudioRequest({ repoRoot, apiBase, token, conversationId, text, timeoutMs }) {
-  const sdk = await import(pathToFileURL(join(repoRoot, 'apps', 'studio', 'node_modules', '@flue', 'sdk', 'dist', 'index.mjs')).href);
+export async function runStudioRequest({ apiBase, token, conversationId, text, timeoutMs }) {
+  const sdk = await import('@flue/sdk'); // a root devDependency, the same version apps/studio uses
   const client = sdk.createFlueClient({ url: `${apiBase}/studio/api/agents/studpilot/${conversationId}`, token });
   const sent = await client.send({ message: { kind: 'user', body: text } });
   let reply;
