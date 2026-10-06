@@ -33,6 +33,8 @@ export function loadHarnessEnv({ envFile, apiBase, env = process.env, readFile =
   const adminKey = envCompat('STUDPILOT_ADMIN_KEY', merged) ?? '';
   return {
     adminKey,
+    /** The Supabase Management API token: only `--agent studio` runs use it, to make the test user's session. */
+    supabaseManagementToken: merged.SUPABASE_ACCESS_TOKEN ?? '',
     apiBase: String(apiBase ?? merged.STUDPILOT_API_BASE ?? DEFAULT_API_BASE).replace(/\/+$/, ''),
     envFile: exists(file) ? file : null,
   };
