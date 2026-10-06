@@ -32,6 +32,36 @@ On https://github.com/MosheBarami/StudPilot/issues, type each filter, then **Sav
 ### G3. CodeQL: turn the per-PR default setup off after #73 merges (Claude Code does this with gh; listed in case it fails)
 Settings → Code security → Code scanning → CodeQL analysis → **⋯** → **Disable CodeQL** (the weekly `codeql.yml` replaces it).
 
+## Master plan (2026-10-07): owner steps
+
+### O-EYE-WEB. Look at the 4 site screenshots and answer "yes" or "change X" (§7)
+Sent in chat on 2026-10-07: Home (hero rule applied), Pricing, empty chat, chat mid-build. Nothing else ships to the site
+until you answer.
+
+### O-GROUP. A "StudPilot" Roblox group (costs 100 Robux: needs your yes) (§4.5.1)
+1. Say "yes, create the group" (or name an existing group you own).
+2. On roblox.com: **Create** → **Communities** → **Create Community**, name "StudPilot", pay 100 Robux.
+3. Tell Claude Code the group's ID (in the group page URL).
+
+### O-PRIVACY. The group's assets must be usable in other people's games (§4.5.2)
+New group images are Restricted by default since 2026-05-05. Claude Code will confirm the exact clicks with research
+and put them here; until then this item waits on O-GROUP.
+
+### O-KEY. A group Open Cloud API key with only the scopes the pipeline needs (§4.5.3)
+1. https://create.roblox.com/dashboard/credentials → **API Keys** → **Create API Key**.
+2. Owner: the **StudPilot group** (never your personal account).
+3. Access: **Assets** API, read and write (nothing else; more scopes later, one at a time, with a reason).
+4. Accepted IP addresses: 0.0.0.0/0 for now, no expiry or 90 days.
+5. Paste it yourself into `~/Developer/StudPilot/.env` as `ROBLOX_GROUP_ASSETS_KEY=...` and the group ID as
+   `ROBLOX_GROUP_ID=...`. Tell Claude Code "group key in".
+
+### O-TOOLBOX. A Creator Store (Toolbox Service) key, if the API needs one (§4.5.4)
+Claude Code is confirming with research whether searching the Creator Store needs a key; the clicks go here if so.
+
+### O-WORKFLOW. Larger research workflows (§4.5.5)
+If library research is slowed by the workflow size limit: in a `claude` terminal run `/config` → **Dynamic workflow
+size** → raise it. (Not a blocker today: research runs in smaller batches.)
+
 ## Before charging money
 
 ### N9. An adult or a company becomes the named operator (D-15)
