@@ -18,7 +18,10 @@ import { dirname, join } from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { listShots } from '../scripts/eval/lib/piece-files.mjs';
-import { DEFAULT_RUBRIC, loadRubric, prepare } from '../scripts/eval/prepare-critics.mjs';
+import { RUBRIC_V1, loadRubric, prepare as prepareAny } from '../scripts/eval/prepare-critics.mjs';
+// These tests pin the v1 pipeline the M3 baseline was scored with; rubric v2 has its own tests (eval-style-gates.test.mjs).
+const DEFAULT_RUBRIC = RUBRIC_V1;
+const prepare = (dirs, o = {}) => prepareAny(dirs, { rubricPath: RUBRIC_V1, ...o });
 import { uiRequiredBecause, unsupportedClaims, unwrapResults, writeVerdicts } from '../scripts/eval/write-verdicts.mjs';
 import { aggregate, collect, pctDown, renderMarkdown } from '../scripts/eval/baseline.mjs';
 import { AREAS } from '../scripts/eval/lib/verdict.mjs';
@@ -104,7 +107,7 @@ test('prepare-critics builds the workflow args: the rubric as written, and per p
   const args = prepare([a]);
   assert.equal(args.rubric, readFileSync(DEFAULT_RUBRIC, 'utf8'), 'the rubric text is the file, whole');
   assert.equal(args.rubricVersion, 'v1');
-  assert.equal(args.rubricSha256, loadRubric().rubricSha256);
+  assert.equal(args.rubricSha256, loadRubric(RUBRIC_V1).rubricSha256);
   assert.equal(args.pieces.length, 1);
   const p = args.pieces[0];
   assert.equal(p.requestId, 'P01');
@@ -193,11 +196,12 @@ test('A CRITIC PROMPT HOLDS ONLY THE RUBRIC, THE REQUEST AND THE SCREENSHOT PATH
   }
 });
 
-test('the critic schema asks for the rubric JSON: six areas, only ui may be N/A, a flaw number 1-6 with evidence, shotsViewed', async () => {
+test('the critic schema asks for the rubric JSON: the six areas (and v2\'s style), only ui may be N/A, a flaw number 1-6 with evidence, shotsViewed', async () => {
   const { args } = prepared();
   const { calls } = await runWorkflow(args, okAgent);
   const schema = calls.find((c) => c.opts.label === 'P01 critic A').opts.schema;
-  assert.deepEqual(Object.keys(schema.properties.scores.properties), AREAS);
+  assert.deepEqual(Object.keys(schema.properties.scores.properties), [...AREAS, 'style']);
+  assert.deepEqual(schema.properties.scores.required, AREAS, 'style is required by rubric v2 only, in criticProblems');
   assert.deepEqual(schema.properties.na.items.enum, ['ui']);
   assert.deepEqual(schema.properties.severeFlaws.items.required, ['flaw', 'evidence']);
   assert.equal(schema.properties.severeFlaws.items.properties.flaw.maximum, 6);
@@ -270,7 +274,7 @@ test('write-verdicts writes critic-a, critic-b, claims and verdict into each fol
   assert.equal(v.pass, false);
   assert.equal(v.lower.visual, 5, 'the lower of the two critics');
   assert.match(v.reasons.join(), /visual: the lower score 5 is below 8/);
-  assert.deepEqual(v.rubric, { version: 'v1', sha256: loadRubric().rubricSha256 });
+  assert.deepEqual(v.rubric, { version: 'v1', sha256: loadRubric(RUBRIC_V1).rubricSha256 });
   assert.deepEqual(v.shotsGiven, ORDERED);
   const n = JSON.parse(readFileSync(join(noChecks, 'verdict.json'), 'utf8'));
   assert.equal(n.status, 'unevaluable');

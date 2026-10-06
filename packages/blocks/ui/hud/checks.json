@@ -1,10 +1,10 @@
 [
   {
-    "id": "top",
+    "id": "hud",
     "kind": "exists",
     "after": "create",
-    "path": "game.StarterGui.{{screen}}.Top.Counters",
-    "describes": "the HUD bar is in StarterGui"
+    "path": "game.StarterGui.{{screen}}.Currencies",
+    "describes": "the HUD is in StarterGui"
   },
   {
     "id": "clean",

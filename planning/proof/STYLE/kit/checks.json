@@ -1,0 +1,15 @@
+{
+ "KIT": {
+  "panels": 1,
+  "source": "hook",
+  "lint": [],
+  "lintExamples": [],
+  "colour": {
+   "saturation": 0.54,
+   "grey": 0.05,
+   "vivid": 0.48,
+   "pass": true,
+   "reasons": []
+  }
+ }
+}

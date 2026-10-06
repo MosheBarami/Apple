@@ -4,7 +4,7 @@
     "kind": "exists",
     "after": "create",
     "path": "game.StarterGui.{{screen}}.Window.Content.Codes.Box",
-    "describes": "the code box is in the panel"
+    "describes": "the code box is in the window"
   },
   {
     "id": "wired",

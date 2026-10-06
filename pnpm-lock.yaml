@@ -20,9 +20,12 @@ importers:
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.62.1
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@24.13.3)
       wrangler:
         specifier: ^4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)(@types/node@24.13.3)
+        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)
 
   apps/site:
     dependencies:
@@ -11907,7 +11910,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
       '@types/node': 24.13.3
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

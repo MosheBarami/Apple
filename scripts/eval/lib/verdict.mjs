@@ -29,6 +29,11 @@
 // something about quality without pretending a clause was satisfied that was never run.
 
 export const AREAS = ['delivers', 'visual', 'layout', 'ui', 'life', 'polish'];
+/** Rubric v2 (planning/STYLE-BIBLE.md §7): a seventh area, style, and the seven UI signatures. */
+export const AREAS_V2 = [...AREAS, 'style'];
+export const SIGNATURES = ['font', 'gloss', 'studs', 'borders', 'icons', 'colour', 'layout'];
+export const SIGNATURE_STATES = ['present', 'weak', 'missing'];
+const areasFor = (version) => (version === 'v2' ? AREAS_V2 : AREAS);
 export const AREA_LABELS = {
   delivers: 'Delivers the request',
   visual: 'Visual quality and art direction',
@@ -36,6 +41,7 @@ export const AREA_LABELS = {
   ui: 'UI/UX clarity',
   life: 'Feedback and life',
   polish: 'Polish',
+  style: 'Style (matches the reference board)',
 };
 /** Only the UI area may be N/A (plan 4.3: "N/A for non-UI"). */
 export const NA_ALLOWED = ['ui'];
@@ -48,19 +54,25 @@ const isScore = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && 
  * Is this critic output the shape the rubric asks for, and did the critic look at every picture?
  * Returns { ok, problems: string[] }. A critic that is not ok cannot be counted.
  */
-export function validateCritic(critic, { shotsGiven = [] } = {}) {
+export function validateCritic(critic, { shotsGiven = [], rubricVersion = 'v1', uiPiece = false } = {}) {
   const problems = [];
   if (!critic || typeof critic !== 'object') return { ok: false, problems: ['no critic output'] };
   const scores = critic.scores;
   const na = Array.isArray(critic.na) ? critic.na : [];
   if (!scores || typeof scores !== 'object') problems.push('scores is missing');
   for (const a of na) if (!NA_ALLOWED.includes(a)) problems.push(`"${a}" may not be marked N/A (only ui may)`);
-  for (const area of AREAS) {
+  for (const area of areasFor(rubricVersion)) {
     const v = scores?.[area];
     if (na.includes(area)) {
       if (v !== null && v !== undefined) problems.push(`${area} is in na but has a score`);
     } else if (!isScore(v)) {
       problems.push(`${area} has no score from 0 to 10`);
+    }
+  }
+  if (rubricVersion === 'v2' && uiPiece) {
+    const sig = critic.signatures;
+    for (const name of SIGNATURES) {
+      if (!SIGNATURE_STATES.includes(sig?.[name])) problems.push(`signature ${name} is not given as present, weak or missing`);
     }
   }
   if (!Array.isArray(critic.severeFlaws)) problems.push('severeFlaws is not a list');
@@ -77,10 +89,10 @@ export function validateCritic(critic, { shotsGiven = [] } = {}) {
 }
 
 /** The lower of the two critics' scores per area, and which areas are N/A (both critics marked them). */
-export function lowerScores(a, b) {
+export function lowerScores(a, b, rubricVersion = 'v1') {
   const lower = {};
   const na = [];
-  for (const area of AREAS) {
+  for (const area of areasFor(rubricVersion)) {
     const values = [a?.scores?.[area], b?.scores?.[area]].filter(isScore);
     if (values.length === 0) {
       lower[area] = null;
@@ -115,10 +127,12 @@ export function computeVerdict(i) {
   const failed = []; // clauses that decidedly failed
   const unestablished = []; // clauses that could not be established
   const shotsGiven = i.shotsGiven ?? [];
+  const rubricVersion = i.rubricVersion === 'v2' ? 'v2' : 'v1';
+  const uiPiece = Boolean(i.uiRequired);
 
   // ---- the critics
-  const checkA = validateCritic(i.criticA, { shotsGiven });
-  const checkB = validateCritic(i.criticB, { shotsGiven });
+  const checkA = validateCritic(i.criticA, { shotsGiven, rubricVersion, uiPiece });
+  const checkB = validateCritic(i.criticB, { shotsGiven, rubricVersion, uiPiece });
   if (!checkA.ok) unestablished.push(`critic A is not usable: ${checkA.problems.join('; ')}`);
   if (!checkB.ok) unestablished.push(`critic B is not usable: ${checkB.problems.join('; ')}`);
 
@@ -139,11 +153,11 @@ export function computeVerdict(i) {
   let na = [];
   const severe = { a: [], b: [] };
   if (criticsUsable) {
-    ({ lower, na } = lowerScores(i.criticA, i.criticB));
+    ({ lower, na } = lowerScores(i.criticA, i.criticB, rubricVersion));
     if (i.uiRequired && na.includes('ui')) {
       unestablished.push(`ui: both critics marked UI/UX N/A, but ${i.uiRequired}, so the area was not scored and the piece cannot pass`);
     }
-    for (const area of AREAS) {
+    for (const area of areasFor(rubricVersion)) {
       if (na.includes(area)) continue;
       const a = i.criticA.scores[area];
       const b = i.criticB.scores[area];
@@ -155,6 +169,22 @@ export function computeVerdict(i) {
     severe.b = i.criticB.severeFlaws;
     for (const [who, flaws] of [['A', severe.a], ['B', severe.b]]) {
       for (const f of flaws) failed.push(`severe flaw ${f.flaw} (critic ${who}): ${f.evidence}`);
+    }
+    if (rubricVersion === 'v2' && uiPiece) {
+      for (const [who, c] of [['A', i.criticA], ['B', i.criticB]]) {
+        const missing = SIGNATURES.filter((name) => c.signatures?.[name] === 'missing');
+        if (missing.length) failed.push(`style: critic ${who} found ${plural(missing.length, 'signature')} missing (${missing.join(', ')})`);
+      }
+    }
+  }
+
+  // ---- the automatic checks of rubric v2 (planning/STYLE-BIBLE.md §5, §6): they run before any critic
+  if (rubricVersion === 'v2') {
+    const g = i.gates ?? {};
+    for (const [name, label] of [['kitLint', 'kit lint'], ['colour', 'colour gate'], ['reply', 'reply rule']]) {
+      const r = g[name];
+      if (!r || typeof r.pass !== 'boolean') unestablished.push(`${label}: it did not run`);
+      else if (!r.pass) failed.push(`${label}: ${(r.reasons ?? []).slice(0, 3).join('; ') || 'failed'}`);
     }
   }
 
@@ -202,6 +232,7 @@ export function computeVerdict(i) {
 
   return {
     requestId: i.requestId ?? null,
+    rubricVersion,
     pass: status === 'pass',
     status,
     passIgnoringFunctionalChecks,
@@ -210,8 +241,8 @@ export function computeVerdict(i) {
     lower: criticsUsable ? lower : null,
     na: criticsUsable ? na : null,
     critics: {
-      a: i.criticA ? { scores: i.criticA.scores ?? null, na: i.criticA.na ?? [], severeFlaws: i.criticA.severeFlaws ?? [] } : null,
-      b: i.criticB ? { scores: i.criticB.scores ?? null, na: i.criticB.na ?? [], severeFlaws: i.criticB.severeFlaws ?? [] } : null,
+      a: i.criticA ? { scores: i.criticA.scores ?? null, na: i.criticA.na ?? [], severeFlaws: i.criticA.severeFlaws ?? [], ...(i.criticA.signatures ? { signatures: i.criticA.signatures } : {}) } : null,
+      b: i.criticB ? { scores: i.criticB.scores ?? null, na: i.criticB.na ?? [], severeFlaws: i.criticB.severeFlaws ?? [], ...(i.criticB.signatures ? { signatures: i.criticB.signatures } : {}) } : null,
     },
     nonCritic: {
       playTest: play ? { errors: Number.isFinite(play.errors) ? play.errors : null, warnings: play.warnings ?? null, ...(Array.isArray(play.why) && play.why.length ? { why: play.why } : {}) } : null,
@@ -219,6 +250,7 @@ export function computeVerdict(i) {
       functionalChecks: fc.defined ? { defined: true, results: fc.results ?? [] } : { defined: false },
       claimAudit: claims ? { unsupported: claims.unsupported.length } : null,
       runEndedBy: endedBy,
+      ...(rubricVersion === 'v2' ? { gates: i.gates ?? null } : {}),
     },
     functionalChecksEstablished,
   };

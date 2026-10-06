@@ -17,6 +17,7 @@ import type { Block, BlockCheck, RecipeStep } from './block-types.ts';
 import { validateParams } from './block-schema.ts';
 import { summarisePlayCheck } from './playtest.ts';
 import { propValue, typed } from './typed-spec.ts';
+import { expandKit } from './studkit.ts';
 
 export const MAX_REPAIRS = 2;
 const NAME = '[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*){0,2}';
@@ -134,7 +135,8 @@ function typedProps(props: Record<string, unknown>): Record<string, PropValue> {
 
 /** The ops one step sends. Pure. */
 export function stepOps(step: RecipeStep, block: Block, params: Record<string, unknown>): StudioOp[] {
-  const s = hexToRgb(fill(step, params)) as RecipeStep;
+  // StudKit components (studkit.ts) become plain specs after the slots are filled: the look is the kit's, never a parameter's.
+  const s = hexToRgb(expandKit(fill(step, params))) as RecipeStep;
   switch (s.op) {
     case 'create_instances':
       return [{ op: 'create_instances', items: (s.items as Array<{ parent: string } & Parameters<typeof typed>[0]>).map((item) => ({ ...typed(item), parent: item.parent })) }];

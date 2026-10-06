@@ -1,7 +1,7 @@
 {
   "id": "row-list",
   "kind": "ui",
-  "summary": "Rows in a scrolling list inside a panel: icon chip, label, detail, value, optional progress bar and button.",
+  "summary": "Rows in a scrolling list inside a window: overflowing icon, label, detail, gold value, optional bar and button.",
   "params": {
     "type": "object",
     "additionalProperties": false,
@@ -10,17 +10,22 @@
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
         "default": "Shop",
-        "description": "The ScreenGui this belongs to (the panel's screen)"
+        "description": "The ScreenGui this belongs to (the window's screen)"
       },
       "showProgress": {
         "type": "boolean",
         "default": false,
-        "description": "Show each row's progress bar"
+        "description": "Show each row's bar (quests, goals)"
       },
       "showDetail": {
         "type": "boolean",
         "default": true,
         "description": "Show each row's second line (false for a leaderboard)"
+      },
+      "showButton": {
+        "type": "boolean",
+        "default": false,
+        "description": "Show each row's button (upgrades, claims)"
       },
       "feed": {
         "type": "string",
@@ -36,19 +41,7 @@
         "type": "string",
         "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
         "default": "",
-        "description": "For feed leaderboard: the ranked stat; for upgrades: the currency"
-      },
-      "showButton": {
-        "type": "boolean",
-        "default": false,
-        "description": "Show each row's button"
-      },
-      "rowHeight": {
-        "type": "integer",
-        "minimum": 66,
-        "maximum": 110,
-        "default": 76,
-        "description": "Pixels"
+        "description": "A player attribute to follow live (a currency name such as Coins), or \"\""
       },
       "items": {
         "type": "array",
@@ -62,32 +55,72 @@
             "label",
             "detail",
             "value",
-            "colour",
+            "token",
             "progress",
             "button",
-            "buttonColour"
+            "buttonToken"
           ],
           "properties": {
             "icon": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 4,
-              "default": "⭐",
-              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "star",
+              "description": "An icon from the kit's pack, by name"
             },
             "label": {
               "type": "string",
               "minLength": 1,
               "maxLength": 26,
               "default": "Row",
-              "description": "Main text, e.g. a player name, quest or upgrade"
+              "description": "Main text: a player name, quest or upgrade"
             },
             "detail": {
               "type": "string",
               "minLength": 0,
               "maxLength": 40,
               "default": "",
-              "description": "Second line, e.g. +10% speed, 3/5 collected (may be empty)"
+              "description": "Second line, e.g. +10% speed, 3/5 (may be empty)"
             },
             "value": {
               "type": "string",
@@ -96,21 +129,19 @@
               "default": "",
               "description": "Right side, e.g. 1,250 wins, Lv 3 (may be empty)"
             },
-            "colour": {
+            "token": {
               "type": "string",
               "enum": [
-                "green",
-                "yellow",
-                "orange",
-                "pink",
-                "blue",
-                "purple",
-                "red",
-                "cream",
-                "grey"
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
               ],
-              "default": "blue",
-              "description": "Icon chip colour"
+              "default": "sky",
+              "description": "Row colour"
             },
             "progress": {
               "type": "number",
@@ -124,36 +155,34 @@
               "minLength": 0,
               "maxLength": 12,
               "default": "",
-              "description": "Button text, e.g. Buy 500 (may be empty)"
+              "description": "Button text, e.g. Claim (may be empty)"
             },
-            "buttonColour": {
+            "buttonToken": {
               "type": "string",
               "enum": [
-                "green",
-                "yellow",
-                "orange",
-                "pink",
-                "blue",
-                "purple",
-                "red",
-                "cream",
-                "grey"
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
               ],
-              "default": "green",
-              "description": "Grey when it cannot be pressed now"
+              "default": "lime",
+              "description": "Button colour; slate when it cannot be pressed now"
             }
           }
         },
         "default": [
           {
-            "icon": "⭐",
+            "icon": "star",
             "label": "First",
             "detail": "",
             "value": "",
-            "colour": "blue",
+            "token": "sky",
             "progress": 0,
             "button": "",
-            "buttonColour": "green"
+            "buttonToken": "lime"
           }
         ]
       }
@@ -161,6 +190,6 @@
   },
   "provides": [],
   "depends": [
-    "panel"
+    "window"
   ]
 }

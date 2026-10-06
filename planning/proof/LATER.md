@@ -21,3 +21,10 @@
 ## site (m2-site)
 - Fix cycle 2's checker did not finish (stopped by the owner's new rules); its findings, if any, were not collected.
 - CodeQL on #38 (2026-10-06) re-surfaced 23 pre-existing alerts (unchanged lines on main), 20 in tests; product ones: `json()` in session.ts (stack-trace exposure, flagged on a JSON helper), `isSmallTalk` regexes in packages/shared (polynomial regex on user text). Review when touching those files.
+
+## StudKit (2026-10-06, after the style-8 pass; planning/proof/STYLE/kit/README.md)
+- Gloss on tabs and tiles still reads faint to some critics; try a stronger top band on small faces only.
+- Big numbers get a 7 px outline that reads as a dark pill; cap the outline lower for text over 40 px.
+- Tile icons could overflow their tiles more, like R01's basket.
+- Italic card titles (R01) need `FontFace` on the plugin allowlist (a Font value type in the op protocol).
+- Weaker pack icons: clover (flat), bolt, rebirth, lock (realistic), map (flat parchment), paw (dark grey).

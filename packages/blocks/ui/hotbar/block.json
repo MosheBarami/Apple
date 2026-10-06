@@ -1,0 +1,121 @@
+{
+  "id": "hotbar",
+  "kind": "ui",
+  "summary": "The hotbar along the bottom centre: numbered slots, filled ones lime with their item's icon, empty ones slate.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "screen": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Hotbar",
+        "description": "The ScreenGui this belongs to (the window's screen)"
+      },
+      "slots": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 9,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "icon",
+            "filled"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10,
+              "default": "Empty",
+              "description": "Under the slot"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "cash",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "filled": {
+              "type": "boolean",
+              "default": false,
+              "description": "true: the item shows (lime slot); false: an empty slate slot"
+            }
+          }
+        },
+        "default": [
+          {
+            "label": "Empty",
+            "icon": "cash",
+            "filled": false
+          },
+          {
+            "label": "Empty",
+            "icon": "cash",
+            "filled": false
+          },
+          {
+            "label": "Empty",
+            "icon": "cash",
+            "filled": false
+          },
+          {
+            "label": "Empty",
+            "icon": "cash",
+            "filled": false
+          },
+          {
+            "label": "Empty",
+            "icon": "cash",
+            "filled": false
+          }
+        ]
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

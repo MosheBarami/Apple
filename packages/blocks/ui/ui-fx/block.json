@@ -1,17 +1,15 @@
 {
   "id": "ui-fx",
   "kind": "ui",
-  "summary": "Makes studded UI feel alive: buttons squash when pressed, shine sweeps, rays spin (tag-driven runtime).",
+  "summary": "The kit's motion on every screen: buttons grow on hover and squash on press, offers bob, shine sweeps.",
   "params": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "pressScale": {
-        "type": "number",
-        "minimum": 0.8,
-        "maximum": 0.98,
-        "default": 0.9,
-        "description": "How far a button squashes"
+      "bob": {
+        "type": "boolean",
+        "default": true,
+        "description": "Offers and the loading tile bob slowly"
       }
     }
   },

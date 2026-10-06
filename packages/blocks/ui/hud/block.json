@@ -1,7 +1,7 @@
 {
   "id": "hud",
   "kind": "ui",
-  "summary": "A top-of-screen HUD: currency counters, optional buttons beside them, and optional progress bars underneath.",
+  "summary": "The game HUD in the references' layout: tabs top centre, icon tiles on the left, currency bottom left, offers right.",
   "params": {
     "type": "object",
     "additionalProperties": false,
@@ -10,70 +10,9 @@
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
         "default": "HUD",
-        "description": "The ScreenGui this belongs to (the panel's screen)"
+        "description": "The ScreenGui this belongs to (the window's screen)"
       },
-      "counters": {
-        "type": "array",
-        "minItems": 0,
-        "maxItems": 4,
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "icon",
-            "value",
-            "colour",
-            "stat"
-          ],
-          "properties": {
-            "icon": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4,
-              "default": "💰",
-              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
-            },
-            "value": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 14,
-              "default": "0",
-              "description": "Starting text, e.g. 0 or 1.2K"
-            },
-            "colour": {
-              "type": "string",
-              "enum": [
-                "green",
-                "yellow",
-                "orange",
-                "pink",
-                "blue",
-                "purple",
-                "red",
-                "cream",
-                "grey"
-              ],
-              "default": "yellow",
-              "description": "Pill colour"
-            },
-            "stat": {
-              "type": "string",
-              "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
-              "default": "",
-              "description": "A currency name to follow live (e.g. Coins), or \"\" for fixed text"
-            }
-          }
-        },
-        "default": [
-          {
-            "icon": "💰",
-            "value": "0",
-            "colour": "yellow",
-            "stat": ""
-          }
-        ]
-      },
-      "buttons": {
+      "tabs": {
         "type": "array",
         "minItems": 0,
         "maxItems": 3,
@@ -82,46 +21,307 @@
           "additionalProperties": false,
           "required": [
             "label",
-            "icon",
-            "colour",
+            "token",
             "action"
           ],
           "properties": {
             "label": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 14,
+              "maxLength": 12,
               "default": "Shop",
-              "description": "Button text"
+              "description": "Tab text"
             },
-            "icon": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4,
-              "default": "🛒",
-              "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
-            },
-            "colour": {
+            "token": {
               "type": "string",
               "enum": [
-                "green",
-                "yellow",
-                "orange",
-                "pink",
-                "blue",
-                "purple",
-                "red",
-                "cream",
-                "grey"
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
               ],
-              "default": "green",
-              "description": "Button colour"
+              "default": "lime",
+              "description": "Tab colour"
             },
             "action": {
               "type": "string",
               "pattern": "^((open|fire):[A-Za-z][A-Za-z0-9_]{0,31}|pass:[0-9]{1,15})?$",
               "default": "",
-              "description": "open:<Screen> toggles a panel; fire:<Remote> asks the server (e.g. fire:ClickEarn, fire:RebirthRequest, fire:DailyClaim); pass:<id> offers a gamepass; \"\" nothing"
+              "description": "open:<Screen> toggles a window; fire:<Remote> asks the server (fire:ClickEarn, fire:RebirthRequest, fire:DailyClaim); pass:<id> offers a gamepass; \"\" nothing"
+            }
+          }
+        },
+        "default": []
+      },
+      "tiles": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 4,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "icon",
+            "token",
+            "action"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10,
+              "default": "Shop",
+              "description": "Under the icon"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "basket",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "token": {
+              "type": "string",
+              "enum": [
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal"
+              ],
+              "default": "berry",
+              "description": "Tile colour (never slate: slate is for frames and empty slots)"
+            },
+            "action": {
+              "type": "string",
+              "pattern": "^((open|fire):[A-Za-z][A-Za-z0-9_]{0,31}|pass:[0-9]{1,15})?$",
+              "default": "",
+              "description": "open:<Screen> toggles a window; fire:<Remote> asks the server (fire:ClickEarn, fire:RebirthRequest, fire:DailyClaim); pass:<id> offers a gamepass; \"\" nothing"
+            }
+          }
+        },
+        "default": []
+      },
+      "currencies": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 3,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "icon",
+            "value",
+            "ink",
+            "stat"
+          ],
+          "properties": {
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "cash",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16,
+              "default": "0",
+              "description": "Starting text, e.g. 0 or $1,250"
+            },
+            "ink": {
+              "type": "string",
+              "enum": [
+                "money",
+                "gem",
+                "gold"
+              ],
+              "default": "money",
+              "description": "money (green), gem (cyan) or gold"
+            },
+            "stat": {
+              "type": "string",
+              "pattern": "^([A-Za-z][A-Za-z ]{0,15})?$",
+              "default": "",
+              "description": "A player attribute to follow live (a currency name such as Coins), or \"\""
+            }
+          }
+        },
+        "default": [
+          {
+            "icon": "cash",
+            "value": "0",
+            "ink": "money",
+            "stat": ""
+          }
+        ]
+      },
+      "offers": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 2,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "price",
+            "icon",
+            "action"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16,
+              "default": "Starter Pack",
+              "description": "Under the icon"
+            },
+            "price": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10,
+              "default": "R$ 99",
+              "description": "Above the icon"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "coin",
+                "coins",
+                "cash",
+                "money_bag",
+                "gem",
+                "gift",
+                "basket",
+                "book",
+                "gear",
+                "clover",
+                "rebirth",
+                "trophy",
+                "crown",
+                "star",
+                "heart",
+                "bolt",
+                "potion",
+                "egg",
+                "paw",
+                "sword",
+                "shield",
+                "chest",
+                "key",
+                "lock",
+                "check",
+                "close",
+                "info",
+                "clock",
+                "map",
+                "home",
+                "backpack",
+                "pickaxe",
+                "rocket",
+                "fire",
+                "ticket",
+                "calendar",
+                "scroll",
+                "arrow_up",
+                "magnet",
+                "boots"
+              ],
+              "default": "gift",
+              "description": "An icon from the kit's pack, by name"
+            },
+            "action": {
+              "type": "string",
+              "pattern": "^((open|fire):[A-Za-z][A-Za-z0-9_]{0,31}|pass:[0-9]{1,15})?$",
+              "default": "",
+              "description": "open:<Screen> toggles a window; fire:<Remote> asks the server (fire:ClickEarn, fire:RebirthRequest, fire:DailyClaim); pass:<id> offers a gamepass; \"\" nothing"
             }
           }
         },
@@ -137,7 +337,7 @@
           "required": [
             "label",
             "progress",
-            "colour"
+            "token"
           ],
           "properties": {
             "label": {
@@ -154,20 +354,18 @@
               "default": 0.35,
               "description": "Fill, 0 to 1"
             },
-            "colour": {
+            "token": {
               "type": "string",
               "enum": [
-                "green",
-                "yellow",
-                "orange",
-                "pink",
-                "blue",
-                "purple",
-                "red",
-                "cream",
-                "grey"
+                "lime",
+                "sky",
+                "sun",
+                "berry",
+                "grape",
+                "teal",
+                "slate"
               ],
-              "default": "blue",
+              "default": "sun",
               "description": "Fill colour"
             }
           }

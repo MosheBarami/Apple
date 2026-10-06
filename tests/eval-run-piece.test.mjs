@@ -24,7 +24,8 @@ import { initBaseline, runPiece, resolveOptions, ignoreBrokenTerminal, INTERNAL_
 import { StudioMcpClient } from '../scripts/eval/lib/studio-mcp.mjs';
 import { getRequest } from '../scripts/eval/lib/dev-set.mjs';
 import { aggregate } from '../scripts/eval/baseline.mjs';
-import { prepare } from '../scripts/eval/prepare-critics.mjs';
+import { prepare as prepareAny, RUBRIC_V1 } from '../scripts/eval/prepare-critics.mjs';
+const prepare = (dirs, o = {}) => prepareAny(dirs, { rubricPath: RUBRIC_V1, ...o });
 import { writeVerdicts } from '../scripts/eval/write-verdicts.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -177,7 +178,7 @@ test('A DRY RUN resets, captures the empty Baseplate and play-tests it; it start
   const d = deps(api, { removed: 0 });
   const r = await runPiece(opts, d);
   assert.equal(r.ok, true, JSON.stringify(r.manifest.aborted));
-  assert.deepEqual(stepNames(r), ['preflight', 'reset', 'measure', 'captures', 'play-test']);
+  assert.deepEqual(stepNames(r), ['preflight', 'reset', 'measure', 'kit-lint', 'captures', 'play-test', 'style-gates']);
   assert.deepEqual(api.calls.map((c) => c.name).filter((n) => ['agentRun', 'grantCredits', 'setPlan', 'agentStop'].includes(n)), [], 'a dry run spends nothing');
   assert.equal(r.manifest.plugin.connected, false);
   assert.match(d.logs.join('\n'), /plugin is not connected.*Continuing/s, 'the missing plugin is reported plainly');
@@ -220,7 +221,7 @@ test('A REAL RUN: credits are set, the request goes in exactly as written, the r
   const d = deps(api, { world: { min: [0, 0, 0], max: [20, 8, 12] }, removed: 7 });
   const r = await runPiece(opts, d);
   assert.equal(r.ok, true, JSON.stringify(r.manifest.aborted));
-  assert.deepEqual(stepNames(r), ['preflight', 'reset', 'conversation', 'credits', 'agent-run', 'messages', 'credits-after', 'measure', 'captures', 'play-test']);
+  assert.deepEqual(stepNames(r), ['preflight', 'reset', 'conversation', 'credits', 'agent-run', 'messages', 'credits-after', 'measure', 'kit-lint', 'captures', 'play-test', 'style-gates']);
   const run = api.calls.find((c) => c.name === 'agentRun');
   assert.deepEqual(run.args, [DEFAULT_PROJECT, { text: getRequest('U01').text }], 'the text is sent exactly as written and nothing else');
   const grant = api.calls.find((c) => c.name === 'grantCredits');

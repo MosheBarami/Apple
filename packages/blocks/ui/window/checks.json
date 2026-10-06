@@ -10,7 +10,7 @@
     "id": "title",
     "kind": "prop",
     "after": "create",
-    "path": "game.StarterGui.{{screen}}.Window.Header.Title",
+    "path": "game.StarterGui.{{screen}}.Window.Header.Fill.Title",
     "prop": "Text",
     "equals": "{{title}}",
     "param": "title",
@@ -19,9 +19,9 @@
   {
     "id": "closer",
     "kind": "script_has",
-    "path": "game.StarterGui.{{screen}}.PanelClose",
+    "path": "game.StarterGui.{{screen}}.WindowOpen",
     "contains": "Activated",
-    "describes": "the close button hides the window"
+    "describes": "the close button closes the window"
   },
   {
     "id": "clean",

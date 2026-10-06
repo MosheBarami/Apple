@@ -4,18 +4,18 @@
     "kind": "exists",
     "after": "create",
     "path": "game.StarterGui.{{screen}}.Stack.Toast1",
-    "describes": "the popup stack is in StarterGui"
+    "describes": "the toast stack is in StarterGui"
   },
   {
     "id": "runs",
     "kind": "script_has",
     "path": "game.StarterGui.{{screen}}.Toasts",
     "contains": "leaderstats",
-    "describes": "a popup appears when a leaderstat goes up"
+    "describes": "a toast appears when a leaderstat goes up"
   },
   {
     "id": "clean",
     "kind": "play_clean",
-    "describes": "a play test with the popups has no errors"
+    "describes": "a play test with the toasts has no errors"
   }
 ]

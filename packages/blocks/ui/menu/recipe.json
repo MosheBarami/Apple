@@ -10,202 +10,79 @@
      "name": "{{screen}}",
      "props": {
       "ResetOnSpawn": false,
-      "IgnoreGuiInset": true,
       "ZIndexBehavior": {
        "t": "EnumItem",
        "v": "Enum.ZIndexBehavior.Sibling"
-      }
+      },
+      "IgnoreGuiInset": true
      },
      "children": [
       {
-       "className": "ImageLabel",
+       "kit": "card",
        "name": "Backdrop",
-       "props": {
-        "Size": {
-         "t": "UDim2",
-         "v": [
-          1,
-          0,
-          1,
-          0
-         ]
-        },
-        "BackgroundColor3": "#ffffff",
-        "BorderSizePixel": 0,
-        "Image": "rbxassetid://6927295847",
-        "ScaleType": {
-         "t": "EnumItem",
-         "v": "Enum.ScaleType.Tile"
-        },
-        "TileSize": {
-         "t": "UDim2",
-         "v": [
-          0,
-          64,
-          0,
-          64
-         ]
-        },
-        "ImageTransparency": 0.88
-       },
-       "children": [
-        {
-         "className": "UIGradient",
-         "name": "Tint",
-         "props": {
-          "Color": {
-           "t": "ColorSequence",
-           "v": [
-            [
-             0,
-             "{{accent.bottom}}"
-            ],
-            [
-             1,
-             "{{accent.dark}}"
-            ]
-           ]
-          },
-          "Rotation": 90
-         }
-        }
+       "token": "{{token}}",
+       "size": [
+        1,
+        0,
+        1,
+        0
        ]
       },
       {
-       "className": "TextLabel",
+       "kit": "text",
        "name": "Title",
-       "props": {
-        "Size": {
-         "t": "UDim2",
-         "v": [
-          0.8,
-          0,
-          0,
-          110
-         ]
-        },
-        "BackgroundTransparency": 1,
-        "Text": "{{title}}",
-        "Font": {
-         "t": "EnumItem",
-         "v": "Enum.Font.FredokaOne"
-        },
-        "TextScaled": true,
-        "TextColor3": "#ffe14d",
-        "TextXAlignment": {
-         "t": "EnumItem",
-         "v": "Enum.TextXAlignment.Center"
-        },
-        "Position": {
-         "t": "UDim2",
-         "v": [
-          0.5,
-          0,
-          0.12,
-          0
-         ]
-        },
-        "AnchorPoint": {
-         "t": "Vector2",
-         "v": [
-          0.5,
-          0
-         ]
-        }
-       },
-       "children": [
-        {
-         "className": "UIStroke",
-         "name": "Ink",
-         "props": {
-          "Thickness": 6,
-          "Color": "#000000",
-          "LineJoinMode": {
-           "t": "EnumItem",
-           "v": "Enum.LineJoinMode.Bevel"
-          }
-         }
-        },
-        {
-         "className": "UITextSizeConstraint",
-         "name": "Fit",
-         "props": {
-          "MaxTextSize": 96
-         }
-        }
-       ]
+       "text": "{{title}}",
+       "ink": "gold",
+       "size": [
+        0.7,
+        0,
+        0.17,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.1,
+        0
+       ],
+       "anchor": [
+        0.5,
+        0
+       ],
+       "max": 110
       },
       {
-       "className": "TextLabel",
+       "kit": "text",
        "name": "Subtitle",
-       "props": {
-        "Size": {
-         "t": "UDim2",
-         "v": [
-          0.6,
-          0,
-          0,
-          34
-         ]
-        },
-        "BackgroundTransparency": 1,
-        "Text": "{{subtitle}}",
-        "Font": {
-         "t": "EnumItem",
-         "v": "Enum.Font.FredokaOne"
-        },
-        "TextScaled": true,
-        "TextColor3": "#ffffff",
-        "TextXAlignment": {
-         "t": "EnumItem",
-         "v": "Enum.TextXAlignment.Center"
-        },
-        "Position": {
-         "t": "UDim2",
-         "v": [
-          0.5,
-          0,
-          0.12,
-          116
-         ]
-        },
-        "AnchorPoint": {
-         "t": "Vector2",
-         "v": [
-          0.5,
-          0
-         ]
-        }
-       },
-       "children": [
-        {
-         "className": "UIStroke",
-         "name": "Ink",
-         "props": {
-          "Thickness": 3,
-          "Color": "#000000",
-          "LineJoinMode": {
-           "t": "EnumItem",
-           "v": "Enum.LineJoinMode.Bevel"
-          }
-         }
-        },
-        {
-         "className": "UITextSizeConstraint",
-         "name": "Fit",
-         "props": {
-          "MaxTextSize": 30
-         }
-        }
-       ]
+       "text": "{{subtitle}}",
+       "size": [
+        0.6,
+        0,
+        0.06,
+        0
+       ],
+       "position": [
+        0.5,
+        0,
+        0.28,
+        0
+       ],
+       "anchor": [
+        0.5,
+        0
+       ],
+       "max": 36
       },
       {
        "className": "Frame",
        "name": "Buttons",
        "props": {
-        "AnchorPoint": {
-         "t": "Vector2",
+        "BackgroundTransparency": 1,
+        "Size": {
+         "t": "UDim2",
          "v": [
+          0.3,
+          0,
           0.5,
           0
          ]
@@ -215,24 +92,20 @@
          "v": [
           0.5,
           0,
-          0.4,
+          0.38,
           0
          ]
         },
-        "Size": {
-         "t": "UDim2",
+        "AnchorPoint": {
+         "t": "Vector2",
          "v": [
-          0,
-          380,
-          0,
+          0.5,
           0
          ]
-        },
-        "AutomaticSize": {
-         "t": "EnumItem",
-         "v": "Enum.AutomaticSize.Y"
-        },
-        "BackgroundTransparency": 1
+        }
+       },
+       "attributes": {
+        "StudKit": "menu.layout"
        },
        "children": [
         {
@@ -242,8 +115,8 @@
           "Padding": {
            "t": "UDim",
            "v": [
-            0,
-            16
+            0.05,
+            0
            ]
           },
           "SortOrder": {
@@ -257,235 +130,22 @@
          }
         },
         {
-         "className": "Frame",
+         "kit": "button",
          "name": "Button{{index}}",
-         "props": {
-          "Size": {
-           "t": "UDim2",
-           "v": [
-            1,
-            0,
-            0,
-            82
-           ]
-          },
-          "BackgroundTransparency": 1,
-          "LayoutOrder": "{{index}}"
-         },
-         "children": [
-          {
-           "className": "Frame",
-           "name": "Shadow",
-           "props": {
-            "Size": {
-             "t": "UDim2",
-             "v": [
-              1,
-              0,
-              1,
-              -7
-             ]
-            },
-            "Position": {
-             "t": "UDim2",
-             "v": [
-              0,
-              0,
-              0,
-              7
-             ]
-            },
-            "BackgroundColor3": "{{item.colour.dark}}",
-            "BorderSizePixel": 0,
-            "ZIndex": 1
-           },
-           "children": [
-            {
-             "className": "UICorner",
-             "name": "Corner",
-             "props": {
-              "CornerRadius": {
-               "t": "UDim",
-               "v": [
-                0,
-                16
-               ]
-              }
-             }
-            },
-            {
-             "className": "UIStroke",
-             "name": "Outline",
-             "props": {
-              "Thickness": 4,
-              "Color": "#000000",
-              "ApplyStrokeMode": {
-               "t": "EnumItem",
-               "v": "Enum.ApplyStrokeMode.Border"
-              },
-              "LineJoinMode": {
-               "t": "EnumItem",
-               "v": "Enum.LineJoinMode.Round"
-              }
-             }
-            }
-           ]
-          },
-          {
-           "className": "ImageButton",
-           "name": "Face",
-           "props": {
-            "Size": {
-             "t": "UDim2",
-             "v": [
-              1,
-              0,
-              1,
-              -7
-             ]
-            },
-            "BackgroundColor3": "#ffffff",
-            "BorderSizePixel": 0,
-            "Image": "rbxassetid://6927295847",
-            "ScaleType": {
-             "t": "EnumItem",
-             "v": "Enum.ScaleType.Tile"
-            },
-            "TileSize": {
-             "t": "UDim2",
-             "v": [
-              0,
-              48,
-              0,
-              48
-             ]
-            },
-            "ImageTransparency": 0.55,
-            "ZIndex": 2,
-            "AutoButtonColor": false
-           },
-           "attributes": {
-            "UI_Click": true,
-            "Closes": "{{item.closes}}"
-           },
-           "children": [
-            {
-             "className": "UICorner",
-             "name": "Corner",
-             "props": {
-              "CornerRadius": {
-               "t": "UDim",
-               "v": [
-                0,
-                16
-               ]
-              }
-             }
-            },
-            {
-             "className": "UIGradient",
-             "name": "Tint",
-             "props": {
-              "Color": {
-               "t": "ColorSequence",
-               "v": [
-                [
-                 0,
-                 "{{item.colour.top}}"
-                ],
-                [
-                 1,
-                 "{{item.colour.bottom}}"
-                ]
-               ]
-              },
-              "Rotation": 90
-             }
-            },
-            {
-             "className": "UIStroke",
-             "name": "Edge",
-             "props": {
-              "Thickness": 4,
-              "Color": "{{item.colour.edge}}",
-              "ApplyStrokeMode": {
-               "t": "EnumItem",
-               "v": "Enum.ApplyStrokeMode.Border"
-              },
-              "BorderStrokePosition": {
-               "t": "EnumItem",
-               "v": "Enum.BorderStrokePosition.Inner"
-              }
-             }
-            },
-            {
-             "className": "TextLabel",
-             "name": "Label",
-             "props": {
-              "Size": {
-               "t": "UDim2",
-               "v": [
-                1,
-                -24,
-                0.66,
-                0
-               ]
-              },
-              "BackgroundTransparency": 1,
-              "Text": "{{item.icon}}  {{item.label}}",
-              "Font": {
-               "t": "EnumItem",
-               "v": "Enum.Font.FredokaOne"
-              },
-              "TextScaled": true,
-              "TextColor3": "#ffffff",
-              "TextXAlignment": {
-               "t": "EnumItem",
-               "v": "Enum.TextXAlignment.Center"
-              },
-              "Position": {
-               "t": "UDim2",
-               "v": [
-                0.5,
-                0,
-                0.5,
-                0
-               ]
-              },
-              "AnchorPoint": {
-               "t": "Vector2",
-               "v": [
-                0.5,
-                0.5
-               ]
-              },
-              "ZIndex": 3
-             },
-             "children": [
-              {
-               "className": "UIStroke",
-               "name": "Ink",
-               "props": {
-                "Thickness": 4,
-                "Color": "#000000",
-                "LineJoinMode": {
-                 "t": "EnumItem",
-                 "v": "Enum.LineJoinMode.Bevel"
-                }
-               }
-              },
-              {
-               "className": "UITextSizeConstraint",
-               "name": "Fit",
-               "props": {
-                "MaxTextSize": 40
-               }
-              }
-             ]
-            }
-           ]
-          }
+         "token": "{{item.token}}",
+         "text": "{{item.label}}",
+         "icon": "{{item.icon}}",
+         "size": [
+          1,
+          0,
+          0.22,
+          0
          ],
+         "order": "{{index}}",
+         "max": 48,
+         "attributes": {
+          "Closes": "{{item.closes}}"
+         },
          "each": "buttons"
         }
        ]

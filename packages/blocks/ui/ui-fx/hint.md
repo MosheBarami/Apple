@@ -1,3 +1,2 @@
-Add it with any UI block: every studded button the UI blocks make carries UI_Click, so it squashes and springs back
-when pressed and grows slightly on hover. Anything given the attribute UI_Shine gets a light sweep every few seconds,
-and UI_Rotate spins slowly (for rays behind a reward).
+Add it with any UI block: every kit button grows to 1.06 on hover and squashes to 0.94 when pressed (bible §3.4),
+HUD offers bob slowly, and anything with the attribute UI_Shine gets a light sweep every few seconds.

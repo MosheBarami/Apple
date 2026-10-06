@@ -323,6 +323,7 @@ local PROTECTED_CONTAINER_CLASSES = {
 local PROPERTY_ALLOW = {
 	-- M5a UI blocks (clean-stud look, packages/blocks/ui): bevelled text strokes, inner strokes, padding, text-size
 	-- limits and the ScreenGui settings a menu needs. Presentation only; no content, no references.
+	AspectType = true,
 	PlaceholderColor3 = true,
 	AutoButtonColor = true,
 	AutomaticSize = true,
@@ -693,6 +694,7 @@ local PROPERTY_ALLOW = {
 local READ_PROPERTIES = {
 	-- M5a UI blocks (clean-stud look, packages/blocks/ui): bevelled text strokes, inner strokes, padding, text-size
 	-- limits and the ScreenGui settings a menu needs. Presentation only; no content, no references.
+	AspectType = true,
 	PlaceholderColor3 = true,
 	AutoButtonColor = true,
 	AutomaticSize = true,

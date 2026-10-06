@@ -62,3 +62,10 @@ Owner decision. `BILLABLE_NEURONS_PER_DAY = 300_000` in apps/worker/src/pricing.
 monthly backstop now binds after about 7 days at the daily ceiling (docs/COST-MODEL.md). At about 8,000 neurons a piece, evaluation
 gets about 37 pieces a day. Test spend still stays at or below $20 a month (the harness's --max-month-usd).
 
+
+## N12 (2026-10-06): one icon of the kit's pack needs an upload: `rocket`
+The pack (`packages/blocks/assets/icons.json`, 39 free Creator Store images, style bible S-4) has no free glossy 3D rocket
+(searched: rocket icon, rocket icon 3d cartoon, rocket ship icon, rocket icon glossy outline game, simulator rocket icon,
+jetpack icon). Roblox's AI generator could make one, but the result is uploaded to the account that runs it, and nothing
+goes to the owner's account without a yes. Until then `rocket` shows its glyph. Owner: say yes to one Roblox-AI image
+upload (and to which account), or accept the glyph.

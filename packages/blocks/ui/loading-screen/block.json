@@ -1,7 +1,7 @@
 {
   "id": "loading-screen",
   "kind": "ui",
-  "summary": "A full-screen loading screen: game logo area, tagline and a filling progress bar, hidden when it completes.",
+  "summary": "A full-screen loading screen: studded backdrop, a big icon tile, the game name in gold and a filling bar.",
   "params": {
     "type": "object",
     "additionalProperties": false,
@@ -10,59 +10,95 @@
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
         "default": "Loading",
-        "description": "The ScreenGui this belongs to (the panel's screen)"
+        "description": "The ScreenGui this belongs to (the window's screen)"
       },
       "title": {
         "type": "string",
         "minLength": 1,
-        "maxLength": 28,
+        "maxLength": 24,
         "default": "My Game",
-        "description": "Game name in the logo area"
+        "description": "Game name"
       },
       "tagline": {
         "type": "string",
         "minLength": 0,
-        "maxLength": 48,
+        "maxLength": 40,
         "default": "",
-        "description": "A line under the logo (may be empty)"
+        "description": "A line under the name (may be empty)"
       },
       "icon": {
         "type": "string",
-        "minLength": 1,
-        "maxLength": 4,
-        "default": "⭐",
-        "description": "One common emoji or symbol (very new emoji such as 🪙 do not show in Roblox)"
+        "enum": [
+          "coin",
+          "coins",
+          "cash",
+          "money_bag",
+          "gem",
+          "gift",
+          "basket",
+          "book",
+          "gear",
+          "clover",
+          "rebirth",
+          "trophy",
+          "crown",
+          "star",
+          "heart",
+          "bolt",
+          "potion",
+          "egg",
+          "paw",
+          "sword",
+          "shield",
+          "chest",
+          "key",
+          "lock",
+          "check",
+          "close",
+          "info",
+          "clock",
+          "map",
+          "home",
+          "backpack",
+          "pickaxe",
+          "rocket",
+          "fire",
+          "ticket",
+          "calendar",
+          "scroll",
+          "arrow_up",
+          "magnet",
+          "boots"
+        ],
+        "default": "star",
+        "description": "An icon from the kit's pack, by name"
       },
-      "accent": {
+      "token": {
         "type": "string",
         "enum": [
-          "green",
-          "yellow",
-          "orange",
-          "pink",
-          "blue",
-          "purple",
-          "red",
-          "cream",
-          "grey"
+          "lime",
+          "sky",
+          "sun",
+          "berry",
+          "grape",
+          "teal",
+          "slate"
         ],
-        "default": "purple",
-        "description": "Backdrop and logo colour"
+        "default": "grape",
+        "description": "Backdrop and tile colour"
       },
-      "barColour": {
+      "barToken": {
         "type": "string",
         "enum": [
-          "green",
-          "yellow",
-          "orange",
-          "pink",
-          "blue",
-          "purple",
-          "red",
-          "cream",
-          "grey"
+          "lime",
+          "sky",
+          "sun",
+          "berry",
+          "grape",
+          "teal",
+          "slate"
         ],
-        "default": "green",
+        "default": "lime",
         "description": "Bar colour"
       },
       "seconds": {

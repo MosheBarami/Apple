@@ -73,15 +73,16 @@ test('the generated block file is current and every block in packages/blocks is 
 test('the generator refuses a malformed block, naming each problem', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'blocks-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  cpSync(join(ROOT, 'packages', 'blocks', 'ui', 'panel'), join(dir, 'ui', 'panel'), { recursive: true });
-  const at = join(dir, 'ui', 'panel');
+  cpSync(join(ROOT, 'packages', 'blocks', 'ui', 'window'), join(dir, 'ui', 'window'), { recursive: true });
+  const at = join(dir, 'ui', 'window');
   const block = JSON.parse(readFileSync(join(at, 'block.json'), 'utf8'));
   block.params.properties.title.format = 'email'; // a keyword the validator does not cover
-  delete block.params.properties.width.default;
+  delete block.params.properties.icon.default;
   block.depends = ['ghost'];
   writeFileSync(join(at, 'block.json'), JSON.stringify(block));
   const recipe = JSON.parse(readFileSync(join(at, 'recipe.json'), 'utf8'));
   recipe.steps[0].items[0].name = '{{nope}}';
+  block.params.properties.startOpen.default = true;
   writeFileSync(join(at, 'recipe.json'), JSON.stringify(recipe));
   writeFileSync(join(at, 'checks.json'), JSON.stringify([{ id: 'c', kind: 'play_clean', after: 'create', describes: 'x' }]));
   writeFileSync(join(at, 'hint.md'), 'x'.repeat(601));
@@ -89,7 +90,7 @@ test('the generator refuses a malformed block, naming each problem', (t) => {
   const { problems } = loadBlocks(dir);
   const has = (re) => assert.ok(problems.some((p) => re.test(p)), `expected a problem matching ${re}:\n${problems.join('\n')}`);
   has(/"format" is outside the supported schema keywords/);
-  has(/params\.width: needs a default/);
+  has(/params\.icon: needs a default/);
   has(/depends on ghost/);
   has(/\{\{nope\}\} is not a parameter/);
   has(/play_clean always runs last/);
@@ -122,9 +123,14 @@ test('schema validation fills defaults and reports field-level errors', () => {
   assert.ok(bad.errors.includes('n: must be a whole number'));
   assert.ok(bad.errors.some((e) => e.startsWith('extra: x has no such parameter')));
   assert.equal(validateParams(contract('x'), { n: 9 }).errors[0], 'n: must be at most 5');
-  const panel = BLOCKS.panel.block;
-  assert.equal(validateParams(panel, { accent: 'teal' }).ok, false, 'the panel accent must be a palette colour');
-  assert.equal(validateParams(panel, { name: 'a.b' }).ok, false, 'a name cannot carry a path segment');
+  const win = BLOCKS.window.block;
+  assert.equal(validateParams(win, { token: 'teal' }).ok, true, 'a kit colour token is a name');
+  assert.equal(validateParams(win, { token: 'blue' }).ok, false, 'a colour outside the kit is refused');
+  assert.equal(validateParams(win, { screen: 'a.b' }).ok, false, 'a screen name cannot carry a path segment');
+  assert.equal(validateParams(win, { icon: 'rbxassetid://123' }).ok, false, 'an icon is a pack name, never an asset id');
+  const raw = validateParams(win, { title: '#FF00AA' });
+  assert.match(raw.errors.join(), /title: is a raw style value/, 'bible §5: the engine refuses raw look values from the model');
+  assert.equal(validateParams(win, { title: 'Gotham City' }).ok, true, 'ordinary words are still text');
 });
 
 test('slots keep a value\'s type, refuse a path segment, and become Luau literals in code', () => {
@@ -308,11 +314,14 @@ test('every class and property a block writes is on the plugin\'s allowlists', (
     Object.keys(item.props ?? {}).forEach((p) => needs.props.add(p));
     (item.children ?? []).forEach(walk);
   };
-  for (const { recipe } of Object.values(BLOCKS)) {
-    for (const step of recipe.steps) {
-      if (step.op === 'create_instances') step.items.forEach(walk);
-      if (step.op === 'set_props') Object.keys(step.props).forEach((p) => needs.props.add(p));
-      if (step.op === 'edit_script') needs.scripts.add(step.create.className);
+  for (const b of Object.values(BLOCKS)) {
+    const params = validateParams(b.block, {}).params;
+    for (const step of b.recipe.steps) {
+      for (const op of stepOps(step, b, params)) {
+        if (op.op === 'create_instances') op.items.forEach(walk);
+        if (op.op === 'set_props') Object.keys(op.props).forEach((p) => needs.props.add(p));
+        if (op.op === 'edit_script') needs.scripts.add(op.create.className);
+      }
     }
   }
   assert.ok(needs.classes.size > 0);
@@ -324,20 +333,20 @@ test('every class and property a block writes is on the plugin\'s allowlists', (
 // ---- the Studio agent's tool ------------------------------------------------------------------------------------
 test('build_blocks: sheets first, field errors before anything is built, a refused selection runs nothing, then a real build', async () => {
   const { buildBlocks, BLOCKS_TOOL_DESCRIPTION } = await import('../src/blocks-tool.ts');
-  assert.match(BLOCKS_TOOL_DESCRIPTION, /^panel \(ui\):/m, 'the menu is in the description');
+  assert.match(BLOCKS_TOOL_DESCRIPTION, /^window \(ui\):/m, 'the menu is in the description');
   const s = studio();
   const ctx = { execStudioOp: s.exec };
-  const sheets = await buildBlocks(ctx, { blocks: ['panel', 'item-grid'] });
-  assert.deepEqual(sheets.blocks.map((b) => b.id), ['panel', 'item-grid']);
+  const sheets = await buildBlocks(ctx, { blocks: ['window', 'item-grid'] });
+  assert.deepEqual(sheets.blocks.map((b) => b.id), ['window', 'item-grid']);
   assert.ok(sheets.blocks[1].params.items, 'the sheet carries the parameters');
   assert.equal(s.ops.length, 0);
-  assert.match((await buildBlocks(ctx, { blocks: ['item-grid'] })).error, /item-grid needs panel/);
-  const bad = await buildBlocks(ctx, { blocks: ['panel'], params: { panel: { title: '' } } });
-  assert.ok(bad.fix.includes('panel.title: must be at least 1 characters'));
+  assert.match((await buildBlocks(ctx, { blocks: ['item-grid'] })).error, /item-grid needs window/);
+  const bad = await buildBlocks(ctx, { blocks: ['window'], params: { window: { title: '' } } });
+  assert.ok(bad.fix.includes('window.title: must be at least 1 characters'));
   assert.equal(s.ops.length, 0, 'nothing is sent while a parameter is wrong');
-  const r = await buildBlocks(ctx, { blocks: ['panel', 'item-grid'], params: { panel: { screen: 'EggShop', title: 'Eggs' }, 'item-grid': { items: [
-    { name: 'Forest Egg', price: '250', icon: '🥚', colour: 'green', note: 'Common', button: 'green' },
-    { name: 'Lava Egg', price: '900', icon: '🔥', colour: 'red', note: 'Epic', button: 'grey' },
+  const r = await buildBlocks(ctx, { blocks: ['window', 'item-grid'], params: { window: { screen: 'EggShop', title: 'Eggs', icon: 'egg' }, 'item-grid': { items: [
+    { name: 'Forest Egg', price: '250', icon: 'egg', token: 'lime', note: 'Common', button: 'lime' },
+    { name: 'Lava Egg', price: '900', icon: 'fire', token: 'berry', note: 'Epic', button: 'slate' },
   ] } } });
   assert.equal(r.ok, true, JSON.stringify(r));
   assert.equal(r.changed, true);
@@ -346,6 +355,9 @@ test('build_blocks: sheets first, field errors before anything is built, a refus
   assert.equal(created[1].items[0].parent, 'game.StarterGui.EggShop.Window.Content');
   const json = JSON.stringify(created[1]);
   assert.ok(json.includes('"Item2"') && json.includes('Lava Egg') && !json.includes('{{'), 'every card is real, every slot filled');
+  assert.ok(!json.includes('"kit"'), 'every kit component was expanded');
+  const tagged = (item) => [item.attributes?.StudKit ?? null, ...(item.children ?? []).flatMap(tagged)];
+  assert.ok(tagged(created[1].items[0]).filter(Boolean).length > 20, 'kit parts carry their StudKit tag for the lint');
 });
 
 // ---- the shipped Luau parses ------------------------------------------------------------------------------------

@@ -4,11 +4,11 @@
     "kind": "script_has",
     "path": "game.StarterPlayer.StarterPlayerScripts.StudPilotUiFx",
     "contains": "UI_Click",
-    "describes": "the effects runtime is installed for every player"
+    "describes": "the motion runtime is installed for every player"
   },
   {
     "id": "clean",
     "kind": "play_clean",
-    "describes": "a play test with the effects has no errors"
+    "describes": "a play test with the motion has no errors"
   }
 ]

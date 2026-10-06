@@ -3,8 +3,8 @@
     "id": "bar",
     "kind": "exists",
     "after": "create",
-    "path": "game.StarterGui.{{screen}}.Window.Content.Progress.Bar.Fill",
-    "describes": "the progress bar is in the panel"
+    "path": "game.StarterGui.{{screen}}.Window.Content.Progress.Bar",
+    "describes": "the progress bar is in the window"
   },
   {
     "id": "clean",

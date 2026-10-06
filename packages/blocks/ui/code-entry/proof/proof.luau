@@ -1,4 +1,4 @@
--- PROOF ONLY (never shipped): after the recipe ran with its defaults, a player sees it.
+-- PROOF ONLY (never shipped): after the recipe ran with its defaults, a player has it on screen.
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
 local gui = player:WaitForChild("PlayerGui"):WaitForChild("Codes", 10)

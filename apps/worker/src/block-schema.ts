@@ -4,6 +4,7 @@
  * ("title: at most 40 characters") because plan-fill.ts hands them back to the model to correct. Pure.
  */
 import type { BlockContract, ParamSchema } from './block-types.ts';
+import { RAW_STYLE } from './studkit.ts';
 
 function checkValue(path: string, schema: ParamSchema, v: unknown, errors: string[]): void {
   const fail = (msg: string): void => { errors.push(`${path}: ${msg}`); };
@@ -29,6 +30,8 @@ function checkValue(path: string, schema: ParamSchema, v: unknown, errors: strin
     if (schema.maximum !== undefined && v > schema.maximum) fail(`must be at most ${schema.maximum}`);
   }
   if (typeof v === 'string') {
+    // Bible §5: the model fills text, numbers and NAMES; a raw look value (a hex colour, a font, an asset id) never passes.
+    if (RAW_STYLE.test(v.trim())) fail('is a raw style value; name a kit colour, icon or style instead');
     if (schema.minLength !== undefined && v.length < schema.minLength) fail(`must be at least ${schema.minLength} characters`);
     if (schema.maxLength !== undefined && v.length > schema.maxLength) fail(`must be at most ${schema.maxLength} characters`);
     if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(v)) fail(`must match ${schema.pattern}`);
