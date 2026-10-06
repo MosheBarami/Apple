@@ -1,0 +1,30 @@
+{
+  "id": "studded-ground",
+  "kind": "zone",
+  "summary": "Turns the grey baseplate into bright studded ground: lime grass (or sand, dirt, brick) with a visible stud texture.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "surface": {
+        "type": "string",
+        "enum": [
+          "grass",
+          "sand",
+          "dirt",
+          "brick"
+        ],
+        "default": "grass",
+        "description": "What the ground is"
+      },
+      "ground": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Baseplate",
+        "description": "The Workspace part that is the ground"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "studs",
+    "kind": "exists",
+    "after": "studs",
+    "path": "game.Workspace.{{ground}}.Studs",
+    "describes": "the ground carries the stud texture"
+  },
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the ground has no errors"
+  }
+]
