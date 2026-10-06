@@ -594,6 +594,18 @@ app.all('/studio/*', async (c) => {
 });
 app.get('/studio', (c) => c.redirect('/studio/', 308));
 
+/**
+ * R6, THE SWITCH (planning/REBUILD-PLAN.md). With STUDIO_IS_DEFAULT on, a project's page in /app opens in the rebuilt Studio
+ * app instead; sign-in, settings, billing and the shelf stay in /app. Off until the smoke test against the M3 baseline says the
+ * new agent is not worse in any area. A redirect, not a proxy: the address the person sees is the app they are in.
+ */
+app.get('/app/projects/:id', async (c, next) => {
+  if (c.env.STUDIO_IS_DEFAULT !== 'true') return next();
+  const id = c.req.param('id');
+  if (!UUID_RE.test(id)) return next();
+  return c.redirect(`/studio/projects/${id.toLowerCase()}`, 302);
+});
+
 app.use('/api/*', async (c, next) => {
   await next();
   c.header('X-Content-Type-Options', 'nosniff');
