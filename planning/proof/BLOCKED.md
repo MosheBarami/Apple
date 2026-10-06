@@ -53,3 +53,8 @@ through the stand-in until 2027-01-02.
 madebyshaurya/stud is AGPL-3.0. Copying its code into StudPilot would require the whole hosted product to be
 offered under the AGPL, source included, to every user. Until the owner decides, the rebuild takes its
 ideas only (planning/REBUILD-PLAN.md). The other three named projects are MIT and are used.
+
+### N11. Unlock the Mac once so Studio can be paired (2026-10-06)
+The M3 baseline, the M4 smoke test and the rebuild's R6 switch all need Roblox Studio paired to the test project.
+Studio is open on the owner's Mac, but the screen has been locked since 2026-10-05 22:00 UTC, and computer use cannot reach a window
+on a locked screen. Once it is unlocked, Claude Code mints the code (`node scripts/eval/pair.mjs`) and types it into the plugin.

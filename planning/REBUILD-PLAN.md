@@ -80,3 +80,9 @@ go to `THIRD_PARTY_NOTICES.md`.
 - M4 (the cleanup branch, #38): stages 1 and 2 done (vision, the whole-game path and the owner library removed).
   Stages 3 and 4 move to the new agent: the Flue StudPilot agent's instructions stay at 10,000 characters or fewer
   and it is offered 25 tools or fewer per run, each with a test (R2 and R3), because the old loop is retired in R6.
+
+## Where it stands (2026-10-06)
+- R1 #37 #39, R2 #42, R3 #43, R4a #44, R5 #45: merged and deployed. https://studpilot.app/studio/ is the new app:
+  a project shelf, the chat on Flue with a coordinator and four teammates, 15 Studio tools, Connect Studio.
+- Not yet: R4's settings and billing pages (still /app), and R6 (serving /app from the new app). R6 waits for the
+  smoke test against the M3 baseline, which waits for Studio to be paired (BLOCKED.md N11).
