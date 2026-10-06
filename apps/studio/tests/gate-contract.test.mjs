@@ -68,3 +68,13 @@ test('every agent route checks the caller owns the project before Flue sees it',
   const guard = app.indexOf('GATE.openProject(');
   assert.ok(guard > 0 && guard < app.indexOf('createAgentRouter(StudPilot)'));
 });
+
+test('the team: the coordinator only reads, only the builder edits, the tester may only add a play check', () => {
+  const agent = read('../src/agents/studpilot.ts');
+  assert.match(agent, /for \(const tool of pick\(READS\)\) useTool\(tool\);/, 'the coordinator mounts the read tools and nothing else');
+  assert.match(agent, /const READS = STUDIO_TOOL_SPECS\.filter\(\(t\) => !t\.writes\)/);
+  assert.match(agent, /const TEST = \[\.\.\.READS, 'play_check'\];/);
+  const roles = agent.slice(agent.indexOf('const ROLES = {'), agent.indexOf('} as const;'));
+  const toolsOf = (role) => new RegExp(`${role}: \\{[^}]*?tools: ([A-Z]+),`, 's').exec(roles)?.[1];
+  assert.deepEqual(['planner', 'builder', 'reviewer', 'tester'].map(toolsOf), ['READS', 'BUILD', 'READS', 'TEST']);
+});
