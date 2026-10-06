@@ -136,11 +136,6 @@ jobs:
         # check-workspace-coverage.mjs exists for, one level out.
         # A per-test ceiling (2026-10-06): a hung test fails under its own name instead of the job being
         # cut off at its timeout with nothing said about which file hung.
-        # UV_USE_IO_URING=0 (2026-10-06): on the Linux runner a spawned checker (check-escape-hatches, "GATES.md
-        # having been emptied") finished its work and then hung at exit, its main thread joining a libuv thread
-        # with io_uring descriptors open (strace on a debug run). libuv's epoll path does not do that.
-        env:
-          UV_USE_IO_URING: '0'
         run: node --test --test-timeout=240000 tests/*.test.mjs
 
       - name: Ledger is well-formed
