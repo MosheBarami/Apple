@@ -39,6 +39,7 @@ export const DEFAULTS = {
   pollMs: 5000,
   pollAttempts: 4, // tries per status poll before the run is given up on (and stopped)
   stopWaitMs: 90_000, // how long to wait for a stopped run to go idle
+  lateStartWatchMs: 120_000, // after a start request with no answer: how long to watch for a run that starts after the stop
   playWarmupMs: 3000,
   playFrameGapMs: 2000,
   playFrames: 3,
@@ -579,7 +580,24 @@ export async function runPiece(opts, deps) {
           // will), and a start that lands after the stop below is not ruled out either: so the start is recorded as not confirmed and stopped.
           if (!isTransient(e)) refused(`the worker refused the request to start the run: ${why}`);
           manifest.run.startError = why;
-          await giveUp('start-failed', `the start request failed: ${why}`, `the request to start the run failed (${why}), so it is not known whether the worker started one`);
+          // S07, 2026-10-06: the stop below reached the worker BEFORE the unanswered start did, so the worker read idle, then started the run,
+          // and the next piece's capture recorded it. So after the stop the status is watched a while longer, and a run that shows up is
+          // stopped too; only then is the step given up.
+          manifest.run.endedBy = 'start-failed';
+          manifest.run.minutes = minutesSince();
+          let stop = await stopRun(`the start request failed: ${why}`);
+          const watchEnd = deps.now() + (opts.lateStartWatchMs ?? DEFAULTS.lateStartWatchMs);
+          while (stop.idle && deps.now() < watchEnd) {
+            await deps.sleep(opts.pollMs ?? DEFAULTS.pollMs);
+            let idle = true;
+            try { idle = isIdle(await deps.api.sessionInfo(opts.projectId)); } catch { idle = true; /* unread: the next read decides */ }
+            if (!idle) {
+              manifest.run.lateStart = true;
+              stop = await stopRun('the run started after the first stop (a start request that arrived late)');
+            }
+          }
+          const late = manifest.run.lateStart ? ' It started after the first stop and was stopped again.' : '';
+          throw new Abort('agent-run', `the request to start the run failed (${why}), so it is not known whether the worker started one; the run was ${stop.idle ? 'stopped and is idle' : 'asked to stop but NOT confirmed idle: stop it by hand'}.${late}`);
         }
         if (started.status === 409) refused('the project already has a run in progress');
         if (started.status === 403) refused(`the run was refused: ${started.json?.code ?? started.json?.error ?? 'HTTP 403'}`);
