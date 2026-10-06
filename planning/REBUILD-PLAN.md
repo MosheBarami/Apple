@@ -85,6 +85,10 @@ go to `THIRD_PARTY_NOTICES.md`.
 - R1 #37 #39, R2 #42, R3 #43, R4a #44, R5 #45: merged and deployed. https://studpilot.app/studio/ is the new app:
   a project shelf, the chat on Flue with a coordinator and four teammates, 15 Studio tools, Connect Studio.
 - Not yet: R4's settings and billing pages (still /app), and R6 (serving /app from the new app).
-- Before R6: the Studio agent's model calls must be metered against Credits and the spend caps (today they bypass
-  them, so only pre-launch-approved owners may send to it; #48). R6 waits for the
+- Metering (done 2026-10-06): every Studio model call is reserved against the shared budget and settled (#49, #50),
+  and each response is charged to the project owner's Credits, with no message admitted at zero (#53). Sending also
+  stays limited to pre-launch-approved owners (#48), the same rule as /agent-run.
+- The Studio agent has the reviewed blocks (#55): 25 tools, the M4 cap. Several conversations per project (#51).
+- R6 smoke test: `node scripts/eval/run-piece.mjs <id> --agent studio --milestone R6` (#52, #54), five pieces, against
+  the M3 baseline, after the M3 batch finishes (the shared daily capacity allows about 20 pieces a day). R6 waits for the
   smoke test against the M3 baseline, which waits for Studio to be paired (BLOCKED.md N11).
