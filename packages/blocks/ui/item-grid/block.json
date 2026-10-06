@@ -1,7 +1,7 @@
 {
   "id": "item-grid",
   "kind": "ui",
-  "summary": "Item cards in a scrolling grid inside a window: big overflowing icon, name, note, price button; optional featured card.",
+  "summary": "Item cards in a grid that fits its window: tinted icon, name, note, price button with currency icon; optional featured.",
   "params": {
     "type": "object",
     "additionalProperties": false,
@@ -14,10 +14,9 @@
       },
       "currency": {
         "type": "string",
-        "minLength": 0,
-        "maxLength": 4,
-        "default": "R$",
-        "description": "Text before each price, e.g. R$ or $ (may be empty)"
+        "pattern": "^(R\\$ |\\$|\u20ac|\u00a3)?$",
+        "default": "",
+        "description": "Real-money symbol before each price (R$ , $, \u20ac, \u00a3) or \"\" for an in-game currency, which shows as priceIcon"
       },
       "payWith": {
         "type": "string",
@@ -275,6 +274,54 @@
         },
         "default": [],
         "description": "At most one wide card above the grid"
+      },
+      "priceIcon": {
+        "type": "string",
+        "enum": [
+          "",
+          "coin",
+          "coins",
+          "cash",
+          "money_bag",
+          "gem",
+          "gift",
+          "basket",
+          "book",
+          "gear",
+          "clover",
+          "rebirth",
+          "trophy",
+          "vip",
+          "star",
+          "heart",
+          "bolt",
+          "potion",
+          "egg",
+          "paw",
+          "sword",
+          "shield",
+          "chest",
+          "key",
+          "lock",
+          "check",
+          "close",
+          "info",
+          "clock",
+          "map",
+          "home",
+          "backpack",
+          "pickaxe",
+          "rocket",
+          "fire",
+          "ticket",
+          "calendar",
+          "scroll",
+          "arrow_up",
+          "magnet",
+          "boots"
+        ],
+        "default": "",
+        "description": "The currency icon on every price button (gem, coins, cash...) or \"\" for none"
       }
     }
   },

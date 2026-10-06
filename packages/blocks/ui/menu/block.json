@@ -1,7 +1,7 @@
 {
   "id": "menu",
   "kind": "ui",
-  "summary": "A full-screen main menu: studded backdrop, a big gold game title and a column of large studded buttons.",
+  "summary": "A full-screen main menu: glossy backdrop, a big gold title and large studded buttons that start or open windows.",
   "params": {
     "type": "object",
     "additionalProperties": false,
@@ -126,6 +126,12 @@
               "type": "boolean",
               "default": false,
               "description": "Pressing it hides the menu (true for Play)"
+            },
+            "action": {
+              "type": "string",
+              "pattern": "^(open:[A-Za-z][A-Za-z0-9_]{0,31})?$",
+              "default": "",
+              "description": "open:<Screen> opens that window (Settings, Shop); \"\" for none"
             }
           }
         },

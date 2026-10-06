@@ -102,7 +102,8 @@
           0.5,
           0
          ]
-        }
+        },
+        "ZIndex": 5
        },
        "attributes": {
         "StudKit": "menu.layout"
@@ -144,7 +145,8 @@
          "order": "{{index}}",
          "max": 48,
          "attributes": {
-          "Closes": "{{item.closes}}"
+          "Closes": "{{item.closes}}",
+          "Action": "{{item.action}}"
          },
          "each": "buttons"
         }

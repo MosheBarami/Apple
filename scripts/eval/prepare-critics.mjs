@@ -46,7 +46,8 @@ export function loadRubric(path = DEFAULT_RUBRIC) {
 export function gateFailure(manifest) {
   const g = manifest?.gates;
   if (!g) return 'the automatic style checks did not run';
-  const failed = ['kitLint', 'colour', 'reply'].filter((k) => g[k]?.pass !== true);
+  // The layout gate is newer than the first M5a runs: a manifest without it is judged on the other three.
+  const failed = ['kitLint', 'colour', 'reply', 'layout'].filter((k) => (k === 'layout' && !g.layout ? false : g[k]?.pass !== true));
   return failed.length ? `failed the automatic style checks (${failed.join(', ')}) before any critic` : null;
 }
 

@@ -163,5 +163,30 @@
   "autoMemoryEnabled": false,
   "claudeMdExcludes": [
     "/Users/moshe/.claude/rules/context7.md"
-  ]
+  ],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/critique.mjs\" gate --hook",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__Roblox_Studio__screen_capture|mcp__Roblox_Studio__execute_luau",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/critique.mjs\" nudge",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
 }

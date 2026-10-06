@@ -1,15 +1,12 @@
 -- Buy asks the server (ReplicatedStorage.ShopBuy, from the shop block) and shows its answer; a card whose price is more
--- than the player has (the PayWith currency) turns its button slate. The server decides every purchase. Columns sets
--- cards per row. Written by StudPilot's item-grid block; edit freely.
+-- than the player has (the PayWith currency) turns its button slate. The server decides every purchase. The cards are
+-- sized and placed by the block to fit the window. Written by StudPilot's item-grid block; edit freely.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local gui = script.Parent
 local grid = gui:WaitForChild("Window"):WaitForChild("Content"):WaitForChild("Grid")
 local payWith = grid:GetAttribute("PayWith")
-local columns = grid:GetAttribute("Columns") or 3
-local layout = grid:WaitForChild("Cells"):FindFirstChildOfClass("UIGridLayout")
-if layout and columns == 4 then layout.CellSize = UDim2.new(0.225, 0, 0.225, 0); layout.CellPadding = UDim2.new(0.02, 0, 0, 16) end
 local SLATE = ColorSequence.new(Color3.fromHex("5A6270"), Color3.fromHex("3E4450"))
 local function priceOf(text)
 	local digits = string.gsub(string.match(text, "[%d,%.]+") or "", ",", "")

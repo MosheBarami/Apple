@@ -9,6 +9,9 @@
 //   reply rule   the reply makes no visual claim ("verified", "looks", "beautiful", "matches"): visual claims are the
 //                critic's.
 //   kit lint     read from the Studio check (scripts/eval/luau/kit-lint.luau): any finding fails.
+//   layout lint  read from scripts/eval/luau/layout-lint.luau, run while each panel is shown: clipped, spilled or
+//                colliding content, identical item icons, overflowing or tiny text, studs on a body, a price spelled
+//                as a word. Any finding fails, and the critique protocol caps the scores it touches.
 
 export const UI_FLOOR = { saturation: 0.45, grey: 0.35 };
 export const WORLD_FLOOR = { saturation: 0.4, grey: 0.3, vivid: 0.3 };
@@ -86,4 +89,15 @@ export function kitLintGate(lint) {
   const counts = lint.counts ?? {};
   const reasons = Object.entries(counts).map(([rule, n]) => `${n} ${rule}${lint.findings.find((f) => f.rule === rule) ? ` (e.g. ${lint.findings.find((f) => f.rule === rule).path})` : ''}`);
   return { pass: lint.findings.length === 0, reasons };
+}
+
+/** The layout lint's gate: every shown panel was measured, and none has a finding. Pure. */
+export function layoutGate(panels) {
+  if (!Array.isArray(panels) || !panels.length) return { pass: true, reasons: [], note: 'no panel shown' };
+  const reasons = [];
+  for (const p of panels) {
+    if (p.error) reasons.push(`${p.file}: not measured (${p.error})`);
+    for (const f of p.findings ?? []) reasons.push(`${p.file}: [${f.rule}] ${f.detail}`);
+  }
+  return { pass: reasons.length === 0, reasons };
 }
