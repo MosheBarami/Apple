@@ -1,0 +1,78 @@
+{
+ "startedAt": "2026-10-06T19:07:05.561Z",
+ "finishedAt": "2026-10-06T19:22:31.232Z",
+ "totalMs": 925671,
+ "agentRunMinutes": 15.06,
+ "steps": [
+  {
+   "name": "preflight",
+   "startedAt": "2026-10-06T19:07:05.564Z",
+   "ms": 1372,
+   "ok": true,
+   "note": null
+  },
+  {
+   "name": "reset",
+   "startedAt": "2026-10-06T19:07:06.936Z",
+   "ms": 201,
+   "ok": true,
+   "note": "removed 355, restored 11, rebuilt 0"
+  },
+  {
+   "name": "credits",
+   "startedAt": "2026-10-06T19:07:07.137Z",
+   "ms": 2478,
+   "ok": true,
+   "note": "plan free, granted 3000 ledger units, event eval-M5a-U01-studio-20261006190709"
+  },
+  {
+   "name": "agent-run",
+   "startedAt": "2026-10-06T19:07:09.615Z",
+   "ms": 903792,
+   "ok": true,
+   "note": "15.06 min, timeout, 3 top-level tool calls"
+  },
+  {
+   "name": "credits-after",
+   "startedAt": "2026-10-06T19:22:13.407Z",
+   "ms": 1704,
+   "ok": true,
+   "note": "0 ledger units by the balance"
+  },
+  {
+   "name": "measure",
+   "startedAt": "2026-10-06T19:22:15.111Z",
+   "ms": 76,
+   "ok": true,
+   "note": "ui: 356 instances, 0 parts, 2 screen UI(s)"
+  },
+  {
+   "name": "kit-lint",
+   "startedAt": "2026-10-06T19:22:15.187Z",
+   "ms": 66,
+   "ok": true,
+   "note": "0 findings in 146 UI objects"
+  },
+  {
+   "name": "captures",
+   "startedAt": "2026-10-06T19:22:15.253Z",
+   "ms": 583,
+   "ok": true,
+   "note": "1 of 1 captured"
+  },
+  {
+   "name": "play-test",
+   "startedAt": "2026-10-06T19:22:15.836Z",
+   "ms": 12833,
+   "ok": true,
+   "note": "3 errors, 0 warnings, 3 of 3 frames"
+  },
+  {
+   "name": "style-gates",
+   "startedAt": "2026-10-06T19:22:28.669Z",
+   "ms": 103,
+   "ok": true,
+   "note": "kitLint pass, colour pass, reply pass"
+  }
+ ]
+}

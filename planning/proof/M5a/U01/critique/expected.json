@@ -1,0 +1,101 @@
+{
+ "piece": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01",
+ "images": [
+  {
+   "file": "shots/play-1.jpg",
+   "sha256": "9bf4e501bb7f41e25f236f488b6a0bbe710c48d9ab6b32249b869c92f2cfc292"
+  },
+  {
+   "file": "shots/play-2.jpg",
+   "sha256": "bcd0a906ea1cc8a0363e484d4567cfcb39deba37df37d6248f655d28dfc6c9cf"
+  },
+  {
+   "file": "shots/play-3.jpg",
+   "sha256": "d5e38042f42f1cdfce92822f47e2e05d33df6a6f7addf987fea04fc257b9698b"
+  },
+  {
+   "file": "shots/ui-1174x623.jpg",
+   "sha256": "6c69a5eea0250f4ee33757aac93058c55d3b00eba5f9a4cd1ce785cf56d34bdb"
+  }
+ ],
+ "crops": [
+  {
+   "id": "play-1.panel",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/play-1.panel.png"
+  },
+  {
+   "id": "play-1.whole",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/play-1.whole.png"
+  },
+  {
+   "id": "play-2.panel",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/play-2.panel.png"
+  },
+  {
+   "id": "play-2.whole",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/play-2.whole.png"
+  },
+  {
+   "id": "play-3.panel",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/play-3.panel.png"
+  },
+  {
+   "id": "play-3.whole",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/play-3.whole.png"
+  },
+  {
+   "id": "ui-1174x623.panel",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.panel.png"
+  },
+  {
+   "id": "ui-1174x623.r1c1",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r1c1.png"
+  },
+  {
+   "id": "ui-1174x623.r1c2",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r1c2.png"
+  },
+  {
+   "id": "ui-1174x623.r1c3",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r1c3.png"
+  },
+  {
+   "id": "ui-1174x623.r2c1",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r2c1.png"
+  },
+  {
+   "id": "ui-1174x623.r2c2",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r2c2.png"
+  },
+  {
+   "id": "ui-1174x623.r2c3",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r2c3.png"
+  },
+  {
+   "id": "ui-1174x623.r3c1",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r3c1.png"
+  },
+  {
+   "id": "ui-1174x623.r3c2",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r3c2.png"
+  },
+  {
+   "id": "ui-1174x623.r3c3",
+   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U01/critique/crops/ui-1174x623.r3c3.png"
+  }
+ ],
+ "defects": [
+  {
+   "source": "play-test",
+   "rule": "play-error",
+   "path": "",
+   "detail": "3 error(s) in the play test"
+  },
+  {
+   "source": "agent-run",
+   "rule": "timeout",
+   "path": "",
+   "detail": "the run hit its time limit"
+  }
+ ]
+}

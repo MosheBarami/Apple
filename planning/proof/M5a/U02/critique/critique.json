@@ -1,0 +1,300 @@
+{
+ "images": [
+  {
+   "file": "shots/play-1.jpg",
+   "sha256": "54af480bc495f29171c768fc5727f3da4f1e5ea203a6483681b5679f17e5948e"
+  },
+  {
+   "file": "shots/play-2.jpg",
+   "sha256": "40d091b62bcc0fe843bdbaf7728ea9fec0bdbc7e9b596e80ce97304925f30f26"
+  },
+  {
+   "file": "shots/play-3.jpg",
+   "sha256": "54af480bc495f29171c768fc5727f3da4f1e5ea203a6483681b5679f17e5948e"
+  },
+  {
+   "file": "shots/ui-1174x623.jpg",
+   "sha256": "185237d845c6c8772b4cefe139bea379a4500be6d61dcfddae274bca7dda905e"
+  },
+  {
+   "file": "shots/ui-open-2.jpg",
+   "sha256": "dfb393c278e7f01bdb637463e58824a026084896451ff5f582b558c4398363e2"
+  }
+ ],
+ "crops": [
+  {
+   "id": "play-1.panel",
+   "seen": "Settings window header with a grey gear icon, a blue Coming soon row with a gear, a grey Placeholder row with an info icon; the Stud World title is cut by the header.",
+   "defects": [
+    "the row text says Coming soon and Placeholder: filler, not settings",
+    "the menu title is sliced in half by the window header"
+   ]
+  },
+  {
+   "id": "play-1.whole",
+   "seen": "Play frame one: a full-screen studded sky-blue backdrop with Stud World in yellow, and a Settings window open in the centre covering where the menu buttons would be.",
+   "defects": [
+    "the Play, Settings and Shop buttons the request asked for are not visible",
+    "the full-screen backdrop is studs everywhere: noisy"
+   ]
+  },
+  {
+   "id": "play-2.panel",
+   "seen": "Shop window header in orange with a red basket icon, an orange Coming soon row saying the shop opens in a future update, and a grey Placeholder row.",
+   "defects": [
+    "the Shop is an empty placeholder window",
+    "grey Placeholder row is dull slate against the candy palette"
+   ]
+  },
+  {
+   "id": "play-2.whole",
+   "seen": "Play frame two: same backdrop, the Shop window open in the centre instead of Settings; the menu buttons are still hidden behind it.",
+   "defects": [
+    "no frame shows the menu itself with its three buttons",
+    "huge empty dark area in the bottom half of the window"
+   ]
+  },
+  {
+   "id": "play-3.panel",
+   "seen": "Third frame again shows the Settings window header and its two filler rows, identical to the first frame crop.",
+   "defects": [
+    "the same filler window repeats; no menu state is ever shown",
+    "tiny two-line note text under each row is hard to read"
+   ]
+  },
+  {
+   "id": "play-3.whole",
+   "seen": "Play frame three repeats frame one: Settings window over the studded blue backdrop with the Stud World title behind it.",
+   "defects": [
+    "three frames show two placeholder windows and never the menu",
+    "nothing animates between frames"
+   ]
+  },
+  {
+   "id": "ui-1174x623.panel",
+   "seen": "Edit capture of the Settings window: blue studded header, gear icon overflowing left, two rows Coming soon and Placeholder with small white notes in dark outline pills, empty dark lower half.",
+   "defects": [
+    "lower half of the window is empty dark slate",
+    "note text sits in dark outline pills"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r1c1",
+   "seen": "Top left: the rounded light-blue studded backdrop panel, empty, with the edge of the yellow S of the title and the gear icon at the right edge.",
+   "defects": [
+    "a quarter of the screen is an empty stud field"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r1c2",
+   "seen": "Top centre: Stud World in big yellow letters with brown outline, its lower half hidden behind the blue Settings header.",
+   "defects": [
+    "the game title is cut in half by the window"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r1c3",
+   "seen": "Top right: empty studded backdrop with the red close button of the window sitting at the corner of the header.",
+   "defects": [
+    "empty stud field fills the corner"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r2c1",
+   "seen": "Left middle: plain studded cyan backdrop with the window edge, the gear row icon and the round blue info icon at the right edge.",
+   "defects": [
+    "backdrop has no art, characters or depth: just a stud texture"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r2c2",
+   "seen": "Centre: the Coming soon row in blue with Full settings arrive in a future update, and the Placeholder row in grey saying Styled and ready for the real settings.",
+   "defects": [
+    "the text admits nothing is built",
+    "grey row looks disabled"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r2c3",
+   "seen": "Right middle: the right ends of the two rows and the dark window edge, then the cyan studded backdrop.",
+   "defects": [
+    "rows stretch wide with nothing on their right half"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r3c1",
+   "seen": "Bottom left: the darker blue lower band of the backdrop, studded, with the dark window corner at the right.",
+   "defects": [
+    "bottom band adds nothing"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r3c2",
+   "seen": "Bottom centre: the empty dark bottom of the Settings window above the darker blue backdrop band.",
+   "defects": [
+    "the bottom third of the window is empty"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r3c3",
+   "seen": "Bottom right: window corner and the darker blue studded band; a sliver of green ground at the very corner.",
+   "defects": []
+  },
+  {
+   "id": "ui-open-2.panel",
+   "seen": "Edit capture of the Shop window: orange studded header with a red basket icon, an orange Coming soon row, a grey Placeholder row Styled and ready for real items, empty dark lower half.",
+   "defects": [
+    "a shop with no items or prices",
+    "empty lower half again"
+   ]
+  },
+  {
+   "id": "ui-open-2.r1c1",
+   "seen": "Top left of the second shot: the same empty light-blue stud field with the yellow S and the red basket icon at the edge.",
+   "defects": [
+    "empty stud field"
+   ]
+  },
+  {
+   "id": "ui-open-2.r1c2",
+   "seen": "Top centre: Stud World title cut by the orange Shop header, with the basket icon at the left.",
+   "defects": [
+    "title cut in half by the window again"
+   ]
+  },
+  {
+   "id": "ui-open-2.r1c3",
+   "seen": "Top right: studded backdrop and the red close button at the corner of the orange header.",
+   "defects": []
+  },
+  {
+   "id": "ui-open-2.r2c1",
+   "seen": "Left middle: cyan stud field, the window edge, the basket row icon in orange and the info icon.",
+   "defects": [
+    "no menu buttons on screen"
+   ]
+  },
+  {
+   "id": "ui-open-2.r2c2",
+   "seen": "Centre: Coming soon with The shop opens in a future update in the orange row, Placeholder in the grey row.",
+   "defects": [
+    "the shop says it is not open: the request is not delivered"
+   ]
+  },
+  {
+   "id": "ui-open-2.r2c3",
+   "seen": "Right middle: the ends of the orange and grey rows and the window frame, then the studded backdrop.",
+   "defects": []
+  },
+  {
+   "id": "ui-open-2.r3c1",
+   "seen": "Bottom left of the second shot: the darker blue studded band of the backdrop with the dark window corner at the top right.",
+   "defects": []
+  },
+  {
+   "id": "ui-open-2.r3c2",
+   "seen": "Bottom centre: the empty dark lower part of the Shop window and the blue band below.",
+   "defects": [
+    "empty window bottom"
+   ]
+  },
+  {
+   "id": "ui-open-2.r3c3",
+   "seen": "Bottom right: window corner, blue studded band, a sliver of green at the corner.",
+   "defects": []
+  }
+ ],
+ "measured": [
+  {
+   "key": "colour-gate||shots/ui-1174x623.jpg: mean saturation 0.35 is below 0.45; shots/ui-open-2.jpg: mean saturation 0.39 is below 0.45; shots/play-1.jpg: mean saturation 0.42 is below 0.45; shots/play-3.jpg: mean saturat",
+   "verdict": "real",
+   "fix": "replace the stud-texture backdrop with a candy gradient scene and drop the grey placeholder rows",
+   "reason": ""
+  }
+ ],
+ "scores": {
+  "delivers": {
+   "score": 3,
+   "defects": [
+    "the three menu buttons are never shown in any picture",
+    "Settings and Shop are empty placeholder windows",
+    "the reply claims verified, which the pictures do not support"
+   ]
+  },
+  "visual": {
+   "score": 4,
+   "defects": [
+    "backdrop is a flat stud field with no art",
+    "grey placeholder rows are dull",
+    "huge empty dark areas in both windows"
+   ]
+  },
+  "layout": {
+   "score": 3,
+   "defects": [
+    "the window covers the menu and cuts the title in half",
+    "bottom half of every window is empty",
+    "rows are wide with nothing on the right half"
+   ]
+  },
+  "ui": {
+   "score": 3,
+   "defects": [
+    "a menu whose buttons cannot be seen",
+    "windows open over the menu instead of from it",
+    "note text too small"
+   ]
+  },
+  "life": {
+   "score": 3,
+   "defects": [
+    "frames identical: no motion",
+    "no button press or hover state seen"
+   ]
+  },
+  "polish": {
+   "score": 4,
+   "defects": [
+    "dark outline pills behind small notes",
+    "title cut by window header"
+   ]
+  },
+  "style": {
+   "score": 5,
+   "defects": [
+    "studs on the full-screen backdrop and on card rows",
+    "saturation below the floor because of slate rows and dark bodies"
+   ],
+   "why": ""
+  }
+ },
+ "signatures": {
+  "1": "present",
+  "2": "present",
+  "3": "weak",
+  "4": "present",
+  "5": "weak",
+  "6": "weak",
+  "7": "missing"
+ },
+ "worst": "the main menu itself, the three buttons the creator asked for, never appears because a placeholder window covers it in every picture",
+ "fixes": [
+  {
+   "file": "scripts/eval/run-piece.mjs",
+   "change": "photograph the base screen with no panel open first, then each openable panel"
+  },
+  {
+   "file": "packages/blocks/ui/menu/recipe.json",
+   "change": "windows the menu opens start closed so the menu buttons are what the player sees"
+  },
+  {
+   "file": "apps/studio/src/agents/studpilot.ts",
+   "change": "forbid placeholder rows like Coming soon and any visual claim such as verified in the reply"
+  },
+  {
+   "file": "apps/worker/src/studkit.ts",
+   "change": "no stud texture on full-screen backdrops; use a candy gradient instead"
+  }
+ ],
+ "verdict": "fail"
+}

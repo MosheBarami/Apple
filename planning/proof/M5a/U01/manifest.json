@@ -1,0 +1,481 @@
+{
+ "harness": {
+  "name": "studpilot-eval",
+  "version": 2,
+  "node": "v26.8.1",
+  "startedAt": "2026-10-06T19:07:05.561Z",
+  "finishedAt": "2026-10-06T19:22:31.232Z",
+  "dryRun": false
+ },
+ "milestone": "M5a",
+ "request": {
+  "id": "U01",
+  "category": "ui",
+  "text": "a shop screen for a pet simulator with 6 eggs, prices in gems, and a big featured egg at the top",
+  "devSetSha256": "466afbf7d0ceee766c8e9afc7942a67fc53510d90828f499ec46a913c9cab114"
+ },
+ "project": {
+  "id": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d",
+  "name": "Owner benchmark (E2E)"
+ },
+ "userId": "8722e4df-ab9c-47f6-8a57-02f5a5dd1d44",
+ "deploy": {
+  "apiBase": "https://studpilot.app",
+  "buildSha": "6c64a84d",
+  "healthTime": "2026-10-06T19:07:05.827Z"
+ },
+ "studio": {
+  "serverInfo": {
+   "name": "RobloxStudio",
+   "version": "1.0.0"
+  },
+  "studioId": "48bd8954-434a-4a49-8625-f38884fc5d8e",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit",
+  "studiosListed": 1,
+  "probes": [
+   {
+    "id": "48bd8954-434a-4a49-8625-f38884fc5d8e",
+    "name": "Untitled Experience (placeId: 99790636595922)",
+    "ok": true,
+    "text": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+   }
+  ]
+ },
+ "plugin": {
+  "connected": true,
+  "pluginVersion": "1.5.0",
+  "paired": true,
+  "openPlace": {
+   "placeName": "Place2",
+   "placeId": 99790636595922,
+   "gameId": 10769652333,
+   "isRunMode": false
+  },
+  "queuedOps": 0,
+  "messagesBefore": 2,
+  "agentStatus": "idle"
+ },
+ "baseline": {
+  "file": "planning/proof/M5a/place-baseline.json",
+  "sha256": "3faad99a431bc3d7d872c733c29b710e270f49d4cda92378d940b88273fda978",
+  "capturedAt": "2026-10-06T03:19:36.761Z"
+ },
+ "reset": {
+  "removedInstances": 355,
+  "removedByService": {
+   "Lighting": 17,
+   "ServerScriptService": 4,
+   "Workspace": 333,
+   "StarterPlayer": 1
+  },
+  "restored": [
+   "Lighting.Ambient",
+   "Lighting.Brightness",
+   "Lighting.ClockTime",
+   "Lighting.EnvironmentDiffuseScale",
+   "Lighting.EnvironmentSpecularScale",
+   "Lighting.GeographicLatitude",
+   "Lighting.GlobalShadows",
+   "Lighting.OutdoorAmbient",
+   "Lighting.ShadowSoftness",
+   "Workspace/Baseplate#Part.Color",
+   "Workspace/Baseplate#Part.Material"
+  ],
+  "rebuilt": [],
+  "restoreFailed": [],
+  "terrainCleared": false,
+  "verifyAfter": {
+   "extra": 0,
+   "missing": 0,
+   "propDiffs": 0
+  },
+  "clean": true
+ },
+ "conversation": {
+  "cleared": true,
+  "route": "a new Studio conversation",
+  "conversationId": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d~eval-u01-20261006190707",
+  "at": "2026-10-06T19:07:07.137Z"
+ },
+ "spend": {
+  "before": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 240236,
+   "dayPending": 720,
+   "monthBillableNeurons": 586776,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.22272258064516126,
+   "estimatedMonthUsd": 6.4545,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  },
+  "after": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 264301,
+   "dayPending": 720,
+   "monthBillableNeurons": 610841,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.14509354838709676,
+   "estimatedMonthUsd": 6.7193,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  }
+ },
+ "run": {
+  "startedAt": "2026-10-06T19:07:09.615Z",
+  "startConfirmed": true,
+  "endedBy": "timeout",
+  "stopReason": "timeout",
+  "minutes": 15.06,
+  "timeoutMinutes": 15,
+  "error": "The operation was aborted due to timeout"
+ },
+ "build": {
+  "kind": "ui",
+  "emptyScreenGuis": [],
+  "addedParts": 0,
+  "screenGuis": [
+   {
+    "enabled": true,
+    "guiObjects": 16,
+    "name": "HUD",
+    "texts": 2
+   },
+   {
+    "enabled": true,
+    "guiObjects": 130,
+    "name": "Shop",
+    "texts": 20
+   }
+  ],
+  "addedInstances": 356,
+  "framing": {
+   "includesTerrain": false,
+   "hiddenParts": 0,
+   "hugeParts": 0
+  },
+  "terrainCells": 0,
+  "addedByService": {
+   "StarterPlayer": 1,
+   "Workspace": 1,
+   "StarterGui": 346,
+   "Lighting": 4,
+   "ServerScriptService": 4
+  },
+  "addedScripts": 8,
+  "viewport": [
+   1174,
+   623
+  ],
+  "terrain": {
+   "cells": 0,
+   "edited": false,
+   "baselineCells": 0
+  },
+  "spawn": {
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "source": "pristine",
+   "position": [
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "captures": [
+  {
+   "name": "ui",
+   "file": "shots/ui-1174x623.jpg",
+   "width": 1174,
+   "height": 623,
+   "bytes": 216674,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "target": null,
+   "uiArea": {
+    "bounds": [
+     316.97998046875,
+     143.96926879882812,
+     857.02001953125,
+     516.4106750488281
+    ],
+    "viewport": [
+     1174,
+     623
+    ]
+   }
+  }
+ ],
+ "ui": {
+  "requested": [
+   "1920x1080",
+   "1280x720"
+  ],
+  "viewportReported": [
+   1174,
+   623
+  ],
+  "captured": "1174x623",
+  "met": null,
+  "switchedOff": [],
+  "enabledForCapture": [],
+  "enableError": null,
+  "restoreError": null,
+  "note": "captured at 1174x623, which is not a target size; it is named by the pixels actually captured"
+ },
+ "playTest": {
+  "started": true,
+  "serverAnswered": true,
+  "frames": [
+   {
+    "name": "play-1",
+    "file": "shots/play-1.jpg",
+    "error": null,
+    "uiArea": {
+     "bounds": [
+      316.97998046875,
+      85.96926879882812,
+      857.02001953125,
+      458.4106750488281
+     ],
+     "viewport": [
+      1174,
+      623
+     ],
+     "panel": "Players.Mr_NoAmX.PlayerGui.Shop.Window"
+    },
+    "width": 1174,
+    "height": 623,
+    "bytes": 209896
+   },
+   {
+    "name": "play-2",
+    "file": "shots/play-2.jpg",
+    "error": null,
+    "uiArea": {
+     "bounds": [
+      316.97998046875,
+      85.96926879882812,
+      857.02001953125,
+      458.4106750488281
+     ],
+     "viewport": [
+      1174,
+      623
+     ],
+     "panel": "Players.Mr_NoAmX.PlayerGui.Shop.Window"
+    },
+    "width": 1174,
+    "height": 623,
+    "bytes": 209568
+   },
+   {
+    "name": "play-3",
+    "file": "shots/play-3.jpg",
+    "error": null,
+    "uiArea": {
+     "bounds": [
+      316.97998046875,
+      85.96926879882812,
+      857.02001953125,
+      458.4106750488281
+     ],
+     "viewport": [
+      1174,
+      623
+     ],
+     "panel": "Players.Mr_NoAmX.PlayerGui.Shop.Window"
+    },
+    "width": 1174,
+    "height": 623,
+    "bytes": 209540
+   }
+  ],
+  "consoleChars": 383,
+  "console": {
+   "errors": 0,
+   "warnings": 0,
+   "errorLines": [],
+   "warningLines": []
+  },
+  "logServer": {
+   "first": [
+    "DataStoreService: StudioAccessToApisNotAllowed: Studio access to APIs is not allowed. API: GetAsync, Data Store: StudPilotSave1",
+    "DataStoreService: StudioAccessToApisNotAllowed: Studio access to APIs is not allowed. API: GetAsync, Data Store: StudPilotSave1",
+    "DataStoreService: StudioAccessToApisNotAllowed: Studio access to APIs is not allowed. API: GetAsync, Data Store: StudPilotSave1"
+   ],
+   "warnings": 0,
+   "errors": 3
+  },
+  "logClient": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "stateAfterStart": "- Current Studio Mode: Play\n- Available DataModels: Client, Server\n- Focused DataModel in the viewport: Client",
+  "errors": 3,
+  "unestablished": null,
+  "error": null,
+  "backInEdit": true,
+  "warnings": 0,
+  "sources": {
+   "console": {
+    "errors": 0,
+    "warnings": 0
+   },
+   "logServer": {
+    "first": [
+     "DataStoreService: StudioAccessToApisNotAllowed: Studio access to APIs is not allowed. API: GetAsync, Data Store: StudPilotSave1",
+     "DataStoreService: StudioAccessToApisNotAllowed: Studio access to APIs is not allowed. API: GetAsync, Data Store: StudPilotSave1",
+     "DataStoreService: StudioAccessToApisNotAllowed: Studio access to APIs is not allowed. API: GetAsync, Data Store: StudPilotSave1"
+    ],
+    "warnings": 0,
+    "errors": 3
+   },
+   "logClient": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   }
+  }
+ },
+ "functionalChecks": {
+  "defined": false
+ },
+ "aborted": null,
+ "files": {
+  "request.txt": {
+   "sha256": "a9fcf2335d96e032d3ada0edeb1a9be2c682682222254012c500eecb09b1b2d9",
+   "bytes": 97
+  },
+  "reply.md": {
+   "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+   "bytes": 1
+  },
+  "steps.json": {
+   "sha256": "ff710138c2cf5a89b5990fb5ed9bf28235cb9f63ea9b97cf2cf2b454ab02972f",
+   "bytes": 1013
+  },
+  "credits.json": {
+   "sha256": "d00ded9773caa7f617dc2f03ddbfed7014ff75dff5de835a52726747eec1abf7",
+   "bytes": 835
+  },
+  "timing.json": {
+   "sha256": "1ab14b03e80fe0a588f73613c9c0fb89932407c51f018881a51467db29a93ff4",
+   "bytes": 1695
+  },
+  "console.txt": {
+   "sha256": "452cb27296d5069cac55dd4d3dd64d965b08a70c1f6fc5b5551af88580c7396d",
+   "bytes": 383
+  },
+  "shots/ui-1174x623.jpg": {
+   "sha256": "6c69a5eea0250f4ee33757aac93058c55d3b00eba5f9a4cd1ce785cf56d34bdb",
+   "bytes": 216674
+  },
+  "shots/play-1.jpg": {
+   "sha256": "9bf4e501bb7f41e25f236f488b6a0bbe710c48d9ab6b32249b869c92f2cfc292",
+   "bytes": 209896
+  },
+  "shots/play-2.jpg": {
+   "sha256": "bcd0a906ea1cc8a0363e484d4567cfcb39deba37df37d6248f655d28dfc6c9cf",
+   "bytes": 209568
+  },
+  "shots/play-3.jpg": {
+   "sha256": "d5e38042f42f1cdfce92822f47e2e05d33df6a6f7addf987fea04fc257b9698b",
+   "bytes": 209540
+  }
+ },
+ "agent": "studio",
+ "kitLint": {
+  "objects": 146,
+  "findings": [],
+  "counts": []
+ },
+ "proofOpen": {
+  "source": "hook",
+  "panels": [
+   "StarterGui.Shop.Window"
+  ],
+  "shots": [
+   {
+    "file": "shots/ui-1174x623.jpg",
+    "panel": "StarterGui.Shop.Window"
+   }
+  ],
+  "error": null
+ },
+ "gates": {
+  "kitLint": {
+   "pass": true,
+   "reasons": []
+  },
+  "colour": {
+   "pass": true,
+   "reasons": [],
+   "shots": [
+    {
+     "file": "shots/ui-1174x623.jpg",
+     "kind": "ui",
+     "saturation": 0.5552541239602702,
+     "grey": 0.059583333333333335,
+     "vivid": 0.4686111111111111,
+     "pass": true,
+     "reasons": []
+    },
+    {
+     "file": "shots/play-1.jpg",
+     "kind": "ui",
+     "saturation": 0.5616600804672798,
+     "grey": 0.058888888888888886,
+     "vivid": 0.4865277777777778,
+     "pass": true,
+     "reasons": []
+    },
+    {
+     "file": "shots/play-2.jpg",
+     "kind": "ui",
+     "saturation": 0.5572174639408427,
+     "grey": 0.06402777777777778,
+     "vivid": 0.4814583333333333,
+     "pass": true,
+     "reasons": []
+    },
+    {
+     "file": "shots/play-3.jpg",
+     "kind": "ui",
+     "saturation": 0.5572174639408427,
+     "grey": 0.06402777777777778,
+     "vivid": 0.4814583333333333,
+     "pass": true,
+     "reasons": []
+    }
+   ]
+  },
+  "reply": {
+   "pass": true,
+   "reasons": []
+  }
+ }
+}

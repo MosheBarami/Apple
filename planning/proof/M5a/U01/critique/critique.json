@@ -1,0 +1,243 @@
+{
+ "images": [
+  {
+   "file": "shots/play-1.jpg",
+   "sha256": "9bf4e501bb7f41e25f236f488b6a0bbe710c48d9ab6b32249b869c92f2cfc292"
+  },
+  {
+   "file": "shots/play-2.jpg",
+   "sha256": "bcd0a906ea1cc8a0363e484d4567cfcb39deba37df37d6248f655d28dfc6c9cf"
+  },
+  {
+   "file": "shots/play-3.jpg",
+   "sha256": "d5e38042f42f1cdfce92822f47e2e05d33df6a6f7addf987fea04fc257b9698b"
+  },
+  {
+   "file": "shots/ui-1174x623.jpg",
+   "sha256": "6c69a5eea0250f4ee33757aac93058c55d3b00eba5f9a4cd1ce785cf56d34bdb"
+  }
+ ],
+ "crops": [
+  {
+   "id": "play-1.panel",
+   "seen": "Header with a yellow egg icon sitting on the left of the Egg Shop title, its bottom half hanging into the Void Egg featured card below; the card eggs poke up through the top edges of their cards.",
+   "defects": [
+    "header egg and featured egg stack into each other like one blob",
+    "card eggs break through the card tops into the row above"
+   ]
+  },
+  {
+   "id": "play-1.whole",
+   "seen": "Play mode frame: Shop button top centre, the Egg Shop window in the middle with featured Void Egg and three full egg cards, two more cards cut off at the window bottom, gem counter 500 bottom left.",
+   "defects": [
+    "bottom row of cards cut off by the window edge",
+    "Shop HUD button floats top centre instead of the left HUD column"
+   ]
+  },
+  {
+   "id": "play-2.panel",
+   "seen": "Same panel in a later frame; the Void Egg price button has turned dark grey because 500 gems cannot afford 12,500, the title and egg collision is unchanged.",
+   "defects": [
+    "the grey unaffordable state is the only sign of life; nothing else reacts",
+    "Rare Void Dragon pill crowds into the price button"
+   ]
+  },
+  {
+   "id": "play-2.whole",
+   "seen": "Later play frame: identical layout, Crystal Egg price button now grey for unaffordable, everything else static; a white strip of the spawn shows under the window.",
+   "defects": [
+    "every egg is the same yellow image, so the shop reads as one item six times",
+    "white spawn strip peeks out under the window bottom"
+   ]
+  },
+  {
+   "id": "play-3.panel",
+   "seen": "Third frame panel crop; nothing changed from frame two, the same yellow egg duplicated in the header, featured slot and every card.",
+   "defects": [
+    "no idle motion on the featured egg, no shine or bob",
+    "header egg duplicates the featured egg right below it"
+   ]
+  },
+  {
+   "id": "play-3.whole",
+   "seen": "Third frame whole: same static shop, no animation between frames, grass and sky behind, gem counter still 500 bottom left.",
+   "defects": [
+    "three frames are pixel-identical apart from button greying: the screen is dead",
+    "grass behind is neon and fights the window for attention"
+   ]
+  },
+  {
+   "id": "ui-1174x623.panel",
+   "seen": "Edit-mode panel: Egg Shop header pink-red with studs, Void Egg purple featured card, Common, Forest and Crystal cards in blue, lime and teal, two more cards cut at the bottom, prices written as Gems 100, Gems 250, Gems 750, Gems 12,500.",
+   "defects": [
+    "prices spell the word Gems instead of a gem icon and number",
+    "subtitle text sits in heavy brown outline pills that look like stickers",
+    "Bunny, Fox, Owl subtitle overlaps the top of the price button",
+    "card faces are covered in studs, busy behind the text"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r1c1",
+   "seen": "Top left of the screen is empty sky; at the right edge the pink header corner and the yellow header egg start.",
+   "defects": [
+    "the header egg sticks out past the left edge of the window frame"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r1c2",
+   "seen": "Top middle: the green Shop HUD button with studs and the Shop label, and below it the pink Egg Shop header bar with its white title.",
+   "defects": [
+    "two shop titles stacked: the HUD button says Shop right above the window titled Egg Shop"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r1c3",
+   "seen": "Top right: sky and the red square close button with a white X sitting on the header corner, half outside the frame.",
+   "defects": []
+  },
+  {
+   "id": "ui-1174x623.r2c1",
+   "seen": "Left middle: neon green ground and pale sky, the dark window edge with the purple featured card corner and the big yellow egg cut at the crop edge.",
+   "defects": [
+    "ground saturation is neon and competes with the UI"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r2c2",
+   "seen": "Centre: Void Egg title in white with purple outline, Rare Void Dragon! in yellow with brown outline pill, the Gems 12,500 price button half hidden behind it, three yellow card eggs below.",
+   "defects": [
+    "featured egg uses the same yellow egg as the cheapest egg",
+    "price button partly covered by the subtitle"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r2c3",
+   "seen": "Right middle: the right edge of the window, the end of the green 12,500 price button and the teal Crystal Egg card corner, then empty green ground.",
+   "defects": [
+    "window right edge has a thick grey slate band with no detail"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r3c1",
+   "seen": "Bottom left: neon green floor and the gem counter with a blue gem icon and 500 in a teal pill; the window corner with a cut yellow card at the right.",
+   "defects": [
+    "currency counter is small and far from the shop that spends it"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r3c2",
+   "seen": "Bottom middle: the price row of the Common, Forest and Crystal cards, then two cut-off cards (cream and pink) whose eggs show only their tops, then the window bottom edge.",
+   "defects": [
+    "two of the six eggs are cut off: half the product is hidden",
+    "no scroll bar or hint that more items exist"
+   ]
+  },
+  {
+   "id": "ui-1174x623.r3c3",
+   "seen": "Bottom right: the window corner with Gem golems inside and the 750 price peeking, then empty neon green floor with faint stud outlines.",
+   "defects": []
+  }
+ ],
+ "measured": [
+  {
+   "key": "play-error||3 error(s) in the play test",
+   "verdict": "real",
+   "fix": "read the three play errors and fix the script block that throws them",
+   "reason": ""
+  },
+  {
+   "key": "timeout||the run hit its time limit",
+   "verdict": "real",
+   "fix": "the builder spent its whole 15 minutes; cap its steps and reply before the limit",
+   "reason": ""
+  }
+ ],
+ "scores": {
+  "delivers": {
+   "score": 5,
+   "defects": [
+    "six eggs are there but indistinguishable, so the featured egg does not read as featured",
+    "two of six eggs are cut off and cannot be bought from the screen as shown",
+    "the run timed out, so the creator got no reply at all"
+   ]
+  },
+  "visual": {
+   "score": 4,
+   "defects": [
+    "the same yellow egg picture is used eight times including the header",
+    "prices spelled as text instead of the gem icon",
+    "heavy brown outline pills on subtitles look like stickers"
+   ]
+  },
+  "layout": {
+   "score": 3,
+   "defects": [
+    "header egg and featured egg collide vertically",
+    "card eggs spill into the row above",
+    "the bottom row is clipped by the window and there is no scroll cue",
+    "the Shop button floats top centre instead of the left HUD column"
+   ]
+  },
+  "ui": {
+   "score": 4,
+   "defects": [
+    "no scroll for hidden eggs",
+    "unaffordable state is only a grey button with no message",
+    "subtitle text overlaps the price button and hurts readability"
+   ]
+  },
+  "life": {
+   "score": 3,
+   "defects": [
+    "three play frames are identical: no bob, shine or rotate on the eggs",
+    "three play-test errors in the console"
+   ]
+  },
+  "polish": {
+   "score": 3,
+   "defects": [
+    "overlaps everywhere: icons over titles, subtitles over buttons",
+    "a white spawn strip shows under the window",
+    "studs fill every card face and clutter the text"
+   ]
+  },
+  "style": {
+   "score": 5,
+   "defects": [
+    "studs on card faces break the bible: studs only on headers and buttons",
+    "currency as the word Gems breaks the icon-plus-number price convention",
+    "grey slate body instead of a rich dark panel"
+   ],
+   "why": ""
+  }
+ },
+ "signatures": {
+  "1": "present",
+  "2": "present",
+  "3": "weak",
+  "4": "present",
+  "5": "weak",
+  "6": "weak",
+  "7": "weak"
+ },
+ "worst": "every egg in the shop is the same yellow picture, so the screen sells one egg six times and the featured egg is not special",
+ "fixes": [
+  {
+   "file": "packages/blocks/ui/item-grid/recipe.json",
+   "change": "give each item its own icon tint from its colour token and make the featured icon larger and distinct"
+  },
+  {
+   "file": "packages/blocks/ui/item-grid/recipe.json",
+   "change": "size the grid to its rows or put it in a scrolling frame with a visible bar so no item is cut"
+  },
+  {
+   "file": "apps/worker/src/studkit.ts",
+   "change": "keep card icons inside their card, remove studs from card faces, and render prices as currency icon plus number"
+  },
+  {
+   "file": "apps/worker/src/studkit.ts",
+   "change": "drop the window header icon when the content has a featured item so the two never collide"
+  }
+ ],
+ "verdict": "fail"
+}

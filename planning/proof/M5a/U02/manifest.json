@@ -1,0 +1,536 @@
+{
+ "harness": {
+  "name": "studpilot-eval",
+  "version": 2,
+  "node": "v26.8.1",
+  "startedAt": "2026-10-06T19:22:31.308Z",
+  "finishedAt": "2026-10-06T19:37:50.109Z",
+  "dryRun": false
+ },
+ "milestone": "M5a",
+ "request": {
+  "id": "U02",
+  "category": "ui",
+  "text": "main menu with Play, Settings and Shop buttons, cartoony studded style",
+  "devSetSha256": "466afbf7d0ceee766c8e9afc7942a67fc53510d90828f499ec46a913c9cab114"
+ },
+ "project": {
+  "id": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d",
+  "name": "Owner benchmark (E2E)"
+ },
+ "userId": "8722e4df-ab9c-47f6-8a57-02f5a5dd1d44",
+ "deploy": {
+  "apiBase": "https://studpilot.app",
+  "buildSha": "6c64a84d",
+  "healthTime": "2026-10-06T19:22:31.555Z"
+ },
+ "studio": {
+  "serverInfo": {
+   "name": "RobloxStudio",
+   "version": "1.0.0"
+  },
+  "studioId": "48bd8954-434a-4a49-8625-f38884fc5d8e",
+  "state": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit",
+  "studiosListed": 1,
+  "probes": [
+   {
+    "id": "48bd8954-434a-4a49-8625-f38884fc5d8e",
+    "name": "Untitled Experience (placeId: 99790636595922)",
+    "ok": true,
+    "text": "- Current Studio Mode: Edit\n- Available DataModels: Edit\n- Focused DataModel in the viewport: Edit"
+   }
+  ]
+ },
+ "plugin": {
+  "connected": true,
+  "pluginVersion": "1.5.0",
+  "paired": true,
+  "openPlace": {
+   "placeName": "Untitled Experience",
+   "placeId": 99790636595922,
+   "gameId": 10769652333,
+   "isRunMode": false
+  },
+  "queuedOps": 0,
+  "messagesBefore": 2,
+  "agentStatus": "idle"
+ },
+ "baseline": {
+  "file": "planning/proof/M5a/place-baseline.json",
+  "sha256": "3faad99a431bc3d7d872c733c29b710e270f49d4cda92378d940b88273fda978",
+  "capturedAt": "2026-10-06T03:19:36.761Z"
+ },
+ "reset": {
+  "removedInstances": 356,
+  "removedByService": {
+   "StarterPlayer": 1,
+   "Workspace": 1,
+   "StarterGui": 346,
+   "Lighting": 4,
+   "ServerScriptService": 4
+  },
+  "restored": [
+   "Lighting.Ambient",
+   "Lighting.Brightness",
+   "Lighting.ClockTime",
+   "Lighting.EnvironmentDiffuseScale",
+   "Lighting.EnvironmentSpecularScale",
+   "Lighting.ExposureCompensation",
+   "Lighting.GeographicLatitude",
+   "Lighting.GlobalShadows",
+   "Lighting.OutdoorAmbient",
+   "Lighting.ShadowSoftness",
+   "Workspace/Baseplate#Part.Color",
+   "Workspace/Baseplate#Part.Material"
+  ],
+  "rebuilt": [],
+  "restoreFailed": [],
+  "terrainCleared": false,
+  "verifyAfter": {
+   "extra": 0,
+   "missing": 0,
+   "propDiffs": 0
+  },
+  "clean": true
+ },
+ "conversation": {
+  "cleared": true,
+  "route": "a new Studio conversation",
+  "conversationId": "1ea443f2-6232-43c1-a8bd-f425e2df4f4d~eval-u02-20261006192232",
+  "at": "2026-10-06T19:22:32.073Z"
+ },
+ "spend": {
+  "before": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 264301,
+   "dayPending": 720,
+   "monthBillableNeurons": 610841,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.14509354838709676,
+   "estimatedMonthUsd": 6.7193,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  },
+  "after": {
+   "day": "2026-10-06",
+   "month": "2026-10",
+   "dayNeurons": 284093,
+   "dayPending": 720,
+   "monthBillableNeurons": 630633,
+   "killed": false,
+   "killedReason": null,
+   "dayRemainingFraction": 0.08124838709677418,
+   "estimatedMonthUsd": 6.937,
+   "freeRemainingToday": 0,
+   "thirdParty": {
+    "dayUsd": 0,
+    "dayPendingUsd": 0,
+    "monthUsd": 0,
+    "dayCeilingUsd": 5,
+    "monthCeilingUsd": 60
+   }
+  }
+ },
+ "run": {
+  "startedAt": "2026-10-06T19:22:33.482Z",
+  "startConfirmed": true,
+  "endedBy": "done",
+  "stopReason": "done",
+  "minutes": 15.03,
+  "timeoutMinutes": 15,
+  "error": null
+ },
+ "build": {
+  "kind": "ui",
+  "emptyScreenGuis": [],
+  "addedParts": 0,
+  "screenGuis": [
+   {
+    "enabled": true,
+    "guiObjects": 37,
+    "name": "MainMenu",
+    "texts": 6
+   },
+   {
+    "enabled": true,
+    "guiObjects": 77,
+    "name": "Settings",
+    "texts": 6
+   },
+   {
+    "enabled": true,
+    "guiObjects": 77,
+    "name": "Shop",
+    "texts": 6
+   }
+  ],
+  "addedInstances": 468,
+  "framing": {
+   "includesTerrain": false,
+   "hiddenParts": 0,
+   "hugeParts": 0
+  },
+  "terrainCells": 0,
+  "addedByService": {
+   "Lighting": 4,
+   "StarterPlayer": 1,
+   "Workspace": 1,
+   "StarterGui": 462
+  },
+  "addedScripts": 6,
+  "viewport": [
+   1174,
+   623
+  ],
+  "terrain": {
+   "cells": 0,
+   "edited": false,
+   "baselineCells": 0
+  },
+  "spawn": {
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "source": "pristine",
+   "position": [
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "captures": [
+  {
+   "name": "ui",
+   "file": "shots/ui-1174x623.jpg",
+   "width": 1174,
+   "height": 623,
+   "bytes": 216750,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "target": null,
+   "uiArea": {
+    "bounds": [
+     316.97998046875,
+     143.96926879882812,
+     857.02001953125,
+     516.4106750488281
+    ],
+    "viewport": [
+     1174,
+     623
+    ]
+   }
+  },
+  {
+   "name": "ui-open-2",
+   "file": "shots/ui-open-2.jpg",
+   "width": 1174,
+   "height": 623,
+   "bytes": 216878,
+   "camera": null,
+   "error": null,
+   "format": "jpeg",
+   "imageSource": "image-item",
+   "uiArea": {
+    "bounds": [
+     316.97998046875,
+     143.96926879882812,
+     857.02001953125,
+     516.4106750488281
+    ],
+    "viewport": [
+     1174,
+     623
+    ]
+   }
+  }
+ ],
+ "ui": {
+  "requested": [
+   "1920x1080",
+   "1280x720"
+  ],
+  "viewportReported": [
+   1174,
+   623
+  ],
+  "captured": "1174x623",
+  "met": null,
+  "switchedOff": [],
+  "enabledForCapture": [],
+  "enableError": null,
+  "restoreError": null,
+  "note": "captured at 1174x623, which is not a target size; it is named by the pixels actually captured"
+ },
+ "playTest": {
+  "started": true,
+  "serverAnswered": true,
+  "frames": [
+   {
+    "name": "play-1",
+    "file": "shots/play-1.jpg",
+    "error": null,
+    "uiArea": {
+     "bounds": [
+      370.9839782714844,
+      123.21340942382812,
+      803.0160217285156,
+      421.1665344238281
+     ],
+     "viewport": [
+      1174,
+      623
+     ],
+     "panel": "Players.Mr_NoAmX.PlayerGui.Settings.Window"
+    },
+    "width": 1174,
+    "height": 623,
+    "bytes": 216679
+   },
+   {
+    "name": "play-2",
+    "file": "shots/play-2.jpg",
+    "error": null,
+    "uiArea": {
+     "bounds": [
+      370.9839782714844,
+      123.21340942382812,
+      803.0160217285156,
+      421.1665344238281
+     ],
+     "viewport": [
+      1174,
+      623
+     ],
+     "panel": "Players.Mr_NoAmX.PlayerGui.Shop.Window"
+    },
+    "width": 1174,
+    "height": 623,
+    "bytes": 216836
+   },
+   {
+    "name": "play-3",
+    "file": "shots/play-3.jpg",
+    "error": null,
+    "uiArea": {
+     "bounds": [
+      370.9839782714844,
+      123.21340942382812,
+      803.0160217285156,
+      421.1665344238281
+     ],
+     "viewport": [
+      1174,
+      623
+     ],
+     "panel": "Players.Mr_NoAmX.PlayerGui.Settings.Window"
+    },
+    "width": 1174,
+    "height": 623,
+    "bytes": 216679
+   }
+  ],
+  "consoleChars": 0,
+  "console": {
+   "errors": 0,
+   "warnings": 0,
+   "errorLines": [],
+   "warningLines": []
+  },
+  "logServer": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "logClient": {
+   "first": [],
+   "warnings": 0,
+   "errors": 0
+  },
+  "stateAfterStart": "- Current Studio Mode: Play\n- Available DataModels: Client, Server\n- Focused DataModel in the viewport: Client",
+  "errors": 0,
+  "unestablished": null,
+  "error": null,
+  "backInEdit": true,
+  "warnings": 0,
+  "sources": {
+   "console": {
+    "errors": 0,
+    "warnings": 0
+   },
+   "logServer": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   },
+   "logClient": {
+    "first": [],
+    "warnings": 0,
+    "errors": 0
+   }
+  }
+ },
+ "functionalChecks": {
+  "defined": false
+ },
+ "aborted": null,
+ "files": {
+  "request.txt": {
+   "sha256": "14807c7f9bc16d631b0632137a799df8ab8290d3ef83aa2cd92ae7e0d81185a1",
+   "bytes": 71
+  },
+  "reply.md": {
+   "sha256": "8da5294bdfc3b4505a303b121b2aa0ff214d699b21bc31b7776747d4ce96e5b6",
+   "bytes": 1548
+  },
+  "steps.json": {
+   "sha256": "457a0abff0dae410327a67388599db31ae348dcddd9885991ddbab3602474803",
+   "bytes": 1438
+  },
+  "credits.json": {
+   "sha256": "d5ae87a5b8edf04d7fbdaa966008cb6eaaae71eadcb2c19bfe24fc150dfaffeb",
+   "bytes": 836
+  },
+  "timing.json": {
+   "sha256": "8487f2e3cfeeca5a9a057a2d70ad20b05465feac511eaeb419ee98a8e3280785",
+   "bytes": 1690
+  },
+  "console.txt": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  "shots/ui-1174x623.jpg": {
+   "sha256": "185237d845c6c8772b4cefe139bea379a4500be6d61dcfddae274bca7dda905e",
+   "bytes": 216750
+  },
+  "shots/ui-open-2.jpg": {
+   "sha256": "dfb393c278e7f01bdb637463e58824a026084896451ff5f582b558c4398363e2",
+   "bytes": 216878
+  },
+  "shots/play-1.jpg": {
+   "sha256": "54af480bc495f29171c768fc5727f3da4f1e5ea203a6483681b5679f17e5948e",
+   "bytes": 216679
+  },
+  "shots/play-2.jpg": {
+   "sha256": "40d091b62bcc0fe843bdbaf7728ea9fec0bdbc7e9b596e80ce97304925f30f26",
+   "bytes": 216836
+  },
+  "shots/play-3.jpg": {
+   "sha256": "54af480bc495f29171c768fc5727f3da4f1e5ea203a6483681b5679f17e5948e",
+   "bytes": 216679
+  }
+ },
+ "agent": "studio",
+ "kitLint": {
+  "objects": 191,
+  "findings": [],
+  "counts": []
+ },
+ "proofOpen": {
+  "source": "hook",
+  "panels": [
+   "StarterGui.Settings.Window",
+   "StarterGui.Shop.Window"
+  ],
+  "shots": [
+   {
+    "file": "shots/ui-1174x623.jpg",
+    "panel": "StarterGui.Settings.Window"
+   },
+   {
+    "file": "shots/ui-open-2.jpg",
+    "panel": "StarterGui.Shop.Window"
+   }
+  ],
+  "error": null
+ },
+ "gates": {
+  "kitLint": {
+   "pass": true,
+   "reasons": []
+  },
+  "colour": {
+   "pass": false,
+   "reasons": [
+    "shots/ui-1174x623.jpg: mean saturation 0.35 is below 0.45",
+    "shots/ui-open-2.jpg: mean saturation 0.39 is below 0.45",
+    "shots/play-1.jpg: mean saturation 0.42 is below 0.45",
+    "shots/play-3.jpg: mean saturation 0.42 is below 0.45"
+   ],
+   "shots": [
+    {
+     "file": "shots/ui-1174x623.jpg",
+     "kind": "ui",
+     "saturation": 0.351371333551506,
+     "grey": 0.13944444444444445,
+     "vivid": 0.22416666666666665,
+     "pass": false,
+     "reasons": [
+      "mean saturation 0.35 is below 0.45"
+     ]
+    },
+    {
+     "file": "shots/ui-open-2.jpg",
+     "kind": "ui",
+     "saturation": 0.3850584140446899,
+     "grey": 0.11388888888888889,
+     "vivid": 0.25527777777777777,
+     "pass": false,
+     "reasons": [
+      "mean saturation 0.39 is below 0.45"
+     ]
+    },
+    {
+     "file": "shots/play-1.jpg",
+     "kind": "ui",
+     "saturation": 0.4228064772851764,
+     "grey": 0.17291666666666666,
+     "vivid": 0.33520833333333333,
+     "pass": false,
+     "reasons": [
+      "mean saturation 0.42 is below 0.45"
+     ]
+    },
+    {
+     "file": "shots/play-2.jpg",
+     "kind": "ui",
+     "saturation": 0.4644853445027498,
+     "grey": 0.13555555555555557,
+     "vivid": 0.374375,
+     "pass": true,
+     "reasons": []
+    },
+    {
+     "file": "shots/play-3.jpg",
+     "kind": "ui",
+     "saturation": 0.4228064772851764,
+     "grey": 0.17291666666666666,
+     "vivid": 0.33520833333333333,
+     "pass": false,
+     "reasons": [
+      "mean saturation 0.42 is below 0.45"
+     ]
+    }
+   ]
+  },
+  "reply": {
+   "pass": false,
+   "reasons": [
+    "the reply says \"verified\"; visual claims are the critic's"
+   ]
+  }
+ }
+}

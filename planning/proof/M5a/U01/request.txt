@@ -1,0 +1,1 @@
+a shop screen for a pet simulator with 6 eggs, prices in gems, and a big featured egg at the top
