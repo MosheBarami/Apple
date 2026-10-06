@@ -1,0 +1,7 @@
+[
+  {
+    "id": "clean",
+    "kind": "play_clean",
+    "describes": "a play test with the props has no errors"
+  }
+]

@@ -51,8 +51,11 @@ function hexToRgb(value: unknown): unknown {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, hexToRgb(v)]));
 }
 
+export interface PropPlacement { prop: string; at: [number, number, number]; name: string }
 export interface RunDeps {
   exec(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
+  /** Places one world-pack prop (blocks-tool.ts: the library's script-free copy at player scale). */
+  placeProp?(p: PropPlacement): Promise<{ ok: boolean; error?: string }>;
   /** A corrected parameter set after `param` failed `problem`, or null. plan-fill.ts's repairParam. */
   repair?(blockId: string, param: string, problem: string, params: Record<string, unknown>): Promise<Record<string, unknown> | null>;
 }
@@ -146,7 +149,32 @@ export function stepOps(step: RecipeStep, block: Block, params: Record<string, u
       return [{ op: 'edit_script', path: s.path, source: fillSource(block.sources[s.file] ?? '', params), create: s.create }];
     case 'clone_instances':
       return [{ op: 'clone_instances', paths: s.paths, ...(s.parent ? { parent: s.parent } : {}) }];
+    case 'place_props':
+      return []; // placed by runBlocks through deps.placeProp, not as a plugin op
   }
+}
+
+/**
+ * Where a cluster's props stand: a golden-angle spiral with jitter, so they gather around the centre and never line up
+ * in a grid (style bible §4.4). Deterministic: the same items give the same places. Pure.
+ */
+export function clusterPositions(items: Array<{ prop: string; count: number }>, center: number[], radius: number): PropPlacement[] {
+  const out: PropPlacement[] = [];
+  const total = items.reduce((n, i) => n + Math.max(0, Math.min(8, Math.floor(i.count))), 0);
+  let k = 0;
+  const seen: Record<string, number> = {};
+  for (const item of items) {
+    for (let c = 0; c < Math.max(0, Math.min(8, Math.floor(item.count))); c += 1) {
+      const jitter = ((Math.sin((k + 1) * 12.9898) * 43758.5453) % 1 + 1) % 1;
+      const r = radius * Math.sqrt((k + 0.5) / Math.max(total, 1)) * (0.8 + 0.4 * jitter);
+      const a = k * 2.399963 + jitter * 0.6;
+      seen[item.prop] = (seen[item.prop] ?? 0) + 1;
+      const label = item.prop.split('_').map((w) => w[0]!.toUpperCase() + w.slice(1)).join('');
+      out.push({ prop: item.prop, name: `${label}${seen[item.prop]}`, at: [Math.round((center[0]! + Math.cos(a) * r) * 10) / 10, center[1] ?? 0, Math.round((center[2]! + Math.sin(a) * r) * 10) / 10] });
+      k += 1;
+    }
+  }
+  return out;
 }
 
 /** What a create step made, so a re-run can remove it first. Pure. */
@@ -239,6 +267,22 @@ export async function runBlocks(input: {
       for (;;) {
         stepReport.attempts += 1;
         if (made.length) await deps.exec({ op: 'delete_instances', paths: made }, 20_000).catch(() => undefined);
+        if (step.op === 'place_props') {
+          const s = fill(step, params) as Extract<RecipeStep, { op: 'place_props' }>;
+          if (!deps.placeProp) { stepReport.error = 'props can only be placed through build_blocks'; break; }
+          const failed: string[] = [];
+          for (const p of clusterPositions(s.items.map((i) => ({ prop: i.prop, count: Number(i.count) })), s.center.map(Number), Number(s.radius))) {
+            const r = await deps.placeProp(p);
+            if (!r.ok) failed.push(`${p.name}: ${r.error ?? 'not placed'}`);
+          }
+          if (failed.length) { stepReport.error = `place_props: ${failed.slice(0, 3).join('; ')}`; results = []; break; }
+          results = [];
+          for (const c of due) results.push({ c, r: await runCheck(c, params, deps) });
+          const miss = results.find((x) => !x.r.ok);
+          if (miss) stepReport.error = `${miss.c.describes}: ${miss.r.found ?? 'failed'}`;
+          else stepReport.ok = true;
+          break;
+        }
         let ops: StudioOp[];
         try { ops = stepOps(step, block, params); } catch (e) { stepReport.error = String((e as Error).message); break; }
         made = ops.flatMap(createdPaths);

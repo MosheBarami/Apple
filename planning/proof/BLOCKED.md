@@ -69,3 +69,12 @@ The pack (`packages/blocks/assets/icons.json`, 39 free Creator Store images, sty
 jetpack icon). Roblox's AI generator could make one, but the result is uploaded to the account that runs it, and nothing
 goes to the owner's account without a yes. Until then `rocket` shows its glyph. Owner: say yes to one Roblox-AI image
 upload (and to which account), or accept the glyph.
+
+## N13 (2026-10-06): the world kit's missing props need third-party asset loading
+The world pack (`packages/blocks/assets/world-pack.json`) holds 16 Roblox-owned, script-free props (trees, benches,
+barrels, lamps, rocks, fence, well, arch...). The bible's other props (market stall with awning, windmill, hay bale,
+crate, palm tree, bush, plank fence, sign on a post, fountain, house or shop, portal) exist on the Creator Store only as
+third-party models, and every one tried answered "User is not authorized to access Asset" in the evaluation place: a
+place must allow third-party asset loading (Game Settings > Security) before they can be vetted and used. Owner: allow
+it for the evaluation place (and say whether StudPilot may ask creators to allow it in theirs), or keep the world kit to
+the Roblox-owned props.

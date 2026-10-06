@@ -1,0 +1,398 @@
+{
+  "version": 1,
+  "note": "Probed in Studio 2026-10-06 with InsertService:LoadAsset: all 16 props below loaded with 0 scripts. Sizes are Model:GetExtentsSize in studs at native scale; scaleTo is a suggested longest side at player scale (R15 character about 5 studs tall). The library holds no Roblox-owned stall, windmill, hay bale, palm, crate or house. All 34 third-party (conditional) ids tried returned \"User is not authorized to access Asset\" in the base Studio place, so they are listed under conditionalUnverified and were NOT looked at; use them only in an experience that permits third-party asset loading, and re-probe first. Parts are BasePart counts (no MeshParts in these Roblox-owned models, so triangles are small, roughly the library figure).",
+  "props": [
+    {
+      "name": "bench",
+      "assetId": "23153972",
+      "source": "roblox",
+      "size": [
+        4.2,
+        5.2,
+        9
+      ],
+      "parts": 14,
+      "scripts": 0,
+      "style": "Park bench, brown wood slats on blue-grey legs; clean and readable.",
+      "scaleTo": 7
+    },
+    {
+      "name": "barrel",
+      "assetId": "23153991",
+      "source": "roblox",
+      "size": [
+        3,
+        3.9,
+        3
+      ],
+      "parts": 4,
+      "scripts": 0,
+      "style": "Plain rust-brown barrel with metal bands (not the radioactive variant 23153987).",
+      "scaleTo": 4
+    },
+    {
+      "name": "well",
+      "assetId": "56447829",
+      "source": "roblox",
+      "size": [
+        12,
+        16,
+        12
+      ],
+      "parts": 47,
+      "scripts": 0,
+      "style": "Cream stone round well with dark iron cage, blue flag; slightly medieval but chunky.",
+      "scaleTo": 12
+    },
+    {
+      "name": "flower_pot",
+      "assetId": "56448980",
+      "source": "roblox",
+      "size": [
+        4,
+        4,
+        4
+      ],
+      "parts": 2,
+      "scripts": 0,
+      "style": "Small terracotta pot with bright blue flowers; tiny, use in clusters.",
+      "scaleTo": 3
+    },
+    {
+      "name": "lamp_post",
+      "assetId": "56449028",
+      "source": "roblox",
+      "size": [
+        4,
+        16,
+        9.1
+      ],
+      "parts": 6,
+      "scripts": 0,
+      "style": "Slim dark-blue street lamp with a lit head; thin pole, plain but clean.",
+      "scaleTo": 14
+    },
+    {
+      "name": "fence",
+      "assetId": "56449052",
+      "source": "roblox",
+      "size": [
+        8,
+        4,
+        4
+      ],
+      "parts": 6,
+      "scripts": 0,
+      "style": "White painted rail fence section, 8 studs wide; thin rails.",
+      "scaleTo": 8
+    },
+    {
+      "name": "tree_small",
+      "assetId": "56449156",
+      "source": "roblox",
+      "size": [
+        4,
+        16,
+        4
+      ],
+      "parts": 10,
+      "scripts": 0,
+      "style": "Blocky cube-canopy tree: bright green box leaves on a brown cube trunk; matches cube-canopy recipe.",
+      "scaleTo": 14
+    },
+    {
+      "name": "tree_large",
+      "assetId": "56449188",
+      "source": "roblox",
+      "size": [
+        12,
+        16,
+        12
+      ],
+      "parts": 16,
+      "scripts": 0,
+      "style": "Chunky cube-canopy tree, clustered green blocks on a thick brown trunk.",
+      "scaleTo": 16
+    },
+    {
+      "name": "tree_autumn",
+      "assetId": "56449099",
+      "source": "roblox",
+      "size": [
+        12,
+        16,
+        12
+      ],
+      "parts": 16,
+      "scripts": 0,
+      "style": "Same chunky cube tree with yellow-orange canopy; good colour variant.",
+      "scaleTo": 16
+    },
+    {
+      "name": "pine_tree",
+      "assetId": "67187806",
+      "source": "roblox",
+      "size": [
+        4,
+        8,
+        4
+      ],
+      "parts": 2,
+      "scripts": 0,
+      "style": "Stacked-cone conifer in snow-dusted blue-green; reads as a pine or holiday tree.",
+      "scaleTo": 8
+    },
+    {
+      "name": "rock",
+      "assetId": "235668581",
+      "source": "roblox",
+      "size": [
+        11.8,
+        9.7,
+        11.1
+      ],
+      "parts": 1,
+      "scripts": 0,
+      "style": "Single smooth orange-brown boulder; simple and chunky.",
+      "scaleTo": 8
+    },
+    {
+      "name": "arch",
+      "assetId": "56448235",
+      "source": "roblox",
+      "size": [
+        8,
+        8,
+        12
+      ],
+      "parts": 19,
+      "scripts": 0,
+      "style": "Brown wall block with arched opening and cream trim; rough as a portal, best used as a gateway wall.",
+      "scaleTo": 10
+    },
+    {
+      "name": "mailbox",
+      "assetId": "56449011",
+      "source": "roblox",
+      "size": [
+        4,
+        4.1,
+        4
+      ],
+      "parts": 9,
+      "scripts": 0,
+      "style": "White mailbox with red flag on a post; small cute accent.",
+      "scaleTo": 4
+    },
+    {
+      "name": "torch",
+      "assetId": "56447717",
+      "source": "roblox",
+      "size": [
+        4,
+        4,
+        4
+      ],
+      "parts": 7,
+      "scripts": 0,
+      "style": "Small wall/stand torch with a flame; tiny.",
+      "scaleTo": 4
+    },
+    {
+      "name": "picnic_table",
+      "assetId": "23153940",
+      "source": "roblox",
+      "size": [
+        16,
+        4,
+        16
+      ],
+      "parts": 36,
+      "scripts": 0,
+      "style": "Wooden picnic table with bench seats, brown/blue; sturdy and readable.",
+      "scaleTo": 10
+    },
+    {
+      "name": "weathervane",
+      "assetId": "56447956",
+      "source": "roblox",
+      "size": [
+        4,
+        8,
+        4
+      ],
+      "parts": 3,
+      "scripts": 0,
+      "style": "Thin pole with a small yellow rooster; roof topper only.",
+      "scaleTo": 6
+    }
+  ],
+  "missing": [
+    {
+      "name": "stall",
+      "tried": "No market stall, awning, shop or stand in the library; the conditional Low-Poly Store 1869427525 and Low Poly Simulator Shop 6237817363 exist but did not load."
+    },
+    {
+      "name": "windmill",
+      "tried": "No windmill row anywhere in the 639 indexed rows."
+    },
+    {
+      "name": "hay_bale",
+      "tried": "No hay/straw row."
+    },
+    {
+      "name": "crate",
+      "tried": "Only conditional Low Poly Crates 11393561896 (63,504 tris, did not load); no Roblox-owned crate."
+    },
+    {
+      "name": "palm_tree",
+      "tried": "Only conditional Low Poly Palm Tree 10354687850 (1,368 tris); did not load."
+    },
+    {
+      "name": "sign_on_post",
+      "tried": "Only Skatepark Sign 23154002 and Stop Sign 23154011 (Roblox-owned, off-theme, not probed); no generic wooden signpost."
+    },
+    {
+      "name": "fountain",
+      "tried": "Only a conditional waterfall row 18349070373 (not a fountain); the well above is the closest Roblox-owned."
+    },
+    {
+      "name": "house_or_shop",
+      "tried": "Roblox-owned castle kit pieces only; conditional Cartoon House 12468173054 / 643101967 and Classic Red Low-Poly House 13922662884 did not load. Stables 56447853 loaded but is a hollow brown box with dirt interior, rejected."
+    },
+    {
+      "name": "portal",
+      "tried": "Only the weak arch above."
+    },
+    {
+      "name": "bush",
+      "tried": "Only conditional Cartoon Bush 11209863116 / 9422149588 and Low Poly Flower Bush 1353190583; did not load."
+    },
+    {
+      "name": "plank_fence",
+      "tried": "Only conditional Low-Poly Fence 4845879207 / 9042589092 / Super Cute White Fence 3238671303; did not load."
+    }
+  ],
+  "conditionalUnverified": [
+    {
+      "for": "palm_tree",
+      "assetId": "10354687850",
+      "name": "Low Poly Palm Tree",
+      "triangles": 1368,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "bench",
+      "assetId": "8924251735",
+      "name": "Low poly Bench",
+      "triangles": 168,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "lamp_post",
+      "assetId": "8990192177",
+      "name": "Low poly Street Lantern",
+      "triangles": 700,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "fence",
+      "assetId": "4845879207",
+      "name": "Low-Poly Fence",
+      "triangles": 400,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "fence",
+      "assetId": "9042589092",
+      "name": "Low Poly Fence",
+      "triangles": 368,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "fence",
+      "assetId": "3238671303",
+      "name": "Super Cute White Fence!",
+      "triangles": 144,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "house",
+      "assetId": "12468173054",
+      "name": "Cartoon House",
+      "triangles": 2934,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "house",
+      "assetId": "13922662884",
+      "name": "Classic Red Low-Poly House",
+      "triangles": 5700,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "shop",
+      "assetId": "1869427525",
+      "name": "Low-Poly Store",
+      "triangles": 3566,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "shop",
+      "assetId": "6237817363",
+      "name": "Low Poly Simulator Shop",
+      "triangles": 6050,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "bush",
+      "assetId": "11209863116",
+      "name": "Cartoon Bush",
+      "triangles": 480,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "bush",
+      "assetId": "1353190583",
+      "name": "Low Poly Flower Bush",
+      "triangles": 4676,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "crate",
+      "assetId": "11393561896",
+      "name": "Low Poly Crates",
+      "triangles": 63504,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "tree",
+      "assetId": "6889261253",
+      "name": "Cartoon Tree",
+      "triangles": 60,
+      "source": "third-party",
+      "verified": false
+    },
+    {
+      "for": "rock",
+      "assetId": "14566490393",
+      "name": "Low Poly Rock",
+      "triangles": 18,
+      "source": "third-party",
+      "verified": false
+    }
+  ]
+}
