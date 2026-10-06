@@ -65,3 +65,31 @@ export async function pairingCode(projectId: string): Promise<PairingCode> {
   if (!res.ok || !body.code) throw new Error(body.error ?? `could not make a code (${res.status})`);
   return { code: body.code, expiresAtIso: body.expiresAtIso ?? '' };
 }
+
+export interface Checkpoint {
+  id: string;
+  label: string;
+  createdAt: number;
+}
+
+/** The newest checkpoint the Studio agent took before changing the place (SessionDO /studio-tool), or null. */
+export async function latestStudioCheckpoint(projectId: string): Promise<Checkpoint | null> {
+  const res = await fetch(`/api/projects/${projectId}/checkpoints`, { headers: await authHeaders() });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { checkpoints?: Checkpoint[] } | Checkpoint[];
+  const list = Array.isArray(body) ? body : (body.checkpoints ?? []);
+  return list.find((c) => c.label === STUDIO_CHECKPOINT_LABEL) ?? null;
+}
+
+/** Must match the label SessionDO gives it (apps/worker/src/do/session.ts, /studio-tool). */
+export const STUDIO_CHECKPOINT_LABEL = 'before StudPilot Studio changes';
+
+export async function restoreCheckpoint(projectId: string, checkpointId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/restore`, {
+    method: 'POST',
+    headers: { ...(await authHeaders()), 'content-type': 'application/json' },
+    body: JSON.stringify({ checkpointId }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  if (!res.ok || body.ok === false) throw new Error(body.error ?? `the place could not be put back (${res.status})`);
+}
