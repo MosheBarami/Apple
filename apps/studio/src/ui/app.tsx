@@ -10,6 +10,7 @@ import {
   CircleIcon,
   MoonIcon,
   PaperPlaneRightIcon,
+  PlugsConnectedIcon,
   PlusIcon,
   SunIcon,
   WrenchIcon,
@@ -20,7 +21,7 @@ import { Streamdown } from 'streamdown';
 import { getProject } from './api.ts';
 import { Projects } from './projects.tsx';
 import { authHeaders, useSession } from './session.ts';
-import { StudioStatus } from './studio-status.tsx';
+import { StudioStatus, useStudioLink } from './studio-status.tsx';
 import { UndoChanges } from './undo.tsx';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -89,6 +90,8 @@ function Chat({ projectId }: { projectId: string }) {
   );
   const agent = useFlueAgent({ client });
   const [input, setInput] = useState('');
+  const studio = useStudioLink(projectId);
+  const notConnected = studio.link !== null && !studio.link.connected;
   const [projectName, setProjectName] = useState('');
   useEffect(() => {
     void getProject(projectId).then((p) => setProjectName(p?.name ?? ''));
@@ -122,7 +125,7 @@ function Chat({ projectId }: { projectId: string }) {
               New chat
             </Button>
             <UndoChanges projectId={projectId} busy={busy} />
-            <StudioStatus projectId={projectId} />
+            <StudioStatus projectId={projectId} link={studio.link} refresh={studio.refresh} />
             <Status status={agent.status} />
             <Button
               variant="ghost"
@@ -137,7 +140,19 @@ function Chat({ projectId }: { projectId: string }) {
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-5 px-5 py-6">
-          {agent.historyReady && visible.length === 0 && (
+          {agent.historyReady && visible.length === 0 && notConnected && (
+            <Empty
+              icon={<PlugsConnectedIcon size={32} />}
+              title="Connect Studio to start"
+              contents={
+                <p className="max-w-sm text-center text-sm text-kumo-subtle">
+                  Open your place in Roblox Studio, then press Connect Studio above and type the code into the StudPilot
+                  plugin. StudPilot reads and changes the place through it.
+                </p>
+              }
+            />
+          )}
+          {agent.historyReady && visible.length === 0 && !notConnected && (
             <Empty
               icon={<ChatCircleDotsIcon size={32} />}
               title="Ask about your place"
@@ -222,6 +237,12 @@ function Message({ message, live }: { message: FlueConversationMessage; live: bo
   );
 }
 
+/** A delegation reads as the teammate it went to ("builder"), anything else by its tool name. */
+function toolLabel(part: { toolName: string; input?: unknown }): string {
+  const agent = (part.input as { agent?: unknown } | undefined)?.agent;
+  return part.toolName === 'task' && typeof agent === 'string' ? agent : part.toolName;
+}
+
 function Part({ part, user, live }: { part: FlueConversationPart; user: boolean; live: boolean }) {
   if (part.type === 'text') {
     if (!part.text) return null;
@@ -267,7 +288,7 @@ function Part({ part, user, live }: { part: FlueConversationPart; user: boolean;
     return (
       <div className="flex max-w-[85%] items-center gap-2 rounded-lg border border-kumo-line bg-kumo-base px-3 py-2 text-sm">
         <WrenchIcon size={14} className="text-kumo-subtle" />
-        <span className="font-mono text-kumo-default">{part.toolName}</span>
+        <span className="font-mono text-kumo-default">{toolLabel(part)}</span>
         {failed ? (
           <XCircleIcon size={14} className="ml-auto text-kumo-danger" />
         ) : done ? (

@@ -4,17 +4,21 @@ import { CircleIcon } from '@phosphor-icons/react';
 import { useCallback, useEffect, useState } from 'react';
 import { pairingCode, studioLink, type PairingCode, type StudioLink } from './api.ts';
 
-export function StudioStatus({ projectId }: { projectId: string }) {
+/** Whether Studio is connected to this project, read every 10 s (null until the first answer). */
+export function useStudioLink(projectId: string): { link: StudioLink | null; refresh: () => void } {
   const [link, setLink] = useState<StudioLink | null>(null);
-  const [code, setCode] = useState<PairingCode | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   const refresh = useCallback(() => void studioLink(projectId).then(setLink), [projectId]);
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 10_000);
     return () => clearInterval(t);
   }, [refresh]);
+  return { link, refresh };
+}
+
+export function StudioStatus({ projectId, link, refresh }: { projectId: string; link: StudioLink | null; refresh: () => void }) {
+  const [code, setCode] = useState<PairingCode | null>(null);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (link?.connected) setCode(null);
   }, [link?.connected]);
