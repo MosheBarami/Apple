@@ -84,5 +84,7 @@ go to `THIRD_PARTY_NOTICES.md`.
 ## Where it stands (2026-10-06)
 - R1 #37 #39, R2 #42, R3 #43, R4a #44, R5 #45: merged and deployed. https://studpilot.app/studio/ is the new app:
   a project shelf, the chat on Flue with a coordinator and four teammates, 15 Studio tools, Connect Studio.
-- Not yet: R4's settings and billing pages (still /app), and R6 (serving /app from the new app). R6 waits for the
+- Not yet: R4's settings and billing pages (still /app), and R6 (serving /app from the new app).
+- Before R6: the Studio agent's model calls must be metered against Credits and the spend caps (today they bypass
+  them, so only pre-launch-approved owners may send to it; #48). R6 waits for the
   smoke test against the M3 baseline, which waits for Studio to be paired (BLOCKED.md N11).

@@ -28,6 +28,10 @@ app.use(`${MOUNT}/*`, async (c, next) => {
   if (!jwt || !projectId) return c.json({ error: 'unauthorized' }, 401);
   const open = await c.env.GATE.openProject(jwt, projectId);
   if (!open.ok) return c.json({ error: 'not found' }, 404);
+  // Sending is what spends model time, and it is not metered against Credits yet: only an owner who may build sends.
+  if (c.req.method === 'POST' && !open.canBuild) {
+    return c.json({ error: 'StudPilot is in private pre-launch: building is open to approved accounts only.' }, 403);
+  }
   return next();
 });
 

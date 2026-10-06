@@ -11,7 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, cpSync, mkdtempSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,11 +70,25 @@ function scratch() {
 //   still measures nothing, so retrying it changes no verdict. ]]
 const RUN_TIMEOUT_MS = 300_000;
 const ATTEMPTS = 3;
+const OUT_DIR = mkdtempSync(join(tmpdir(), 'escape-hatch-out-'));
+process.on('exit', () => rmSync(OUT_DIR, { recursive: true, force: true }));
 
 function runRaw(dir) {
+  // OUTPUT TO A FILE, NOT A PIPE (2026-10-06). The hang above recurred on the runner even with the retry, and the one
+  // difference between a spawn that hung and the same checker that exited in 2 s was where its output went: a pipe to
+  // this process, or a file. So the checker writes to a file and this reads it back; nothing is lost either way.
   let proc;
+  let out = '';
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
-    proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: RUN_TIMEOUT_MS / ATTEMPTS });
+    const file = join(OUT_DIR, `checker-out-${attempt}.txt`); // outside the clone: the checker scans the clone
+    const fd = openSync(file, 'w');
+    try {
+      proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, stdio: ['ignore', fd, fd], timeout: RUN_TIMEOUT_MS / ATTEMPTS });
+    } finally {
+      closeSync(fd);
+    }
+    out = readFileSync(file, 'utf8');
+    rmSync(file, { force: true });
     if (!(proc.error?.code === 'ETIMEDOUT' || proc.signal === 'SIGTERM')) break;
   }
   if (proc.error || proc.signal) {
@@ -87,7 +101,7 @@ function runRaw(dir) {
       + `checker having missed the planted defect. Processes alive at the timeout:\n${alive}`,
     );
   }
-  return { exit: proc.status, out: `${proc.stdout ?? ''}${proc.stderr ?? ''}` };
+  return { exit: proc.status, out };
 }
 
 /** Every run reports what it ADDED over the clone's baseline, so any caller can ask either question. */
