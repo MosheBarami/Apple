@@ -1,0 +1,36 @@
+name: Bug
+description: Something that worked, or should work, does not.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Public repo: no secrets, tokens, cookies, `.env` values or private place files."
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [App (studpilot.app/app), Website, Studio agent, Studio plugin, Worker / API, Sign-in, Credits / billing, CI / tooling]
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations: { required: true }
+  - type: input
+    id: build
+    attributes:
+      label: buildSha
+      description: From https://studpilot.app/api/health
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Screenshot, console line, run id. Drag images here.
