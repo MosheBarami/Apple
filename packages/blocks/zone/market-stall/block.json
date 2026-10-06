@@ -1,0 +1,73 @@
+{
+  "id": "market-stall",
+  "kind": "zone",
+  "summary": "A market stall with a striped candy awning, a wooden counter and a floating title (a shop landmark).",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Stall",
+        "description": "Its name in Workspace"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 24,
+        "default": "Shop",
+        "description": "The floating title, e.g. Pet Shop"
+      },
+      "x": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 0,
+        "description": "Where it stands, x"
+      },
+      "z": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": -40,
+        "description": "Where it stands, z"
+      },
+      "facing": {
+        "type": "number",
+        "minimum": -180,
+        "maximum": 180,
+        "default": 0,
+        "description": "Degrees it turns"
+      },
+      "stripe": {
+        "type": "string",
+        "enum": [
+          "red",
+          "berry",
+          "sun",
+          "lime",
+          "sky",
+          "grape",
+          "white"
+        ],
+        "default": "red"
+      },
+      "stripe2": {
+        "type": "string",
+        "enum": [
+          "red",
+          "berry",
+          "sun",
+          "lime",
+          "sky",
+          "grape",
+          "white"
+        ],
+        "default": "white"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

@@ -1,0 +1,22 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.Workspace",
+     "world": "hillring",
+     "name": "{{name}}",
+     "center": [
+      "{{x}}",
+      "{{z}}"
+     ],
+     "radius": "{{radius}}",
+     "count": "{{count}}",
+     "gap": "{{gap}}"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+  "id": "hill-ring",
+  "kind": "zone",
+  "summary": "A ring of soft studded hills around the play area that closes the horizon, with a gap for the view.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Hills",
+        "description": "Its name in Workspace"
+      },
+      "x": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 0,
+        "description": "Centre x"
+      },
+      "z": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": -40,
+        "description": "Centre z"
+      },
+      "radius": {
+        "type": "number",
+        "minimum": 60,
+        "maximum": 300,
+        "default": 140
+      },
+      "count": {
+        "type": "integer",
+        "minimum": 6,
+        "maximum": 24,
+        "default": 14
+      },
+      "gap": {
+        "type": "number",
+        "minimum": -180,
+        "maximum": 180,
+        "default": 180,
+        "description": "Where the opening faces (degrees)"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

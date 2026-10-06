@@ -1,0 +1,25 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.Workspace",
+     "world": "path",
+     "name": "{{name}}",
+     "from": [
+      "{{fromX}}",
+      "{{fromZ}}"
+     ],
+     "to": [
+      "{{toX}}",
+      "{{toZ}}"
+     ],
+     "width": "{{width}}",
+     "surface": "{{surface}}"
+    }
+   ]
+  }
+ ]
+}

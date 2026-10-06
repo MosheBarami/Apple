@@ -1,0 +1,65 @@
+{
+  "id": "path",
+  "kind": "zone",
+  "summary": "A straight studded path (brick, dirt, sand, stone, wood) from one spot to another, just above the ground.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+        "default": "Path",
+        "description": "Its name in Workspace"
+      },
+      "fromX": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 0,
+        "description": "Start x"
+      },
+      "fromZ": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 0,
+        "description": "Start z"
+      },
+      "toX": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": 0,
+        "description": "End x"
+      },
+      "toZ": {
+        "type": "number",
+        "minimum": -400,
+        "maximum": 400,
+        "default": -60,
+        "description": "End z"
+      },
+      "width": {
+        "type": "number",
+        "minimum": 4,
+        "maximum": 24,
+        "default": 8
+      },
+      "surface": {
+        "type": "string",
+        "enum": [
+          "grass",
+          "sand",
+          "dirt",
+          "brick",
+          "stone",
+          "wood"
+        ],
+        "default": "brick"
+      }
+    }
+  },
+  "provides": [],
+  "depends": []
+}

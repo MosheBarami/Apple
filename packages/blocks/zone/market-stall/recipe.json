@@ -1,0 +1,23 @@
+{
+ "steps": [
+  {
+   "id": "create",
+   "op": "create_instances",
+   "items": [
+    {
+     "parent": "game.Workspace",
+     "world": "stall",
+     "name": "{{name}}",
+     "title": "{{title}}",
+     "at": [
+      "{{x}}",
+      "{{z}}"
+     ],
+     "facing": "{{facing}}",
+     "stripe": "{{stripe}}",
+     "stripe2": "{{stripe2}}"
+    }
+   ]
+  }
+ ]
+}
