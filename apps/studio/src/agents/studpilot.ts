@@ -11,8 +11,19 @@ import { studioTools } from '../tools/studio.ts';
 import { FINISH_RULES } from './build-rules.ts';
 
 const READS = STUDIO_TOOL_SPECS.filter((t) => !t.writes).map((t) => t.name);
-const BUILD = STUDIO_TOOL_SPECS.map((t) => t.name);
+/**
+ * The builder's tools (style bible §5: every visible instance comes from the kit). It builds with build_blocks and may
+ * write LOGIC with edit_script and the verified modules; it has no raw instance, property, object, mood, effect or
+ * behaviour tool, so it cannot draw a screen or a world by hand. The old UI recipe reader is left out for the same
+ * reason. (U01, 2026-10-06: with every tool offered, GLM hand-wrote scripts and never called build_blocks.)
+ */
+export const BUILDER_TOOLS = ['build_blocks', 'edit_script', 'delete_instances', 'install_module', 'play_check', ...READS.filter((n) => n !== 'get_ui_construction' && n !== 'get_genre_kit')];
+const BUILD = STUDIO_TOOL_SPECS.map((t) => t.name).filter((n) => BUILDER_TOOLS.includes(n));
 const TEST = [...READS, 'play_check'];
+/** The coordinator reads the place but not the old UI recipes and genre kits: they steer towards hand-built screens. */
+const COORDINATOR_READS = READS.filter((n) => n !== 'get_ui_construction' && n !== 'get_genre_kit');
+/** The block menu, as build_blocks describes it: the planner plans in these ids. */
+const BLOCK_MENU = STUDIO_TOOL_SPECS.find((t) => t.name === 'build_blocks')?.description.split('Blocks:\n')[1] ?? '';
 
 const SHARED = `You work on a Roblox place in Studio through tools. Paths look like game.Workspace.Lobby.Floor.
 Scripts are Luau: server logic in ServerScriptService, client UI and input in StarterGui or StarterPlayerScripts.
@@ -24,8 +35,9 @@ You can read the place yourself. You cannot change it: the builder does that.
 
 For a question about the place, read and answer yourself.
 For a change, work in this order, giving each teammate a complete, self-contained task (they do not see this chat):
-1. planner: ask for a short plan naming the instances and scripts to create or change. Skip it for a one-step change.
-2. builder: hand it the plan and the creator's words. It makes the change.
+1. builder: hand it the creator's words exactly, and what you read about the place. It builds with StudPilot's reviewed
+   blocks. Only for a request with more than three separate parts, ask the planner for a block plan first and pass it on.
+2. (the builder's own step) Do not tell the builder which scripts or instances to make: it picks the blocks.
 3. tester: ask it to run a play check and read the output log for errors.
 4. If the tester reports errors the change caused, hand them back to the builder once, then test again.
 5. reviewer: for scripts, ask it to read what was written and check it does what was asked.
@@ -34,23 +46,26 @@ The place can be put back to a checkpoint taken before the first change. Be brie
 
 const ROLES = {
   planner: {
-    description: 'Reads the place and writes a short, concrete build plan: which instances and scripts, where, in what order.',
+    description: 'Reads the place and writes a short build plan in StudPilot block ids: which blocks, in what order, with their key values.',
     tools: READS,
-    instructions: `You are the planner. Read the place before planning. Return a numbered plan of at most 8 steps, each naming
-the exact instance or script path and what it should contain, and which reviewed block builds it (find_mechanic,
-get_verified_module, get_ui_construction, get_genre_kit tell you what exists). Do not write code. ${SHARED}`,
+    instructions: `You are the planner. Read the place before planning. Return a numbered plan of at most 8 steps; each step
+names a block from this menu and its key values (titles, item names, prices, colour names, icon names). A custom script
+only for game logic no block covers. Do not write code. Blocks:
+${BLOCK_MENU}
+${SHARED}`,
   },
   builder: {
-    description: 'Makes changes to the place: edits scripts and creates, sets, moves, clones, groups, renames and deletes instances.',
+    description: 'Builds in the place with StudPilot\'s reviewed blocks (screens, systems, the world\'s look) and writes logic scripts.',
     tools: BUILD,
     instructions: `You are the builder. Do exactly the task you are given, with the smallest set of changes. Read what you will
 touch first. Build with build_blocks first: every screen (a window first, then its content blocks; hud, hotbar,
 menu, toast), every game system it has (currency first, then shop, codes, daily-reward, rebirth, upgrades,
 leaderboard, click-earn, round-loop, checkpoints, gamepass-perk) and the world's look (candy-day, studded-ground).
 Call it with the block ids to get their parameters, then with the parameters. Use the same screen name for a window
-and its content, and the same item names in a shop and its grid. Only for what no block covers: build_object for
-objects, install_module or get_verified_module for logic, add_behaviour for motion. After writing scripts, run
-play_check and read get_output_logs; fix errors you caused.
+and its content, and the same item names in a shop and its grid. You cannot create instances or set properties
+yourself: everything visible comes from blocks. edit_script, install_module and get_verified_module are only for game
+logic no block covers, and that logic uses the blocks' APIs. After writing scripts, run play_check and read
+get_output_logs; fix errors you caused.
 ${FINISH_RULES}
 ${SHARED}`,
   },
@@ -86,7 +101,7 @@ export function StudPilot({ id }: AgentProps) {
   // The id was checked at the route: its project part is the project the owner opened.
   const tools = studioTools(projectId);
   const pick = (names: readonly string[]) => tools.filter((t) => names.includes(t.name));
-  for (const tool of pick(READS)) useTool(tool);
+  for (const tool of pick(COORDINATOR_READS)) useTool(tool);
   for (const [name, role] of Object.entries(ROLES)) {
     useSubagent({
       name,

@@ -73,7 +73,8 @@ test('every agent route checks the caller owns the project before Flue sees it',
 
 test('the team: the coordinator only reads, only the builder edits, the tester may only add a play check', () => {
   const agent = read('../src/agents/studpilot.ts');
-  assert.match(agent, /for \(const tool of pick\(READS\)\) useTool\(tool\);/, 'the coordinator mounts the read tools and nothing else');
+  assert.match(agent, /for \(const tool of pick\(COORDINATOR_READS\)\) useTool\(tool\);/, 'the coordinator mounts read tools and nothing else');
+  assert.match(agent, /const COORDINATOR_READS = READS\.filter\(/, 'and they are a subset of the read tools');
   assert.match(agent, /const READS = STUDIO_TOOL_SPECS\.filter\(\(t\) => !t\.writes\)/);
   assert.match(agent, /const TEST = \[\.\.\.READS, 'play_check'\];/);
   const roles = agent.slice(agent.indexOf('const ROLES = {'), agent.indexOf('} as const;'));
@@ -156,4 +157,16 @@ test('GLM runs at the product loop\'s settings (low reasoning effort, temperatur
   assert.match(fn, /max_tokens: 6500/);
   const gateway = read('../../worker/src/gateway.ts');
   assert.match(gateway, /agent: \{ id: '@cf\/zai-org\/glm-5\.3-flash'[^}]*maxTokens: 6500[^}]*temperature: 0\.25, reasoningEffort: 'low'/, 'the same settings as the product loop');
+});
+
+test('the builder builds only with blocks: no raw instance, property or hand-drawn object tool; the planner plans in block ids', () => {
+  const agent = read('../src/agents/studpilot.ts');
+  const list = agent.slice(agent.indexOf('export const BUILDER_TOOLS = ['), agent.indexOf('\n', agent.indexOf('export const BUILDER_TOOLS = [')));
+  assert.match(list, /'build_blocks'/);
+  for (const banned of ['create_instances', 'set_properties', 'clone_instances', 'group_instances', 'move_instances', 'rename_instance', 'build_object', 'set_mood', 'add_effect', 'add_behaviour']) {
+    assert.doesNotMatch(list, new RegExp(`'${banned}'`), `${banned} is not the builder's`);
+  }
+  assert.match(list, /n !== 'get_ui_construction'/, 'the old UI recipe reader is not the builder\'s');
+  assert.match(agent, /const BUILD = STUDIO_TOOL_SPECS\.map\(\(t\) => t\.name\)\.filter\(\(n\) => BUILDER_TOOLS\.includes\(n\)\)/);
+  assert.match(agent, /Blocks:\n\$\{BLOCK_MENU\}/, 'the planner sees the block menu');
 });
