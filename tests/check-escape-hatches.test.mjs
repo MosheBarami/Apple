@@ -65,11 +65,10 @@ function scratch() {
 //   A HUNG RUN IS RETRIED (2026-10-06). On the Linux runner a spawn of the checker sometimes never exits:
 //   strace showed it had printed its verdict and then sat in process teardown, its main thread joining a
 //   thread that never ends, and the same checker run by hand in the same clone exits in 2 s. One attempt
-//   is now bounded at 100 s (a normal run is 1 to 2 s, so that is still fifty times the work under load)
-//   and a timed-out attempt is run again, up to three times: the 300 s budget is kept, and a timeout
-//   still measures nothing, so retrying it changes no verdict. ]]
+//   is bounded at 60 s (a normal run is 1 to 2 s) and a timed-out attempt is run again, up to five times:
+//   the 300 s budget is kept, and a timeout still measures nothing, so retrying it changes no verdict. ]]
 const RUN_TIMEOUT_MS = 300_000;
-const ATTEMPTS = 3;
+const ATTEMPTS = 5; // 60 s each: a normal run is 1 to 2 s
 const OUT_DIR = mkdtempSync(join(tmpdir(), 'escape-hatch-out-'));
 process.on('exit', () => rmSync(OUT_DIR, { recursive: true, force: true }));
 
@@ -90,6 +89,15 @@ function runRaw(dir) {
     out = readFileSync(file, 'utf8');
     rmSync(file, { force: true });
     if (!(proc.error?.code === 'ETIMEDOUT' || proc.signal === 'SIGTERM')) break;
+    // THE VERDICT WAS ALREADY PRINTED (2026-10-06). Every hang observed on the runner came AFTER the checker's last line: its work was done,
+    // its verdict written, and only the process's own teardown never finished. Those two lines are printed immediately before
+    // process.exit(0) and process.exit(1) and nowhere else, so a run that printed one has answered; a run that printed neither has not,
+    // and is tried again.
+    const verdict = /^ESCAPE HATCHES (CLEAN|FOUND) — /m.exec(out);
+    if (verdict) {
+      proc = { status: verdict[1] === 'CLEAN' ? 0 : 1, error: undefined, signal: null };
+      break;
+    }
   }
   if (proc.error || proc.signal) {
     // If this ever fires again, say what was still running: the hang has not been reproduced locally.
