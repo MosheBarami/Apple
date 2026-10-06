@@ -33,3 +33,4 @@
 - Grass reads neon: the CandyColour saturation (+0.15) on top of #4FAE2C. Calm the ground or the grade for worlds.
 - The scene is sparse and the stall small next to the trees: a zone needs a denser centre and a bigger landmark.
 - The stall's floating title sits over the trees from the spawn view; place titles by the landmark's facing.
+- CI checkout: the tree is 311 MB (asset-library 120 MB, docs/evidence 59 MB, docs/gauntlet 30 MB); one shard's shallow fetch once took 4 min. Sparse checkout of docs/evidence and docs/gauntlet in the test jobs if it repeats.
