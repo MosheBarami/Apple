@@ -477,7 +477,17 @@ export async function runPiece(opts, deps) {
       const conversationId = evalConversationId(opts.projectId, opts.requestId, new Date(deps.now()).toISOString().replace(/[^0-9]/g, '').slice(0, 14));
       manifest.agent = 'studio';
       manifest.conversation = { cleared: true, route: 'a new Studio conversation', conversationId, at: new Date(deps.now()).toISOString() };
-      credits.skipped = 'the Studio agent charges no Credits yet; its model calls are metered by the shared budget';
+      // The Studio agent charges the owner's Credits (#53): the same grant as a product run, and the same reading after.
+      await timer.step('credits', async (entry) => {
+        credits.before = quotaSnapshot(await deps.api.account(opts.userId));
+        await deps.api.setPlan(opts.userId, 'free');
+        const eventId = `eval-${opts.milestone}-${request.id}-studio-${stamp(deps.now())}`;
+        const grant = await deps.api.grantCredits(opts.userId, opts.grantLedger, eventId);
+        credits.grant = { amountLedger: opts.grantLedger, amountCredits: opts.grantLedger / INTERNAL_PER_CREDIT, eventId, status: grant.status, granted: grant.json?.granted ?? null, replayed: grant.json?.replayed === true };
+        if (grant.status !== 200 || grant.json?.ok === false) throw new Abort('credits', `the credit grant was refused (HTTP ${grant.status})`);
+        credits.afterGrant = quotaSnapshot(await deps.api.account(opts.userId));
+        entry.note = `plan free, granted ${opts.grantLedger} ledger units, event ${eventId}`;
+      });
       await timer.step('agent-run', async (entry) => {
         const startedAt = deps.now();
         const token = await deps.studio.session(opts.userId);
@@ -488,6 +498,14 @@ export async function runPiece(opts, deps) {
         out.steps = { dryRun: false, stopReason: r.endedBy, count: r.steps.length, failed: r.steps.filter((x) => x.ok === false).length, byTool: r.steps.reduce((acc, x) => ({ ...acc, [x.tool]: (acc[x.tool] ?? 0) + 1 }), {}), steps: r.steps };
         if (r.endedBy === 'failed') throw new Abort('agent-run', `the Studio agent's run failed: ${manifest.run.error}`);
         entry.note = `${manifest.run.minutes} min, ${r.endedBy}, ${r.steps.length} top-level tool calls`;
+      });
+      await timer.step('credits-after', async (entry) => {
+        const after = quotaSnapshot(await deps.api.account(opts.userId));
+        credits.after = after;
+        const a = credits.afterGrant?.creditsRemaining;
+        const b = after?.creditsRemaining;
+        credits.balanceDeltaLedger = typeof a === 'number' && typeof b === 'number' ? a - b : null;
+        entry.note = `${credits.balanceDeltaLedger ?? '?'} ledger units by the balance`;
       });
     } else {
       // The next request must not see an earlier one: the messages, the memory they produced and the build ledger of the project go
