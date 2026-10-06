@@ -1,5 +1,8 @@
 # Waiting on the owner
 
+**Owner, 2026-10-06 (issues #75-#83):** N2, N9, X5, N5, X4, X7 and N12 wait until StudPilot is complete and ready to
+publish; do not raise them before then (N12: the `rocket` glyph stays). X8 and X9: "generate it yourself" (see each).
+
 Only what needs the owner: an owner-only action from the handoff (X4, X5, X7–X9), money, a legal step, or a console
 no token here can reach. Work that does not depend on an item goes on. Done and decided items are removed (see
 `OWNER-DECISIONS.md`, D-10 to D-16, 2026-10-05).
@@ -61,8 +64,10 @@ through the stand-in until 2027-01-02.
 - **X7. Publish the plugin:** decide whether and when to publish the Studio plugin to the Creator Store (after
   M7), and rename the listing "Apple Studio" to "StudPilot". Until a plugin with the `studpilot.app` base is
   published, the `apple` stand-in must stay. It is due to be deleted on 2027-01-02.
-- **X8. The hidden test set:** hand it over at M7 only.
-- **X9. The Roblox OAuth review:** record the demo video (under one minute; Claude Code writes the script) and
+- **X8. The hidden test set:** owner (#81): Claude Code generates it. A fresh agent writes it to the git-ignored
+  `private/hidden-set/` and commits only its sha256; the building session does not read it before M7.
+- **X9. The Roblox OAuth review:** owner (#82): Claude Code makes the video (a motion-graphics showreel, at M7). The
+  review itself still needs a real recording of the Roblox sign-in flow; Claude Code makes both. Earlier text: record the demo video (under one minute; Claude Code writes the script) and
   submit it in the Roblox Creator Dashboard.
 
 ## Anytime
@@ -87,11 +92,6 @@ jetpack icon). Roblox's AI generator could make one, but the result is uploaded 
 goes to the owner's account without a yes. Until then `rocket` shows its glyph. Owner: say yes to one Roblox-AI image
 upload (and to which account), or accept the glyph.
 
-## N13 (2026-10-06): the world kit's missing props need third-party asset loading
-The world pack (`packages/blocks/assets/world-pack.json`) holds 16 Roblox-owned, script-free props (trees, benches,
-barrels, lamps, rocks, fence, well, arch...). The bible's other props (market stall with awning, windmill, hay bale,
-crate, palm tree, bush, plank fence, sign on a post, fountain, house or shop, portal) exist on the Creator Store only as
-third-party models, and every one tried answered "User is not authorized to access Asset" in the evaluation place: a
-place must allow third-party asset loading (Game Settings > Security) before they can be vetted and used. Owner: allow
-it for the evaluation place (and say whether StudPilot may ask creators to allow it in theirs), or keep the world kit to
-the Roblox-owned props.
+## N13. RESOLVED 2026-10-06: third-party asset loading is on
+Owner (issue #84): third-party asset loading is enabled for the evaluation place, and StudPilot may ask creators to allow it
+in their places. The world kit's third-party props can now be vetted and used.
