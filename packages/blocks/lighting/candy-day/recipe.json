@@ -26,7 +26,7 @@
      "className": "ColorCorrectionEffect",
      "name": "CandyColour",
      "props": {
-      "Saturation": 0.2,
+      "Saturation": 0.15,
       "Contrast": 0.12,
       "Brightness": 0,
       "TintColor": "#FFFFFF"

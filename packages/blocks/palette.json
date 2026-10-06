@@ -54,10 +54,10 @@
     "dark": "#4f5966"
   },
   "grass": {
-    "top": "#58C228",
-    "bottom": "#46A51C",
-    "edge": "#8FDD5C",
-    "dark": "#2C6E10"
+    "top": "#4FAE2C",
+    "bottom": "#3F9322",
+    "edge": "#86D25E",
+    "dark": "#2A6512"
   },
   "sand": {
     "top": "#F2D38B",
