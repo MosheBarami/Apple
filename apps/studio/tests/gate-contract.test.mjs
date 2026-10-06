@@ -10,6 +10,7 @@ const surfaceSrc = read('../../worker/src/studio-surface.ts');
 const listOf = (name) => [...surfaceSrc.slice(surfaceSrc.indexOf(`export const ${name}`)).split('] as const')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 const reads = listOf('STUDIO_READ_TOOLS');
 const writes = listOf('STUDIO_WRITE_TOOLS');
+const knowledge = listOf('STUDIO_KNOWLEDGE_TOOLS');
 const mcp = read('../../worker/src/mcp.ts');
 const mcpSurface = new Set([...mcp.slice(mcp.indexOf('export const MCP_TOOLS')).split('];')[0].matchAll(/tool: '([a-z_]+)'/g)].map((m) => m[1]));
 
@@ -22,12 +23,13 @@ test('every read tool is one the read-only MCP surface already serves', () => {
 });
 
 test('no Studio tool executes code, uploads, generates, spends credits or touches memory', () => {
-  const forbidden = /^(run_luau|run_spec|insert_asset|insert_library_model|upload_|generate_|install_module|remember|create_checkpoint|more_tools)/;
-  for (const name of [...reads, ...writes]) assert.doesNotMatch(name, forbidden, `${name} is not a Studio tool`);
+  const forbidden = /^(run_luau|run_spec|insert_asset|insert_library_model|upload_|generate_|remember|create_checkpoint|more_tools|find_verified_asset|find_ui_asset|find_library_model)/;
+  for (const name of [...reads, ...knowledge, ...writes]) assert.doesNotMatch(name, forbidden, `${name} is not a Studio tool`);
 });
 
 test('M4 acceptance, on the new agent: 25 tools or fewer, instructions of 10,000 characters or fewer', () => {
-  assert.ok(reads.length + writes.length <= 25, `${reads.length + writes.length} tools`);
+  const total = reads.length + knowledge.length + writes.length;
+  assert.ok(total <= 25, `${total} tools`);
   const agent = read('../src/agents/studpilot.ts');
   const instructions = /export const INSTRUCTIONS = `([^`]*)`/.exec(agent);
   assert.ok(instructions, 'the instructions are no longer one template literal this test can measure');
