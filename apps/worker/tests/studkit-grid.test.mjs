@@ -2,7 +2,7 @@
 // bar only when they would get too small; a tintable icon takes its item's colour.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gridLayout, expandKit, TOKENS } from '../src/studkit.ts';
+import { gridLayout, rowsLayout, expandKit, TOKENS } from '../src/studkit.ts';
 
 const overlap = (a, b) => a.x < b.x + b.w - 1e-9 && b.x < a.x + a.w - 1e-9 && a.y < b.y + b.h - 1e-9 && b.y < a.y + a.h - 1e-9;
 
@@ -46,4 +46,14 @@ test('cards carry no studs; buttons keep theirs', () => {
   const names = (s) => [s.name, ...(s.children ?? []).flatMap(names)];
   assert.ok(!names(expandKit({ kit: 'card', token: 'sky', children: [] })).includes('Studs'));
   assert.ok(names(expandKit({ kit: 'button', token: 'lime', text: '100' })).includes('Studs'));
+});
+
+test('rows share the box and scroll only when they would get too thin', () => {
+  const few = rowsLayout(5);
+  assert.equal(few.scroll, false);
+  assert.ok(few.rows.every((r) => r.y + r.h <= 1 + 1e-9));
+  for (let i = 1; i < few.rows.length; i++) assert.ok(few.rows[i].y >= few.rows[i - 1].y + few.rows[i - 1].h, 'rows overlap');
+  const many = rowsLayout(12);
+  assert.equal(many.scroll, true);
+  assert.ok(many.height > 1);
 });

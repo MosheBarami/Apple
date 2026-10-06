@@ -7,7 +7,7 @@
 --   overflow     a text larger than its box (TextFits false or TextBounds past the box)
 --   tiny-text    a text under 12 px tall on screen
 --   studs        the stud texture on a face other than a header, button, tab or tile (bible §3.1, signature 3)
---   price-word   a price spelled with a currency word ("Gems 100") instead of the currency icon
+--   price-word   a button's price spelled with a currency word ("Gems 100") instead of the currency icon
 -- Content is what carries meaning: a text with words, or a picture that is not a kit surface layer.
 local HttpService = game:GetService("HttpService")
 local STUD = "rbxassetid://7447638591"
@@ -100,8 +100,16 @@ for _, gui in game:GetService("StarterGui"):GetChildren() do
 			elseif o.TextScaled and not o.TextFits then
 				find("overflow", o, string.format("'%s' does not fit even scaled", string.sub(o.Text, 1, 30)))
 			end
+			-- A price is the text of a button: a reward note ("100 coins" under a coin icon) is not one.
+			local inButton = false
+			local a = o.Parent
+			while a and a:IsA("GuiObject") do
+				local ac = kitOf(a)
+				if ac == "button" then inButton = true break end
+				a = a.Parent
+			end
 			local lower = string.lower(o.Text)
-			for _, w in CURRENCY do
+			for _, w in (inButton and CURRENCY or {}) do
 				if string.match(lower, "^%s*" .. w .. "%s*[%d,%.]+[kmb]?%s*$") or string.match(lower, "^%s*[%d,%.]+[kmb]?%s*" .. w .. "%s*$") then
 					find("price-word", o, string.format("'%s' spells the currency; show its icon and the number", o.Text))
 					break

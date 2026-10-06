@@ -75,7 +75,7 @@ const placeProps = (p: Place = {}): V => ({
 });
 
 /** An outlined label. `ink` names a text ink; `on` (a token) makes the outline that face's dark shade. */
-export function label(component: string, name: string, text: unknown, opts: { ink?: Ink; on?: Token; max?: number; stroke?: number; align?: 'Left' | 'Center' | 'Right'; body?: boolean } & Place = {}): Spec {
+export function label(component: string, name: string, text: unknown, opts: { ink?: Ink; on?: Token; max?: number; stroke?: number; align?: 'Left' | 'Center' | 'Right'; body?: boolean; line?: boolean } & Place = {}): Spec {
   const ink = INKS[opts.ink ?? 'text'];
   const outline = opts.on && (opts.ink ?? 'text') === 'text' ? TOKENS[opts.on][2] : ink[1];
   return {
@@ -84,6 +84,8 @@ export function label(component: string, name: string, text: unknown, opts: { in
       Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Text: text, TextScaled: true,
       Font: enumOf('Font', opts.body ? 'GothamBlack' : 'FredokaOne'), TextColor3: ink[0],
       TextXAlignment: enumOf('TextXAlignment', opts.align ?? 'Center'), ZIndex: opts.z ?? 6,
+      // `line`: a value ("1,284 wins") shrinks to fit one line instead of breaking in two (U10 render, 2026-10-06).
+      ...(opts.line ? { TextWrapped: false } : {}),
     },
     attributes: tag(component, name),
     children: [
@@ -202,7 +204,7 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
   /** A card: a coloured glossy panel for content (offers, items, rows); no studs, which belong to headers and buttons. */
   card: (n) => face('card', String(n.name ?? 'Card'), token(n.token), { ...(n as Place), radius: 0.08, studs: false, children: (n.children as Spec[] | undefined) ?? [], attributes: n.attributes as V | undefined }),
   /** Outlined text in a named ink (title, value, money, gem, gold). */
-  text: (n) => label('text', String(n.name ?? 'Text'), n.text, { ...(n as Place), ink: (n.ink as Ink) ?? 'text', on: n.on ? token(n.on) : undefined, max: Number(n.max ?? 36), align: (n.align as 'Left') ?? 'Center', body: n.body === true }),
+  text: (n) => label('text', String(n.name ?? 'Text'), n.text, { ...(n as Place), ink: (n.ink as Ink) ?? 'text', on: n.on ? token(n.on) : undefined, max: Number(n.max ?? 36), align: (n.align as 'Left') ?? 'Center', body: n.body === true, line: n.line === true }),
   /** An icon from the pack. */
   icon: (n) => icon('icon', n.icon, { ...(n as Place), tint: n.tint }),
   /**
@@ -271,7 +273,7 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
     attributes: tag('currency', 'holder'),
     children: [
       { className: 'UIListLayout', name: 'Line', props: { FillDirection: enumOf('FillDirection', 'Horizontal'), Padding: udim(0, 6), VerticalAlignment: enumOf('VerticalAlignment', 'Center'), SortOrder: enumOf('SortOrder', 'LayoutOrder') } },
-      { ...icon('currency', n.icon, { size: [0.3, 0, 1.5, 0], order: 1 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] },
+      { ...icon('currency', n.icon, { size: [0.3, 0, 1.25, 0], order: 1 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] },
       label('currency', 'Value', n.text, { ink: (n.ink as Ink) ?? 'money', size: [0.8, 0, 1, 0], align: 'Left', order: 2, max: 44 }),
     ],
   }),
@@ -284,9 +286,9 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
     ],
     holderChildren: [icon('slot', n.icon, { size: [0.8, 0, 0.62, 0], position: [0.5, 0, 0.44, 0], anchor: [0.5, 0.5], z: 9, visible: n.filled === true })],
   }),
-  /** A toast: a short studded pill with an icon and a line of text. */
+  /** A toast: a short glossy pill with an icon and a line of text (no studs: they belong to headers and buttons). */
   toast: (n) => face('toast', String(n.name ?? 'Toast'), token(n.token), {
-    ...(n as Place), radius: 0.3,
+    ...(n as Place), radius: 0.3, studs: false,
     children: [label('toast', 'Text', n.text, { on: token(n.token), size: [0.72, 0, 0.62, 0], position: [0.25, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 30, z: 7 })],
     holderChildren: [icon('toast', n.icon, { size: [0.24, 0, 1.4, 0], position: [0.01, 0, 0.5, 0], anchor: [0, 0.5], z: 9 })],
   }),
@@ -364,6 +366,37 @@ COMPONENTS.grid = (n) => {
   };
 };
 
+/**
+ * The rows of a list, sized to share the box they are in (U07 and U10 renders, 2026-10-06: fixed 78 px rows cut the
+ * fifth row off under a hidden scroll bar). A row is at most `maxRow` and at least `minRow` of the box's height; past
+ * that the box scrolls, with a visible bar. Units as gridLayout. Pure.
+ */
+export function rowsLayout(count: number, ratio = 1.74, maxRow = 0.21, minRow = 0.15) {
+  const pad = 0.025, gap = 0.025;
+  const n = Math.max(1, count);
+  let h = Math.min(maxRow, (1 - 2 * pad - gap * (n - 1)) / n);
+  const scroll = h < minRow;
+  if (scroll) h = minRow;
+  const height = scroll ? 2 * pad + n * h + (n - 1) * gap : 1;
+  return { scroll, height, rows: Array.from({ length: count }, (_, i) => ({ x: pad / ratio, y: (pad + i * (h + gap)) / height, w: (ratio - 2 * pad) / ratio, h: h / height })) };
+}
+
+/** A list of row cards that fits its box (rowsLayout); each row keeps its order for the scripts that read it. */
+COMPONENTS.rows = (n) => {
+  const kids = (Array.isArray(n.children) ? n.children : []) as V[];
+  const L = rowsLayout(kids.length, Number(n.ratio ?? 1.74));
+  return {
+    className: 'ScrollingFrame', name: String(n.name ?? 'List'),
+    props: {
+      ...placeProps(n as Place), BackgroundTransparency: 1, BorderSizePixel: 0, ZIndex: 2,
+      CanvasSize: udim2(0, 0, L.height, 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
+      ScrollBarThickness: L.scroll ? 10 : 0, ScrollBarImageColor3: '#FFFFFF',
+    },
+    attributes: { ...tag('rows', 'layout'), ...((n.attributes as V | undefined) ?? {}) },
+    children: kids.map((k, i) => expandKit({ ...k, size: [L.rows[i]!.w, 0, L.rows[i]!.h, 0], position: [L.rows[i]!.x, 0, L.rows[i]!.y, 0], anchor: [0, 0] }) as Spec),
+  };
+};
+
 export const KIT_COMPONENTS = Object.keys(COMPONENTS);
 
 /** A recipe item with `kit` nodes anywhere in it, as plain instance specs. Pure. */
@@ -377,7 +410,7 @@ export function expandKit(node: unknown): unknown {
     // A grid places its cards itself, before they are expanded; every other component gets its children expanded.
     // A component at the top of a recipe item keeps the item's place in the tree (`parent`).
     const keep = (spec: Spec): Spec => (n.parent !== undefined ? ({ ...spec, parent: n.parent } as Spec) : spec);
-    if (n.kit === 'grid') return keep(make(n));
+    if (n.kit === 'grid' || n.kit === 'rows') return keep(make(n));
     const kids = Array.isArray(n.children) ? (n.children as unknown[]).map(expandKit) as Spec[] : undefined;
     const spec = make({ ...n, children: kids });
     // Extra children a recipe puts in a component go in its content: the Fill of a face, the Content of a window.

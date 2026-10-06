@@ -5,41 +5,15 @@
    "op": "create_instances",
    "items": [
     {
-     "parent": "game.StarterGui.{{screen}}.Window.Content",
-     "className": "ScrollingFrame",
+     "kit": "rows",
      "name": "List",
-     "props": {
-      "Size": {
-       "t": "UDim2",
-       "v": [
-        1,
-        0,
-        1,
-        0
-       ]
-      },
-      "BackgroundTransparency": 1,
-      "BorderSizePixel": 0,
-      "ScrollBarThickness": 0,
-      "CanvasSize": {
-       "t": "UDim2",
-       "v": [
-        0,
-        0,
-        0,
-        0
-       ]
-      },
-      "AutomaticCanvasSize": {
-       "t": "EnumItem",
-       "v": "Enum.AutomaticSize.Y"
-      },
-      "ScrollingDirection": {
-       "t": "EnumItem",
-       "v": "Enum.ScrollingDirection.Y"
-      },
-      "ZIndex": 2
-     },
+     "parent": "game.StarterGui.{{screen}}.Window.Content",
+     "size": [
+      1,
+      0,
+      1,
+      0
+     ],
      "attributes": {
       "StudKit": "list.layout",
       "Feed": "{{feed}}",
@@ -47,84 +21,23 @@
      },
      "children": [
       {
-       "className": "UIListLayout",
-       "name": "Stack",
-       "props": {
-        "Padding": {
-         "t": "UDim",
-         "v": [
-          0,
-          12
-         ]
-        },
-        "SortOrder": {
-         "t": "EnumItem",
-         "v": "Enum.SortOrder.LayoutOrder"
-        },
-        "HorizontalAlignment": {
-         "t": "EnumItem",
-         "v": "Enum.HorizontalAlignment.Center"
-        }
-       }
-      },
-      {
-       "className": "UIPadding",
-       "name": "Room",
-       "props": {
-        "PaddingTop": {
-         "t": "UDim",
-         "v": [
-          0,
-          8
-         ]
-        },
-        "PaddingBottom": {
-         "t": "UDim",
-         "v": [
-          0,
-          12
-         ]
-        },
-        "PaddingLeft": {
-         "t": "UDim",
-         "v": [
-          0,
-          14
-         ]
-        },
-        "PaddingRight": {
-         "t": "UDim",
-         "v": [
-          0,
-          6
-         ]
-        }
-       }
-      },
-      {
        "kit": "card",
        "name": "Row{{index}}",
        "token": "{{item.token}}",
-       "size": [
-        1,
-        -10,
-        0,
-        78
-       ],
        "order": "{{index}}",
        "children": [
         {
          "kit": "icon",
          "icon": "{{item.icon}}",
          "size": [
+          0.13,
           0,
-          70,
-          0,
-          70
+          1.05,
+          0
          ],
          "position": [
+          0.005,
           0,
-          -6,
           0.5,
           0
          ],
@@ -143,16 +56,16 @@
            "t": "UDim2",
            "v": [
             0.5,
-            -80,
             0,
+            0.86,
             0
            ]
           },
           "Position": {
            "t": "UDim2",
            "v": [
+            0.15,
             0,
-            74,
             0.5,
             0
            ]
@@ -163,10 +76,6 @@
             0,
             0.5
            ]
-          },
-          "AutomaticSize": {
-           "t": "EnumItem",
-           "v": "Enum.AutomaticSize.Y"
           },
           "ZIndex": 6
          },
@@ -192,6 +101,10 @@
             "HorizontalAlignment": {
              "t": "EnumItem",
              "v": "Enum.HorizontalAlignment.Left"
+            },
+            "VerticalAlignment": {
+             "t": "EnumItem",
+             "v": "Enum.VerticalAlignment.Center"
             }
            }
           },
@@ -203,8 +116,8 @@
            "size": [
             1,
             0,
-            0,
-            26
+            0.48,
+            0
            ],
            "align": "Left",
            "max": 26,
@@ -217,8 +130,8 @@
            "size": [
             1,
             0,
-            0,
-            18
+            0.3,
+            0
            ],
            "align": "Left",
            "max": 18,
@@ -234,8 +147,8 @@
            "size": [
             1,
             0,
-            0,
-            14
+            0.16,
+            0
            ],
            "order": 3,
            "visible": "{{showProgress}}"
@@ -250,21 +163,17 @@
           "Size": {
            "t": "UDim2",
            "v": [
+            0.34,
             0,
-            0,
-            1,
-            -16
+            0.8,
+            0
            ]
-          },
-          "AutomaticSize": {
-           "t": "EnumItem",
-           "v": "Enum.AutomaticSize.X"
           },
           "Position": {
            "t": "UDim2",
            "v": [
-            1,
-            -10,
+            0.985,
+            0,
             0.5,
             0
            ]
@@ -289,8 +198,8 @@
             "Padding": {
              "t": "UDim",
              "v": [
-              0,
-              12
+              0.03,
+              0
              ]
             },
             "SortOrder": {
@@ -317,14 +226,15 @@
            "text": "{{item.value}}",
            "ink": "gold",
            "size": [
+            0.56,
             0,
-            120,
-            0,
-            34
+            0.5,
+            0
            ],
            "align": "Right",
            "max": 30,
-           "order": 1
+           "order": 1,
+           "line": true
           },
           {
            "kit": "button",
@@ -332,10 +242,10 @@
            "token": "{{item.buttonToken}}",
            "text": "{{item.button}}",
            "size": [
+            0.42,
             0,
-            120,
-            0,
-            48
+            0.82,
+            0
            ],
            "order": 2,
            "visible": "{{showButton}}",
