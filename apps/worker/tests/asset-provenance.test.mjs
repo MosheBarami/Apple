@@ -52,7 +52,9 @@ test('every agent-run call site passes the run in', () => {
   // REVIEWED 2026-10-02: '/bench-evaluate' measured a place AFTER a benchmark run had ended; it was no run. REVIEWED 2026-10-05 (M4):
   // the route is deleted with the vision judge it fed, so the count of run-less sites went DOWN by one, not up.
   // '/bench-reset' empties the place between benchmark requests, refused during a run: no run either.
-  const runLess = ["path === '/run-tool'", "path === '/mcp-tool'", "path === '/bench-reset'"];
+  // REVIEWED 2026-10-06 (rebuild R2): '/studio-tool' serves the Studio agent (apps/studio) one tool call at a time through
+  // StudioGate. That agent runs in its own Durable Object, so there is no run of THIS session to accumulate against.
+  const runLess = ["path === '/run-tool'", "path === '/mcp-tool'", "path === '/bench-reset'", "path === '/studio-tool'"];
   const without = callSites.filter((a) => a === '');
   assert.equal(
     without.length,

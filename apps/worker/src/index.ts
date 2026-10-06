@@ -8,6 +8,7 @@ import { checkRobloxCredential } from './roblox-check';
 import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
 import { WorkerEntrypoint } from 'cloudflare:workers';
+import { STUDIO_TOOLS } from './studio-surface';
 import type { Context } from 'hono';
 import {
   verifyStripeSignature,
@@ -242,7 +243,6 @@ import {
   rpcError,
   rpcResult,
   toolResult,
-  type McpToolDescriptor,
 } from './mcp';
 import { creditsForNeurons } from './pricing';
 import {
@@ -978,9 +978,9 @@ async function studioGrantedStub(env: Env, projectId: string): Promise<DurableOb
  * "gatekeeper" shape: the agent gets one typed capability and never sees a credential.
  *
  * `openProject` is the only door that takes a user: it verifies the Supabase JWT and applies the
- * same owner gate as every `/api/projects/*` route. `callTool` then serves only the read-only MCP
- * surface (`MCP_TOOL_NAMES`) of a project that has a live session, so a bug in the agent worker can
- * read a place but never write one.
+ * same owner gate as every `/api/projects/*` route. `callTool` then serves only STUDIO_TOOLS
+ * (studio-surface.ts: place reads and ordinary place edits, never code execution, uploads or anything that
+ * spends credits) for a project holding a live grant, and the session checkpoints before the first write.
  */
 export class StudioGate extends WorkerEntrypoint<Env> {
   async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string } | { ok: false }> {
@@ -992,18 +992,13 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     return { ok: true, projectName: ctx.project.name };
   }
 
-  listTools(): McpToolDescriptor[] {
-    return mcpToolList(toolDefs(true, new Set(MCP_TOOL_NAMES)));
-  }
-
   async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {
-    const entry = mcpTool(name);
-    if (!entry) return { ok: false, text: `Unknown tool '${name}'.` };
+    if (!STUDIO_TOOLS.includes(name)) return { ok: false, text: `Unknown tool '${name}'.` };
     const stub = await studioGrantedStub(this.env, projectId);
     if (!stub) return { ok: false, text: 'This project is not open in StudPilot Studio. Reload the page.' };
-    const res = await stub.fetch('https://do/mcp-tool', {
+    const res = await stub.fetch('https://do/studio-tool', {
       method: 'POST',
-      body: JSON.stringify({ tool: entry.tool, args }),
+      body: JSON.stringify({ tool: name, args }),
     });
     const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
     if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };

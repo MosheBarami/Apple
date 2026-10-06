@@ -1,31 +1,66 @@
-// The Studio agent may only call tools the main worker serves on its read-only MCP surface (StudioGate).
+// What the Studio agent can reach, held to the code: the tool list, the gate, the session route, the limits.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
-const tools = read('../src/tools/studio.ts');
+const surfaceSrc = read('../../worker/src/studio-surface.ts');
+const listOf = (name) => [...surfaceSrc.slice(surfaceSrc.indexOf(`export const ${name}`)).split('] as const')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+const reads = listOf('STUDIO_READ_TOOLS');
+const writes = listOf('STUDIO_WRITE_TOOLS');
 const mcp = read('../../worker/src/mcp.ts');
+const mcpSurface = new Set([...mcp.slice(mcp.indexOf('export const MCP_TOOLS')).split('];')[0].matchAll(/tool: '([a-z_]+)'/g)].map((m) => m[1]));
 
-const surface = new Set([...mcp.slice(mcp.indexOf('export const MCP_TOOLS')).split('];')[0].matchAll(/tool: '([a-z_]+)'/g)].map((m) => m[1]));
-const called = [...tools.matchAll(/call\(projectId, '([a-z_]+)'/g)].map((m) => m[1]);
-
-test('the read-only MCP surface was found', () => {
-  assert.ok(surface.has('read_script') && surface.size >= 10, `found ${[...surface]}`);
+test('the lists were read (a scrape that finds nothing checks nothing)', () => {
+  assert.ok(reads.length >= 6 && writes.length >= 5, `reads ${reads}, writes ${writes}`);
 });
 
-test('every tool the Studio agent calls is on the read-only MCP surface', () => {
-  assert.ok(called.length >= 6, `found ${called}`);
-  for (const name of called) assert.ok(surface.has(name), `${name} is not on the MCP surface`);
+test('every read tool is one the read-only MCP surface already serves', () => {
+  for (const name of reads) assert.ok(mcpSurface.has(name), `${name} is not a read-only MCP tool`);
 });
 
-test('the gate refuses anything that is not on that surface', () => {
+test('no Studio tool executes code, uploads, generates, spends credits or touches memory', () => {
+  const forbidden = /^(run_luau|run_spec|insert_asset|insert_library_model|upload_|generate_|install_module|remember|create_checkpoint|more_tools)/;
+  for (const name of [...reads, ...writes]) assert.doesNotMatch(name, forbidden, `${name} is not a Studio tool`);
+});
+
+test('M4 acceptance, on the new agent: 25 tools or fewer, instructions of 10,000 characters or fewer', () => {
+  assert.ok(reads.length + writes.length <= 25, `${reads.length + writes.length} tools`);
+  const agent = read('../src/agents/studpilot.ts');
+  const instructions = /export const INSTRUCTIONS = `([^`]*)`/.exec(agent);
+  assert.ok(instructions, 'the instructions are no longer one template literal this test can measure');
+  assert.ok(instructions[1].length <= 10_000, `${instructions[1].length} characters`);
+  assert.match(agent, /return INSTRUCTIONS;/);
+});
+
+test('the agent mounts exactly the generated tools, and generated.ts is current', () => {
+  assert.match(read('../src/tools/studio.ts'), /STUDIO_TOOL_SPECS\.map\(/);
+  const script = fileURLToPath(new URL('../scripts/gen-tools.mjs', import.meta.url));
+  execFileSync('node', [script, '--check'], { stdio: 'pipe' }); // throws when stale
+});
+
+test('the gate serves only STUDIO_TOOLS, and only for a project the owner check granted', () => {
   const index = read('../../worker/src/index.ts');
   const gate = index.slice(index.indexOf('export class StudioGate'));
-  const callTool = gate.slice(gate.indexOf('async callTool'), gate.indexOf('async callTool') + 600);
-  assert.match(callTool, /const entry = mcpTool\(name\);\s*if \(!entry\)/);
-  // ...and reaches only a project the owner check granted (packages/evals security.test.mjs A3 holds the grant).
+  const callTool = gate.slice(gate.indexOf('async callTool'), gate.indexOf('async callTool') + 700);
+  assert.match(callTool, /if \(!STUDIO_TOOLS\.includes\(name\)\) return \{ ok: false/);
   assert.match(callTool, /await studioGrantedStub\(this\.env, projectId\);\s*if \(!stub\)/);
+  assert.match(callTool, /'https:\/\/do\/studio-tool'/);
+});
+
+test('the session route checks the list again, and checkpoints before a write', () => {
+  const session = read('../../worker/src/do/session.ts');
+  const start = session.indexOf("path === '/studio-tool'");
+  assert.ok(start > 0, 'the /studio-tool route is gone');
+  const route = session.slice(start, session.indexOf('if (path === ', start + 1));
+  assert.match(route, /!STUDIO_TOOLS\.includes\(tool\)\) \{\s*return json\(/);
+  const write = route.indexOf('if (isStudioWriteTool(tool))');
+  const approved = route.indexOf('buildApproved(this.env, bind.ownerId)');
+  const checkpoint = route.indexOf('this.createCheckpoint(');
+  const runs = route.indexOf('runTool(');
+  assert.ok(write > 0 && write < approved && approved < checkpoint && checkpoint < runs, 'approval, then checkpoint, then the tool');
 });
 
 test('every agent route checks the caller owns the project before Flue sees it', () => {
