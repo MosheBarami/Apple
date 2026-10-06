@@ -8,6 +8,7 @@ import { env } from 'cloudflare:workers';
 import { STUDIO_TOOL_SPECS } from '../tools/generated.ts';
 import { projectOf } from '../conversation-id.ts';
 import { studioTools } from '../tools/studio.ts';
+import { FINISH_RULES } from './build-rules.ts';
 
 const READS = STUDIO_TOOL_SPECS.filter((t) => !t.writes).map((t) => t.name);
 const BUILD = STUDIO_TOOL_SPECS.map((t) => t.name);
@@ -46,13 +47,18 @@ get_verified_module, get_ui_construction, get_genre_kit tell you what exists). D
 touch first. Prefer the reviewed blocks to writing from scratch: install_module or get_verified_module for game
 systems (ask find_mechanic first), build_object for objects, build_studded_ui for on-screen UI (get_ui_construction
 for how it should look), set_mood and add_effect for atmosphere, add_behaviour for motion. After writing scripts,
-run play_check and read get_output_logs; fix errors you caused. ${SHARED}`,
+run play_check and read get_output_logs; fix errors you caused.
+${FINISH_RULES}
+${SHARED}`,
   },
   reviewer: {
     description: 'Reads scripts and instances that were just changed and reports whether they do what was asked, with concrete problems.',
     tools: READS,
     instructions: `You are the reviewer. Read the scripts and instances named in your task. Report concrete problems (wrong
-service, missing remote, nil access, logic that does not match the request) with the path and line. Change nothing. ${SHARED}`,
+service, missing remote, nil access, logic that does not match the request) with the path and line, and any breach of
+these rules. Change nothing.
+${FINISH_RULES}
+${SHARED}`,
   },
   tester: {
     description: 'Runs a short play check of the place and reads the output log; reports errors and warnings with their source.',
