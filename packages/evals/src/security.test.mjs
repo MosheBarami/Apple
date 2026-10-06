@@ -866,6 +866,7 @@ const TOOL_ARGS = {
   // reads is observations (seen / not seen / cannot tell, bounded strings), never pixels, and nothing in it is a credential.
   animate_model: { model: 'game.Workspace.Door', clips: { open: { play: 'click', keys: [{ t: 0, Door: { rot: [0, 0, 0] } }, { t: 1, Door: { rot: [0, 90, 0] } }] } } },
   build_object: { name: 'Butter', parts: [{ name: 'Stick', size: [6, 1.5, 1.5], color: '#ffe680', move: { as: 'wobble', on: 'click' } }] },
+  build_blocks: { blocks: ['window'], params: { window: { screen: 'Shop', title: 'Shop' } } },
   build_studded_ui: { pieces: [{ kind: 'counter', name: 'Coins', text: '0', at: 'top-left' }] },
   capture_studio_viewport: {},
   more_tools: { why: 'need a terrain tool' },
