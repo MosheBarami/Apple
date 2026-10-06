@@ -921,5 +921,8 @@ entry goes.
 - `apps/worker/src/custom-code.ts` — WIRE; writes and proves logic no block covers. Unit-tested in
   `apps/worker/tests/blocks.test.mjs`; M5b wires it beside the system blocks, whose APIs it must call.
 
+- `planning/proof/M5a/renders/scenes.mjs` — STRUCTURALLY-BLOCKED; milestone evidence run by hand (`node scenes.mjs U01`
+  prints that scene's block ops), so nothing imports it.
+
 `intake.ts`, `plan-fill.ts` and `recipe.ts` are wired: the Studio agent's `build_blocks` tool (`apps/worker/src/blocks-tool.ts`)
 uses them.

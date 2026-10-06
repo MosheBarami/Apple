@@ -1,7 +1,7 @@
 // Scratch: expands block runs for sample requests into Luau that builds them in Studio (edit mode) for a viewport look.
-import { stepOps, runOrder } from '../m5/apps/worker/src/recipe.ts';
-import { BLOCKS } from '../m5/apps/worker/src/blocks.generated.ts';
-import { checkFill } from '../m5/apps/worker/src/plan-fill.ts';
+import { stepOps, runOrder } from '../../../../apps/worker/src/recipe.ts';
+import { BLOCKS } from '../../../../apps/worker/src/blocks.generated.ts';
+import { checkFill } from '../../../../apps/worker/src/plan-fill.ts';
 
 const egg = (name, price, icon, colour, note, button = 'green') => ({ name, price, icon, colour, note, button });
 const row = (icon, label, detail, value, colour, progress = 0, button = '', buttonColour = 'green') => ({ icon, label, detail, value, colour, progress, button, buttonColour });
