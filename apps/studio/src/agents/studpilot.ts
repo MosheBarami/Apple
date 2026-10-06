@@ -3,7 +3,8 @@
 // focused work to a planner, a builder, a reviewer and a tester. Each delegate gets a fresh context and only the
 // tools its role needs; only its final answer returns to the coordinator. Only the builder can change the place,
 // and the session checkpoints before its first change (apps/worker/src/do/session.ts, /studio-tool).
-import { type AgentProps, useModel, useSubagent, useTool } from '@flue/runtime';
+import { type AgentProps, useModel, useResponseFinish, useSubagent, useTool } from '@flue/runtime';
+import { env } from 'cloudflare:workers';
 import { STUDIO_TOOL_SPECS } from '../tools/generated.ts';
 import { projectOf } from '../conversation-id.ts';
 import { studioTools } from '../tools/studio.ts';
@@ -58,10 +59,19 @@ line it names, and say plainly when the run was clean. Change nothing. ${SHARED}
 } as const;
 
 /** One instance per conversation: `id` is `<project>` or `<project>~<chat>` (checked against its owner in app.ts). */
+const MODEL = '@cf/zai-org/glm-5.3-flash';
+
 export function StudPilot({ id }: AgentProps) {
-  useModel('cloudflare/@cf/zai-org/glm-5.3-flash');
+  useModel(`cloudflare/${MODEL}`);
+  const projectId = projectOf(id) ?? id;
+  // Credits: the response's settled token usage (its delegates' calls included) is charged to the project's owner.
+  // The hook is synchronous, so the charge is sent and not awaited; the shared budget has already metered every call.
+  useResponseFinish(({ response }) => {
+    const u = response.usage;
+    void (env as unknown as Env).GATE.chargeUsage(projectId, MODEL, { inputTokens: u.input + u.cacheRead, outputTokens: u.output, cachedInputTokens: u.cacheRead }).catch(() => undefined);
+  });
   // The id was checked at the route: its project part is the project the owner opened.
-  const tools = studioTools(projectOf(id) ?? id);
+  const tools = studioTools(projectId);
   const pick = (names: readonly string[]) => tools.filter((t) => names.includes(t.name));
   for (const tool of pick(READS)) useTool(tool);
   for (const [name, role] of Object.entries(ROLES)) {

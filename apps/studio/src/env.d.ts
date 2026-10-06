@@ -5,6 +5,8 @@ interface StudioGate {
   reserveModel(model: string, inputChars: number, maxOutputTokens: number): Promise<{ ok: true; reserved: number } | { ok: false; message: string }>;
   settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number } | null): Promise<void>;
   releaseModel(model: string, reserved: number): Promise<void>;
+  canSpend(projectId: string): Promise<{ ok: true } | { ok: false; message: string }>;
+  chargeUsage(projectId: string, model: string, usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }): Promise<{ ok: boolean; credits: number }>;
 }
 
 interface Env {
