@@ -59,3 +59,9 @@ ideas only (planning/REBUILD-PLAN.md). The other three named projects are MIT an
 The M3 baseline, the M4 smoke test and the rebuild's R6 switch all need Roblox Studio paired to the test project.
 Studio is open on the owner's Mac, but the screen has been locked since 2026-10-05 22:00 UTC, and computer use cannot reach a window
 on a locked screen. Once it is unlocked, Claude Code mints the code (`node scripts/eval/pair.mjs`) and types it into the plugin.
+
+### X3 (from the handoff). The daily spend ceiling, and what it means for testing (noted 2026-10-06)
+`BILLABLE_NEURONS_PER_DAY = 150_000` (about $1.65 a day, the planner default the handoff left for the owner to approve or
+replace). Measured: one M3 piece uses about 8,000 neurons, so the shared capacity allows about 20 pieces a day; the 60-piece
+M3 baseline therefore takes 3 days, and every later measurement (the R6 smoke test, M5) shares the same allowance. The month
+so far is $5.57 of the $20 test ceiling. Raising the daily ceiling is the owner's decision; nothing waits on it except speed.
