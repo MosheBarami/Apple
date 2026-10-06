@@ -139,6 +139,7 @@ export function aggregate(pieces) {
   return {
     counts: { devSetFolders: pieces.length, dryRuns: dry.length, attempted: attempted.length, scored: scored.length, awaiting: awaiting.length, passing: passing.length, failing: failing.length, unevaluable: unevaluable.length, passingIgnoringFunctional: passingIgnoringFunctional.length, notRun: notRun.length },
     conversation: { freshChat: fresh.length, attempted: attempted.length, sharedChat: sharedChat.map((p) => p.id) },
+    singleCritic: scored.filter((p) => p.verdict.singleCritic === true).map((p) => p.id),
     ids: { awaiting: awaiting.map((p) => p.id), notRun: notRun.map((p) => `${p.id} (${p.manifest.aborted?.step ?? 'no run'})`), passing: passing.map((p) => p.id) },
     byCategory,
     overall,
@@ -181,6 +182,9 @@ export function renderMarkdown(milestone, agg) {
   L.push('## Pass rate (plan 4.3)', '');
   L.push(`- **Passing / attempted: ${c.passing} / ${c.attempted} (${pctDown(c.passing, c.attempted)})**`);
   L.push(`- failing ${c.failing}, not evaluable ${c.unevaluable}, awaiting critics ${c.awaiting}`);
+  if (agg.singleCritic?.length) {
+    L.push(`- **One critic, not two:** ${agg.singleCritic.length} of ${c.scored} scored pieces were scored by a single critic (owner token rule, 2026-10-05), so "the lower of the two critics" is that critic's score. That is a weaker test than the plan's two independent critics.`);
+  }
   L.push(`- attempted = pieces whose agent run was made. Dry runs not counted: ${c.dryRuns}. Not run (harness stopped first): ${c.notRun}${agg.ids.notRun.length ? ` (${agg.ids.notRun.join(', ')})` : ''}.`);
   L.push(`- Conversation: ${agg.conversation.freshChat} of ${c.attempted} attempted pieces ran in a FRESH conversation (the project's chat, the memory it produced and the build ledger were cleared just before the run, by POST /api/admin/conversation-reset).`);
   if (agg.conversation.sharedChat.length) {

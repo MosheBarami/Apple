@@ -93,15 +93,19 @@ export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [] 
   return verdict;
 }
 
-export function writeVerdicts(doc, { prepared = null } = {}) {
+export function writeVerdicts(doc, { prepared = null, singleCritic = false } = {}) {
   const { results, rubricSha256, rubricVersion } = unwrapResults(doc);
   const written = [];
   for (const r of results) {
     const piece = readPiece(r.dir);
-    const verdict = verdictFor(piece, { criticA: r.criticA, criticB: r.criticB, claims: r.claims });
+    // ONE CRITIC (owner token rule, 2026-10-05): critic A stands for both sides of the "lower of the two" rule. That is a
+    // weaker test than two independent critics, so every such verdict says so and the report prints it beside the numbers.
+    const criticB = singleCritic ? r.criticA : r.criticB;
+    const verdict = verdictFor(piece, { criticA: r.criticA, criticB, claims: r.claims });
+    if (singleCritic) verdict.singleCritic = true;
     const out = (name, body) => writeFileSync(join(piece.dir, name), JSON.stringify(body, null, 1) + '\n');
     out('critic-a.json', r.criticA ?? null);
-    out('critic-b.json', r.criticB ?? null);
+    out('critic-b.json', singleCritic ? null : r.criticB ?? null);
     out('claims.json', r.claims ?? null);
     out('verdict.json', {
       piece: { id: piece.id, category: piece.category },
@@ -129,18 +133,20 @@ function main() {
   const argv = process.argv.slice(2);
   let file = null;
   let preparedFile = null;
+  let singleCritic = false;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--prepared') preparedFile = argv[++i];
+    else if (argv[i] === '--single-critic') singleCritic = true;
     else if (argv[i].startsWith('--')) {
       console.error(`unknown flag ${argv[i]}`);
       process.exit(1);
     } else file = argv[i];
   }
   if (!file) {
-    console.error('usage: write-verdicts.mjs <results.json> [--prepared <args.json>]');
+    console.error('usage: write-verdicts.mjs <results.json> [--prepared <args.json>] [--single-critic]');
     process.exit(1);
   }
-  const summary = writeVerdicts(JSON.parse(readFileSync(file, 'utf8')), { prepared: preparedFile ? JSON.parse(readFileSync(preparedFile, 'utf8')) : null });
+  const summary = writeVerdicts(JSON.parse(readFileSync(file, 'utf8')), { prepared: preparedFile ? JSON.parse(readFileSync(preparedFile, 'utf8')) : null, singleCritic });
   for (const w of summary.written) console.log(`${w.id}: ${w.status}`);
   for (const w of summary.skippedWithRun) console.log(`${w.id}: ${w.status} (${w.reason})`);
 }
