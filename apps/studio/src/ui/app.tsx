@@ -10,6 +10,7 @@ import {
   CircleIcon,
   MoonIcon,
   PaperPlaneRightIcon,
+  PlusIcon,
   SunIcon,
   WrenchIcon,
   XCircleIcon,
@@ -28,6 +29,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function projectIdFromPath(): string | null {
   const m = /\/studio\/projects\/([^/]+)/.exec(location.pathname);
   return m && UUID.test(m[1]) ? m[1] : null;
+}
+
+/** ?chat=<name> opens another conversation in the same project (the route accepts `<project>~<chat>`). */
+function chatFromQuery(): string | null {
+  const c = new URLSearchParams(location.search).get('chat');
+  return c && /^[a-z0-9][a-z0-9-]{0,47}$/.test(c) ? c : null;
+}
+
+function newChat(projectId: string) {
+  location.href = `/studio/projects/${projectId}?chat=c${Date.now().toString(36)}`;
 }
 
 function useTheme() {
@@ -69,7 +80,11 @@ const STARTERS = ['What is in my place?', 'List my scripts', 'Are there errors i
 function Chat({ projectId }: { projectId: string }) {
   const [dark, setDark] = useTheme();
   const client = useMemo(
-    () => createFlueClient({ url: `/studio/api/agents/studpilot/${projectId}`, headers: authHeaders }),
+    () => {
+      const chat = chatFromQuery();
+      const conversation = chat ? `${projectId}~${chat}` : projectId;
+      return createFlueClient({ url: `/studio/api/agents/studpilot/${conversation}`, headers: authHeaders });
+    },
     [projectId],
   );
   const agent = useFlueAgent({ client });
@@ -103,6 +118,9 @@ function Chat({ projectId }: { projectId: string }) {
             <Badge variant="secondary">Beta</Badge>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" icon={<PlusIcon size={14} />} disabled={busy} onClick={() => newChat(projectId)}>
+              New chat
+            </Button>
             <UndoChanges projectId={projectId} busy={busy} />
             <StudioStatus projectId={projectId} />
             <Status status={agent.status} />
