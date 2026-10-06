@@ -126,3 +126,15 @@ test('Credits: a message is admitted only with Credits left, and each settled re
   assert.match(charge, /const owner = await studioGrantOwner\(this\.env, projectId\);/, 'the owner charged is the one the grant names');
   assert.match(charge, /QUOTA_DO\.idFromName\(owner\)\)\.fetch\('https:\/\/do\/spend'/);
 });
+
+test('the builder and reviewer carry the finishing rules, and the adapted MIT text keeps its notice', () => {
+  const agent = read('../src/agents/studpilot.ts');
+  const roles = agent.slice(agent.indexOf('const ROLES = {'), agent.indexOf('} as const;'));
+  for (const role of ['builder', 'reviewer']) {
+    const block = roles.slice(roles.indexOf(`${role}: {`), roles.indexOf('},', roles.indexOf(`${role}: {`)));
+    assert.match(block, /\$\{FINISH_RULES\}/, `${role} lost the finishing rules`);
+  }
+  assert.match(read('../src/agents/build-rules.ts'), /starts\s+open \(Visible = true\)/);
+  const notices = read('../../../THIRD_PARTY_NOTICES.md');
+  assert.match(notices, /Nixera-Studio\/roblox-ai-studio[^]*MIT License[^]*Copyright \(c\) 2026 AI Studio contributors/);
+});
