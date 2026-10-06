@@ -63,14 +63,17 @@ function title(text: unknown, height: number, colour = '#FFD23A'): Spec {
 }
 
 const COMPONENTS: Record<string, (n: V) => Spec> = {
-  /** A straight path from `from` to `to` ([x, z]), `width` studs wide, in a surface colour, studded, just above the ground. */
+  /**
+   * A straight path from `from` to `to` ([x, z]), `width` studs wide, in a surface colour, studded. A one-stud slab from
+   * y 0 to 1, so it stands above a ground whose top is anywhere up to y 0.5 (the eval place's is 0.5: a 0.4 slab was buried).
+   */
   path: (n) => {
     const [x1, z1] = (n.from as number[]).map(Number) as [number, number];
     const [x2, z2] = (n.to as number[]).map(Number) as [number, number];
     const len = Math.max(1, Math.hypot(x2 - x1, z2 - z1));
     const yaw = Math.atan2(x2 - x1, z2 - z1);
     const [colour, studs] = SURFACES[surface(n.surface)];
-    return part('path', String(n.name ?? 'Path'), [num(n.width, 8), 0.4, len + num(n.width, 8) * 0.5], cframe((x1 + x2) / 2, 0.2, (z1 + z2) / 2, yaw), colour, { studs });
+    return part('path', String(n.name ?? 'Path'), [num(n.width, 8), 1, len + num(n.width, 8) * 0.5], cframe((x1 + x2) / 2, 0.5, (z1 + z2) / 2, yaw), colour, { studs });
   },
   /**
    * A market stall (bible §4.3, R10/R11): a wooden counter, four posts, a striped awning in two candy colours and a
