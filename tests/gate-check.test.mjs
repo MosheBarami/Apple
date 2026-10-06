@@ -322,9 +322,10 @@ test('--lint reports this repository\'s own ledger without crashing', () => {
 test('it parses this repository\'s own GATES.md without error', () => {
   // The parser is regex-driven, so the thing most likely to break it is the real file changing
   // shape. Running one real gate proves the whole file still parses.
-  const proc = spawnSync('node', [CHECKER, '--gate', 'G91'], { cwd: ROOT, encoding: 'utf8', timeout: 300_000 });
+  // --lint parses the whole real file without executing a gate (running G91 for real took about a minute in CI).
+  const proc = spawnSync('node', [CHECKER, '--lint'], { cwd: ROOT, encoding: 'utf8', timeout: 300_000 });
   assert.notEqual(proc.status, 2, `GATES.md failed to parse:\n${proc.stderr}`);
-  assert.match(`${proc.stdout}${proc.stderr}`, /G91/);
+  assert.match(`${proc.stdout}${proc.stderr}`, /LEDGER WELL-FORMED — \d+ gates/);
 });
 
 /* ------------------------------------------------------- --reverify (§6.1) --- */

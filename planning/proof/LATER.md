@@ -34,3 +34,4 @@
 - The scene is sparse and the stall small next to the trees: a zone needs a denser centre and a bigger landmark.
 - The stall's floating title sits over the trees from the spawn view; place titles by the landmark's facing.
 - CI checkout: the tree is 311 MB (asset-library 120 MB, docs/evidence 59 MB, docs/gauntlet 30 MB); one shard's shallow fetch once took 4 min. Sparse checkout of docs/evidence and docs/gauntlet in the test jobs if it repeats.
+- check-escape-hatches: the checker still hangs now and then in a spawn (60 s locally on 2026-10-06, then the retry passed); the cause is unknown (see the notes in the test).
