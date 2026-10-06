@@ -1,0 +1,5 @@
+[
+  { "id": "body", "kind": "exists", "after": "create", "path": "game.StarterGui.{{name}}.Body", "describes": "the panel's body frame is in StarterGui" },
+  { "id": "title", "kind": "prop", "after": "create", "path": "game.StarterGui.{{name}}.Body.Header.Title", "prop": "Text", "equals": "{{title}}", "param": "title", "describes": "the header shows the requested title" },
+  { "id": "clean", "kind": "play_clean", "describes": "a play test with the panel has no errors" }
+]

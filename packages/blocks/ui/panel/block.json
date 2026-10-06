@@ -1,0 +1,18 @@
+{
+  "id": "panel",
+  "kind": "ui",
+  "summary": "A titled window on the player's screen: header bar, dark body, rounded corners and outline.",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,39}$", "default": "Panel", "description": "The ScreenGui's name in StarterGui" },
+      "title": { "type": "string", "minLength": 1, "maxLength": 40, "default": "Menu", "description": "Text in the header" },
+      "width": { "type": "integer", "minimum": 200, "maximum": 900, "default": 480, "description": "Pixels" },
+      "height": { "type": "integer", "minimum": 160, "maximum": 700, "default": 360, "description": "Pixels" },
+      "accent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "default": "#2b6cff", "description": "Header colour" }
+    }
+  },
+  "provides": [],
+  "depends": []
+}
