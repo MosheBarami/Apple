@@ -28,8 +28,10 @@ const CHECKER = 'scripts/check-escape-hatches.mjs';
  */
 function scratch() {
   const dir = mkdtempSync(join(tmpdir(), 'escape-hatch-'));
+  // Media, archives and data dumps are about 210 MB of the 311 MB tree and the checker reads none of them (its
+  // denominator is source files; its ledgers are Markdown). Copying and committing them cost minutes per clone in CI.
   const files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-    .split('\n').filter(Boolean);
+    .split('\n').filter(Boolean).filter((f) => !/\.(png|jpe?g|gif|webp|ogg|mp3|wav|mp4|gz|zip|rbxm|rbxl|jsonl|woff2?|ttf|otf|ico|pdf)$/i.test(f));
   for (const rel of files) {
     const dest = join(dir, rel);
     mkdirSync(dirname(dest), { recursive: true });
