@@ -367,6 +367,8 @@ test('BASELINE: pass rate, category means of the lower score, credits, minutes, 
   assert.equal(agg.spend.before.estimatedMonthUsd, 3.9, 'spend before is the first run\'s');
   assert.equal(agg.spend.after.estimatedMonthUsd, 4.1, 'spend after is the last run\'s');
   const md = renderMarkdown('MT', agg);
+  assert.doesNotMatch(md, /One critic, not two/, 'two-critic verdicts carry no single-critic caveat');
+  assert.match(renderMarkdown('MT', { ...agg, singleCritic: ['U01', 'U02'] }), /\*\*One critic, not two:\*\* 2 of 4 scored pieces were scored by a single critic/);
   assert.match(md, /\*\*Passing \/ attempted: 1 \/ 4 \(25\.0%\)\*\*/);
   assert.match(md, /with the functional-check clause waived: 2 \/ 4 \(50\.0%\)\*\*\. This is NOT the plan's pass rate/);
   assert.match(md, /Not run \(harness stopped first\): 1 \(Z02 \(preflight\)\)/);
