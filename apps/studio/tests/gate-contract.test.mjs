@@ -138,3 +138,10 @@ test('the builder and reviewer carry the finishing rules, and the adapted MIT te
   const notices = read('../../../THIRD_PARTY_NOTICES.md');
   assert.match(notices, /Nixera-Studio\/roblox-ai-studio[^]*MIT License[^]*Copyright \(c\) 2026 AI Studio contributors/);
 });
+
+test('the studio app wears the owner\'s violet, not Kumo\'s azure or Cloudflare\'s orange', () => {
+  const css = read('../src/ui/styles.css');
+  assert.match(css, /--color-kumo-brand: #7240d8;/);
+  assert.match(css, /--text-color-kumo-brand: #a67cff;/);
+  assert.match(read('../src/ui/main.tsx'), /setAttribute\('data-mode'/);
+});
