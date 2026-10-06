@@ -53,7 +53,7 @@ jobs:
   # ---------------------------------------------------------------- checks --
   tests:
     # Owner speed order (2026-10-06): CI under 3 minutes. The tests run in parallel shards; apps/site and apps/web are
-    # not built or tested any more (the web rebuild replaces them, planning/WEB-REBUILD.md).
+    # not built or tested any more, nor packages/design, their design system (the web rebuild replaces all three).
     name: Tests (${{ matrix.part }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -70,7 +70,7 @@ jobs:
           - part: worker 3/3
             run: cd apps/worker && node --test --test-shard=3/3
           - part: packages
-            run: pnpm -r --filter '!@studpilot/site' --filter '!@studpilot/web' --filter '!@studpilot/worker' test
+            run: pnpm -r --filter '!@studpilot/site' --filter '!@studpilot/web' --filter '!@studpilot/worker' --filter '!@studpilot/design' test
           - part: root 1/3
             run: node --test --test-timeout=240000 --test-shard=1/3 tests/*.test.mjs
           - part: root 2/3
