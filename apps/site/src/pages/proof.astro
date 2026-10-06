@@ -93,7 +93,7 @@ const { request, moments, landed, ran, defects, dateLabel, sources } = RECORDED_
             moments.map((m) => (
               <article class="run-frame" data-moment={m.id}>
                 <p class="run-note">{m.note}</p>
-                <pre class="run-log">{m.lines.map((l) => l.text).join('\n')}</pre>
+                <pre class="run-log" tabindex="0" aria-label={`${m.label} log`}>{m.lines.map((l) => l.text).join('\n')}</pre>
                 {m.caveat && (
                   <div class="run-caveat">
                     <p class="micro">What that does and does not show</p>
@@ -136,7 +136,7 @@ const { request, moments, landed, ran, defects, dateLabel, sources } = RECORDED_
         different session, a character was walked onto each pad by hand, and these are the readings
         that came back. <em>{ran.separate.text}.</em>
       </p>
-      <ul class="readings" role="list">
+      <ul class="readings" role="list" tabindex="0" aria-label="Readings">
         {ran.readings.map((line) => <li>{line.text}</li>)}
       </ul>
 
