@@ -147,7 +147,8 @@ export function expandWorld(node: unknown): unknown {
   if (typeof n.world === 'string') {
     const make = COMPONENTS[n.world];
     if (!make) throw new Error(`WorldKit has no component "${n.world}" (it has ${WORLD_COMPONENTS.join(', ')})`);
-    return make(n);
+    // The item's place in the tree (`parent`) is the recipe's, not the component's: keep it.
+    return { ...make(n), ...(n.parent !== undefined ? { parent: n.parent } : {}) };
   }
   return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, k === 'children' || k === 'items' ? expandWorld(v) : v]));
 }
