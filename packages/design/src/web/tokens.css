@@ -4,7 +4,8 @@
  * Both apps import this file first (`@studpilot/design/tokens.css`). It is the only place a colour,
  * radius, space, type or motion value is declared; every other sheet spends these names.
  *
- * THE LANGUAGE. A dark, professional base in the family of Cursor and Linear: a near-black canvas,
+ * THE LANGUAGE. A dark, professional base on Cloudflare's Kumo design system (rebuild R5, planning/REBUILD-PLAN.md): Kumo's
+ * neutral greys,
  * flat surfaces that rise by one small step of lightness, hairline borders, and ONE bright accent.
  * No glass, no blur, no aurora, no gradient: a surface is a colour and an edge, never a light
  * source. The accent is the only saturated colour on a page; green, amber and red exist for
@@ -26,32 +27,32 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
   /* The browser's address-bar band. The site layouts read it and paint <meta name="theme-color">. */
-  --theme-color: #0a0b0d;
+  --theme-color: #060606;
 
   /* Surfaces: the canvas, then four steps up. A card is --surface, a hovered row --surface-2, a
      well or progress track --surface-3, a recessed band --paper-2. */
-  --paper: #0a0b0d;
-  --paper-2: #0e1013;
-  --surface: #131519;
-  --surface-2: #1a1d22;
-  --surface-3: #23262c;
+  --paper: #060606;
+  --paper-2: #0b0b0b;
+  --surface: #0f0f0f;
+  --surface-2: #18181b;
+  --surface-3: #262626;
 
   /* Ink: three steps of text, descending. Each clears 4.5:1 on every surface above. */
-  --ink: #f4f5f7;
-  --ink-2: #d2d5db;
-  --muted: #9da2ad;
-  --faint: #8d929d;
+  --ink: #f5f5f5;
+  --ink-2: #d4d4d4;
+  --muted: #a1a1a1;
+  --faint: #9a9a9a;
 
   /* Edges: solid, so they read the same over any surface. */
-  --hairline: #1c1f24;
-  --line: #262a30;
-  --line-strong: #373b44;
+  --hairline: #1a1a1a;
+  --line: #262626;
+  --line-strong: #3a3a3a;
   --control-fill: rgba(255, 255, 255, 0.04);
   --control-line: rgba(255, 255, 255, 0.12);
   --quiet-line: rgba(255, 255, 255, 0.08);
   --quiet-ink: rgba(244, 245, 247, 0.38);
 
-  /* The accent family (candidate 1: violet). --accent-ring is the focus ring and the border of a
+  /* The accent family (candidate 1: violet, the owner's pick; Kumo's own brand is the azure blue the owner rejected). --accent-ring is the focus ring and the border of a
      focused or selected control: the accent at 75%, which is the least that reaches 3:1 over all
      five surfaces in both themes for all three candidates (the old 45% measured about 2:1). */
   --accent: #a67cff;
@@ -82,22 +83,22 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --theme-color: #f7f8fa;
+  --theme-color: #f8f8f8;
 
-  --paper: #f7f8fa;
-  --paper-2: #f0f2f5;
+  --paper: #f8f8f8;
+  --paper-2: #f2f2f2;
   --surface: #ffffff;
-  --surface-2: #f4f5f8;
-  --surface-3: #e9ebf0;
+  --surface-2: #f5f5f5;
+  --surface-3: #e5e5e5;
 
-  --ink: #15171c;
-  --ink-2: #343841;
-  --muted: #565c68;
-  --faint: #5e6470;
+  --ink: #0a0a0a;
+  --ink-2: #262626;
+  --muted: #525252;
+  --faint: #5c5c5c;
 
-  --hairline: #e8ebf0;
-  --line: #dfe2e8;
-  --line-strong: #c9cdd6;
+  --hairline: #e9e9e9;
+  --line: #e5e5e5;
+  --line-strong: #d4d4d4;
   --control-fill: rgba(21, 23, 28, 0.04);
   --control-line: rgba(21, 23, 28, 0.12);
   --quiet-line: rgba(21, 23, 28, 0.08);

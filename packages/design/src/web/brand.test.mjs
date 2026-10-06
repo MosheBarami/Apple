@@ -200,7 +200,11 @@ test('the guard has teeth: a swapped PNG, a moved mark, an edited card or a move
 
     // 4. a token moves (the card links the whole token file)
     const tokens = readFileSync(join(tmp, TOKENS_FILE), 'utf8');
-    writeFileSync(join(tmp, TOKENS_FILE), tokens.replace('--paper: #0a0b0d;', '--paper: #0a0b0e;'));
+    // The paper's CURRENT value, nudged by one in its last channel (a literal here went stale when the surfaces moved).
+    const paper = /--paper: #([0-9a-f]{6});/.exec(tokens);
+    assert.ok(paper, 'the token file no longer declares --paper as a hex colour');
+    const nudged = paper[1].slice(0, 4) + ((parseInt(paper[1].slice(4), 16) + 1) % 256).toString(16).padStart(2, '0');
+    writeFileSync(join(tmp, TOKENS_FILE), tokens.replace(paper[0], `--paper: #${nudged};`));
     const dim = probe();
     assert.ok(dim.some((m) => /"og" render inputs changed/.test(m)) && dim.some((m) => /"icon" render inputs changed/.test(m)), 'a moved base colour was not reported for the icon and the card');
     writeFileSync(join(tmp, TOKENS_FILE), tokens);
