@@ -19,7 +19,24 @@ const bound = env as unknown as Env;
  * reservation fails the call with the product's own message. A streamed reply reports no usage here, so it settles at
  * the reserved estimate, which can only over-count.
  */
-async function meteredRun(model: string, inputs: Record<string, unknown>, options?: unknown) {
+/**
+ * GLM on Workers AI reasons at a high effort unless told otherwise, and with the builder's context that took minutes per
+ * call: U01's builder never reached its first tool in 15 minutes (2026-10-06). The product's own loop has always run GLM at
+ * low effort, temperature 0.25 and 6,500 output tokens (apps/worker/src/gateway.ts MODELS.agent); the Studio agent now
+ * does the same unless a caller sets them.
+ */
+export function withAgentDefaults(model: string, inputs: Record<string, unknown>): Record<string, unknown> {
+  if (!/glm/i.test(model)) return inputs;
+  return {
+    ...inputs,
+    reasoning_effort: inputs.reasoning_effort ?? 'low',
+    temperature: inputs.temperature ?? 0.25,
+    ...(inputs.max_tokens === undefined && inputs.max_completion_tokens === undefined ? { max_tokens: 6500 } : {}),
+  };
+}
+
+async function meteredRun(model: string, raw: Record<string, unknown>, options?: unknown) {
+  const inputs = withAgentDefaults(model, raw ?? {});
   const asked = inputs?.max_completion_tokens ?? inputs?.max_tokens;
   const maxOut = typeof asked === 'number' ? asked : 4096;
   const hold = await bound.GATE.reserveModel(model, JSON.stringify(inputs ?? {}).length, maxOut);

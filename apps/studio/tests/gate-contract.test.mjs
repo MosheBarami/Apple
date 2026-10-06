@@ -145,3 +145,15 @@ test('the studio app wears the owner\'s violet, not Kumo\'s azure or Cloudflare\
   assert.match(css, /--text-color-kumo-brand: #a67cff;/);
   assert.match(read('../src/ui/main.tsx'), /setAttribute\('data-mode'/);
 });
+
+test('GLM runs at the product loop\'s settings (low reasoning effort, temperature 0.25, 6,500 tokens) unless the caller sets them', () => {
+  const app = read('../src/app.ts');
+  const run = app.slice(app.indexOf('async function meteredRun('), app.indexOf('const metered = new Proxy('));
+  assert.ok(run.indexOf('withAgentDefaults(') >= 0 && run.indexOf('withAgentDefaults(') < run.indexOf('GATE.reserveModel('), 'the defaults are applied before the reservation is sized');
+  const fn = app.slice(app.indexOf('export function withAgentDefaults('), app.indexOf('async function meteredRun('));
+  assert.match(fn, /reasoning_effort: inputs\.reasoning_effort \?\? 'low'/);
+  assert.match(fn, /temperature: inputs\.temperature \?\? 0\.25/);
+  assert.match(fn, /max_tokens: 6500/);
+  const gateway = read('../../worker/src/gateway.ts');
+  assert.match(gateway, /agent: \{ id: '@cf\/zai-org\/glm-5\.3-flash'[^}]*maxTokens: 6500[^}]*temperature: 0\.25, reasoningEffort: 'low'/, 'the same settings as the product loop');
+});
