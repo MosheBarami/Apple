@@ -6,6 +6,7 @@
 --   same-icon    three or more items of one list showing the same picture in the same tint
 --   overflow     a text larger than its box (TextFits false or TextBounds past the box)
 --   tiny-text    a text under 12 px tall on screen
+--   zero-size    an icon or text that is shown but has no area (a zero width or height: it can never be seen)
 --   studs        the stud texture on a face other than a header, button, tab or tile (bible §3.1, signature 3)
 --   price-word   a button's price spelled with a currency word ("Gems 100") instead of the currency icon
 -- Content is what carries meaning: a text with words, or a picture that is not a kit surface layer.
@@ -84,7 +85,12 @@ for _, gui in game:GetService("StarterGui"):GetChildren() do
 		if not o:IsA("GuiObject") or not shown(o) then continue end
 		objects += 1
 		local r = rect(o)
-		if area(r) < 4 then continue end
+		if area(r) < 4 then
+			if (o:IsA("ImageLabel") or o:IsA("ImageButton")) and o.Image ~= "" and o.Image ~= STUD or (isText(o)) then
+				find("zero-size", o, string.format("%s is %dx%d: it can never be seen", o.Name, math.floor(r[3] - r[1]), math.floor(r[4] - r[2])))
+			end
+			continue
+		end
 		local c, p = kitOf(o)
 		if o:IsA("ImageLabel") and o.Image == STUD and o.ImageTransparency < 0.9 then
 			local owner = o.Parent

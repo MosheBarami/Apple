@@ -30,6 +30,7 @@ export const CAPS = {
   'same-icon': { visual: 5, delivers: 6 },
   overflow: { polish: 5 },
   'tiny-text': { ui: 5 },
+  'zero-size': { delivers: 6, layout: 5 },
   studs: { style: 6 },
   'price-word': { style: 6, ui: 6 },
   untagged: { style: 6 },
