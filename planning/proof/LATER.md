@@ -37,3 +37,4 @@
 - check-escape-hatches: the checker still hangs now and then in a spawn (60 s locally on 2026-10-06, then the retry passed); the cause is unknown (see the notes in the test).
 - Menu (U02 render after the fix): the backdrop is a plain cyan gradient with no scene, the buttons are small (30 % wide), and the dark lip along the bottom is heavy.
 - The white egg (pack `egg`, 4829244230) is low resolution: its outline is jagged at 100 px and up (header, featured). Find a sharper tintable egg.
+- Lighthouse on studpilot.app (2026-10-06, after #110/#111, measured from the Mac, noisy): mobile Home 71-80, Pricing 88; desktop Pricing 99, Home 77-99. Accessibility, best practices and SEO 100. Run PageSpeed Insights for a stable number; next levers: the 150 KB inlined CSS and the Next/React baseline JS.
