@@ -11,7 +11,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <ProjectsProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="border-sidebar-border border-l bg-background">
           <Toaster position="top-center" theme="system" />
           {children}
         </SidebarInset>

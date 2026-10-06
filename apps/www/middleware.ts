@@ -2,9 +2,21 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase-config";
 
+// The website pages never need a session; the sign-in pages do their own redirects below.
+const MARKETING_PATHS = new Set(["/", "/pricing", "/docs", "/privacy", "/terms"]);
 const PUBLIC_PATHS = ["/login", "/auth/"];
+// A page that renders the app shell with made-up data, for design review. It does not exist in a production build.
+const DEV_ONLY_PATHS = process.env.NODE_ENV === "production" ? [] : ["/dev/"];
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (
+    MARKETING_PATHS.has(pathname) ||
+    DEV_ONLY_PATHS.some((p) => pathname.startsWith(p))
+  ) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -25,12 +37,11 @@ export async function middleware(request: NextRequest) {
   // Verifies the token against the project's signing keys (refreshing it when it is close to expiry).
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims);
-  const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
   const redirectTo = signedIn
     ? pathname === "/login"
-      ? "/"
+      ? "/app"
       : null
     : isPublic
       ? null
@@ -46,6 +57,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // The two API prefixes are proxied to the StudPilot worker and carry their own bearer token.
-  matcher: ["/((?!api/|studio/api/|_next/static|_next/image|favicon.ico).*)"],
+  // The two API prefixes are proxied to the StudPilot worker and carry their own bearer token; the renders and
+  // other static files in public/ are served to everyone.
+  matcher: [
+    "/((?!api/|studio/api/|_next/static|_next/image|favicon.ico|renders/|.*\\.(?:webp|png|jpg|jpeg|svg|ico|txt|xml)$).*)",
+  ],
 };

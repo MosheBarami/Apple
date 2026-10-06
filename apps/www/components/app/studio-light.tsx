@@ -79,7 +79,7 @@ export function StudioLight({
     try {
       const id = await createProject("New chat");
       refresh();
-      router.push(`/chat/${id}?pair=1`);
+      router.push(`/app/chat/${id}?pair=1`);
     } catch (e) {
       setError((e as Error).message);
       setOpen(true);
@@ -89,7 +89,7 @@ export function StudioLight({
   return (
     <>
       <Button
-        className="gap-2"
+        className="gap-2 bg-background transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:shadow-card"
         data-testid="studio-light"
         onClick={onClick}
         size="sm"
@@ -98,8 +98,10 @@ export function StudioLight({
         <span
           aria-hidden
           className={cn(
-            "size-2 rounded-full",
-            connected ? "bg-green-500" : "bg-muted-foreground/40"
+            "size-2.5 rounded-full border transition-colors duration-300",
+            connected
+              ? "composer-glow border-signal bg-signal"
+              : "border-muted-foreground/50 bg-transparent"
           )}
         />
         {connected ? "Studio connected" : "Connect Studio"}
@@ -107,7 +109,7 @@ export function StudioLight({
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-lg">
               {connected ? "Studio is connected" : "Connect Studio"}
             </DialogTitle>
             <DialogDescription>
@@ -117,17 +119,25 @@ export function StudioLight({
             </DialogDescription>
           </DialogHeader>
           {connected ? null : (
-            <div className="space-y-2 text-center">
+            <div className="space-y-3 text-center">
               {error ? (
                 <p className="text-destructive text-sm" role="alert">
                   {error}
                 </p>
               ) : (
                 <p
-                  className="font-mono text-3xl tracking-widest"
+                  className="flex justify-center gap-1.5 font-mono text-2xl"
                   data-testid="pairing-code"
                 >
-                  {code?.code ?? "······"}
+                  {(code?.code ?? "······").split("").map((ch, i) => (
+                    <span
+                      className="grid h-12 w-10 place-items-center rounded-md border border-input bg-muted font-semibold tabular-nums"
+                      // biome-ignore lint/suspicious/noArrayIndexKey: six fixed slots
+                      key={i}
+                    >
+                      {ch}
+                    </span>
+                  ))}
                 </p>
               )}
               <p className="text-muted-foreground text-xs">

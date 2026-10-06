@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  CornerDownLeftIcon,
+  ArrowUpIcon,
   ImageIcon,
   PlusIcon,
   SquareIcon,
@@ -799,7 +799,9 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
-        <InputGroup className="overflow-hidden">{children}</InputGroup>
+        <InputGroup className="overflow-hidden border-input bg-card shadow-composer transition-shadow duration-200 has-[[data-slot=input-group-control]:focus-visible]:border-foreground/40 has-[[data-slot=input-group-control]:focus-visible]:shadow-composer-focus has-[[data-slot=input-group-control]:focus-visible]:ring-foreground/10 dark:bg-card">
+          {children}
+        </InputGroup>
       </form>
     </>
   );
@@ -1103,7 +1105,7 @@ export const PromptInputSubmit = ({
 }: PromptInputSubmitProps) => {
   const isGenerating = status === "submitted" || status === "streaming";
 
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  let Icon = <ArrowUpIcon className="size-4" strokeWidth={2.6} />;
 
   if (status === "submitted") {
     Icon = <Spinner />;

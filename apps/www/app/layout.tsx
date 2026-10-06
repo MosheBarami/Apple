@@ -1,24 +1,36 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fredoka, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  description: "StudPilot builds inside your Roblox Studio.",
+  description:
+    "StudPilot is a co-pilot that builds parts of your game inside your Roblox Studio: screens, systems, props and areas.",
   metadataBase: new URL("https://studpilot.app"),
-  title: "StudPilot",
-};
-
-export const viewport = {
-  maximumScale: 1,
+  title: {
+    default: "StudPilot: a co-pilot that builds inside Roblox Studio",
+    template: "%s | StudPilot",
+  },
+  openGraph: {
+    images: ["/renders/egg-shop.webp"],
+    siteName: "StudPilot",
+    type: "website",
+  },
 };
 
 const geist = Geist({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-geist",
+});
+
+const fredoka = Fredoka({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-fredoka",
+  weight: ["500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -54,7 +66,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${geist.variable} ${geistMono.variable}`}
+      className={`${geist.variable} ${geistMono.variable} ${fredoka.variable}`}
       lang="en"
       suppressHydrationWarning
     >
@@ -70,7 +82,6 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
-          disableTransitionOnChange
           enableSystem
         >
           <TooltipProvider>{children}</TooltipProvider>
