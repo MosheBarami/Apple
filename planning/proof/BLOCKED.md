@@ -12,6 +12,23 @@ they are). Google's consent page loads with our callback and no redirect error; 
 redirect error there cannot be ruled out without a person. The privacy policy already covers both "where offered".
 Left: sign in once with Google and once with Discord on https://studpilot.app/app/signin and tell Claude Code it worked.
 
+## GitHub (2026-10-06): three clicks that have no API
+
+### G1. Project board: auto-add new issues and pull requests
+1. https://github.com/users/MosheBarami/projects/1 → the **⋯** menu (top right) → **Workflows**.
+2. **Auto-add to project** → **Edit** → repository **MosheBarami/StudPilot**, filter `is:issue,pr is:open` → **Save and turn on workflow**.
+3. In the same list, check that **Item closed** and **Pull request merged** set Status to **Done** (on by default).
+
+### G2. Saved issue views
+On https://github.com/MosheBarami/StudPilot/issues, type each filter, then **Save view** with its name:
+- **Waiting on owner:** `is:open label:owner-action`
+- **Test builds:** `is:open label:test-build`
+- **Style gaps:** `is:open label:style`
+- **Tasks:** `is:open label:task sort:created-asc`
+
+### G3. CodeQL: turn the per-PR default setup off after #73 merges (Claude Code does this with gh; listed in case it fails)
+Settings → Code security → Code scanning → CodeQL analysis → **⋯** → **Disable CodeQL** (the weekly `codeql.yml` replaces it).
+
 ## Before charging money
 
 ### N9. An adult or a company becomes the named operator (D-15)
