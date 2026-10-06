@@ -11,8 +11,8 @@ scale.Parent = window
 local function sync()
 	if dim then dim.Visible = window.Visible end
 	if window.Visible then
-		scale.Scale = 0.8
-		TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		scale.Scale = 0.85
+		TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 end
 -- A window some button opens (a menu button or HUD tile with Action open:<this screen>) waits for it, whatever StartOpen says:

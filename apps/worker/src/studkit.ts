@@ -1,47 +1,59 @@
 /**
- * STUDKIT: the one look of StudPilot UI (planning/STYLE-BIBLE.md §3), built by hand in Studio on 2026-10-06 and compared
- * side by side with the owner's references R01, R02 and R04 (planning/proof/STYLE/kit/). Blocks place kit components;
- * nothing else draws UI. The model never reaches this file's values: it fills text, numbers, colour-token NAMES and icon
- * NAMES, and recipe.ts expands each `{ "kit": <component>, ... }` node of a block recipe through `expandKit`.
+ * STUDKIT v2: "Premium Studs" (planning/UI-SPEC-v2.md, the owner's master plan §6, 2026-10-07). Blocks place kit
+ * components; nothing else draws UI. The model never reaches this file's values: it fills text, numbers, colour-token
+ * NAMES and icon NAMES, and recipe.ts expands each `{ "kit": <component>, ... }` node through `expandKit`.
  *
- * Every object a component makes carries the attribute StudKit = "<component>.<part>", which the harness's kit lint
- * reads (scripts/eval/luau/kit-lint.luau): an untagged visible object, a text without an outline, a default font or a raw
- * grey fill fails a build before any critic sees it.
+ * The construction of every coloured surface (spec §4.1), from the outside in:
+ *   one dark navy contour (#0B1A33) on every face and every text stroke -> a pale inner rim of the face's own tint ->
+ *   a 3-stop gradient face -> a solid darker lip under it -> faint studs as the last layer (1.5-3 % pattern strength).
+ * Windows have a `cloud` body (white-blue), never a navy well. There is no translucent white shine band, no translucent
+ * black shadow, no border in the face's own hue and no emoji: all four are lint failures (spec §3.5, §9).
  *
- * The recipe of the look, from the references:
- *   - glossy fill: a white frame tinted top -> bottom by the token's gradient, a border of the token's dark shade, small
- *     rounded corners, a 2 px white highlight near the top, a black drop shadow 4 px below;
- *   - the stud texture: one square stud per tile (free decal 7447638611 -> image 7447638591), tiled at 26 px, 40 % visible;
- *   - text: FredokaOne, scaled with a size cap, always outlined; on a coloured face the outline is that face's dark shade,
- *     elsewhere near-black; money and gem numbers are coloured with a darker outline of the same hue;
- *   - icons overflow their tiles; badges sit half outside their panel's edge.
+ * Pixel values are at 1080p. Every stroke and corner records its 1080p size in the attribute StudKitPx / StudKitCorner;
+ * the ui-fx runtime (StudKitScale) rescales them to the player's screen (in proportion to the viewport height against 1080p, never under 1.5 px).
+ * Every object carries StudKit = "<component>.<part>" for the kit lint.
  */
 import { ICONS } from './studkit-icons.generated.ts';
 
 export const STUD_IMAGE = 'rbxassetid://7447638591';
+/** The one contour colour: every outline and every text stroke (spec §3.1). */
+export const CONTOUR = '#0B1A33';
+/** The Roblox currency glyph (spec §3.3); "R$" is never typed. */
+export const ROBUX = '';
 
-/** Colour tokens (bible §3.2): top, bottom, border. The only colours a block may name. */
-export const TOKENS = {
-  lime: ['#C9F63E', '#7FD82A', '#4E8F22'],
-  sky: ['#4FE3F5', '#1FA6E0', '#1673A8'],
-  sun: ['#FFE23A', '#FF9F1C', '#B06A12'],
-  berry: ['#FF4FA3', '#E0263F', '#9E1838'],
-  grape: ['#C77DFF', '#8A3FFC', '#5A1FB0'],
-  teal: ['#37E0C8', '#13A38F', '#0B6B5E'],
-  slate: ['#5A6270', '#3E4450', '#23272F'],
-} as const;
-export type Token = keyof typeof TOKENS;
+interface Shade { top: string; mid: string; bottom: string; lip: string; rim: string }
+/** Colour tokens (spec §3.1). The only colours a block may name; `slate` is the name blocks use for grey (disabled). */
+export const TOKENS: Record<string, Shade> = {
+  lime: { top: '#B6F23A', mid: '#7FDB2B', bottom: '#4FBF1F', lip: '#2E7D12', rim: '#E3FFB0' },
+  sky: { top: '#6FE3FF', mid: '#33BFF5', bottom: '#1E8FE0', lip: '#145A9E', rim: '#C9F4FF' },
+  sun: { top: '#FFE94D', mid: '#FFC22E', bottom: '#FF9A1F', lip: '#B35E0E', rim: '#FFF6B8' },
+  berry: { top: '#FF6FB1', mid: '#FF3D7F', bottom: '#E0234F', lip: '#8E1235', rim: '#FFC7DE' },
+  grape: { top: '#D18BFF', mid: '#A65BFF', bottom: '#7B35E8', lip: '#4B1C99', rim: '#EED6FF' },
+  teal: { top: '#5BF0D6', mid: '#22D1B6', bottom: '#10A893', lip: '#0B6B5E', rim: '#C6FFF4' },
+  grey: { top: '#E6EBF0', mid: '#C9D2DB', bottom: '#A9B4BF', lip: '#6B7785', rim: '#F7F9FB' },
+};
+TOKENS.slate = TOKENS.grey!;
+export type Token = 'lime' | 'sky' | 'sun' | 'berry' | 'grape' | 'teal' | 'grey' | 'slate';
 export const TOKEN_NAMES = Object.keys(TOKENS) as Token[];
+/** The window body (spec §3.1): never navy. */
+export const CLOUD = { top: '#FBFDFF', bottom: '#E9F1F8' };
 
-/** Text inks (bible §3.2): fill and outline. */
-export const INKS = {
-  text: ['#FFFFFF', '#1B1B1F'],
-  money: ['#6CFF3A', '#1E6B14'],
-  gem: ['#5FE6FF', '#0E5F78'],
-  gold: ['#FFE23A', '#7A3E06'],
-  muted: ['#D9DEE6', '#23272F'],
-} as const;
+/** Text fills (spec §3.3): white by default; coloured numbers keep the contour stroke. */
+export const INKS = { text: '#FFFFFF', money: '#B6F23A', gem: '#6FE3FF', gold: '#FFE94D', muted: '#E6EBF0' } as const;
 export type Ink = keyof typeof INKS;
+
+/** Geometry at 1080p (spec §3.2): contour, rim, corner radius (999 = a pill) and lip. */
+export const GEO = {
+  window: { contour: 6, rim: 5, radius: 22, lip: 0, studs: 0.6 },
+  card: { contour: 5, rim: 4, radius: 14, lip: 4, studs: 0.68 },
+  button: { contour: 4, rim: 3, radius: 12, lip: 6, studs: 0.7 },
+  chip: { contour: 3, rim: 2, radius: 999, lip: 3, studs: 1 },
+  close: { contour: 4, rim: 3, radius: 12, lip: 5, studs: 1 },
+  tile: { contour: 5, rim: 4, radius: 16, lip: 5, studs: 0.7 },
+  bar: { contour: 4, rim: 0, radius: 999, lip: 0, studs: 1 },
+} as const;
+/** `studs` is the stud layer's ImageTransparency, measured with ui-metrics.py to land at 1.5-3 % pattern strength. */
+type Geo = { contour: number; rim: number; radius: number; lip: number; studs: number };
 
 type V = Record<string, unknown>;
 export interface Spec { className: string; name: string; props?: V; attributes?: V; children?: Spec[] }
@@ -51,18 +63,26 @@ const udim = (s: number, o: number) => ({ t: 'UDim', v: [s, o] });
 const vec2 = (x: number, y: number) => ({ t: 'Vector2', v: [x, y] });
 const enumOf = (kind: string, item: string) => ({ t: 'EnumItem', v: `Enum.${kind}.${item}` });
 const hexRgb = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
-const gradient = (top: string, bottom: string) => ({ t: 'ColorSequence', v: [[0, hexRgb(top)], [1, hexRgb(bottom)]] });
-/** The glossy fill (critic 2026-10-06: "no clear lighter top"): a light band over the top third, then top -> bottom. */
-const gloss = (top: string, bottom: string) => {
-  const light = hexRgb(top).map((c) => c + (1 - c) * 0.55) as [number, number, number];
-  const deep = hexRgb(bottom).map((c) => c * 0.76) as [number, number, number];
-  return { t: 'ColorSequence', v: [[0, light], [0.4, hexRgb(top)], [0.75, hexRgb(bottom)], [1, deep]] };
-};
+const seq = (stops: Array<[number, string]>) => ({ t: 'ColorSequence', v: stops.map(([t, c]) => [t, hexRgb(c)]) });
+/** The 3-stop face (spec §4.1): top -> mid -> bottom, no white band. */
+const faceGradient = (t: Shade) => seq([[0, t.top], [0.5, t.mid], [1, t.bottom]]);
+
 /** A button on a card of its own colour would vanish: it takes the next colour instead. */
-const CONTRAST: Record<string, Token> = { lime: 'sun', sky: 'lime', sun: 'lime', berry: 'lime', grape: 'lime', teal: 'lime', slate: 'lime' };
+const CONTRAST: Record<string, Token> = { lime: 'sun', sky: 'lime', sun: 'lime', berry: 'lime', grape: 'lime', teal: 'lime', grey: 'lime', slate: 'lime' };
 
 const tag = (component: string, part: string): V => ({ StudKit: `${component}.${part}` });
 const token = (t: unknown): Token => (typeof t === 'string' && t in TOKENS ? (t as Token) : 'sky');
+
+/** A stroke in 1080p pixels (rescaled at runtime). `position` Outer for a contour, Inner for a rim. */
+const stroke = (name: string, px: number, color: string, position: 'Outer' | 'Inner' | 'Center' = 'Outer', mode: 'Border' | 'Contextual' = 'Border'): Spec => ({
+  className: 'UIStroke', name,
+  props: { Thickness: px, Color: color, LineJoinMode: enumOf('LineJoinMode', 'Round'), ...(mode === 'Border' ? { ApplyStrokeMode: enumOf('ApplyStrokeMode', 'Border'), BorderStrokePosition: enumOf('BorderStrokePosition', position) } : {}) },
+  attributes: { StudKitPx: px },
+});
+/** A corner in 1080p pixels (rescaled at runtime); 999 is a pill. */
+const corner = (px: number): Spec => (px >= 999
+  ? { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0.5, 0) } }
+  : { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0, px) }, attributes: { StudKitCorner: px } });
 
 /** Layout a block may give a component: where it sits and how big it is. Nothing about how it looks. */
 export interface Place { size?: number[]; position?: number[]; anchor?: number[]; aspect?: number; order?: number | string; visible?: unknown; z?: number }
@@ -74,91 +94,94 @@ const placeProps = (p: Place = {}): V => ({
   ...(p.visible !== undefined ? { Visible: p.visible } : {}),
 });
 
-/** An outlined label. `ink` names a text ink; `on` (a token) makes the outline that face's dark shade. */
-export function label(component: string, name: string, text: unknown, opts: { ink?: Ink; on?: Token; max?: number; stroke?: number; align?: 'Left' | 'Center' | 'Right'; body?: boolean; line?: boolean } & Place = {}): Spec {
-  const ink = INKS[opts.ink ?? 'text'];
-  const outline = opts.on && (opts.ink ?? 'text') === 'text' ? TOKENS[opts.on][2] : ink[1];
+/** Text as it may be shown: "R$ 99" becomes the Robux glyph and the number (spec §3.3). */
+export const showText = (text: unknown): unknown => (typeof text === 'string' ? text.replace(/^\s*R\$\s*/, `${ROBUX} `) : text);
+
+/**
+ * An outlined label (spec §3.3): FredokaOne, white or a coloured ink, always a contour stroke. The stroke is 5 px for a
+ * cap of 40 and up, 4 for 28-39, 3 below. `line` keeps a value on one line.
+ */
+export function label(component: string, name: string, text: unknown, opts: { ink?: Ink; max?: number; stroke?: number; align?: 'Left' | 'Center' | 'Right'; line?: boolean } & Place = {}): Spec {
+  const max = opts.max ?? 40;
+  const px = opts.stroke ?? (max >= 40 ? 5 : max >= 28 ? 4 : 3);
   return {
     className: 'TextLabel', name,
     props: {
-      Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Text: text, TextScaled: true,
-      Font: enumOf('Font', opts.body ? 'GothamBlack' : 'FredokaOne'), TextColor3: ink[0],
+      Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Text: showText(text), TextScaled: true,
+      Font: enumOf('Font', 'FredokaOne'), TextColor3: INKS[opts.ink ?? 'text'],
       TextXAlignment: enumOf('TextXAlignment', opts.align ?? 'Center'), ZIndex: opts.z ?? 6,
-      // `line`: a value ("1,284 wins") shrinks to fit one line instead of breaking in two (U10 render, 2026-10-06).
       ...(opts.line ? { TextWrapped: false } : {}),
     },
     attributes: tag(component, name),
     children: [
-      // Thick outlines (critics 2026-10-06: "outlines are too thin"): a seventh of the text's cap, between 4 and 7 px (Studio captures at high DPI and halves them).
-      // Small labels (a cap of 30 or less) get 3 px: at their size 4+ px turned a note into a dark pill (U01 critique, 2026-10-06).
-      { className: 'UIStroke', name: 'Outline', props: { Thickness: opts.stroke ?? ((opts.max ?? 40) <= 30 ? 3 : Math.max(4, Math.min(7, (opts.max ?? 40) / 5.5))), Color: outline, LineJoinMode: enumOf('LineJoinMode', 'Round') } },
-      { className: 'UITextSizeConstraint', name: 'Fit', props: { MaxTextSize: opts.max ?? 40 } },
+      stroke('Outline', px, CONTOUR, 'Center', 'Contextual'),
+      { className: 'UITextSizeConstraint', name: 'Fit', props: { MaxTextSize: max } },
     ],
   };
 }
 
 /**
- * The glossy studded shape: a holder with a drop shadow and the Fill (gradient, border, studs, highlight). Children go in
- * the Fill. `radius` is the corner as a share of the height (bible: about 0.15-0.2).
+ * Rays (spec §4.9): 14 thin wedges, white at 0.86 transparency, 360/14 degrees apart, behind an icon. `spin` marks
+ * them for the runtime to turn once every 18 s (hero cards).
  */
-export function face(component: string, name: string, t: Token, opts: Place & { radius?: number; studs?: boolean; children?: Spec[]; holderChildren?: Spec[]; button?: boolean; attributes?: V } = {}): Spec {
-  const [top, bottom, border] = TOKENS[t];
-  const corner = { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(opts.radius ?? 0.14, 0) } };
+export function rays(component: string, opts: Place & { spin?: boolean } = {}): Spec {
+  return {
+    className: 'Frame', name: 'Rays',
+    props: { Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, ZIndex: opts.z ?? 2 },
+    attributes: { ...tag(component, 'rays'), ...(opts.spin ? { UI_Spin: 18 } : {}) },
+    children: [
+      { className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } },
+      ...Array.from({ length: 14 }, (_, i): Spec => ({
+        className: 'Frame', name: `Ray${i + 1}`,
+        props: { Size: udim2(0.07, 0, 1, 0), Position: udim2(0.5, 0, 0.5, 0), AnchorPoint: vec2(0.5, 0.5), Rotation: (360 / 14) * i, BackgroundColor3: '#FFFFFF', BackgroundTransparency: 0.86, BorderSizePixel: 0, ZIndex: opts.z ?? 2 },
+        attributes: tag(component, 'ray'),
+      })),
+    ],
+  };
+}
+
+/**
+ * The face every coloured surface shares (spec §4.1): a holder with a solid lip under the face; the face is a 3-stop
+ * gradient with the contour outside and the pale rim inside; faint studs over it; children go in the Face.
+ */
+export function face(component: string, name: string, t: Token, opts: Place & { geo?: Geo; studs?: boolean; children?: Spec[]; holderChildren?: Spec[]; button?: boolean; attributes?: V; pattern?: 'rays' | 'rays-spin' } = {}): Spec {
+  const shade = TOKENS[t]!;
+  const g = opts.geo ?? GEO.card;
   const z = opts.z ?? 2;
   return {
     className: 'Frame', name,
-    // The holder takes the component's ZIndex: with Sibling ordering a child draws inside its parent's layer, so a holder
-    // left at 1 would hide a close button under the header fill it sits on.
     props: { ...placeProps(opts), BackgroundTransparency: 1, ZIndex: z },
     attributes: { ...tag(component, 'holder'), ...(opts.attributes ?? {}) },
     children: [
       ...(opts.aspect ? [{ className: 'UIAspectRatioConstraint', name: 'Shape', props: { AspectRatio: opts.aspect } }] : []),
-      {
-        className: 'Frame', name: 'Shadow',
-        props: { Size: udim2(1, 0, 1, 0), Position: udim2(0, 0, 0, 4), BackgroundColor3: '#000000', BackgroundTransparency: 0.6, BorderSizePixel: 0, ZIndex: z },
-        attributes: tag(component, 'shadow'), children: [corner],
-      },
+      ...(g.lip > 0 ? [{
+        className: 'Frame', name: 'Lip',
+        props: { Size: udim2(1, 0, 1, 0), Position: udim2(0, 0, 0, g.lip), BackgroundColor3: shade.lip, BorderSizePixel: 0, ZIndex: z },
+        attributes: { ...tag(component, 'lip'), StudKitLip: g.lip },
+        children: [corner(g.radius), stroke('Contour', g.contour, CONTOUR)],
+      } as Spec] : []),
       {
         className: opts.button ? 'ImageButton' : 'Frame', name: 'Fill',
-        props: {
-          Size: udim2(1, 0, 1, 0), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: z + 1,
-          ...(opts.button ? { AutoButtonColor: false, ImageTransparency: 1 } : {}),
-        },
+        props: { Size: udim2(1, 0, 1, 0), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: z + 1, ...(opts.button ? { AutoButtonColor: false, ImageTransparency: 1 } : {}) },
         attributes: { ...tag(component, 'fill'), Token: t, ...(opts.button ? { UI_Click: true } : {}) },
         children: [
-          corner,
-          { className: 'UIGradient', name: 'Gloss', props: { Color: gloss(top, bottom), Rotation: 90 } },
-          { className: 'UIStroke', name: 'Border', props: { Thickness: 3.5, Color: border, ApplyStrokeMode: enumOf('ApplyStrokeMode', 'Border') } },
-          ...(opts.studs === false ? [] : [{
-            className: 'ImageLabel', name: 'Studs',
-            props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, Image: STUD_IMAGE, ScaleType: enumOf('ScaleType', 'Tile'), TileSize: udim2(0, 24, 0, 24), ImageTransparency: 0.3, ZIndex: 1 },
-            attributes: tag(component, 'studs'), children: [corner],
-          }]),
-          // Surface layers (studs, shine, lip) sit at ZIndex 1 inside the fill, so anything placed in it (labels, buttons,
-          // icons, all at 2 or more) draws over them.
-          // The gloss the references have and a gradient alone does not give (three critics, 2026-10-06): a white shine
-          // over the top 40 % and a darker lip along the bottom, both inside the rounded fill.
-          {
-            className: 'Frame', name: 'Shine',
-            props: { Size: udim2(1, -10, 0.3, 0), Position: udim2(0, 5, 0, 4), BackgroundColor3: '#FFFFFF', BackgroundTransparency: 0.72, BorderSizePixel: 0, ZIndex: 1 },
-            attributes: tag(component, 'highlight'),
-            children: [{ className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0.35, 0) } }],
-          },
-          {
+          corner(g.radius),
+          { className: 'UIGradient', name: 'Gradient', props: { Color: faceGradient(shade), Rotation: 90 } },
+          stroke('Contour', g.contour, CONTOUR),
+          ...(g.rim > 0 ? [{
             className: 'Frame', name: 'Rim',
-            props: { Size: udim2(1, -6, 1, -6), Position: udim2(0, 3, 0, 3), BackgroundTransparency: 1, BorderSizePixel: 0, ZIndex: 1 },
-            attributes: tag(component, 'highlight'),
-            children: [
-              { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(opts.radius ?? 0.14, 0) } },
-              { className: 'UIStroke', name: 'Light', props: { Thickness: 1.5, Color: '#FFFFFF', Transparency: 0.45, ApplyStrokeMode: enumOf('ApplyStrokeMode', 'Border') } },
-            ],
-          },
-          {
-            className: 'Frame', name: 'Lip',
-            props: { Size: udim2(1, 0, 0.16, 0), Position: udim2(0, 0, 1, 0), AnchorPoint: vec2(0, 1), BackgroundColor3: border, BackgroundTransparency: 0.45, BorderSizePixel: 0, ZIndex: 1 },
-            attributes: tag(component, 'lip'),
-            children: [{ className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(opts.radius ?? 0.14, 0) } }],
-          },
+            props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, BorderSizePixel: 0, ZIndex: 1 },
+            attributes: tag(component, 'rim'),
+            children: [corner(g.radius), stroke('Rim', g.rim, shade.rim, 'Inner')],
+          } as Spec] : []),
+          ...(opts.studs === false || g.studs >= 1 ? [] : [{
+            className: 'ImageLabel', name: 'Studs',
+            // Tuned against ui-metrics.py: pattern strength 1.5-3 % (spec §3.4; v1's 0.3 measured 4.6-5.6 %).
+            props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, Image: STUD_IMAGE, ScaleType: enumOf('ScaleType', 'Tile'), TileSize: udim2(0, 26, 0, 26), ImageTransparency: g.studs, ZIndex: 1 },
+            attributes: { ...tag(component, 'studs'), StudKitTile: 26 },
+            children: [corner(g.radius)],
+          } as Spec]),
+          ...(opts.pattern ? [rays(component, { size: [0.9, 0, 0.9, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], z: 1, spin: opts.pattern === 'rays-spin' })] : []),
           ...(opts.children ?? []),
         ],
       },
@@ -167,137 +190,178 @@ export function face(component: string, name: string, t: Token, opts: Place & { 
   };
 }
 
-/** An icon from the pack by name: the curated image, or its glyph while the pack has no image for it. Overflows on purpose. */
+/**
+ * An icon from the family by name. A white family image (`tintable`) takes its item's colour; a name the family does not
+ * have draws nothing (no emoji fallback, spec §3.5) and says so in StudKitMissingIcon for the lint.
+ */
 export function icon(component: string, name: unknown, opts: Place & { tint?: unknown } = {}): Spec {
   const entry = typeof name === 'string' ? ICONS[name] : undefined;
-  if (entry?.image) {
-    // A white pack image (`tintable`) takes its item's colour, so a list of one kind of thing reads item by item.
-    // Without a tint of its own (a window's header icon) it is gold rather than an unfinished-looking white.
-    const tint = entry.tintable ? { ImageColor3: TOKENS[typeof opts.tint === 'string' && opts.tint in TOKENS ? (opts.tint as Token) : 'sun'][0] } : {};
-    return {
-      className: 'ImageLabel', name: 'Icon',
-      props: { Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Image: entry.image, ScaleType: enumOf('ScaleType', 'Fit'), ZIndex: opts.z ?? 8, ...tint },
-      attributes: tag(component, 'icon'),
-    };
-  }
-  return label(component, 'Icon', entry?.glyph ?? '⭐', { ...opts, stroke: 0.01, max: 120, z: opts.z ?? 8 });
+  const tint = entry?.tintable ? { ImageColor3: TOKENS[typeof opts.tint === 'string' && opts.tint in TOKENS ? (opts.tint as Token) : 'sun']!.top } : {};
+  return {
+    className: 'ImageLabel', name: 'Icon',
+    props: { Size: udim2(1, 0, 1, 0), ...placeProps(opts), BackgroundTransparency: 1, Image: entry?.image ?? '', ScaleType: enumOf('ScaleType', 'Fit'), ZIndex: opts.z ?? 8, ...tint },
+    attributes: { ...tag(component, 'icon'), ...(entry?.tintable ? { StudKitTinted: true } : {}), ...(entry?.image ? {} : { StudKitMissingIcon: String(name ?? '') }) },
+  };
 }
 
 /** The kit's components. Each takes the node a recipe wrote (`kit`, `name`, layout and its own fields). */
 const COMPONENTS: Record<string, (n: V) => Spec> = {
-  /** A studded button with a label (and an optional icon on its left). */
-  button: (n) => face('button', String(n.name ?? 'Button'), n.on !== undefined && token(n.on) === token(n.token) ? CONTRAST[token(n.token)]! : token(n.token), {
-    ...(n as Place), button: true, attributes: n.attributes as V | undefined,
-    children: [
-      ...(n.icon ? [icon('button', n.icon, { size: [0.3, 0, 1.3, 0], position: [0.04, 0, 0.5, 0], anchor: [0, 0.5] })] : []),
-      label('button', 'Label', n.text, { on: n.on !== undefined && token(n.on) === token(n.token) ? CONTRAST[token(n.token)]! : token(n.token), size: n.icon ? [0.62, 0, 0.7, 0] : [0.86, 0, 0.7, 0], position: n.icon ? [0.95, 0, 0.5, 0] : [0.5, 0, 0.5, 0], anchor: n.icon ? [1, 0.5] : [0.5, 0.5], max: Number(n.max ?? 40), z: 7 }),
-    ],
-  }),
-  /** A square icon tile with its icon overflowing and its label across the bottom edge (left-edge HUD tiles). */
+  /** A button (spec §4.3): [icon] label or [glyph] number on a token face with a lip; press sinks the face. */
+  button: (n) => {
+    const t = n.on !== undefined && token(n.on) === token(n.token) ? CONTRAST[token(n.token)]! : token(n.token);
+    return face('button', String(n.name ?? 'Button'), t, {
+      ...(n as Place), geo: GEO.button, button: true, attributes: n.attributes as V | undefined,
+      children: [
+        ...(n.icon ? [icon('button', n.icon, { size: [0.28, 0, 1.25, 0], position: [0.03, 0, 0.5, 0], anchor: [0, 0.5] })] : []),
+        label('button', 'Label', n.text, { size: n.icon ? [0.64, 0, 0.66, 0] : [0.86, 0, 0.66, 0], position: n.icon ? [0.95, 0, 0.5, 0] : [0.5, 0, 0.5, 0], anchor: n.icon ? [1, 0.5] : [0.5, 0.5], max: Number(n.max ?? 40), z: 7, line: true }),
+      ],
+    });
+  },
+  /** A HUD icon tile (spec §4.6): the icon takes 80 % of the tile, the label overlaps the bottom edge. */
   tile: (n) => face('tile', String(n.name ?? 'Tile'), token(n.token), {
-    ...(n as Place), aspect: 1, button: true, attributes: n.attributes as V | undefined,
+    ...(n as Place), aspect: 1, geo: GEO.tile, button: true, attributes: n.attributes as V | undefined,
     holderChildren: [
-      icon('tile', n.icon, { size: [1.12, 0, 0.92, 0], position: [0.5, 0, 0.38, 0], anchor: [0.5, 0.5], z: 8 }),
-      label('tile', 'Label', n.text, { size: [1.2, 0, 0.32, 0], position: [0.5, 0, 1.04, 0], anchor: [0.5, 1], max: 26, z: 9 }),
+      icon('tile', n.icon, { size: [0.8, 0, 0.8, 0], position: [0.5, 0, 0.44, 0], anchor: [0.5, 0.5], z: 8 }),
+      label('tile', 'Label', n.text, { size: [1.15, 0, 0.32, 0], position: [0.5, 0, 1.08, 0], anchor: [0.5, 1], max: 26, z: 9 }),
     ],
   }),
-  /** A card: a coloured glossy panel for content (offers, items, rows); no studs, which belong to headers and buttons. */
-  card: (n) => face('card', String(n.name ?? 'Card'), token(n.token), { ...(n as Place), radius: 0.08, studs: false, children: (n.children as Spec[] | undefined) ?? [], attributes: n.attributes as V | undefined }),
-  /** Outlined text in a named ink (title, value, money, gem, gold). */
-  text: (n) => label('text', String(n.name ?? 'Text'), n.text, { ...(n as Place), ink: (n.ink as Ink) ?? 'text', on: n.on ? token(n.on) : undefined, max: Number(n.max ?? 36), align: (n.align as 'Left') ?? 'Center', body: n.body === true, line: n.line === true }),
-  /** An icon from the pack. */
+  /** A card (spec §4.4): a rarity face with a lip; `rays` puts rays behind its icon; `hero` spins them (spec §4.5). */
+  card: (n) => face('card', String(n.name ?? 'Card'), token(n.token), {
+    ...(n as Place), geo: GEO.card, studs: n.studs !== false, pattern: n.hero ? 'rays-spin' : n.rays ? 'rays' : undefined,
+    children: (n.children as Spec[] | undefined) ?? [], attributes: n.attributes as V | undefined,
+  }),
+  /** Outlined text in a named ink. */
+  text: (n) => label('text', String(n.name ?? 'Text'), n.text, { ...(n as Place), ink: (n.ink as Ink) ?? 'text', max: Number(n.max ?? 36), align: (n.align as 'Left') ?? 'Center', line: n.line === true }),
+  /** An icon from the family. */
   icon: (n) => icon('icon', n.icon, { ...(n as Place), tint: n.tint }),
+  /** Rays on their own (behind a hero icon). */
+  rays: (n) => rays('rays', { ...(n as Place), spin: n.spin === true }),
   /**
-   * The window: a slate frame, a studded header of the token with the title (its icon overflowing on the left) and a
-   * berry close button on the edge, and a Content frame for the window's blocks. Hidden-scrollbar content is the
-   * caller's. Carries ProofOpen, so the harness photographs it open.
+   * The window (spec §4.2): a token face (contour 6, rim 5, radius 22) whose top band is the studded header with the
+   * title and an icon breaking its top-left edge; a berry close button half outside the top-right corner; a `cloud`
+   * body inset 14 px with its own 5 px contour; a soft contour shadow 8 px below. Content sits on the body. Carries
+   * ProofOpen, so the harness photographs it open.
    */
-  window: (n) => ({
-    className: 'Frame', name: 'Window',
-    props: { ...placeProps(n as Place), BackgroundTransparency: 1 },
-    attributes: { ...tag('window', 'holder'), ProofOpen: true, StartOpen: n.startOpen ?? true },
-    children: [
-      { className: 'UIAspectRatioConstraint', name: 'Shape', props: { AspectRatio: Number(n.aspect ?? 1.45) } },
-      {
-        className: 'Frame', name: 'Frame',
-        props: { Size: udim2(1, 0, 1, 0), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: 1 },
-        attributes: tag('window', 'slate'),
-        children: [
-          { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0.04, 0) } },
-          { className: 'UIGradient', name: 'Gloss', props: { Color: gloss(TOKENS.slate[0], TOKENS.slate[1]), Rotation: 90 } },
-          { className: 'UIStroke', name: 'Border', props: { Thickness: 4, Color: TOKENS.slate[2], ApplyStrokeMode: enumOf('ApplyStrokeMode', 'Border') } },
-        ],
-      },
-      face('window', 'Header', token(n.token), {
-        size: [1, 0, 0.16, 0], radius: 0.14,
-        children: [label('window', 'Title', n.title, { on: token(n.token), size: [0.62, 0, 0.72, 0], position: [0.19, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 48, z: 7 })],
-        holderChildren: [
-          icon('window', n.icon, { size: [0.15, 0, 1.3, 0], position: [0.01, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }),
-          face('window', 'Close', 'berry', {
-            size: [1, 0, 0.9, 0], position: [1, 0, 0, 0], anchor: [0.62, 0.32], aspect: 1, studs: false, button: true, z: 10,
-            children: [label('window', 'X', 'X', { on: 'berry', size: [0.7, 0, 0.7, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 40, z: 14 })],
-          }),
-        ],
-      }),
-      {
-        className: 'ImageLabel', name: 'Inner',
-        // The body is a deep navy well (handoff M5a: "dark-blue translucent body"); studs stay on the header.
-        props: { Size: udim2(0.97, 0, 0.8, 0), Position: udim2(0.015, 0, 0.18, 0), BackgroundColor3: '#16233F', BackgroundTransparency: 0.1, ImageTransparency: 1, BorderSizePixel: 0, ZIndex: 1 },
-        attributes: tag('window', 'slate'),
-        children: [{ className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0.04, 0) } }],
-      },
-      {
-        className: 'Frame', name: 'Content',
-        props: { Size: udim2(0.96, 0, 0.8, 0), Position: udim2(0.02, 0, 0.18, 0), BackgroundTransparency: 1, ZIndex: 2 },
-        attributes: tag('window', 'content'),
-      },
-    ],
-  }),
-  /** A progress bar: a dark track and a glossy fill of the token, with an optional label over it. */
+  window: (n) => {
+    const t = token(n.token);
+    const shade = TOKENS[t]!;
+    return {
+      className: 'Frame', name: 'Window',
+      props: { ...placeProps(n as Place), BackgroundTransparency: 1 },
+      attributes: { ...tag('window', 'holder'), ProofOpen: true, StartOpen: n.startOpen ?? true },
+      children: [
+        { className: 'UIAspectRatioConstraint', name: 'Shape', props: { AspectRatio: Number(n.aspect ?? 1.45) } },
+        {
+          className: 'Frame', name: 'Shadow',
+          props: { Size: udim2(1, 0, 1, 0), Position: udim2(0, 0, 0, 8), BackgroundColor3: CONTOUR, BackgroundTransparency: 0.7, BorderSizePixel: 0, ZIndex: 1 },
+          attributes: { ...tag('window', 'shadow'), StudKitLip: 8 },
+          children: [corner(GEO.window.radius)],
+        },
+        {
+          className: 'Frame', name: 'Frame',
+          props: { Size: udim2(1, 0, 1, 0), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: 1 },
+          attributes: { ...tag('window', 'fill'), Token: t },
+          children: [
+            corner(GEO.window.radius),
+            { className: 'UIGradient', name: 'Gradient', props: { Color: faceGradient(shade), Rotation: 90 } },
+            stroke('Contour', GEO.window.contour, CONTOUR),
+            { className: 'Frame', name: 'Rim', props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, ZIndex: 1 }, attributes: tag('window', 'rim'), children: [corner(GEO.window.radius), stroke('Rim', GEO.window.rim, shade.rim, 'Inner')] },
+            {
+              className: 'ImageLabel', name: 'Studs',
+              props: { Size: udim2(1, 0, 0.16, 0), BackgroundTransparency: 1, Image: STUD_IMAGE, ScaleType: enumOf('ScaleType', 'Tile'), TileSize: udim2(0, 26, 0, 26), ImageTransparency: GEO.window.studs, ZIndex: 1 },
+              attributes: { ...tag('window', 'studs'), StudKitTile: 26 },
+              children: [corner(GEO.window.radius)],
+            },
+          ],
+        },
+        {
+          className: 'Frame', name: 'Header',
+          props: { Size: udim2(1, 0, 0.16, 0), BackgroundTransparency: 1, ZIndex: 4 },
+          attributes: tag('window', 'header'),
+          children: [
+            label('window', 'Title', n.title, { size: [0.62, 0, 0.7, 0], position: [0.17, 0, 0.55, 0], anchor: [0, 0.5], align: 'Left', max: 44, z: 7 }),
+            icon('window', n.icon, { size: [0.14, 0, 1.3, 0], position: [0.015, 0, 0.42, 0], anchor: [0, 0.5], z: 9 }),
+            face('window', 'Close', 'berry', {
+              size: [1, 0, 0.82, 0], position: [1, 0, 0, 0], anchor: [0.62, 0.32], aspect: 1, studs: false, button: true, z: 10, geo: GEO.close,
+              children: [label('window', 'X', 'X', { size: [0.62, 0, 0.62, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 40, z: 14 })],
+            }),
+          ],
+        },
+        {
+          className: 'Frame', name: 'Body',
+          props: { Size: udim2(1, -28, 0.84, -24), Position: udim2(0, 14, 0.16, 10), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: 2 },
+          attributes: { ...tag('window', 'body'), StudKitInset: 14 },
+          children: [
+            corner(14),
+            { className: 'UIGradient', name: 'Gradient', props: { Color: seq([[0, CLOUD.top], [1, CLOUD.bottom]]), Rotation: 90 } },
+            stroke('Contour', 5, CONTOUR),
+          ],
+        },
+        {
+          className: 'Frame', name: 'Content',
+          props: { Size: udim2(1, -48, 0.84, -44), Position: udim2(0, 24, 0.16, 20), BackgroundTransparency: 1, ZIndex: 3 },
+          attributes: tag('window', 'content'),
+        },
+      ],
+    };
+  },
+  /** A progress bar (spec §4.8): a contour track, a token fill with a 2 px highlight, the label over a tall bar. */
   bar: (n) => ({
     className: 'Frame', name: String(n.name ?? 'Bar'),
-    props: { ...placeProps(n as Place), BackgroundColor3: '#FFFFFF', BackgroundTransparency: 0.15, BorderSizePixel: 0 },
-    attributes: tag('bar', 'slate'),
+    props: { ...placeProps(n as Place), BackgroundColor3: CONTOUR, BorderSizePixel: 0 },
+    attributes: tag('bar', 'track'),
     children: [
-      { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0.5, 0) } },
-      { className: 'UIGradient', name: 'Gloss', props: { Color: gradient(TOKENS.slate[1], TOKENS.slate[2]), Rotation: 90 } },
-      { className: 'UIStroke', name: 'Border', props: { Thickness: 2, Color: TOKENS.slate[2], ApplyStrokeMode: enumOf('ApplyStrokeMode', 'Border') } },
-      face('bar', 'Fill', token(n.token), { size: [Number(n.progress ?? 0) as number, 0, 1, 0], radius: 0.5, studs: false }),
-      ...(n.text !== undefined ? [label('bar', 'Label', n.text, { size: [1, -12, 0.8, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 24, z: 9 })] : []),
+      corner(999),
+      stroke('Contour', GEO.bar.contour, CONTOUR),
+      {
+        className: 'Frame', name: 'Fill',
+        props: { Size: udim2(Number(n.progress ?? 0), 0, 1, 0), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: 2 },
+        attributes: { ...tag('bar', 'fill'), Token: token(n.token) },
+        children: [
+          corner(999),
+          { className: 'UIGradient', name: 'Gradient', props: { Color: faceGradient(TOKENS[token(n.token)]!), Rotation: 90 } },
+          { className: 'Frame', name: 'Highlight', props: { Size: udim2(1, -8, 0, 2), Position: udim2(0, 4, 0, 2), BackgroundColor3: TOKENS[token(n.token)]!.rim, BorderSizePixel: 0, ZIndex: 3 }, attributes: { ...tag('bar', 'highlight'), StudKitPx: 2 } },
+        ],
+      },
+      ...(n.text !== undefined ? [label('bar', 'Label', n.text, { size: [1, -12, 0.8, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 24, z: 9, line: true })] : []),
     ],
   }),
-  /** A currency line: icon and a big coloured number (money, gem or gold ink). */
-  currency: (n) => ({
-    className: 'Frame', name: String(n.name ?? 'Currency'),
-    props: { ...placeProps(n as Place), BackgroundTransparency: 1 },
-    attributes: tag('currency', 'holder'),
-    children: [
-      { className: 'UIListLayout', name: 'Line', props: { FillDirection: enumOf('FillDirection', 'Horizontal'), Padding: udim(0, 6), VerticalAlignment: enumOf('VerticalAlignment', 'Center'), SortOrder: enumOf('SortOrder', 'LayoutOrder') } },
-      { ...icon('currency', n.icon, { size: [0.3, 0, 1.25, 0], order: 1 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] },
-      label('currency', 'Value', n.text, { ink: (n.ink as Ink) ?? 'money', size: [0.8, 0, 1, 0], align: 'Left', order: 2, max: 44 }),
-    ],
+  /** A currency pill (spec §4.6): the icon overflows the left end, then the number in its ink. */
+  currency: (n) => face('currency', String(n.name ?? 'Currency'), 'grey', {
+    ...(n as Place), geo: GEO.chip, studs: false,
+    children: [label('currency', 'Value', n.text, { ink: (n.ink as Ink) ?? 'money', size: [0.66, 0, 0.78, 0], position: [0.3, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 44, line: true })],
+    holderChildren: [{ ...icon('currency', n.icon, { size: [0.3, 0, 1.35, 0], position: [-0.04, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] }],
   }),
-  /** A hotbar slot: lime with its item's icon when `filled`, an empty slate slot otherwise; the number top-left, the name below. */
-  slot: (n) => face('slot', String(n.name ?? 'Slot'), n.filled === true ? 'lime' : 'slate', {
-    ...(n as Place), aspect: 1, radius: 0.16, button: true, attributes: n.attributes as V | undefined,
+  /** A hotbar slot (spec §4.6): a tile with its item's icon; an empty slot is a clean grey tile with only its number. */
+  slot: (n) => face('slot', String(n.name ?? 'Slot'), n.filled === true ? 'lime' : 'grey', {
+    ...(n as Place), aspect: 1, geo: GEO.tile, button: true, attributes: n.attributes as V | undefined,
     children: [
-      label('slot', 'Number', n.number, { size: [0.32, 0, 0.3, 0], position: [0.07, 0, 0.04, 0], align: 'Left', max: 18 }),
-      label('slot', 'Label', n.text, { size: [0.96, 0, 0.34, 0], position: [0.5, 0, 1.02, 0], anchor: [0.5, 1], max: 22, z: 9 }),
+      label('slot', 'Number', n.number, { size: [0.32, 0, 0.3, 0], position: [0.07, 0, 0.04, 0], align: 'Left', max: 20 }),
+      ...(n.filled === true ? [label('slot', 'Label', n.text, { size: [0.96, 0, 0.34, 0], position: [0.5, 0, 1.02, 0], anchor: [0.5, 1], max: 22, z: 9 })] : []),
     ],
-    holderChildren: [icon('slot', n.icon, { size: [0.8, 0, 0.62, 0], position: [0.5, 0, 0.44, 0], anchor: [0.5, 0.5], z: 9, visible: n.filled === true })],
+    holderChildren: n.filled === true ? [icon('slot', n.icon, { size: [0.8, 0, 0.62, 0], position: [0.5, 0, 0.44, 0], anchor: [0.5, 0.5], z: 9 })] : [],
   }),
-  /** A toast: a short glossy pill with an icon and a line of text (no studs: they belong to headers and buttons). */
+  /** A toast (spec §4.7): a token pill, the icon breaking the left end, the text in large type. */
   toast: (n) => face('toast', String(n.name ?? 'Toast'), token(n.token), {
-    ...(n as Place), radius: 0.3, studs: false,
-    children: [label('toast', 'Text', n.text, { on: token(n.token), size: [0.72, 0, 0.62, 0], position: [0.25, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 30, z: 7 })],
+    ...(n as Place), geo: GEO.chip, studs: false,
+    children: [label('toast', 'Text', n.text, { size: [0.72, 0, 0.66, 0], position: [0.25, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 30, z: 7, line: true })],
     holderChildren: [icon('toast', n.icon, { size: [0.24, 0, 1.4, 0], position: [0.01, 0, 0.5, 0], anchor: [0, 0.5], z: 9 })],
   }),
-  /** A round badge that sits half outside its parent's edge: info (sky "i"), check (lime), close (berry "X"). */
+  /** A ribbon on a hero card (spec §4.5): a sun chip tilted -8 degrees with "NEW!" or "BEST VALUE". */
+  ribbon: (n) => {
+    const r = face('ribbon', String(n.name ?? 'Ribbon'), token(n.token ?? 'sun'), {
+      ...(n as Place), geo: { ...GEO.chip, lip: 3 }, studs: false, z: 12,
+      children: [label('ribbon', 'Text', n.text ?? 'NEW!', { size: [0.86, 0, 0.7, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 30, z: 16, line: true })],
+    });
+    r.props = { ...(r.props ?? {}), Rotation: Number(n.tilt ?? -8) };
+    return r;
+  },
+  /** A round badge on a frame edge (spec §4.8): info "i", new "!", close "X"; a check shows the family's check icon. */
   badge: (n) => {
-    const kind = n.badge === 'check' ? ['lime', '✔'] : n.badge === 'close' ? ['berry', 'X'] : ['sky', 'i'];
-    return face('badge', String(n.name ?? 'Badge'), kind[0] as Token, {
-      ...(n as Place), aspect: 1, radius: 0.5, studs: false, button: n.badge === 'close', z: 12,
-      children: [label('badge', 'Mark', kind[1], { on: kind[0] as Token, size: [0.62, 0, 0.62, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 40, z: 16 })],
+    const kind: [Token, string] = n.badge === 'check' ? ['lime', ''] : n.badge === 'close' ? ['berry', 'X'] : n.badge === 'new' ? ['sun', '!'] : ['sky', 'i'];
+    return face('badge', String(n.name ?? 'Badge'), kind[0], {
+      ...(n as Place), aspect: 1, geo: { ...GEO.chip, lip: 2 }, studs: false, button: n.badge === 'close', z: 12,
+      children: kind[1] ? [label('badge', 'Mark', kind[1], { size: [0.62, 0, 0.62, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 40, z: 16 })] : [icon('badge', 'check', { size: [0.7, 0, 0.7, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], z: 16 })],
     });
   },
 };
@@ -331,24 +395,36 @@ const canvasScale = (n: V) => (Array.isArray(n.size) && Number.isFinite(Number(n
  * Pure.
  */
 export function gridLayout(count: number, featured: boolean, columns: number, ratio = 1.74, minCard = 0.3) {
-  const pad = 0.03, gap = 0.035, band = featured ? 0.22 : 0;
+  const gap = 0.035;
+  // A hero's ribbon sits on its top edge (spec §4.5), so the box keeps room above it: the grid clips what leaves it.
+  const pad = featured ? 0.07 : 0.03;
   const cols = Math.max(1, Math.min(columns, Math.max(1, count)));
   const rows = Math.max(1, Math.ceil(count / cols));
-  const top = pad + (featured ? band + gap : 0);
   const widthMax = (ratio - 2 * pad - gap * (cols - 1)) / cols;
-  let h = (1 - top - pad - gap * (rows - 1)) / rows;
+  // The hero is 1.6 times a card's height (spec §4.5): solve the card height with the hero in the same column.
+  const room = featured ? 1 - pad - 0.03 - gap * rows : 1 - 2 * pad - gap * (rows - 1);
+  let h = featured ? room / (1.6 + rows) : room / rows;
+  // ...but never more than 0.42 of the box: with one row the rest goes to the cards.
+  if (featured && 1.6 * h > 0.42) h = (room - 0.42) / rows;
   h = Math.min(h, widthMax / 0.82); // never taller than about 1.2 times its width
-  const scroll = h < minCard;
-  if (scroll) h = Math.min(minCard, widthMax / 0.82);
-  const w = Math.min(widthMax, h * 1.25);
+  const floor = featured ? 0.2 : minCard;
+  const scroll = h < floor;
+  if (scroll) h = Math.min(floor, widthMax / 0.82);
+  const band = featured ? Math.min(0.42, 1.6 * h) : 0;
+  const top = pad + (featured ? band + gap : 0);
+  // Cards take their column's full width (spec §5.3: content covers at least 80 % of the body).
+  const w = widthMax;
   const height = scroll ? top + rows * h + (rows - 1) * gap + pad : 1;
+  // A partial last row is stretched to the full row's width (spec §5.2: no orphan rows, never a lonely card).
+  const fullRow = cols * w + (cols - 1) * gap;
   const cards = Array.from({ length: count }, (_, i) => {
     const row = Math.floor(i / cols);
     const inRow = Math.min(cols, count - row * cols);
-    const x0 = (ratio - (inRow * w + (inRow - 1) * gap)) / 2;
-    return { x: (x0 + (i % cols) * (w + gap)) / ratio, y: (top + row * (h + gap)) / height, w: w / ratio, h: h / height };
+    const cw = inRow < cols ? (fullRow - (inRow - 1) * gap) / inRow : w;
+    const x0 = (ratio - fullRow) / 2;
+    return { x: (x0 + (i % cols) * (cw + gap)) / ratio, y: (top + row * (h + gap)) / height, w: cw / ratio, h: h / height };
   });
-  return { scroll, height, featured: featured ? { x: pad / ratio, y: pad / height, w: (ratio - 2 * pad) / ratio, h: band / height } : null, cards };
+  return { scroll, height, featured: featured ? { x: (ratio - fullRow) / 2 / ratio, y: pad / height, w: fullRow / ratio, h: band / height } : null, cards };
 }
 
 /**

@@ -26,26 +26,51 @@
        "token": "{{item.token}}",
        "children": [
         {
-         "kit": "icon",
-         "icon": "{{item.icon}}",
+         "kit": "rays",
+         "name": "Rays",
+         "spin": true,
          "size": [
-          0.2,
+          0.4,
           0,
-          1.1,
+          1.5,
           0
          ],
          "position": [
-          0.02,
+          0.12,
           0,
           0.5,
           0
          ],
          "anchor": [
+          0.5,
+          0.5
+         ],
+         "z": 2
+        },
+        {
+         "kit": "icon",
+         "icon": "{{item.icon}}",
+         "size": [
+          0.22,
           0,
+          1.1,
+          0
+         ],
+         "position": [
+          0.12,
+          0,
+          0.5,
+          0
+         ],
+         "anchor": [
+          0.5,
           0.5
          ],
          "z": 8,
-         "tint": "{{item.token}}"
+         "tint": "{{item.token}}",
+         "attributes": {
+          "UI_Bob": true
+         }
         },
         {
          "kit": "text",
@@ -111,6 +136,28 @@
          ],
          "max": 32,
          "icon": "{{priceIcon}}"
+        },
+        {
+         "kit": "ribbon",
+         "name": "Ribbon",
+         "text": "NEW!",
+         "size": [
+          0.15,
+          0,
+          0.26,
+          0
+         ],
+         "position": [
+          0.26,
+          0,
+          -0.06,
+          0
+         ],
+         "z": 14,
+         "anchor": [
+          0,
+          0.5
+         ]
         }
        ],
        "each": "featured"
@@ -121,23 +168,44 @@
        "token": "{{item.token}}",
        "children": [
         {
-         "kit": "icon",
-         "icon": "{{item.icon}}",
+         "kit": "rays",
+         "name": "Rays",
          "size": [
-          0.96,
+          0.4,
           0,
-          0.5,
+          1.2,
           0
          ],
          "position": [
-          0.5,
+          0.19,
           0,
-          -0.06,
+          0.5,
           0
          ],
          "anchor": [
           0.5,
+          0.5
+         ],
+         "z": 2
+        },
+        {
+         "kit": "icon",
+         "icon": "{{item.icon}}",
+         "size": [
+          0.32,
+          0,
+          0.86,
           0
+         ],
+         "position": [
+          0.19,
+          0,
+          0.5,
+          0
+         ],
+         "anchor": [
+          0.5,
+          0.5
          ],
          "z": 8,
          "tint": "{{item.token}}"
@@ -148,22 +216,23 @@
          "text": "{{item.name}}",
          "on": "{{item.token}}",
          "size": [
-          0.96,
+          0.58,
           0,
-          0.18,
+          0.3,
           0
          ],
          "position": [
-          0.5,
+          0.39,
           0,
-          0.44,
+          0.06,
           0
          ],
          "anchor": [
-          0.5,
+          0,
           0
          ],
-         "max": 34
+         "max": 32,
+         "align": "Left"
         },
         {
          "kit": "text",
@@ -171,22 +240,23 @@
          "text": "{{item.note}}",
          "ink": "gold",
          "size": [
-          0.96,
+          0.58,
           0,
-          0.15,
+          0.2,
           0
          ],
          "position": [
-          0.5,
+          0.39,
           0,
-          0.61,
+          0.36,
           0
          ],
          "anchor": [
-          0.5,
+          0,
           0
          ],
-         "max": 26
+         "max": 24,
+         "align": "Left"
         },
         {
          "kit": "button",
@@ -195,22 +265,22 @@
          "on": "{{item.token}}",
          "text": "{{currency}}{{item.price}}",
          "size": [
-          0.9,
+          0.58,
           0,
-          0.21,
+          0.34,
           0
          ],
          "position": [
-          0.5,
+          0.39,
           0,
-          0.97,
+          0.6,
           0
          ],
          "anchor": [
-          0.5,
-          1
+          0,
+          0
          ],
-         "max": 34,
+         "max": 30,
          "icon": "{{priceIcon}}"
         }
        ],

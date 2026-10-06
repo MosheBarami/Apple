@@ -2,7 +2,7 @@
 // bar only when they would get too small; a tintable icon takes its item's colour.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gridLayout, rowsLayout, expandKit, TOKENS } from '../src/studkit.ts';
+import { gridLayout, rowsLayout, expandKit, TOKENS, CONTOUR } from '../src/studkit.ts';
 
 const overlap = (a, b) => a.x < b.x + b.w - 1e-9 && b.x < a.x + a.w - 1e-9 && a.y < b.y + b.h - 1e-9 && b.y < a.y + a.h - 1e-9;
 
@@ -36,16 +36,28 @@ test('the grid sizes the cards the recipe gives it, and shows the bar only when 
 
 test('a tintable icon takes its token colour; a fixed one keeps its picture', () => {
   const egg = expandKit({ kit: 'icon', icon: 'egg', tint: 'grape' });
-  assert.equal(egg.props.ImageColor3, TOKENS.grape[0]);
+  assert.equal(egg.props.ImageColor3, TOKENS.grape.top);
   const gem = expandKit({ kit: 'icon', icon: 'gem', tint: 'grape' });
   assert.equal(gem.props.ImageColor3, undefined);
-  assert.equal(expandKit({ kit: 'icon', icon: 'egg' }).props.ImageColor3, TOKENS.sun[0], 'untinted, a tintable icon is gold');
+  assert.equal(expandKit({ kit: 'icon', icon: 'egg' }).props.ImageColor3, TOKENS.sun.top, 'untinted, a tintable icon is gold');
 });
 
-test('cards carry no studs; buttons keep theirs', () => {
-  const names = (s) => [s.name, ...(s.children ?? []).flatMap(names)];
-  assert.ok(!names(expandKit({ kit: 'card', token: 'sky', children: [] })).includes('Studs'));
-  assert.ok(names(expandKit({ kit: 'button', token: 'lime', text: '100' })).includes('Studs'));
+test('UI Spec v2: every face has the navy contour outside and a pale rim inside; the window body is cloud, never navy', () => {
+  const strokes = (sp) => [...(sp.className === 'UIStroke' ? [sp] : []), ...(sp.children ?? []).flatMap(strokes)];
+  const card = expandKit({ kit: 'card', token: 'sky', children: [] });
+  const all = strokes(card);
+  assert.ok(all.some((st) => st.props.Color === CONTOUR && st.props.BorderStrokePosition.v.endsWith('Outer')), 'contour outside');
+  assert.ok(all.some((st) => st.props.Color === TOKENS.sky.rim && st.props.BorderStrokePosition.v.endsWith('Inner')), 'rim inside');
+  assert.ok(all.every((st) => st.props.Color === CONTOUR || st.props.Color === TOKENS.sky.rim), 'no stroke in the face hue');
+  const names = (sp) => [sp.name, ...(sp.children ?? []).flatMap(names)];
+  assert.ok(!names(card).includes('Shine') && !names(card).includes('Shadow'), 'no shine band, no black shadow');
+  const win = expandKit({ kit: 'window', title: 'Shop', icon: 'gem', token: 'sky' });
+  const body = win.children.find((c) => c.name === 'Body');
+  assert.equal(body.children.find((c) => c.name === 'Gradient').props.Color.v[0][1].length, 3);
+  assert.ok(!JSON.stringify(win).includes('#16233F'), 'no navy well');
+  const text = expandKit({ kit: 'text', text: 'Hi', max: 44 });
+  assert.equal(text.children.find((c) => c.name === 'Outline').props.Color, CONTOUR);
+  assert.equal(expandKit({ kit: 'button', token: 'lime', text: 'R$ 99' }).children.find((c) => c.name === 'Fill').children.find((c) => c.name === 'Label').props.Text, '\uE002 99', 'R$ becomes the Robux glyph');
 });
 
 test('rows share the box and scroll only when they would get too thin', () => {
