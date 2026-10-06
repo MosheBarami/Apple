@@ -1,0 +1,108 @@
+{
+ "origin": "https://studpilot.app",
+ "lighthouse": "12.8.2",
+ "chrome": "chromium-1234",
+ "rule": "1 run per route and form factor (owner rule, 2026-10-05)",
+ "table": [
+  {
+   "route": "/",
+   "formFactor": "mobile",
+   "median": {
+    "performance": 93,
+    "accessibility": 97,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "medianFile": "landing-mobile-run1.json",
+   "tbtMs": 1,
+   "lcpMs": 2615,
+   "cls": 0,
+   "runs": [
+    {
+     "file": "landing-mobile-run1.json",
+     "performance": 93,
+     "accessibility": 97,
+     "best-practices": 100,
+     "seo": 100,
+     "tbtMs": 1,
+     "lcpMs": 2615
+    }
+   ]
+  },
+  {
+   "route": "/",
+   "formFactor": "desktop",
+   "median": {
+    "performance": 92,
+    "accessibility": 97,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "medianFile": "landing-desktop-run1.json",
+   "tbtMs": 0,
+   "lcpMs": 1346,
+   "cls": 0,
+   "runs": [
+    {
+     "file": "landing-desktop-run1.json",
+     "performance": 92,
+     "accessibility": 97,
+     "best-practices": 100,
+     "seo": 100,
+     "tbtMs": 0,
+     "lcpMs": 1346
+    }
+   ]
+  },
+  {
+   "route": "/pricing",
+   "formFactor": "mobile",
+   "median": {
+    "performance": 98,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "medianFile": "pricing-mobile-run1.json",
+   "tbtMs": 0,
+   "lcpMs": 1679,
+   "cls": 0.05545748026152469,
+   "runs": [
+    {
+     "file": "pricing-mobile-run1.json",
+     "performance": 98,
+     "accessibility": 100,
+     "best-practices": 100,
+     "seo": 100,
+     "tbtMs": 0,
+     "lcpMs": 1679
+    }
+   ]
+  },
+  {
+   "route": "/pricing",
+   "formFactor": "desktop",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "medianFile": "pricing-desktop-run1.json",
+   "tbtMs": 0,
+   "lcpMs": 458,
+   "cls": 0.02350186818234319,
+   "runs": [
+    {
+     "file": "pricing-desktop-run1.json",
+     "performance": 100,
+     "accessibility": 100,
+     "best-practices": 100,
+     "seo": 100,
+     "tbtMs": 0,
+     "lcpMs": 458
+    }
+   ]
+  }
+ ]
+}

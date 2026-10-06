@@ -1,0 +1,38 @@
+{
+ "summary": {
+  "origin": "https://studpilot.app",
+  "axe": "4.13.0",
+  "tags": [
+   "wcag2a",
+   "wcag2aa",
+   "wcag21a",
+   "wcag21aa",
+   "wcag22aa"
+  ],
+  "when": "2026-10-06T02:11:55.893Z",
+  "routes": 23,
+  "runs": 92,
+  "runsWithViolations": 2,
+  "violationIds": [
+   "scrollable-region-focusable"
+  ]
+ },
+ "withViolations": [
+  {
+   "route": "/proof/",
+   "viewport": "phone",
+   "scheme": "dark",
+   "violations": [
+    "scrollable-region-focusable x6"
+   ]
+  },
+  {
+   "route": "/proof/",
+   "viewport": "phone",
+   "scheme": "light",
+   "violations": [
+    "scrollable-region-focusable x6"
+   ]
+  }
+ ]
+}
