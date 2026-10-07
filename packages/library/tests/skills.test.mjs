@@ -45,3 +45,14 @@ test('a numbered list of three or more steps under a heading is one procedure, w
 test('media embeds go, a relative link keeps its text, a web link stays', () => {
   assert.equal(clean('See [the guide](./x.md) and [docs](https://a.b).\n\n<img src="y.png" />\n\n<video controls>\n<source/>\n</video>\nEnd'), 'See the guide and [docs](https://a.b).\n\nEnd');
 });
+
+test('docs widgets go, wrappers keep their text, a tab keeps its label, entities decode', () => {
+  assert.equal(clean('1. <Chip label="IMPORTANT" size="small" /> In the Explorer&nbsp;window.\n<Alert severity="info">Save first.</Alert>\n<Tabs><TabItem label="Windows">Press F5.</TabItem></Tabs>'),
+    '1.  In the Explorer window.\nSave first.\nWindows:Press F5.');
+});
+
+test('a credential-shaped value, even a docs example, is never copied in', async () => {
+  const { CREDENTIAL } = await import('../src/ingest-skills.mjs');
+  assert.equal(CREDENTIAL.test(['https://hooks.slack.com', 'services', 'T0', 'B0', 'x'].join('/')), true);
+  assert.equal(CREDENTIAL.test('Paste your webhook URL into the field.'), false);
+});

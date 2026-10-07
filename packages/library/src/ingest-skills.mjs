@@ -15,9 +15,17 @@ import { validateItem } from './item.mjs';
 
 const BASE = 'https://create.roblox.com/docs/';
 const STEP = /^\d+\.\s/;
+// A credential-shaped value (even a docs example) is never copied into the library: the skill is refused.
+export const CREDENTIAL = /hooks\.slack\.com\/services\/|discord(?:app)?\.com\/api\/webhooks\/\d|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{30,}|\bsk_(?:live|test)_[A-Za-z0-9]{16,}|-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 const slug = (s) => s.toLowerCase().replace(/[`*_[\]()]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-/** Media embeds out (images, videos, grids of images); a relative link keeps its text. Pure. */
+const ENTITIES = { nbsp: ' ', amp: '&', deg: '°', hellip: '…', rang: '⟩', rarr: '→', times: '×', ctdot: '⋯', vellip: '⋮', lt: '<', gt: '>', quot: '"' };
+
+/**
+ * Media embeds out (images, videos, grids of images); the docs site's widgets out (chips, swatches, cards, buttons);
+ * wrappers (alerts, grids, tabs, accordions) keep their text and a tab its label; a relative link keeps its text;
+ * entities decoded. Pure.
+ */
 export function clean(md) {
   return md
     .replace(/<video[\s\S]*?<\/video>/gi, '')
@@ -25,6 +33,10 @@ export function clean(md) {
     .replace(/<figure[\s\S]*?<\/figure>/gi, '')
     .replace(/<img\b[^>]*\/?>/gi, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/<(Chip|ColorSwatch|BrowseSampleCard|UseStudioButton)\b[^>]*\/>/g, '')
+    .replace(/<TabItem\b[^>]*\blabel="([^"]*)"[^>]*>/g, '$1:')
+    .replace(/<\/?(Alert|AlertTitle|Grid|TabItem|Tabs|Typography|BaseAccordion|AccordionSummary|AccordionDetails|Button|UseStudioButton|Card|CardContent|CardActions|KeyboardInput)\b[^>]*>/g, '')
+    .replace(/&([a-z]+);/g, (m, e) => ENTITIES[e] ?? m)
     .replace(/\[([^\]]+)\]\((?!https?:)[^)]*\)/g, '$1')
     .replace(/\n[ \t]*\n(?:[ \t]*\n)+/g, '\n\n')
     .trim();
@@ -101,6 +113,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         ai_check: aiCheck({ title, tags, created, creator: 'roblox' }, new Set(['roblox']), head),
       };
       const errs = validateItem(item);
+      if (CREDENTIAL.test(text)) errs.push('its text carries a credential-shaped value');
       if (errs.length) { rejected += 1; if (rejected <= 10) console.log(`  reject ${id}: ${errs.join('; ')}`); } else items.push(item);
     }
   }
