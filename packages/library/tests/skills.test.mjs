@@ -56,3 +56,12 @@ test('a credential-shaped value, even a docs example, is never copied in', async
   assert.equal(CREDENTIAL.test(['https://hooks.slack.com', 'services', 'T0', 'B0', 'x'].join('/')), true);
   assert.equal(CREDENTIAL.test('Paste your webhook URL into the field.'), false);
 });
+
+test('a section that teaches with prose and Luau code is a recipe; a section with a numbered list is left to procedures', async () => {
+  const { recipes } = await import('../src/ingest-skills.mjs');
+  const md = `## Award a badge\n\nCall AwardBadge when the player wins.\n\n\`\`\`lua\n-- ## not a heading\nlocal BadgeService = game:GetService("BadgeService")\n\`\`\`\n\n## Steps\n\n1. One.\n2. Two.\n3. Three.\n\n\`\`\`lua\nprint(1)\n\`\`\`\n\n## Prose only\n\nNo code here.\n`;
+  const r = recipes(md);
+  assert.deepEqual(r.map((x) => x.heading), ['Award a badge']);
+  assert.match(r[0].body, /Call AwardBadge[\s\S]*-- ## not a heading[\s\S]*BadgeService/);
+  assert.equal(r[0].codeBlocks, 1);
+});

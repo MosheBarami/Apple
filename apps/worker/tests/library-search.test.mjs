@@ -52,3 +52,9 @@ test('a set comes from the family of the best match, searched again within it', 
   assert.deepEqual(r.cards.map((x) => x.id), ['a', 'c']);
   assert.deepEqual(seen.at(-1), { family: 'oga:village' });
 });
+
+test('several kinds become one $in filter', async () => {
+  const seen = {};
+  await searchLibrary(env({ a: row('a', 'A') }, ['a'], seen), embed, { query: 'save coins', kind: 'code, skill' });
+  assert.deepEqual(seen.opts.filter, { kind: { $in: ['code', 'skill'] } });
+});
