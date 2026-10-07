@@ -582,6 +582,19 @@
       "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "png_sha256": "d9c35b78075c6da6a9229c80e6882660ebcb33fadf10805e9a32631b8af20adb",
       "imageId": null
+    },
+    {
+      "name": "cart",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/mini-market",
+      "kit_zip_sha256": "6f2e69090e359204ace43e4c98dc3fb8639b75e423109672b5c890d194c45203",
+      "model": "Models/GLB format/shopping-cart.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "f985301f967a8962872eca44eb62dc55d617b4f3bd2e4c38128ef7a2bbaf0acf",
+      "imageId": null
     }
   ]
 }

@@ -121,7 +121,8 @@
                 "pet_bee",
                 "pet_chick",
                 "music",
-                "sound"
+                "sound",
+                "cart"
               ],
               "default": "star",
               "description": "An icon from the kit's pack, by name"

@@ -137,7 +137,8 @@
                 "pet_bee",
                 "pet_chick",
                 "music",
-                "sound"
+                "sound",
+                "cart"
               ],
               "default": "basket",
               "description": "An icon from the kit's pack, by name"
@@ -239,7 +240,8 @@
                 "pet_bee",
                 "pet_chick",
                 "music",
-                "sound"
+                "sound",
+                "cart"
               ],
               "default": "cash",
               "description": "An icon from the kit's pack, by name"
@@ -366,7 +368,8 @@
                 "pet_bee",
                 "pet_chick",
                 "music",
-                "sound"
+                "sound",
+                "cart"
               ],
               "default": "gift",
               "description": "An icon from the kit's pack, by name"

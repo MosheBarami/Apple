@@ -78,39 +78,39 @@
          "text": "{{item.name}}",
          "on": "{{item.token}}",
          "size": [
-          0.4,
+          0.42,
           0,
-          0.32,
+          0.36,
           0
          ],
          "position": [
           0.25,
           0,
-          0.1,
+          0.14,
           0
          ],
          "align": "Left",
-         "max": 40
+         "max": 52
         },
         {
          "kit": "text",
          "name": "Note",
          "text": "{{item.note}}",
-         "ink": "gold",
+         "ink": "text",
          "size": [
-          0.38,
+          0.42,
           0,
-          0.3,
+          0.24,
           0
          ],
          "position": [
           0.25,
           0,
-          0.5,
+          0.54,
           0
          ],
          "align": "Left",
-         "max": 28
+         "max": 32
         },
         {
          "kit": "button",
@@ -121,7 +121,7 @@
          "size": [
           0.3,
           0,
-          0.42,
+          0.5,
           0
          ],
          "position": [
@@ -135,7 +135,10 @@
           0.5
          ],
          "max": 32,
-         "icon": "{{priceIcon}}"
+         "icon": "{{priceIcon}}",
+         "attributes": {
+          "UI_Shine": true
+         }
         },
         {
          "kit": "ribbon",
@@ -186,7 +189,8 @@
           0.5,
           0.5
          ],
-         "z": 2
+         "z": 2,
+         "spin": true
         },
         {
          "kit": "icon",
@@ -208,7 +212,10 @@
           0.5
          ],
          "z": 8,
-         "tint": "{{item.token}}"
+         "tint": "{{item.token}}",
+         "attributes": {
+          "UI_Bob": true
+         }
         },
         {
          "kit": "text",
@@ -238,7 +245,7 @@
          "kit": "text",
          "name": "Note",
          "text": "{{item.note}}",
-         "ink": "gold",
+         "ink": "text",
          "size": [
           0.58,
           0,

@@ -46,7 +46,7 @@ export type Ink = keyof typeof INKS;
 export const GEO = {
   window: { contour: 6, rim: 5, radius: 22, lip: 0, studs: 0.6 },
   card: { contour: 5, rim: 4, radius: 14, lip: 4, studs: 0.68 },
-  button: { contour: 4, rim: 3, radius: 12, lip: 6, studs: 0.7 },
+  button: { contour: 4, rim: 3, radius: 12, lip: 6, studs: 0.8 },
   chip: { contour: 3, rim: 2, radius: 999, lip: 3, studs: 1 },
   close: { contour: 4, rim: 3, radius: 12, lip: 5, studs: 1 },
   tile: { contour: 5, rim: 4, radius: 16, lip: 5, studs: 0.7 },
@@ -68,7 +68,9 @@ const seq = (stops: Array<[number, string]>) => ({ t: 'ColorSequence', v: stops.
 const faceGradient = (t: Shade) => seq([[0, t.top], [0.5, t.mid], [1, t.bottom]]);
 
 /** A button on a card of its own colour would vanish: it takes the next colour instead. */
-const CONTRAST: Record<string, Token> = { lime: 'sun', sky: 'lime', sun: 'lime', berry: 'lime', grape: 'lime', teal: 'lime', grey: 'lime', slate: 'lime' };
+// A button on a card of its own colour takes the contrast colour; a grey one stays grey, since grey is the disabled or
+// done state (U05 critique, 2026-10-07: 'Claimed' turned into the same green as 'Claim!').
+const CONTRAST: Record<string, Token> = { lime: 'sun', sky: 'lime', sun: 'lime', berry: 'lime', grape: 'lime', teal: 'lime', grey: 'grey', slate: 'slate' };
 
 const tag = (component: string, part: string): V => ({ StudKit: `${component}.${part}` });
 const token = (t: unknown): Token => (typeof t === 'string' && t in TOKENS ? (t as Token) : 'sky');
@@ -224,6 +226,8 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
     holderChildren: [
       icon('tile', n.icon, { size: [0.8, 0, 0.8, 0], position: [0.5, 0, 0.44, 0], anchor: [0.5, 0.5], z: 8 }),
       label('tile', 'Label', n.text, { size: [1.15, 0, 0.32, 0], position: [0.5, 0, 1.08, 0], anchor: [0.5, 1], max: 26, z: 9 }),
+      // An offer tile carries its price on a ribbon across the top edge (KIT pass 9 #7: a bare floating price).
+      ...(n.price ? [COMPONENTS.ribbon!({ name: 'Price', text: n.price, token: 'lime', size: [0.9, 0, 0.3, 0], position: [0.5, 0, -0.14, 0], anchor: [0.5, 0.5], tilt: -6 })] : []),
     ],
   }),
   /** A card (spec §4.4): a rarity face with a lip; `rays` puts rays behind its icon; `hero` spins them (spec §4.5). */
@@ -249,7 +253,7 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
     return {
       className: 'Frame', name: 'Window',
       props: { ...placeProps(n as Place), BackgroundTransparency: 1 },
-      attributes: { ...tag('window', 'holder'), ProofOpen: true, StartOpen: n.startOpen ?? true },
+      attributes: { ...tag('window', 'holder'), ProofOpen: true, StartOpen: n.startOpen ?? true, StudKitPhoneSize: udim2(0.98, 0, 0.86, 0) },
       children: [
         { className: 'UIAspectRatioConstraint', name: 'Shape', props: { AspectRatio: Number(n.aspect ?? 1.45) } },
         {
@@ -332,7 +336,7 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
     ...(n as Place), geo: GEO.chip, studs: false,
     children: [label('currency', 'Value', n.text, { ink: (n.ink as Ink) ?? 'money', size: [0.5, 0, 0.78, 0], position: [0.28, 0, 0.5, 0], anchor: [0, 0.5], align: 'Left', max: 44, line: true })],
     holderChildren: [
-      { ...icon('currency', n.icon, { size: [0.3, 0, 1.2, 0], position: [-0.02, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] },
+      { ...icon('currency', n.icon, { size: [0.3, 0, 1.06, 0], position: [-0.02, 0, 0.5, 0], anchor: [0, 0.5], z: 9 }), children: [{ className: 'UIAspectRatioConstraint', name: 'Square', props: { AspectRatio: 1 } }] },
       COMPONENTS.button!({ name: 'Add', token: 'lime', text: '+', size: [0.16, 0, 0.78, 0], position: [0.97, 0, 0.46, 0], anchor: [1, 0.5], max: 40, z: 5 }),
     ],
   }),
@@ -389,6 +393,9 @@ COMPONENTS.billboard = (n) => ({
  * 0.62-tall stats list got a canvas 1/0.62 times its height and its last row fell outside). The canvas is the frame's
  * own height scale times the layout's height.
  */
+/** The smallest card on a landscape phone, as a share of its box (U01-U08 phone captures, 2026-10-07: 7 px text). */
+export const PHONE_MIN_CARD = 0.46;
+
 const canvasScale = (n: V) => (Array.isArray(n.size) && Number.isFinite(Number(n.size[2])) && Number(n.size[2]) > 0 ? Number(n.size[2]) : 1);
 
 /**
@@ -398,7 +405,7 @@ const canvasScale = (n: V) => (Array.isArray(n.size) && Number.isFinite(Number(n
  * full-width band on top. When the rows would make a card shorter than `minCard`, the box scrolls, with a visible bar.
  * Pure.
  */
-export function gridLayout(count: number, featured: boolean, columns: number, ratio = 1.74, minCard = 0.3) {
+export function gridLayout(count: number, featured: boolean, columns: number, ratio = 1.74, minCard = 0.3, phone = false) {
   const gap = 0.035;
   // A hero's ribbon sits on its top edge (spec §4.5), so the box keeps room above it: the grid clips what leaves it.
   const pad = featured ? 0.07 : 0.03;
@@ -411,7 +418,8 @@ export function gridLayout(count: number, featured: boolean, columns: number, ra
   // ...but never more than 0.42 of the box: with one row the rest goes to the cards.
   if (featured && 1.6 * h > 0.42) h = (room - 0.42) / rows;
   h = Math.min(h, widthMax / 0.82); // never taller than about 1.2 times its width
-  const floor = featured ? 0.2 : minCard;
+  // On a phone the hero keeps the same floor as a card, so its text stays readable.
+  const floor = featured && !phone ? 0.2 : minCard;
   const scroll = h < floor;
   if (scroll) h = Math.min(floor, widthMax / 0.82);
   const band = featured ? Math.min(0.42, 1.6 * h) : 0;
@@ -435,12 +443,33 @@ export function gridLayout(count: number, featured: boolean, columns: number, ra
  * A grid of cards that fits its box: the recipe gives the cards (a `Featured` one first, if any), the grid sizes and
  * places them (gridLayout). It replaces a UIGridLayout, whose fixed cells cannot know how many rows there are.
  */
+/** Where each part of a portrait card goes (title on top, the icon on its rays in the middle, then note and button). */
+const PORTRAIT: Record<string, V> = {
+  rays: { size: [0.95, 0, 0.62, 0], position: [0.5, 0, 0.46, 0], anchor: [0.5, 0.5] },
+  icon: { size: [0.92, 0, 0.5, 0], position: [0.5, 0, 0.43, 0], anchor: [0.5, 0.5] },
+  Title: { size: [0.92, 0, 0.16, 0], position: [0.5, 0, 0.04, 0], anchor: [0.5, 0], align: 'Center' },
+  Note: { size: [0.92, 0, 0.1, 0], position: [0.5, 0, 0.7, 0], anchor: [0.5, 0], align: 'Center' },
+  Buy: { size: [0.86, 0, 0.17, 0], position: [0.5, 0, 0.95, 0], anchor: [0.5, 1] },
+};
+const stack = (c: V): V => ({ ...c, ...(PORTRAIT[String(c.name ?? c.kit)] ?? PORTRAIT[String(c.kit)] ?? {}) });
+
 COMPONENTS.grid = (n) => {
   const kids = (Array.isArray(n.children) ? n.children : []) as V[];
   const feat = kids.filter((k) => k.name === 'Featured');
   const cards = kids.filter((k) => k.name !== 'Featured');
   const L = gridLayout(cards.length, feat.length > 0, Number(n.columns ?? 3), Number(n.ratio ?? 1.74));
-  const at = (k: V, b: { x: number; y: number; w: number; h: number }) => expandKit({ ...k, size: [b.w, 0, b.h, 0], position: [b.x, 0, b.y, 0], anchor: [0, 0] }) as Spec;
+  // A landscape phone shows the same box about 0.4 times as tall: at most 2 columns of cards at least 0.46 of the box,
+  // scrolling. UiFx swaps to these on a phone (StudKitPhone*).
+  const P = gridLayout(cards.length, feat.length > 0, Math.min(2, Number(n.columns ?? 3)), Number(n.ratio ?? 1.74), PHONE_MIN_CARD, true);
+  type Box = { x: number; y: number; w: number; h: number };
+  const ratio = Number(n.ratio ?? 1.74);
+  const at = (k: V, b: Box, p: Box) => {
+    // A card taller than wide stacks its parts (title, a big icon, the note, the button) instead of a cramped row.
+    const portrait = k.name !== 'Featured' && b.h * L.height > 0.8 * b.w * ratio;
+    const node = portrait ? { ...k, children: ((k.children as V[] | undefined) ?? []).map(stack) } : k;
+    const sp = expandKit({ ...node, size: [b.w, 0, b.h, 0], position: [b.x, 0, b.y, 0], anchor: [0, 0] }) as Spec;
+    return { ...sp, attributes: { ...(sp.attributes ?? {}), StudKitPhoneSize: udim2(p.w, 0, p.h, 0), StudKitPhonePos: udim2(p.x, 0, p.y, 0) } } as Spec;
+  };
   return {
     className: 'ScrollingFrame', name: String(n.name ?? 'Grid'),
     props: {
@@ -448,8 +477,8 @@ COMPONENTS.grid = (n) => {
       CanvasSize: udim2(0, 0, L.height * canvasScale(n), 0), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
       ScrollBarThickness: L.scroll ? 10 : 0, ScrollBarImageColor3: '#FFFFFF',
     },
-    attributes: { ...tag('grid', 'layout'), ...((n.attributes as V | undefined) ?? {}) },
-    children: [...feat.slice(0, 1).map((k) => at(k, L.featured!)), ...cards.map((k, i) => at(k, L.cards[i]!))],
+    attributes: { ...tag('grid', 'layout'), StudKitPhoneCanvas: udim2(0, 0, P.height * canvasScale(n), 0), StudKitPhoneBar: P.scroll ? 10 : 0, ...((n.attributes as V | undefined) ?? {}) },
+    children: [...feat.slice(0, 1).map((k) => at(k, L.featured!, P.featured!)), ...cards.map((k, i) => at(k, L.cards[i]!, P.cards[i]!))],
   };
 };
 

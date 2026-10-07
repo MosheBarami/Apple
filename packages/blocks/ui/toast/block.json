@@ -92,7 +92,8 @@
                 "pet_bee",
                 "pet_chick",
                 "music",
-                "sound"
+                "sound",
+                "cart"
               ],
               "default": "cash",
               "description": "An icon from the kit's pack, by name"
