@@ -5,7 +5,8 @@
 //   node packages/library/tools/render-models.mjs <list.json> <root-dir> <out-dir>
 //
 // <list.json> is [{ key, file }] with file relative to <root-dir>. Writes <out-dir>/<key>.png and appends one line per
-// model to <out-dir>/stats.jsonl ({ key, ok, triangles, meshes, size } or { key, ok: false, error }). Resumable.
+// model to <out-dir>/stats.jsonl ({ key, ok, triangles, meshes, size, missing } or { key, ok: false, error }); `missing`
+// counts the files the model names (textures, MTL) that were not found, so its thumbnail is not faithful. Resumable.
 import http from 'node:http';
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, extname, resolve } from 'node:path';
@@ -106,12 +107,26 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const THREE_DIR = dirname(dirname(fileURLToPath(import.meta.resolve('three'))));
   const ROOT = resolve(rootDir);
   const TYPES = { '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.tga': 'image/x-tga' };
+  // Packs often keep textures in a folder of their own while the model names them as siblings: a texture that is not
+  // where the model says is found by file name anywhere in the same pack (the first path segment under <root-dir>).
+  const byName = new Map();
+  let missing = 0;
+  const packFiles = (pack) => {
+    if (!byName.has(pack)) {
+      const m = new Map();
+      const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p); else if (!m.has(e.name.toLowerCase())) m.set(e.name.toLowerCase(), p); } };
+      if (existsSync(join(ROOT, pack))) walk(join(ROOT, pack));
+      byName.set(pack, m);
+    }
+    return byName.get(pack);
+  };
   const server = http.createServer((req, res) => {
     const u = decodeURIComponent(req.url.split('?')[0]);
     if (u === '/') { res.setHeader('content-type', 'text/html'); return res.end(page); }
     const base = u.startsWith('/three/') ? THREE_DIR : u.startsWith('/files/') ? ROOT : null;
-    const file = base ? resolve(join(base, u.replace(/^\/(three|files)\//, ''))) : '';
-    if (!base || !file.startsWith(base) || !existsSync(file)) { res.statusCode = 404; return res.end(); }
+    let file = base ? resolve(join(base, u.replace(/^\/(three|files)\//, ''))) : '';
+    if (base === ROOT && file.startsWith(ROOT) && !existsSync(file)) file = packFiles(u.split('/')[2]).get(u.split('/').pop().toLowerCase()) ?? file;
+    if (!base || !file.startsWith(base) || !existsSync(file)) { if (base === ROOT) missing += 1; res.statusCode = 404; return res.end(); }
     res.setHeader('content-type', TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream');
     res.end(readFileSync(file));
   }).listen(0, '127.0.0.1');
@@ -127,10 +142,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     await open();
     for (const [i, it] of list.entries()) {
       const url = '/files/' + it.file.split('/').map(encodeURIComponent).join('/');
+      missing = 0;
       try {
         const r = await Promise.race([tab.evaluate((u) => window.model(u), url), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 40 s')), 40_000))]);
         writeFileSync(join(outDir, `${it.key}.png`), Buffer.from(r.png.split(',')[1], 'base64'));
-        appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: true, triangles: r.triangles, meshes: r.meshes, size: r.size }) + '\n');
+        appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: true, triangles: r.triangles, meshes: r.meshes, size: r.size, missing }) + '\n');
         ok += 1;
       } catch (e) {
         appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: false, error: String(e.message).slice(0, 160) }) + '\n');
