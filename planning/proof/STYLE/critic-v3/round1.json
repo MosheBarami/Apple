@@ -1,0 +1,578 @@
+{
+ "critics": [
+  {
+   "style": 5,
+   "signatures": [
+    {
+     "signature": "1. navy contour everywhere",
+     "grade": "weak",
+     "why": "E1, E3, E4 and the E5 tiles have a thick navy contour, but E2 and E6 have only a 1-2 px dark hairline with square corners, and the E2/E6 close buttons and price buttons have none."
+    },
+    {
+     "signature": "2. pale inner rim",
+     "grade": "weak",
+     "why": "The E1/E3/E4 windows, cards and buttons show a pale rim inside the contour; E2 and E6 have no rim anywhere."
+    },
+    {
+     "signature": "3. gradient faces with solid lips",
+     "grade": "weak",
+     "why": "Gradient faces appear on every screen. Lips exist only on the E1/E3/E4 buttons, and there they are a navy band, not a darker shade of the face. The E2 price buttons and the E6 'High' button are flat rectangles with no lip."
+    },
+    {
+     "signature": "4. faint studs",
+     "grade": "weak",
+     "why": "The studs are not faint. The header stud grid and the dots on button faces are clearly visible behind the price text (E1 1285,470; E6 rows), which reads as the X3 #8 'Lego wallpaper' at lower volume."
+    },
+    {
+     "signature": "5. white text with navy strokes and real currency glyphs",
+     "grade": "weak",
+     "why": "Titles are white with dark strokes, and the Robux glyph is used in E1. But every subtitle is yellow (yellow on yellow on the Coin Pack, yellow on orange on Day 3), the HUD 'Starter Pack' label is cyan, the E2 price strokes are thin, and the coin glyph reads as a hex nut, not a coin."
+    },
+    {
+     "signature": "6. one consistent human-made icon family, big",
+     "grade": "weak",
+     "why": "There are two families: low-poly 3D renders (gift, gem, coin, pets, chest) and flat outline vectors (the E6 gear, note and speaker, and the HUD gear). The shop basket is an unreadable green hollow frame. Icons in the grid cards are about 75 px in cards of about 255 px, nowhere near the P03/P08 fill."
+    },
+    {
+     "signature": "7. one hero and a clean, full grid",
+     "grade": "weak",
+     "why": "E1 and E2 have a hero strip, but its middle is dead, and the grid below is a 3+2 split with unequal card widths. E4 has no hero: Day 7 is the same width as Day 5 and Day 6, unlike P06. E3's 4x2 grid is full but its pets are tiny."
+    },
+    {
+     "signature": "8. visible motion",
+     "grade": "weak",
+     "why": "E3, E4 and E6 are pixel-identical between t=0 and t=1.75 s. The only motion is a few degrees of sunburst rotation on the E1/E2 hero and the E5 character aura. E6 hover and press change nothing, and press is barely distinguishable from hover on the other screens."
+    }
+   ],
+   "defects": [
+    {
+     "screen": "E2",
+     "x": 384,
+     "y": 185,
+     "severity": "high",
+     "defect": "The window falls outside the kit: square corners, a 1-2 px hairline instead of the navy contour, no pale rim. The price buttons (1130-1440, 440-540) are flat green rectangles with no lip, no rounding and no contour. It reads as a different, older UI than E1.",
+     "fix": "Build E2 from the same window, card and button components as E1 (UICorner, a 4-5 px navy UIStroke, a rim stroke, a darker-hue lip frame)."
+    },
+    {
+     "screen": "E6",
+     "x": 1313,
+     "y": 848,
+     "severity": "high",
+     "defect": "Same regression as E2: square, uncontoured window, rows and 'High' button. Hover and press produce zero pixel change, and play0 vs play1 is identical, so the screen is completely dead.",
+     "fix": "Use the shared kit components, and wire hover (UIScale 1.05) and press (face drops onto the lip) on the toggle and the close button."
+    },
+    {
+     "screen": "E5",
+     "x": 83,
+     "y": 530,
+     "severity": "high",
+     "defect": "Hovering the Shop tile pushes the Pets tile (455 to 462) and the Settings tile (650 to 657) down by about 7 px. The hover scale changes Size inside a UIListLayout and reflows its siblings.",
+     "fix": "Scale with a UIScale on an inner wrapper, or put each tile in a fixed-size slot frame so the layout never reflows."
+    },
+    {
+     "screen": "E1",
+     "x": 1122,
+     "y": 492,
+     "severity": "medium",
+     "defect": "The hover is anchored to a corner. The hero price button grows only to the left (its left edge moves from 1130 to 1115) while the right and top edges stay fixed. On E3 the hovered 'Equipped' button grows right and down and runs over its card's right contour (678, 570).",
+     "fix": "Set AnchorPoint to (0.5, 0.5) with a centred position and scale through UIScale, so the button grows evenly from its centre."
+    },
+    {
+     "screen": "E1",
+     "x": 1285,
+     "y": 492,
+     "severity": "medium",
+     "defect": "The press state is nearly identical to hover. The lip shrinks by about 2 px and the 1.05 scale is kept. On E3 and E4, hover and press are pixel-identical.",
+     "fix": "On press, drop the face 4-6 px onto the lip, hide the lip, scale to 0.96, and tween back on release."
+    },
+    {
+     "screen": "E5",
+     "x": 100,
+     "y": 995,
+     "severity": "medium",
+     "defect": "The gem icon overflows its pill at the top and bottom, crashes into the coin pill above, and almost touches the screen edge. The coin icon and gem icon are different sizes, and the two pills have no gap between them.",
+     "fix": "Use the same icon box (about 90 px) for both, keep it inside the pill height or overhang only on the left, and add a 12 px gap between the pills."
+    },
+    {
+     "screen": "E5",
+     "x": 1812,
+     "y": 288,
+     "severity": "medium",
+     "defect": "The Starter Pack price floats over the gift with no card, frame or glow, exactly as in KITpass9 #7. Its label (1810, 447) is cyan instead of white with a navy stroke.",
+     "fix": "Put the gift on a framed tile with a price pill and a rotating burst behind it; make the label white with a navy stroke."
+    },
+    {
+     "screen": "E4",
+     "x": 869,
+     "y": 570,
+     "severity": "high",
+     "defect": "The claimed days (Day 1 and Day 2) use the same bright green button as today's 'Claim!' (1140, 570). The one action the player can take does not stand out.",
+     "fix": "Claimed: grey face plus a check mark, with the card dimmed. Today: the only green button, pulsing and scaled up."
+    },
+    {
+     "screen": "E4",
+     "x": 1413,
+     "y": 570,
+     "severity": "medium",
+     "defect": "The locked days' buttons read 'Day 4', 'Day 5', 'Day 6', 'Day 7', which repeats the card title directly above each one.",
+     "fix": "Use a lock icon or a countdown ('in 1d') on a grey disabled face."
+    },
+    {
+     "screen": "E4",
+     "x": 1320,
+     "y": 795,
+     "severity": "medium",
+     "defect": "Day 7, the big reward (Mega chest), is the same width as Day 5 and Day 6. There is no hero, unlike P06's double-width Day 7.",
+     "fix": "Make Day 7 double width with a large chest and a glow or sunburst; lay out 4 across the top and 2 + hero across the bottom."
+    },
+    {
+     "screen": "E3",
+     "x": 475,
+     "y": 490,
+     "severity": "high",
+     "defect": "The pet renders are about 75 px inside cards of about 255x290, squeezed into the left middle, leaving the cards mostly empty stud texture. The header cat (480, 240) is bigger than any pet in the grid.",
+     "fix": "Centre the pet at about 60% of the card width; put the name on top and a full-width button at the bottom, as in P03."
+    },
+    {
+     "screen": "E3",
+     "x": 1413,
+     "y": 570,
+     "severity": "low",
+     "defect": "The Equip buttons switch between orange (Cat, Dog, Bunny) and green (Panda, Fox, Penguin, Lion) for no reason. The rarity labels are all yellow (577, 483 'Legendary'; 567, 786 'Common'), so rarity is not colour-coded.",
+     "fix": "Use one CTA colour for Equip, and colour each rarity word with its rarity colour (white text with a navy stroke on a coloured pill)."
+    },
+    {
+     "screen": "E2",
+     "x": 860,
+     "y": 700,
+     "severity": "high",
+     "defect": "All six eggs are the same low-poly ellipsoid in pastel tints. 'Lava' is pale pink and 'Golden' is cream (1065, 865). This repeats X4 #2 and #4, and the pastel eggs wash out on the saturated cards.",
+     "fix": "Give each egg distinct art (spots, cracks, flames, gold shine), saturate it to match its theme, and add an outline and a highlight."
+    },
+    {
+     "screen": "E2",
+     "x": 1185,
+     "y": 492,
+     "severity": "medium",
+     "defect": "The gem price glyph is about 70 px and dominates the price button, while '12,500' is small, thin-stroked and pushed right. The same imbalance appears on all five card buttons.",
+     "fix": "Glyph at about 0.8x the cap height of the number, number bold with a 3 px navy stroke, both centred as one unit (as P07's '1,352')."
+    },
+    {
+     "screen": "E1",
+     "x": 1000,
+     "y": 490,
+     "severity": "medium",
+     "defect": "The hero card's middle is dead: 'Starter Pack' and '500 gems, 2x luck' sit 90 px apart around an empty void, and the price button floats far to the right.",
+     "fix": "Stack the title, a reward line with icons, and the price, all centred, as in P07 'Mega Lucky!'. Or add contents chips (x500 gem, 2x clover)."
+    },
+    {
+     "screen": "E1",
+     "x": 673,
+     "y": 765,
+     "severity": "low",
+     "defect": "The small-card price buttons sit flush on the card's bottom contour; the button's lip merges into the card border. Bottom padding is 0, while the right padding is about 10 px.",
+     "fix": "Use equal 12 px padding inside every card and keep the button lip clear of the card stroke."
+    },
+    {
+     "screen": "E1",
+     "x": 700,
+     "y": 487,
+     "severity": "low",
+     "defect": "In play1 a sunburst ray shows as a hard rectangular bar poking out horizontally beside the gift. The rays also spill past the hero card's left edge onto the window body (430, 520); the same happens in E2.",
+     "fix": "Set ClipsDescendants on the card's art frame and use a tapered ray image instead of rectangles."
+    },
+    {
+     "screen": "E1",
+     "x": 480,
+     "y": 240,
+     "severity": "medium",
+     "defect": "The shop icon is a green hollow wireframe box that does not read as a basket or shop, and its green clashes with the pink header. It repeats on the HUD Shop tile (83, 320). The coin glyph (855, 700) reads as a hex nut.",
+     "fix": "Use a bold, outlined, filled basket (as in P04/P10) and a round gold coin with a stamped symbol."
+    },
+    {
+     "screen": "E1",
+     "x": 623,
+     "y": 257,
+     "severity": "medium",
+     "defect": "The window title is about 40 px in a 1160 px window. The pink header is two-thirds empty stud field, and the headline has none of P07's presence.",
+     "fix": "Title at about 72 px, heavy weight, 4 px navy stroke; let the header icon overlap the top edge."
+    },
+    {
+     "screen": "E5",
+     "x": 970,
+     "y": 800,
+     "severity": "medium",
+     "defect": "Every screen sits on the default Baseplate's neon grid under the stock sky, plus a white SpawnLocation plate with jagged edges under the character. The shots read as a Studio test (X3 #12).",
+     "fix": "Capture on a dressed scene, or at least a tinted or blurred backdrop behind open windows; hide the SpawnLocation decal."
+    },
+    {
+     "screen": "E6",
+     "x": 1325,
+     "y": 442,
+     "severity": "medium",
+     "defect": "The volume sliders have no knob and no value, and there is a stray white sliver at the end of the fill. The Graphics row reuses the same gear icon as the window header (480, 240).",
+     "fix": "Add a round knob with a navy contour and a % label; use a monitor or sparkle icon for Graphics."
+    },
+    {
+     "screen": "E2",
+     "x": 960,
+     "y": 972,
+     "severity": "low",
+     "defect": "A leftover pink footer strip spans the bottom of the window, and E6 has the same teal strip. It reads as a misaligned background frame.",
+     "fix": "Remove the strip, or make it the window's lip under a rounded, contoured body."
+    }
+   ],
+   "verdict": "Style 5. The best screens, E1, E3 and E4, are a competent kit with a navy contour, a pale rim, gradients, lipped buttons and a Robux glyph. They are still not P07-P09: the type is small, the icons are small, the hero cards have a dead middle, and nothing moves. E2 and E6 fall outside the kit entirely: square corners, hairline borders, flat lipless buttons, and in E6 no hover or press at all. They pull the whole set down to \"two different UIs stitched together\". Three changes would raise the score most. (1) Build every window from one component set: E2 and E6 must get the same corner radius, 4-5 px navy stroke, rim and darker-hue lip as E1. Fix the hover and press mechanics with a centred UIScale (no corner anchoring, no UIListLayout reflow in the HUD), and make press visibly sink the face onto the lip. (2) Make the content the star: pets, eggs and rewards at about 60% of the card, centred, with distinct, saturated art per egg. Use one human-made outlined icon family instead of mixing low-poly renders with flat vectors, a readable basket and coin, white titles at about 70 px with heavy navy strokes, and white rather than yellow subtitles. (3) Add real hierarchy and motion: a filled hero (P07-style centred stack, with Day 7 at double width in Daily Rewards), grids with no 3+2 width mismatch, a pulsing \"Claim!\" or \"today\" card, a rotating, clipped sunburst on heroes, a bobbing gift on the HUD, and studs pulled back to a whisper so they stop showing through price text."
+  },
+  {
+   "style": 5,
+   "signatures": [
+    {
+     "signature": "1. navy contour everywhere",
+     "grade": "weak",
+     "why": "E1, E3, E4 and the E5 tiles have a solid navy contour, but E2 and E6 have dropped it: window, header, cards, price buttons and close button there carry only a 1px hairline, so the recipe is not applied system-wide."
+    },
+    {
+     "signature": "2. pale inner rim",
+     "grade": "weak",
+     "why": "A thin cream rim shows on E1/E3/E4 cards and buttons. It is 2-3px at 1080p, far thinner than P05, and it is absent on every E2 and E6 surface."
+    },
+    {
+     "signature": "3. gradient faces with solid lips",
+     "grade": "weak",
+     "why": "The faces have gradients, but the lips are about 4px (P05 is about 8-10px), E2/E6 buttons have no lip at all, and the press state never sinks the face: hover and press frames are pixel-identical on every screen."
+    },
+    {
+     "signature": "4. faint studs",
+     "grade": "present",
+     "why": "Studs sit at roughly 10-15% and do not fight the text. Minor noise remains where they appear inside small price pills and the gray Equipped/locked buttons."
+    },
+    {
+     "signature": "5. white text with navy strokes and real currency glyphs",
+     "grade": "weak",
+     "why": "Titles are white with navy strokes and a Robux hex glyph is used, but subtitles are yellow, HUD numbers are yellow (12,450) and cyan (320), E2/E6 strokes are thin, and the gem 'glyph' is an oversized mesh octahedron that overflows its buttons."
+    },
+    {
+     "signature": "6. one consistent human-made icon family, big",
+     "grade": "weak",
+     "why": "Three styles are mixed: low-poly 3D renders (gift, coin, key, chest, pets), a green wireframe basket, and flat 2D line icons in E6 (note, speaker, gear). The coin reads as a hex nut, the gem as a bare primitive, and pet/reward icons are only about 80px in 250px cards."
+    },
+    {
+     "signature": "7. one hero and a clean, full grid",
+     "grade": "weak",
+     "why": "E1/E2 have a hero row, but it has a 200px dead middle. E3 has no hero, and in E4 the Day 7 grand prize is the same size as Days 5 and 6. The grids are full (3+2, 4+4, 4+3), but the rows have mismatched card widths."
+    },
+    {
+     "signature": "8. visible motion",
+     "grade": "missing",
+     "why": "The frame diff between play0 and play1 is zero in E3, E4 and E6. E1/E2 show only a faint sunburst rotation behind the hero. Press equals hover everywhere, and E6 hover/press change no pixel at all."
+    }
+   ],
+   "defects": [
+    {
+     "screen": "E2",
+     "x": 960,
+     "y": 560,
+     "severity": "high",
+     "defect": "The whole screen has regressed out of the style. Window, header, hero, the five cards, all price buttons and the close button have only a 1px dark hairline: no navy contour, no pale rim, no lip. It looks like a different kit from E1.",
+     "fix": "Route E2 through the same frame/card/button builders as E1: 4-5px navy contour, 2px pale inner rim, 8px darker solid lip under every button and card."
+    },
+    {
+     "screen": "E6",
+     "x": 960,
+     "y": 640,
+     "severity": "high",
+     "defect": "Same regression as E2: rows, the 'High' button and the close button have hairlines only, no contour or lip. The hover and press shots are pixel-identical to play0, so the hovered control has no feedback at all.",
+     "fix": "Apply the standard contour/rim/lip recipe and wire the shared hover (1.05 from center) and press (face drops onto the lip) tween to every button."
+    },
+    {
+     "screen": "E1",
+     "x": 1285,
+     "y": 492,
+     "severity": "high",
+     "defect": "Press frame is identical to the hover frame on all six screens (diff limited to the sunburst and scene). The face never sinks onto the lip and the lip stays fully visible.",
+     "fix": "On MouseButton1Down, tween the face down by the lip height (about 6-8px), collapse the lip to 0 and scale to 0.97. Restore on release."
+    },
+    {
+     "screen": "E3",
+     "x": 700,
+     "y": 560,
+     "severity": "high",
+     "defect": "No motion. play0 and play1 differ by 0 pixels, and the same holds for E4 and E6. Nothing bobs, shines or pulses, so the screens look like stills.",
+     "fix": "Add a 2-3s idle bob/rotate on item icons, a sweep shine on the hero and the active Claim button, and a slow pulse/glow on the 'Today' card and the Starter Pack."
+    },
+    {
+     "screen": "E4",
+     "x": 598,
+     "y": 569,
+     "severity": "high",
+     "defect": "Claimed days (Day 1-2) use the same bright green button as today's active 'Claim!' (1141,569), so the state reads backwards: past rewards look claimable.",
+     "fix": "Claimed: gray face, navy check glyph, card desaturated or dimmed. Today: gold or green with a glow ring and pulse. Locked: a lock glyph or countdown."
+    },
+    {
+     "screen": "E2",
+     "x": 575,
+     "y": 490,
+     "severity": "high",
+     "defect": "All six eggs are the same low-poly octagonal egg in pastel tints with no pattern, shading detail or sparkle. This repeats anti-reference X4 #4, and 'Lava Egg' is pale pink rather than lava.",
+     "fix": "Give each egg its own pattern and palette: magma cracks with orange glow, void with stars, gold with a specular streak, forest with leaf spots. Add a rarity glow behind the rarer eggs."
+    },
+    {
+     "screen": "E1",
+     "x": 1285,
+     "y": 492,
+     "severity": "medium",
+     "defect": "Hover scale is anchored to the right/bottom edge. The hero price button grows 16px leftward only, while its right edge stays fixed at x=1440.",
+     "fix": "Set AnchorPoint to (0.5,0.5) with a centered Position so the 1.05 hover grows evenly from the center."
+    },
+    {
+     "screen": "E3",
+     "x": 600,
+     "y": 570,
+     "severity": "medium",
+     "defect": "The hovered 'Equipped' button grows right and down past the card's navy contour (right edge reaches about x=680 over the card edge at 677). E4 'Claimed' at (600,571) does the same.",
+     "fix": "Center-anchor the button and keep at least 12px inner padding so a 1.05 scale stays inside the card."
+    },
+    {
+     "screen": "E4",
+     "x": 1320,
+     "y": 795,
+     "severity": "medium",
+     "defect": "The Day 7 grand prize is the same size as Days 5 and 6, with a small chest icon. There is no hero, unlike P06 where Day 7 spans two cells.",
+     "fix": "Make Day 7 span two columns with a large chest (about 180px), gold rays and a 'BIG REWARD' ribbon. Rebalance the rows to 4+3 with Day 7 double-wide, or 3+1."
+    },
+    {
+     "screen": "E4",
+     "x": 1413,
+     "y": 569,
+     "severity": "low",
+     "defect": "Locked buttons are labeled 'Day 4' / 'Day 5' / 'Day 6' / 'Day 7', repeating the card title directly above (1378,412).",
+     "fix": "Replace the label with a lock glyph or an 'in 23h' countdown."
+    },
+    {
+     "screen": "E1",
+     "x": 1020,
+     "y": 480,
+     "severity": "medium",
+     "defect": "The hero card has a dead zone of about 200px between the text block and the price button. The subtitle sits 90px below the title, and the title is only about 36px tall in a 230px card.",
+     "fix": "Enlarge the title to about 56px, stack the subtitle directly under it, add value chips (gem/luck glyphs with amounts) or an 'x3 VALUE' burst, and move the price button inward."
+    },
+    {
+     "screen": "E1",
+     "x": 480,
+     "y": 240,
+     "severity": "medium",
+     "defect": "The Shop header icon is a hollow green wireframe basket with an empty interior. It reads as an untextured mesh test, and the same icon is reused on the HUD Shop tile (E5 83,325).",
+     "fix": "Replace it with a solid, filled basket or cart icon (red or pink basket with goods inside, navy outline) from the same family as the other icons."
+    },
+    {
+     "screen": "E1",
+     "x": 855,
+     "y": 700,
+     "severity": "medium",
+     "defect": "The coin is a low-poly decagon with a hole and reads as a hex nut. The gem (515,700) is a bare flat-shaded octahedron. Both are primitives, not game-quality item art, and they recur in E4 and E5.",
+     "fix": "Use a round coin with a rim, an embossed star or $ face and a highlight, and a faceted gem with inner highlights and sparkle, drawn in one cartoon family with navy outlines."
+    },
+    {
+     "screen": "E2",
+     "x": 1185,
+     "y": 492,
+     "severity": "medium",
+     "defect": "The gem currency glyph is taller than its button and pokes out of its top and bottom edges, in the hero (12,500) and in every small price button (e.g. 610,740). It is also oversized next to small numbers.",
+     "fix": "Cap the glyph at about 70% of button height, place it inline just left of the number, and center the pair as one group the way the E1 Robux pills do."
+    },
+    {
+     "screen": "E5",
+     "x": 255,
+     "y": 880,
+     "severity": "medium",
+     "defect": "Currency numbers are yellow (12,450) and cyan (320) instead of white with a navy stroke. The gem icon (100,995) overruns the bar's bottom contour, ending about 25px from the screen edge, and the two bars touch with no gap.",
+     "fix": "White numerals with a 3px navy stroke. Keep the icons inside the pill height (overlap at most 15%), add an 8px gap between bars and a 24px safe margin from the screen bottom."
+    },
+    {
+     "screen": "E5",
+     "x": 840,
+     "y": 162,
+     "severity": "medium",
+     "defect": "The XP bar has a stray pale highlight line that sits above the bar's top contour from x=620 to 1053. The 'XP' text straddles the fill/track boundary, and the label is about 20px tall in a 70px bar.",
+     "fix": "Clip the highlight inside the fill's rounded shape, enlarge the label to about 32px with a navy stroke, and put a 'Lv 7' badge on the left end of the bar."
+    },
+    {
+     "screen": "E5",
+     "x": 1810,
+     "y": 360,
+     "severity": "medium",
+     "defect": "Starter Pack is a bare floating gift with a tiny '99' Robux price above it, no tile and a cyan label. This is exactly anti-reference KITpass9 #7.",
+     "fix": "Put it in a contoured tile with a rim and lip, a price pill underneath, a rotating glow and an idle bob, and white/navy label text."
+    },
+    {
+     "screen": "E3",
+     "x": 475,
+     "y": 490,
+     "severity": "medium",
+     "defect": "Pet portraits are about 80px inside 255x290 cards, while the Equip buttons (about 150x100) dominate the card. The product being shown is the smallest element.",
+     "fix": "Center the pet at about 55-60% of card height with a rarity glow, put the name above it, and make the Equip button a slim full-width bar at the bottom of the card."
+    },
+    {
+     "screen": "E3",
+     "x": 1290,
+     "y": 490,
+     "severity": "low",
+     "defect": "Card color does not encode rarity (Uncommon Cat is green like Common Dog and Bunny; Legendary Tiger is orange while Legendary Lion is yellow), and the Equip button color alternates orange and green at random (1413,570 vs 1141,570).",
+     "fix": "Use a fixed rarity palette (gray, green, blue, purple, gold) for the card faces, with one consistent action color for Equip and gray for Equipped."
+    },
+    {
+     "screen": "E6",
+     "x": 1240,
+     "y": 442,
+     "severity": "medium",
+     "defect": "The volume sliders have no knob or thumb and no percentage readout, and a white sliver artifact sits at the fill end (1320,420; 1405,622). They read as progress bars, not controls.",
+     "fix": "Add a round thumb with a contour and lip at the fill end, a value label ('60%'), and clip the fill highlight inside its shape."
+    },
+    {
+     "screen": "E6",
+     "x": 498,
+     "y": 848,
+     "severity": "low",
+     "defect": "The Graphics row reuses the header's gear icon, and the music and speaker icons are flat 2D line art unlike the 3D item icons on the other screens. All three rows are the same blue.",
+     "fix": "Draw the setting icons in the same filled cartoon family (monitor or sparkle for Graphics), and give 'High' left/right arrows plus a lip so it reads as a toggle."
+    },
+    {
+     "screen": "E2",
+     "x": 960,
+     "y": 972,
+     "severity": "low",
+     "defect": "An orphan pink strip runs along the bottom of the window body, inside the frame (E6 has the same teal strip at 960,972). It looks like a lip rendered on the wrong layer.",
+     "fix": "Remove it, or make it the real window lip: below the navy contour, full width, about 10px, darker than the header color."
+    },
+    {
+     "screen": "E5",
+     "x": 83,
+     "y": 388,
+     "severity": "low",
+     "defect": "The HUD tile labels 'Shop', 'Pets' and 'Settings' sit on the tile's bottom contour and get cut by it. 'Settings' (83,778) is nearly as wide as the 140px tile.",
+     "fix": "Shrink the icon to about 65% of the tile and set the label 10px above the inner rim, or hang the label below the tile as in P01/P11."
+    },
+    {
+     "screen": "E3",
+     "x": 600,
+     "y": 570,
+     "severity": "low",
+     "defect": "Text and glyph counters show colored specks: green and yellow dots inside the letters of 'Equipped' and 'Equip', and inside the E1 Robux hex glyph (650,740). The stroke and fill layers misregister.",
+     "fix": "Render the stroke with UIStroke on a single TextLabel (or sharpen the glyph image) instead of stacking offset colored labels."
+    },
+    {
+     "screen": "E1",
+     "x": 960,
+     "y": 1010,
+     "severity": "low",
+     "defect": "Every shot sits on the default Baseplate neon grid with the stock sky, the backdrop anti-reference X3 #12 calls out. It makes even the good panels read as a Studio test.",
+     "fix": "Shoot the showcase over a dressed scene, or add a blurred or darkened vignette behind open windows."
+    }
+   ],
+   "verdict": "The style scores 5/10. E1, E3 and E4 have the bones of the anchor look: light window bodies, navy contours, Robux glyphs and quiet studs. They would still look plain next to P07-P09. The kit is also inconsistent: E2 and E6 lose the contour, rim and lip recipe entirely, there is almost no motion (frames are pixel-identical in E3, E4 and E6), and the press state does nothing on any screen. Three changes would raise the score most. First, make the recipe non-optional. Every window, card, button and close button on all six screens should go through one builder with a 4-5px navy contour, a pale inner rim and an 8px solid lip, with a center-anchored hover and a press that drops the face onto the lip. That alone fixes E2 and E6 and the hover overflow in E1, E3 and E4. Second, replace the item art with one human-made cartoon icon family drawn at 150px or more: a real coin, a faceted gem, a filled basket, distinct patterned eggs, settings icons in the same style, and pets as the largest element in their cards. The current low-poly primitives and the hex-nut coin cap the score more than anything else. Third, add real motion and hierarchy: idle bob and shine on icons, a pulsing gold 'Today' card, gray check-marked claimed days, a double-wide Day 7, and a tighter hero (big title, value chips, no dead middle). HUD numbers should become white with navy strokes, and the Starter Pack should sit in a proper tile."
+  }
+ ],
+ "pairwise": [
+  {
+   "trial": 1,
+   "pick": "right",
+   "confidence": 0.93,
+   "why": "Right looks like Pet Simulator 99's Exclusive Shop: big rainbow hero card, real Robux prices, a polished header icon and in-world context; left is a generic shop on a default baseplate.",
+   "ours_side": "left",
+   "anchor": "P07",
+   "ours": "E1",
+   "picked_ours": false
+  },
+  {
+   "trial": 6,
+   "pick": "left",
+   "confidence": 0.75,
+   "why": "Left looks like a premium UI kit template (placeholder 'Item Name' entries, consistent mascot art, checkered header); right is a generic layout on a default baseplate with mismatched icons.",
+   "ours_side": "right",
+   "anchor": "P06",
+   "ours": "E4",
+   "picked_ours": false
+  },
+  {
+   "trial": 3,
+   "pick": "left",
+   "confidence": 0.85,
+   "why": "Left is a real live game: a dense HUD, offline-earnings banner, Robux prices, timers and an illustrated icon set; the right is a plain egg shop sitting on an empty baseplate.",
+   "ours_side": "right",
+   "anchor": "P01",
+   "ours": "E2",
+   "picked_ours": false
+  },
+  {
+   "trial": 8,
+   "pick": "right",
+   "confidence": 0.85,
+   "why": "Right is real gameplay: a stylized info popup over a blurred world, plus huge multipliers, level and event text; the left is a generic settings panel on an empty baseplate.",
+   "ours_side": "left",
+   "anchor": "P12",
+   "ours": "E6",
+   "picked_ours": false
+  },
+  {
+   "trial": 4,
+   "pick": "right",
+   "confidence": 0.85,
+   "why": "Right shows a polished real-game shop: illustrated item art, heavy stroked text and a full game HUD; left is a flat mock on a default baseplate with placeholder egg shapes.",
+   "ours_side": "left",
+   "anchor": "P10",
+   "ours": "E2",
+   "picked_ours": false
+  },
+  {
+   "trial": 9,
+   "pick": "left",
+   "confidence": 0.9,
+   "why": "Left has large, professionally drawn pet-sim gamepass cards with bold stroked type; right is a small, generic shop mock on a default baseplate.",
+   "ours_side": "right",
+   "anchor": "P08",
+   "ours": "E1",
+   "picked_ours": false
+  },
+  {
+   "trial": 5,
+   "pick": "right",
+   "confidence": 0.75,
+   "why": "Right is a commercial UI-kit showcase (placeholder 'Item Name'/'Button' labels, a full HUD with icon buttons and currency on a themed backdrop); left is one panel on a default baseplate with uniform tiles, which looks generated.",
+   "ours_side": "left",
+   "anchor": "P03",
+   "ours": "E3",
+   "picked_ours": false
+  },
+  {
+   "trial": 10,
+   "pick": "right",
+   "confidence": 0.78,
+   "why": "Right is a premium-kit Robux shop (limited-time egg offer, x1/x5/x10 prices, bundle timer, placeholder names) with a layered layout; left is the same plain pets grid on a default baseplate.",
+   "ours_side": "left",
+   "anchor": "P02",
+   "ours": "E3",
+   "picked_ours": false
+  },
+  {
+   "trial": 2,
+   "pick": "left",
+   "confidence": 0.65,
+   "why": "Left is a dense studs-textured kit preview with placeholder 'BLABLABLA' text and a full HUD (boosts, level bar), typical of a sold simulator kit; right is cleaner but generic and sparse, like a generated mock.",
+   "ours_side": "right",
+   "anchor": "P04",
+   "ours": "E1",
+   "picked_ours": false
+  },
+  {
+   "trial": 7,
+   "pick": "left",
+   "confidence": 0.8,
+   "why": "Left is a CloudMesh studs-style UI kit open in Studio, with a full hotbar, quests, timers and template slots, typical of a premium kit; right is a sparse, generic HUD on a baseplate.",
+   "ours_side": "right",
+   "anchor": "P11",
+   "ours": "E5",
+   "picked_ours": false
+  }
+ ]
+}
