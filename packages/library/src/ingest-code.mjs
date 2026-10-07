@@ -23,6 +23,9 @@ export const SCAN = [
   ['marketplace', /\bMarketplaceService\b/],
   ['teleport', /\bTeleportService\b/],
   ['insert', /\bInsertService\b/],
+  // Evasion of the names above: a service fetched by a computed name, or code spelled out as byte values.
+  ['dynamic-service', /GetService\s*\(\s*(?!["'\[])[^)]/],
+  ['char-codes', /string\.char\s*\(\s*\d+\s*(,\s*\d+\s*){7,}\)/],
 ];
 const SKIP = /(^|[\\/])(tests?|spec|specs|examples?|benchmarks?|\.github|node_modules|Packages|DevPackages|TestEZ)([\\/]|$)|\.(spec|test|story)\.(lua|luau)$/i;
 
@@ -107,6 +110,7 @@ export function repoItems(row, repoDir, fetchedAt) {
       categories: [14],
       tags: [...new Set(name.split(/[^A-Za-z0-9]+|(?=[A-Z][a-z])/).map((w) => w.toLowerCase()).filter((w) => w.length > 1))],
       scan,
+      // clean-scan: nothing the L4 scan looks for, evasion included; required: a reviewer reads every hit in context.
       audit: scan.flags.length ? 'required' : 'clean-scan',
       ai_check: aiCheck({ title, created: createdFrom(row.human_made_evidence), creator: owner }, known, fetchedAt), // no date in the evidence: the check fails, never a guessed date
     };

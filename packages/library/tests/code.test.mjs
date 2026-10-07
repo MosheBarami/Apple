@@ -13,6 +13,9 @@ test('the L4 scan flags remote require, dynamic code, web and purchase services,
   assert.deepEqual(scanSource('game:GetService("HttpService")').flags, ['http']);
   assert.deepEqual(scanSource('local M = game:GetService("MarketplaceService")').flags, ['marketplace']);
   assert.deepEqual(scanSource('local x = require(script.Parent.Signal)').flags, [], 'a normal require is fine');
+  assert.deepEqual(scanSource('local s = game:GetService(name)').flags, ['dynamic-service'], 'a computed service name hides what it fetches');
+  assert.deepEqual(scanSource('game:GetService("Players")').flags, []);
+  assert.deepEqual(scanSource('loadstring_free = string.char(72,116,116,112,83,101,114,118,105,99,101)').flags, ['char-codes']);
   assert.ok(scanSource('x="' + 'a'.repeat(2500) + '"').flags.includes('obfuscation'));
 });
 

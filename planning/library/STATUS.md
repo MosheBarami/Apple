@@ -20,7 +20,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
 | 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
 | 13 | Animations | 1,000 | 0 | ledger only |
-| 14 | Code modules | 300 | 404 (not graded) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4 scan: 347 clean, 57 flagged; audit next |
+| 14 | Code modules | 300 | 404 (not graded) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4 scan: 315 clean, 89 flagged (evasion included); review of every flagged hit next |
 | 15 | Knowledge | 100 % of the docs | 2,195 docs | live corpus: 9,376 chunks, 9,527 vectors; creator-docs upstream has 2,168 pages; fetched 2026-08-30, refresh due |
 | 16 | Skills | 500 | 23 | live corpus |
 | 17 | Game templates and starters | 50 | 0 | not started |
