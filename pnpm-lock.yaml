@@ -25,7 +25,7 @@ importers:
         version: 0.35.5(@types/node@24.13.3)
       wrangler:
         specifier: ^4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)
+        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)(@types/node@24.13.3)
 
   apps/site:
     dependencies:
@@ -292,7 +292,14 @@ importers:
         specifier: workspace:*
         version: link:../design
 
-  packages/library: {}
+  packages/library:
+    devDependencies:
+      playwright-core:
+        specifier: 1.58.0
+        version: 1.58.0
+      three:
+        specifier: 0.170.0
+        version: 0.170.0
 
   packages/sdk: {}
 
@@ -5226,6 +5233,11 @@ packages:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
+  playwright-core@1.58.0:
+    resolution: {integrity: sha512-aaoB1RWrdNi3//rOeKuMiS65UCcgOVljU46At6eFcOFPFHWtd2weHRRow6z/n+Lec0Lvu0k9ZPKJSjPugikirw==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   playwright-core@1.62.1:
     resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
     engines: {node: '>=20'}
@@ -5674,6 +5686,9 @@ packages:
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
+
+  three@0.170.0:
+    resolution: {integrity: sha512-FQK+LEpYc0fBD+J8g6oSEyyNzjp+Q7Ks1C568WWaoMRLW+TkNNWmenWeGgJjV105Gd+p/2ql1ZcjYvNiPZBhuQ==}
 
   tiny-inflate@1.0.3:
     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
@@ -11385,6 +11400,8 @@ snapshots:
 
   pkce-challenge@5.0.1: {}
 
+  playwright-core@1.58.0: {}
+
   playwright-core@1.62.1: {}
 
   playwright@1.62.1:
@@ -12095,6 +12112,8 @@ snapshots:
   tailwindcss@4.3.3: {}
 
   tapable@2.3.3: {}
+
+  three@0.170.0: {}
 
   tiny-inflate@1.0.3: {}
 
