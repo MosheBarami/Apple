@@ -1052,6 +1052,7 @@ const TOOL_ARGS = {
   audit_build: {},
   run_spec: { cases: [{ name: 'a placed part is anchored', code: 'assert(true)' }] },
   install_module: { module: 'profile_store' },
+  library_code: { need: 'save player data' },
 
   // The eleven web-facing tools. Every URL here is on the default host allowlist and none of them is
   // a PROVIDER_HOST, so A1's "no provider endpoint was contacted" keeps its meaning; the requests

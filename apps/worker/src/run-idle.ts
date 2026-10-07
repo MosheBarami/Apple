@@ -254,7 +254,7 @@ export function afterToolOutcome(streaks: Record<string, number> | undefined, to
  * name (tests/run-idle.test.mjs makes every project-changing tool answer for itself).
  */
 const MADE: Record<string, string | [string, string]> = {
-  edit_script: 'how the game works', format_script: 'how the game works', run_luau: 'how the game works', install_module: 'how the game works',
+  edit_script: 'how the game works', format_script: 'how the game works', run_luau: 'how the game works', install_module: 'how the game works', library_code: 'how the game works',
   create_instances: 'new objects',
   set_properties: 'how things look', set_properties_bulk: 'how things look', set_locked: 'how things look', set_visible: 'how things look',
   edit_terrain: 'the terrain', shape_terrain: 'the terrain',

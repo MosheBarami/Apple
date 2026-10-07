@@ -990,6 +990,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'add_effect':
     case 'remove_effect':
     case 'install_module':
+    // library_code installs audited open-source packages from the StudPilot Library (its shortlist mode only reads, but a
+    // tool has one phase, and the install is the change it exists for).
+    case 'library_code':
     // Moving the user's camera and selection changes what they SEE rather than what is there,
     // but it happens as part of building and there is no truer phase for it.
     case 'focus_camera':
@@ -2950,6 +2953,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'install_module',
     label: 'Install Luau modules',
     why: 'Adds third-party code to your project, which then runs as if you had written it.',
+    group: 'changes',
+  },
+  {
+    name: 'library_code',
+    label: 'Install open-source packages from StudPilot\'s library',
+    why: 'Adds audited open-source Luau packages (with their licence notices) to your project, which then run as if you had written them.',
     group: 'changes',
   },
   {

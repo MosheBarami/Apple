@@ -122,6 +122,11 @@
     {
       "binding": "VEC",
       "index_name": "studpilot-docs"
+    },
+    {
+      // The StudPilot Library (master plan §4.1 L7): A/B items only, for search, never training.
+      "binding": "LIBRARY",
+      "index_name": "studpilot-library"
     }
   ],
   //[[ THE REST OF CLOUDFLARE (D-VISION-1). Every one is optional in env.ts.
