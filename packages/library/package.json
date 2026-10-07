@@ -5,7 +5,7 @@
   "type": "module",
   "description": "The StudPilot Library pipeline (master plan \u00a74): licences, the human-made check, provenance, sanitizing, grading, families and search cards. Metadata only; binaries live in R2.",
   "scripts": {
-    "typecheck": "node --check src/licence.mjs && node --check src/item.mjs && node --check src/card.mjs && node --check src/aicheck.mjs && node --check src/glb.mjs && node --check src/ingest-pack.mjs && node --check src/to-sql.mjs && node --check src/embed.mjs && node --check src/ingest-code.mjs && node --check src/code-tree.mjs && node --check src/export-code.mjs && node --check src/ingest-fonts.mjs && node --check src/ingest-files.mjs && node --check src/ingest-skills.mjs",
+    "typecheck": "node --check src/licence.mjs && node --check src/item.mjs && node --check src/card.mjs && node --check src/aicheck.mjs && node --check src/glb.mjs && node --check src/ingest-pack.mjs && node --check src/to-sql.mjs && node --check src/embed.mjs && node --check src/ingest-code.mjs && node --check src/code-tree.mjs && node --check src/export-code.mjs && node --check src/ingest-fonts.mjs && node --check src/ingest-files.mjs && node --check src/ingest-skills.mjs && node --check src/ingest-game-icons.mjs && node --check src/ingest-kenney-2d.mjs && node --check tools/blend-to-glb.mjs",
     "test": "node --test tests/*.test.mjs",
     "ingest:kenney": "node src/ingest-pack.mjs --ledger ../../planning/library/ledger/kenney-3d.jsonl --dir ../../private/library-src/kenney --out ../../planning/library/items/kenney-3d.jsonl",
     "thumbs:kenney": "node tools/render-thumbs.mjs ../../planning/library/items/kenney-3d.jsonl ../../private/library-src/kenney ../../private/library-thumbs",
@@ -16,6 +16,10 @@
     "list:oga": "node src/ingest-files.mjs list --ledger ../../planning/library/ledger/opengameart-3d.jsonl --dir ../../private/library-src/oga --out ../../private/library-src/oga/list.json",
     "thumbs:oga": "node tools/render-models.mjs ../../private/library-src/oga/list.json ../../private/library-src/oga ../../private/library-thumbs/oga",
     "ingest:oga": "node src/ingest-files.mjs ingest --ledger ../../planning/library/ledger/opengameart-3d.jsonl --dir ../../private/library-src/oga --stats ../../private/library-thumbs/oga/stats.jsonl --out ../../planning/library/items/opengameart-3d.jsonl",
+    "ingest:game-icons": "node src/ingest-game-icons.mjs --repo ../../private/library-src/game-icons --out ../../planning/library/items/game-icons.jsonl",
+    "fetch:kenney-2d": "node tools/fetch-kenney.mjs ../../planning/library/ledger/kenney-2d-ui.jsonl ../../private/library-src/kenney-2d",
+    "ingest:kenney-2d": "node src/ingest-kenney-2d.mjs --ledger ../../planning/library/ledger/kenney-2d-ui.jsonl --dir ../../private/library-src/kenney-2d --out ../../planning/library/items/kenney-2d.jsonl",
+    "boards:kenney-2d": "node tools/icon-boards.mjs ../../planning/library/items/kenney-2d.jsonl ../../private/library-src/kenney-2d ../../private/library-boards/kenney-2d",
     "acceptance": "node tools/acceptance.mjs --items ../../planning/library/items",
     "overrides": "node tools/apply-overrides.mjs ../../planning/library/maturity-overrides.jsonl ../../planning/library/items ../../private/library-overrides-touched.jsonl ../../private/library-overrides-demoted.txt"
   },
