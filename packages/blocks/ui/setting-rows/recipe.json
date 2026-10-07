@@ -96,7 +96,8 @@
          "visible": "{{item.slider}}",
          "attributes": {
           "Value": "{{item.value}}"
-         }
+         },
+         "knob": true
         },
         {
          "kit": "button",

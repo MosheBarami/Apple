@@ -256,6 +256,8 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
       attributes: { ...tag('window', 'holder'), ProofOpen: true, StartOpen: n.startOpen ?? true, StudKitPhoneSize: udim2(0.98, 0, 0.86, 0) },
       children: [
         { className: 'UIAspectRatioConstraint', name: 'Shape', props: { AspectRatio: Number(n.aspect ?? 1.45) } },
+        // The world and the HUD dim behind an open window (P05, P06), so the window is the one thing to look at.
+        { className: 'Frame', name: 'Scrim', props: { Size: udim2(8, 0, 8, 0), Position: udim2(0.5, 0, 0.5, 0), AnchorPoint: vec2(0.5, 0.5), BackgroundColor3: CONTOUR, BackgroundTransparency: 0.6, BorderSizePixel: 0, ZIndex: 0 }, attributes: tag('window', 'scrim') },
         {
           className: 'Frame', name: 'Shadow',
           props: { Size: udim2(1, 0, 1, 0), Position: udim2(0, 0, 0, 8), BackgroundColor3: CONTOUR, BackgroundTransparency: 0.7, BorderSizePixel: 0, ZIndex: 1 },
@@ -325,10 +327,17 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
         children: [
           corner(999),
           { className: 'UIGradient', name: 'Gradient', props: { Color: faceGradient(TOKENS[token(n.token)]!), Rotation: 90 } },
-          { className: 'Frame', name: 'Highlight', props: { Size: udim2(1, -8, 0, 2), Position: udim2(0, 4, 0, 2), BackgroundColor3: TOKENS[token(n.token)]!.rim, BorderSizePixel: 0, ZIndex: 3 }, attributes: { ...tag('bar', 'highlight'), StudKitPx: 2 } },
+          { className: 'Frame', name: 'Highlight', props: { Size: udim2(1, -28, 0, 2), Position: udim2(0, 14, 0, 3), BackgroundColor3: TOKENS[token(n.token)]!.rim, BorderSizePixel: 0, ZIndex: 3 }, attributes: { ...tag('bar', 'highlight'), StudKitPx: 2 } },
         ],
       },
       ...(n.text !== undefined ? [label('bar', 'Label', n.text, { size: [1, -12, 0.8, 0], position: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5], max: 24, z: 9, line: true })] : []),
+      // A slider shows its knob at the end of the fill, so it reads as a control and not as a progress bar.
+      ...(n.knob === true ? [{
+        className: 'Frame', name: 'Knob',
+        props: { Size: udim2(0.1, 0, 1.7, 0), Position: udim2(Number(n.progress ?? 0), 0, 0.5, 0), AnchorPoint: vec2(0.5, 0.5), BackgroundColor3: '#FFFFFF', BorderSizePixel: 0, ZIndex: 4 },
+        attributes: tag('bar', 'knob'),
+        children: [{ className: 'UIAspectRatioConstraint', name: 'Round', props: { AspectRatio: 1 } }, corner(999), stroke('Contour', GEO.bar.contour, CONTOUR)],
+      } as Spec] : []),
     ],
   }),
   /** A currency pill (spec §4.6): the icon overflows the left end, the number in its ink, a small lime "+" button. */
