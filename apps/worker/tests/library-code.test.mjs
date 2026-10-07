@@ -14,6 +14,8 @@ test('offered: A or B, standalone, bundled, not unsafe; a restricted package say
   assert.equal(offerable(row('code:a:x', { grade: 'C' })), false);
   assert.equal(offerable(row('code:a:x', { standalone: 0 })), false, 'a loader-bound module never reaches a plain place');
   assert.equal(offerable(row('code:a:x', { sanitize: JSON.stringify({ audit: 'unsafe' }) })), false);
+  assert.equal(offerable(row('code:a:x', { load_test: JSON.stringify({ ok: false }) })), false, 'L8: failed to load in Studio');
+  assert.equal(offerable(row('code:a:x', { load_test: JSON.stringify({ ok: true }) })), true);
   const r = row('code:a:x', { sanitize: JSON.stringify({ audit: 'restricted', audit_notes: [{ verdict: 'restricted', why: 'prompts real purchases; only for a shop' }] }) });
   assert.equal(offerable(r), true);
   assert.match(audit(r).note, /only for a shop/);
@@ -59,4 +61,12 @@ test('tree ops: parents before children, the notice on the root only, folders as
   assert.equal(ops[2].source, 'return {}', 'children keep their own source');
   assert.equal(ops[3].create.className, 'Script');
   assert.throws(() => treeOps({ name: 'a.b', className: 'ModuleScript', source: '' }, 'game'), /cannot name/);
+});
+
+test('the shortlist lists A before B, relevance order kept within a grade', async () => {
+  const { searchLibraryCode } = await import('../src/library-code.ts');
+  const rows = { 'code:m:profileservice': row('code:m:profileservice', { grade: 'B' }), 'code:m:profilestore': row('code:m:profilestore'), 'code:x:other': row('code:x:other', { grade: 'B' }) };
+  const e = { ...env(rows, {}), LIBRARY: { query: async () => ({ matches: ['code:m:profileservice', 'code:m:profilestore', 'code:x:other'].map((item) => ({ metadata: { item } })) }) } };
+  const r = await searchLibraryCode(e, 'save player data', async () => [[0]]);
+  assert.deepEqual(r.modules.map((m) => m.id), ['code:m:profilestore', 'code:m:profileservice', 'code:x:other']);
 });

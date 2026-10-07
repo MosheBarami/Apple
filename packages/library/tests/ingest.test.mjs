@@ -64,7 +64,7 @@ test('itemSql upserts an item, escapes quotes, and never overwrites a grade on r
   assert.match(sql, /'Bob''s crate'/);
   assert.match(sql, /ON CONFLICT\(id\) DO UPDATE SET/);
   assert.doesNotMatch(sql.split('DO UPDATE SET')[1], /grade = excluded\.grade/);
-  assert.match(sql, /, NULL, 12, NULL, NULL, NULL, NULL, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'no sanitize report, triangles, an empty grade, no code fields, then the update time');
+  assert.match(sql, /, NULL, 12, NULL, NULL, NULL, NULL, NULL, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'no sanitize report, triangles, an empty grade, no code fields, then the update time');
 });
 
 test('gradeSql writes only the grade, its notes and the time, for one id', async () => {
@@ -80,4 +80,6 @@ test('a vector id fits Vectorize (40 hex chars) and the embedded text is the car
   const t = embedText({ id: 'kenney:k:stall-red', title: 'stall red (Fantasy Town Kit)', kind: 'prop', family: 'kenney:k', grade: 'A', tags: ['stall', 'red'], checks: { triangles: 300 } });
   assert.match(t, /stall red \(Fantasy Town Kit\) \| prop \| family kenney:k \| grade A/);
   assert.match(t, /stall, red/);
+  const code = embedText({ id: 'code:m:profilestore', title: 'ProfileStore (MadStudioRoblox/ProfileStore)', kind: 'code', grade: 'A', tags: ['profile'], grade_notes: [{ why: 'Session-locked player data saving' }, { why: 'Session-locked player data saving' }] });
+  assert.match(code, /\| Session-locked player data saving$/, 'what it is for, once');
 });

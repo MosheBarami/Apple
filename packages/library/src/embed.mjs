@@ -14,7 +14,10 @@ export const vectorId = (id) => createHash('sha1').update(id).digest('hex');
 /** The text a vector stands for: the card line plus the item's tags. Pure. */
 export function embedText(it) {
   const card = toCard({ ...it, themes: it.tags ?? [], triangles: it.checks?.triangles });
-  return cardLine(card).slice(0, 480);
+  // What the item is for, in the graders' words from its own README (code): the title alone ('ProfileStore') says
+  // nothing to a need like 'save player data'.
+  const uses = [...new Set((it.grade_notes ?? []).map((n) => n.why).filter(Boolean))].join(' ');
+  return (cardLine(card) + (uses ? ` | ${uses}` : '')).slice(0, 700);
 }
 
 async function embed(texts, account, token) {

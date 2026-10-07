@@ -17,6 +17,7 @@ export interface CodeRow {
   deps: string | null;
   standalone: number | null;
   bundle_key: string | null;
+  load_test: string | null;
   licence_class: string;
   attribution: string | null;
   source_url: string;
@@ -24,12 +25,14 @@ export interface CodeRow {
 export interface TreeNode { name: string; className: 'ModuleScript' | 'Script' | 'LocalScript' | 'Folder'; source?: string; children?: TreeNode[] }
 export interface Bundle { id: string; name: string; tree: TreeNode; deps: { alias: string; id: string | null }[]; licence: string; attribution?: string; source_url: string }
 
-const COLUMNS = 'id, title, package_name, grade, sanitize, grade_notes, deps, standalone, bundle_key, licence_class, attribution, source_url';
+const COLUMNS = 'id, title, package_name, grade, sanitize, grade_notes, deps, standalone, bundle_key, load_test, licence_class, attribution, source_url';
 
-/** Whether a row may reach a user's place: graded A/B, standalone, bundled, and not audited unsafe. Pure. */
+/** Whether a row may reach a user's place: graded A/B, standalone, bundled, not audited unsafe, and not failed to load. Pure. */
 export function offerable(r: CodeRow): boolean {
   if (r.grade !== 'A' && r.grade !== 'B') return false;
   if (r.standalone !== 1 || !r.bundle_key) return false;
+  // L8: a package that did not load when built and required in Studio is never offered.
+  try { if ((JSON.parse(r.load_test ?? 'null') as { ok?: boolean } | null)?.ok === false) return false; } catch { return false; }
   return audit(r).verdict !== 'unsafe';
 }
 
@@ -57,7 +60,11 @@ export async function searchLibraryCode(env: Env, need: string, embed: Embed, li
   if (!ids.length) return { modules: [] };
   const rows = (await env.CORPUS.prepare(`select ${COLUMNS} from library_items where id in (${ids.map(() => '?').join(',')})`).bind(...ids).all<CodeRow>()).results ?? [];
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const modules = ids.map((id) => byId.get(id)).filter((r): r is CodeRow => !!r && offerable(r)).slice(0, Math.max(1, Math.min(limit, 15))).map((r) => {
+  // The most relevant offerable packages, A before B (stable, so relevance orders each grade): a superseded B like
+  // ProfileService must not shadow its A successor ProfileStore.
+  const top = ids.map((id) => byId.get(id)).filter((r): r is CodeRow => !!r && offerable(r)).slice(0, Math.max(1, Math.min(limit, 15)));
+  top.sort((x, y) => (x.grade === y.grade ? 0 : x.grade === 'A' ? -1 : 1));
+  const modules = top.map((r) => {
     const a = audit(r);
     return { id: r.id, name: r.package_name, grade: r.grade, use: use(r), audit: a.verdict, ...(a.note ? { only_when: a.note } : {}), needs: (JSON.parse(r.deps ?? '[]') as { alias: string }[]).map((d) => d.alias), licence: r.licence_class };
   });

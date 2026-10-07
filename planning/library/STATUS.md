@@ -38,3 +38,7 @@ Code (2026-10-07): usefulness graded by two critics per repo from its README and
 an unsafe module is always C); A includes ProfileStore, Promise, GoodSignal, Trove, Janitor, ZonePlus, Fusion, spr,
 SimplePath, ByteNet and Warp. Loaded into D1 with the scan and both audits in `sanitize`; the 325 A/B modules are in
 `studpilot-library`.
+
+Code load test (L8, 2026-10-07): the 121 standalone A/B packages were each built with their dependencies in Studio
+and required: 118 load; Remo, ByteNet and RoactSpring error while loading and are never offered. The agent's
+`library_code` tool searches and installs the loading ones (deployed with #118).
