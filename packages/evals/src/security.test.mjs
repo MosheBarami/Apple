@@ -1106,6 +1106,16 @@ const TOOL_ARGS = {
   //
   //   Worth stating because the names sound like retrieval: none of the three retrieves anything.
   //   `search_creation_skills` ranks an in-memory array; `read_creation_skill` indexes it.
+  //
+  //   RE-REVIEWED 2026-10-07: THE TWO CREATION-SKILL TOOLS NOW ALSO READ THE LIBRARY. The master
+  //   plan's skills (§4.3 #16) are Creator Documentation procedures in D1 `library_items` and the
+  //   `studpilot-library` index, so `search_creation_skills` and `read_creation_skill` take `ctx` —
+  //   and use it only as `ctx.env`, handed to library-skills.ts. That module reads the two library
+  //   bindings and nothing else: it embeds the query through the gateway (the same budgeted path as
+  //   library_code and search_docs), queries the index filtered to kind 'skill', and SELECTs
+  //   `library_items` rows of kind 'skill' — global library rows, no tenant's data, no write, no
+  //   credential, no fetch. The two modules above stay pure and `get_genre_references` still
+  //   discards its context; the test below holds each of these.
   search_creation_skills: { query: 'anchor a responsive gameplay HUD', domain: 'ui' },
   read_creation_skill: { id: 'ui-responsive-hud-anchors' },
   get_genre_references: { genre: 'horror', aspect: 'lighting' },
@@ -1142,17 +1152,45 @@ test('A2 the three knowledge tools cannot reach the network, a credential, or an
     ],
     'genre-reference-guide.ts grew an import — the reference guide can now reach something other than the pinned manifest',
   );
-  // And the tools themselves must keep DISCARDING the context. `_ctx` is what makes the paragraph
+  // And `get_genre_references` must keep DISCARDING the context. `_ctx` is what makes the paragraph
   // above exhaustive: a body that renames it to `ctx` has the project id, the env and the Studio
   // ops back in hand, and none of the counts above would notice.
   const tools = readCode('tools.ts');
-  for (const name of ['search_creation_skills', 'read_creation_skill', 'get_genre_references']) {
+  const bodyOf = (name) => {
     const at = tools.indexOf(`${name}: {`);
     assert.ok(at > 0, `${name} is no longer registered under that name`);
     const body = braceBlock(tools, at);
     assert.ok(body.length > 100, `${name}'s registration was not located — this test would check nothing`);
-    assert.match(body, /run: async \(_ctx, a\)/, `${name} now takes the tool context — re-review its egress`);
+    return body;
+  };
+  assert.match(bodyOf('get_genre_references'), /run: async \(_ctx, a\)/, 'get_genre_references now takes the tool context — re-review its egress');
+  // The two creation-skill tools use the context only as `ctx.env`, and only to hand it to the library-skills reads.
+  for (const [name, call] of [['search_creation_skills', /searchLibrarySkills\(ctx\.env, /], ['read_creation_skill', /readLibrarySkill\(ctx\.env, /]]) {
+    const body = bodyOf(name);
+    assert.match(body, /run: async \(ctx, a\)/, `${name} is no longer the reviewed shape`);
+    const uses = [...body.replace('run: async (ctx, a)', '').matchAll(/\bctx\b(\.\w+)?/g)].map((m) => m[1] ?? '(bare)');
+    assert.ok(uses.length > 0, `${name} no longer reads the library — update this review`);
+    assert.deepEqual([...new Set(uses)], ['.env'], `${name} uses the tool context beyond ctx.env — re-review its egress`);
+    assert.match(body, call, `${name} reaches the env other than through library-skills.ts`);
   }
+  // library-skills.ts: the library's two bindings, read-only, skill rows only.
+  const lib = readCode('library-skills.ts');
+  assert.ok(lib.length > 1500, 'library-skills.ts was not read — this test would check nothing');
+  for (const reach of [/\bfetch\s*\(/, /Credential/i, /process\.env/, /\binsert\s+into\b|\bupdate\s+\w+\s+set\b|\bdelete\s+from\b|\breplace\s+into\b/i]) {
+    assert.equal(reach.test(lib), false, `library-skills.ts now names ${reach} — re-review what the skill tools can reach`);
+  }
+  assert.deepEqual([...new Set([...lib.matchAll(/\benv\.(\w+)/g)].map((m) => m[1]))].sort(), ['CORPUS', 'LIBRARY'], 'library-skills.ts reaches a binding other than the library index and its table');
+  const queries = [...lib.matchAll(/prepare\(([\s\S]*?)\)\.bind/g)].map((m) => m[1]);
+  assert.equal(queries.length, 2, 'library-skills.ts gained or lost a query — re-review it');
+  for (const q of queries) {
+    assert.deepEqual([...q.matchAll(/\bfrom\s+(\w+)/gi)].map((m) => m[1]), ['library_items'], `a skill query reads another table: ${q}`);
+    assert.match(q, /kind = \\?'skill\\?'/, `a skill query is not limited to skill rows: ${q}`);
+  }
+  assert.deepEqual(
+    [...lib.matchAll(/^\s*import .*$/gm)].map((m) => m[0].trim()),
+    ["import type { Env } from './env';", "import type { Embed } from './library-code';"],
+    'library-skills.ts grew an import — the skill reads can now reach something other than the library',
+  );
 });
 
 test('A2 every registered tool has an argument fixture — the enumeration cannot silently go stale', () => {
