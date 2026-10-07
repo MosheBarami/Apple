@@ -72,3 +72,12 @@ test('gradeSql writes only the grade, its notes and the time, for one id', async
   const sql = gradeSql({ id: 'kenney:k:a', grade: 'B', grade_notes: [{ critic: '1', grade: 'B', why: "plain" }] }, 'T');
   assert.match(sql, /^UPDATE library_items SET grade = 'B', grade_notes = '\[.*\]', updated_at = 'T' WHERE id = 'kenney:k:a';$/);
 });
+
+test('a vector id fits Vectorize (40 hex chars) and the embedded text is the card line with the tags', async () => {
+  const { vectorId, embedText } = await import('../src/embed.mjs');
+  const id = 'kenney:modular-dungeon-kit:' + 'x'.repeat(80);
+  assert.match(vectorId(id), /^[0-9a-f]{40}$/);
+  const t = embedText({ id: 'kenney:k:stall-red', title: 'stall red (Fantasy Town Kit)', kind: 'prop', family: 'kenney:k', grade: 'A', tags: ['stall', 'red'], checks: { triangles: 300 } });
+  assert.match(t, /stall red \(Fantasy Town Kit\) \| prop \| family kenney:k \| grade A/);
+  assert.match(t, /stall, red/);
+});

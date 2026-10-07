@@ -30,3 +30,6 @@ median 138, 95th percentile 1,060, max 10,880. Source zips (741 MB) stay in the 
 
 Grading (2026-10-07): 93 boards, 38 critic runs (two per board), 4,402 items: A 931, B 2,739, C 732; the two critics
 agreed on 3,975 (90 %). Each item keeps both critics' grade and reason in `grade_notes`.
+
+Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
+Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.
