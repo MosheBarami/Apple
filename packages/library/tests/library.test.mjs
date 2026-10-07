@@ -58,3 +58,9 @@ test('only A and B reach the model; the card is text with the fields §3.3 names
   assert.deepEqual(Object.keys(card), ['id', 'title', 'kind', 'family', 'theme', 'size_studs', 'triangles', 'colours', 'grade', 'licence', 'line']);
   assert.match(cardLine(card), /kenney:nature-kit:tree_oak \| Oak tree \| prop \| family kenney-nature \| grade A \| 6x12x6 studs \| forest \| A round oak\./);
 });
+
+test('the standard Apache header and a padded MIT notice classify (code-luau ingestion, 2026-10-07)', () => {
+  assert.equal(classifyLicence('Apache License Version 2.0, January 2004 http://www.apache.org/licenses/').class, 'apache-2.0');
+  assert.equal(classifyLicence('Apache License, Version 2.0').class, 'apache-2.0');
+  assert.equal(classifyLicence('MIT License: Copyright (c) 2020 Reselim Permission is hereby granted').class, 'mit');
+});
