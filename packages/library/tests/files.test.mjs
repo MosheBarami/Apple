@@ -66,3 +66,11 @@ test('a pack name with capitals and dots (a GitHub repo) becomes a valid id and 
   assert.match(src, /`\$\{PREFIX\}:\$\{slug\(packSlug\)\}:/);
   assert.match(src, /family: `\$\{PREFIX\}:\$\{slug\(ps\)\}`/);
 });
+
+test('an x.gltf.glb export and x.fbx are one model, the GLB first', async () => {
+  const { modelName } = await import('../src/ingest-files.mjs');
+  assert.equal(modelName('a/gltf/bottle_A.gltf.glb'), 'bottle_A');
+  const d = mkdtempSync(join(tmpdir(), 'oga-'));
+  for (const f of ['x/fbx/crate.fbx', 'x/gltf/crate.gltf.glb']) { mkdirSync(join(d, f, '..'), { recursive: true }); writeFileSync(join(d, f), 'x'); }
+  assert.deepEqual(packModels(d).map((p) => basename(p)), ['crate.gltf.glb']);
+});

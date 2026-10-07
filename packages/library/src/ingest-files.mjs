@@ -49,7 +49,7 @@ function files(dir, root = dir, out = []) {
 export function packModels(packDir) {
   const best = new Map();
   for (const f of files(packDir)) {
-    const name = slug(basename(f, extname(f))); // the id and thumbnail key are made from it: one file per slug
+    const name = slug(modelName(f)); // the id and thumbnail key are made from it: one file per slug
     const cur = best.get(name);
     if (!cur || RANK[extname(f).toLowerCase()] < RANK[extname(cur).toLowerCase()]) best.set(name, f);
   }
@@ -58,8 +58,10 @@ export function packModels(packDir) {
 
 // The source prefix of ids and families (--prefix; OpenGameArt by default).
 let PREFIX = 'oga';
-const idOf = (packSlug, file) => `${PREFIX}:${slug(packSlug)}:${slug(basename(file, extname(file)))}`.slice(0, 120);
+const idOf = (packSlug, file) => `${PREFIX}:${slug(packSlug)}:${slug(modelName(file))}`.slice(0, 120);
 /** The thumbnail and stats key of an item: its id with ':' as '__' (as the grading boards read it). */
+/** A model's name: the file name without its extension, and without the '.gltf' of an 'x.gltf.glb' export. Pure. */
+export const modelName = (f) => basename(f, extname(f)).replace(/\.gltf$/i, '');
 const keyOf = (packSlug, file) => idOf(packSlug, file).replaceAll(':', '__');
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -88,7 +90,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const key = keyOf(ps, f), st = stats.get(key);
         if (!st?.ok) { unloadable += 1; continue; }
         if (st.missing) { incomplete += 1; continue; } // names a file its pack does not ship (or a .psd): not as its author made it
-        const name = words(basename(f, extname(f)));
+        const name = words(modelName(f));
         const title = `${name} (${row.pack})`;
         const conv = convertedFrom(join(dir, ps), f);
         const tags = [...new Set(name.toLowerCase().split(' ').filter((w) => w.length > 1))];
