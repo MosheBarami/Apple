@@ -100,7 +100,9 @@ test('THE DIMENSIONS ARE WRITTEN DOWN ONCE — no other worker source names them
     for (const e of readdirSync(dir, { withFileTypes: true })) {
       const p = join(dir, e.name);
       if (e.isDirectory()) { walk(p); continue; }
-      if (!e.name.endsWith('.ts') || p === join(SRC, 'thumbnail.ts')) continue;
+      // blocks.generated.ts carries the blocks' Luau, where the UI kit's 1080p reference height (UI Spec v2 §3) is a
+      // runtime constant, not a thumbnail size.
+      if (!e.name.endsWith('.ts') || p === join(SRC, 'thumbnail.ts') || e.name === 'blocks.generated.ts') continue;
       // \b1080\b does not match "1080p", which imagegen uses as a prose unit in an art-direction
       // sentence. A pixel dimension is what is being hunted, not the string.
       if (/\b1920\b|\b1080\b/.test(readFileSync(p, 'utf8'))) offenders.push(p.slice(SRC.length + 1));

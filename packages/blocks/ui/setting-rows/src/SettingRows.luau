@@ -10,9 +10,11 @@ for _, row in list:GetChildren() do
 	local slider, switch = fill:FindFirstChild("Slider"), fill:FindFirstChild("Switch")
 	if slider and slider.Visible then
 		local bar = slider:FindFirstChild("Fill")
+		local knob = slider:FindFirstChild("Knob")
 		local function set(share)
 			share = math.clamp(share, 0, 1)
 			bar.Size = UDim2.new(share, 0, 1, 0)
+			if knob then knob.Position = UDim2.new(share, 0, 0.5, 0) end
 			gui:SetAttribute(name, share)
 		end
 		set(slider:GetAttribute("Value") or 0.5)

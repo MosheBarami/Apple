@@ -10,7 +10,7 @@
     "id": "title",
     "kind": "prop",
     "after": "create",
-    "path": "game.StarterGui.{{screen}}.Window.Header.Fill.Title",
+    "path": "game.StarterGui.{{screen}}.Window.Header.Title",
     "prop": "Text",
     "equals": "{{title}}",
     "param": "title",

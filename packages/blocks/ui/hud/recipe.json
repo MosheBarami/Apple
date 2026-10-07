@@ -106,7 +106,7 @@
          "v": [
           0.36,
           0,
-          0.12,
+          0.07,
           0
          ]
         },
@@ -115,7 +115,7 @@
          "v": [
           0.5,
           0,
-          0.1,
+          0.055,
           0
          ]
         },
@@ -194,7 +194,25 @@
         }
        },
        "attributes": {
-        "StudKit": "hud.layout"
+        "StudKit": "hud.layout",
+        "StudKitPhonePos": {
+         "t": "UDim2",
+         "v": [
+          0,
+          8,
+          0.34,
+          0
+         ]
+        },
+        "StudKitPhoneSize": {
+         "t": "UDim2",
+         "v": [
+          0.08,
+          0,
+          0.36,
+          0
+         ]
+        }
        },
        "children": [
         {
@@ -246,19 +264,19 @@
         "Size": {
          "t": "UDim2",
          "v": [
-          0.32,
+          0.17,
           0,
-          0.24,
+          0.22,
           0
          ]
         },
         "Position": {
          "t": "UDim2",
          "v": [
+          0.025,
           0,
-          14,
-          1,
-          -14
+          0.97,
+          0
          ]
         },
         "AnchorPoint": {
@@ -270,7 +288,25 @@
         }
        },
        "attributes": {
-        "StudKit": "hud.layout"
+        "StudKit": "hud.layout",
+        "StudKitPhonePos": {
+         "t": "UDim2",
+         "v": [
+          0.012,
+          0,
+          0.37,
+          0
+         ]
+        },
+        "StudKitPhoneSize": {
+         "t": "UDim2",
+         "v": [
+          0.26,
+          0,
+          0.22,
+          0
+         ]
+        }
        },
        "children": [
         {
@@ -280,7 +316,7 @@
           "Padding": {
            "t": "UDim",
            "v": [
-            0.03,
+            0.1,
             0
            ]
           },
@@ -307,7 +343,7 @@
          "size": [
           1,
           0,
-          0.44,
+          0.42,
           0
          ],
          "order": "{{index}}",
@@ -375,75 +411,22 @@
          }
         },
         {
-         "className": "Frame",
+         "kit": "tile",
          "name": "Offer{{index}}",
-         "props": {
-          "BackgroundTransparency": 1,
-          "Size": {
-           "t": "UDim2",
-           "v": [
-            1,
-            0,
-            0.48,
-            0
-           ]
-          },
-          "LayoutOrder": "{{index}}"
-         },
+         "token": "sun",
+         "icon": "{{item.icon}}",
+         "text": "{{item.label}}",
+         "price": "{{item.price}}",
+         "size": [
+          0.8,
+          0,
+          0.44,
+          0
+         ],
+         "order": "{{index}}",
          "attributes": {
-          "StudKit": "offer.layout",
           "Action": "{{item.action}}"
          },
-         "children": [
-          {
-           "kit": "text",
-           "name": "Price",
-           "text": "{{item.price}}",
-           "ink": "money",
-           "size": [
-            1,
-            0,
-            0.24,
-            0
-           ],
-           "max": 30
-          },
-          {
-           "kit": "icon",
-           "icon": "{{item.icon}}",
-           "size": [
-            1,
-            0,
-            0.56,
-            0
-           ],
-           "position": [
-            0,
-            0,
-            0.2,
-            0
-           ]
-          },
-          {
-           "kit": "text",
-           "name": "Label",
-           "text": "{{item.label}}",
-           "ink": "gem",
-           "size": [
-            1,
-            0,
-            0.22,
-            0
-           ],
-           "position": [
-            0,
-            0,
-            0.78,
-            0
-           ],
-           "max": 24
-          }
-         ],
          "each": "offers"
         }
        ]

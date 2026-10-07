@@ -1,333 +1,600 @@
 {
-  "version": 1,
-  "note": "Free Roblox Creator Store icons picked for the StudPilot UI kit. imageId is the Image asset id (use in ImageLabel.Image); sourceAssetId is the Decal asset id found in the store. Picked by eye from 150px thumbnails; community-uploaded, so creators are individual users. Never uploaded or paid. 'missing' entries are Roblox AI generation candidates.",
+  "version": 2,
+  "note": "The kit icon family (planning/UI-SPEC-v2.md section 6). kenney-3d: Kenney CC0 3D models (human-made) rendered at 512 px by one fixed camera, light and navy contour (packages/library/tools/render-icons.mjs). kenney-glyphs: Kenney Game Icons (CC0) white symbols with the same contour. PNGs live in R2 (studpilot-media/icons/), never in git; png_sha256 pins each one. imageId stays null until the StudPilot group uploads it (BLOCKED O-GROUP, O-KEY); until then a name draws nothing in the product and Showroom captures use the local rbxasset://textures/studpilot/ copies (spec 6.3, development only).",
+  "missing": [
+    "backpack",
+    "bolt",
+    "book",
+    "boots",
+    "calendar",
+    "cash",
+    "clock",
+    "clover",
+    "fire",
+    "magnet",
+    "map",
+    "money_bag",
+    "rocket",
+    "scroll",
+    "ticket",
+    "vip"
+  ],
   "icons": [
     {
       "name": "coin",
-      "imageId": "rbxassetid://17054123574",
-      "sourceAssetId": "17054123630",
-      "creator": "proaAhmet201016",
-      "store": "https://create.roblox.com/store/asset/17054123630",
-      "style": "gold coin with red-orange rim and dollar sign, glossy, 3/4 view"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/coin-gold.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "d4e7e30f79be72464b6038fb8551629832f53b2079e96c84750156cf7ab70010",
+      "imageId": null
     },
     {
       "name": "coins",
-      "imageId": "rbxassetid://122885263338804",
-      "sourceAssetId": "91344841658831",
-      "creator": "Yoloalt202",
-      "store": "https://create.roblox.com/store/asset/91344841658831",
-      "style": "pile of glossy gold coins with thick black outline, simulator HUD look"
-    },
-    {
-      "name": "cash",
-      "imageId": "rbxassetid://11317276252",
-      "sourceAssetId": "11317276264",
-      "creator": "odahvi",
-      "store": "https://create.roblox.com/store/asset/11317276264",
-      "style": "green banded bundle of cash, shaded 3D block"
-    },
-    {
-      "name": "money_bag",
-      "imageId": "rbxassetid://586918318",
-      "sourceAssetId": "586918319",
-      "creator": "Godsavenger",
-      "store": "https://create.roblox.com/store/asset/586918319",
-      "style": "rendered brown-gold money sack with silver dollar sign and sparkles"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/coin-gold.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "d4e7e30f79be72464b6038fb8551629832f53b2079e96c84750156cf7ab70010",
+      "imageId": null
     },
     {
       "name": "gem",
-      "imageId": "rbxassetid://126570981452515",
-      "sourceAssetId": "86450819070593",
-      "creator": "katorea_1",
-      "store": "https://create.roblox.com/store/asset/86450819070593",
-      "style": "faceted blue diamond, glossy highlights"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/jewel.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "b96b07d0b22ee6427c86ef3c539466b8c2390edafa999a99f92f6d9d7dcadf64",
+      "imageId": null
     },
     {
       "name": "gift",
-      "imageId": "rbxassetid://591644027",
-      "sourceAssetId": "591644028",
-      "creator": "aleksis022",
-      "store": "https://create.roblox.com/store/asset/591644028",
-      "style": "red 3D gift box with white ribbon and bow"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/holiday-kit",
+      "kit_zip_sha256": "fde4d514d7297388d98058e8933ff614e071886f7ce57f9aea4b00d7698dd769",
+      "model": "Models/GLB format/present-a-round.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "aa0ff24679ec2d2a5fd77e95a4a9f028127bb0c6820e2b3b2dd1a2b18520c405",
+      "imageId": null
     },
     {
       "name": "basket",
-      "imageId": "rbxassetid://131257845174856",
-      "sourceAssetId": "125510463158051",
-      "creator": "coco732749",
-      "store": "https://create.roblox.com/store/asset/125510463158051",
-      "style": "red shopping basket with silver handle, dark outline"
-    },
-    {
-      "name": "book",
-      "imageId": "rbxassetid://90234444052958",
-      "sourceAssetId": "72788894953575",
-      "creator": "SigmaGames4Real",
-      "store": "https://create.roblox.com/store/asset/72788894953575",
-      "style": "glossy blue book with dark outline"
-    },
-    {
-      "name": "gear",
-      "imageId": "rbxassetid://91180931869357",
-      "sourceAssetId": "122011137552353",
-      "creator": "Timucin1234567890",
-      "store": "https://create.roblox.com/store/asset/122011137552353",
-      "style": "shaded grey 3D cog, metallic"
-    },
-    {
-      "name": "clover",
-      "imageId": "rbxassetid://16315291249",
-      "sourceAssetId": "16315291309",
-      "creator": "Den1zSENGUN",
-      "store": "https://create.roblox.com/store/asset/16315291309",
-      "style": "green gradient four-leaf clover with thick dark outline"
-    },
-    {
-      "name": "rebirth",
-      "imageId": "rbxassetid://18367579959",
-      "sourceAssetId": "18367579979",
-      "creator": "TherealTim_99",
-      "store": "https://create.roblox.com/store/asset/18367579979",
-      "style": "pink and blue circular arrows with thick dark outline (popular rebirth icon)"
-    },
-    {
-      "name": "trophy",
-      "imageId": "rbxassetid://109962967527967",
-      "sourceAssetId": "95831267035312",
-      "creator": "Tiamelek",
-      "store": "https://create.roblox.com/store/asset/95831267035312",
-      "style": "gold cup trophy, glossy 3D"
-    },
-    {
-      "name": "vip",
-      "imageId": "rbxassetid://116658997619348",
-      "sourceAssetId": "113763531212814",
-      "creator": "Mad_MooMan",
-      "store": "https://create.roblox.com/store/asset/113763531212814",
-      "style": "rendered gold crown with a blue band (blue accent, not pure gold)"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/mini-market",
+      "kit_zip_sha256": "6f2e69090e359204ace43e4c98dc3fb8639b75e423109672b5c890d194c45203",
+      "model": "Models/GLB format/shopping-basket.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "a3091c26d26e62854738f43de49ff92848b8149b5040dad86c44e891cf4dfa15",
+      "imageId": null
     },
     {
       "name": "star",
-      "imageId": "rbxassetid://95139082764448",
-      "sourceAssetId": "79341959855583",
-      "creator": "Yoloalt202",
-      "store": "https://create.roblox.com/store/asset/79341959855583",
-      "style": "faceted gold star with thick black outline"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/star.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "124703f06a422dc81eba82a5f09d1267a1c7c591801ec50d7ea2593b08375e73",
+      "imageId": null
     },
     {
       "name": "heart",
-      "imageId": "rbxassetid://17396419894",
-      "sourceAssetId": "17396419968",
-      "creator": "doggytohugeplshelp99",
-      "store": "https://create.roblox.com/store/asset/17396419968",
-      "style": "big glossy red 3D heart with highlight"
-    },
-    {
-      "name": "bolt",
-      "imageId": "rbxassetid://76057222759226",
-      "sourceAssetId": "73747812649931",
-      "creator": "diegoelcra3000",
-      "store": "https://create.roblox.com/store/asset/73747812649931",
-      "style": "glossy yellow-orange 3D lightning bolt"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/heart.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "1e9f633f8d341a141c59e1a5037c89e873d83167c757930d09e37648299103b7",
+      "imageId": null
     },
     {
       "name": "potion",
-      "imageId": "rbxassetid://76554102159737",
-      "sourceAssetId": "115407082727363",
-      "creator": "NotchifromMinecraft",
-      "store": "https://create.roblox.com/store/asset/115407082727363",
-      "style": "round flask of red potion, orange cork, thick dark outline, cartoon"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/mini-dungeon",
+      "kit_zip_sha256": "19c4648680cb1d2e8836cade96cbf9781c0c1f45fbc6d2ce41cee8239a3ec4d8",
+      "model": "Models/GLB format/potion.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "18e23286aa134633bd08b0b623ba9989248469f8829a6e82735dc0a46d5319fc",
+      "imageId": null
     },
     {
       "name": "egg",
-      "imageId": "rbxassetid://4829244230",
-      "sourceAssetId": "4829244248",
-      "creator": "SmohoUploadsFoods",
-      "store": "https://create.roblox.com/store/asset/4829244248",
-      "style": "white glossy egg with thick black outline; tinted per item",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/food-kit",
+      "kit_zip_sha256": "cdad90853682499b94c9fda2f87678b24bfd8f3264e0ed323f6b6a27fd7c6f6f",
+      "model": "Models/GLB format/egg.glb",
+      "render": {
+        "tint": "#F4F7FB"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "7ce01584dd2cb8a5fa8b48e2b8764cc47a08a0f06e740ce1666cee63c62da8eb",
+      "imageId": null,
       "tintable": true
     },
     {
       "name": "paw",
-      "imageId": "rbxassetid://18315163318",
-      "sourceAssetId": "18315163357",
-      "creator": "petilecanYT",
-      "store": "https://create.roblox.com/store/asset/18315163357",
-      "style": "dark grey glossy 3D paw print (greyscale, not colourful)"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-cat.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "5afd79abb2f5f8b160fd6a411e7815ac60e43e89941d9a31eb67670672d21e33",
+      "imageId": null
     },
     {
       "name": "sword",
-      "imageId": "rbxassetid://9587464384",
-      "sourceAssetId": "9587464403",
-      "creator": "Holedaye_E",
-      "store": "https://create.roblox.com/store/asset/9587464403",
-      "style": "yellow glossy cartoon sword with dark outline"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/mini-dungeon",
+      "kit_zip_sha256": "19c4648680cb1d2e8836cade96cbf9781c0c1f45fbc6d2ce41cee8239a3ec4d8",
+      "model": "Models/GLB format/weapon-sword.glb",
+      "render": {
+        "roll": -45
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "2c02d5a967dfde95d7e7f70cd25352082baa3ed7c229bd5e763691d270abbbd2",
+      "imageId": null
     },
     {
       "name": "shield",
-      "imageId": "rbxassetid://137896966343628",
-      "sourceAssetId": "75245587194588",
-      "creator": "lorenzo006130",
-      "store": "https://create.roblox.com/store/asset/75245587194588",
-      "style": "rendered wooden shield with silver rim"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/mini-dungeon",
+      "kit_zip_sha256": "19c4648680cb1d2e8836cade96cbf9781c0c1f45fbc6d2ce41cee8239a3ec4d8",
+      "model": "Models/GLB format/shield-round.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "a276c2c2438f97882b722147ad21a0c2d172762428c4116d5898963320fdfb1d",
+      "imageId": null
     },
     {
       "name": "chest",
-      "imageId": "rbxassetid://118258237448942",
-      "sourceAssetId": "130877733119179",
-      "creator": "MTA_0ver",
-      "store": "https://create.roblox.com/store/asset/130877733119179",
-      "style": "white-blue treasure chest with orange accents and thick dark outline"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/chest.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "72c6f9e851628ee0fe39199d387a763c39beba59abf78df0efb20e0574e2a3cf",
+      "imageId": null
     },
     {
       "name": "key",
-      "imageId": "rbxassetid://129025974248357",
-      "sourceAssetId": "92923557885046",
-      "creator": "ZoomedInYou",
-      "store": "https://create.roblox.com/store/asset/92923557885046",
-      "style": "glossy gold key with dark blue outline and sparkle"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/key.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "a014625bd812dadc5f7c5165d4bdef26c29aa7da0357a9ab9d357209a1bb4154",
+      "imageId": null
     },
     {
       "name": "lock",
-      "imageId": "rbxassetid://11220243318",
-      "sourceAssetId": "11220243330",
-      "creator": "Feffie06",
-      "store": "https://create.roblox.com/store/asset/11220243330",
-      "style": "brass padlock, shaded 3D, realistic-leaning"
-    },
-    {
-      "name": "check",
-      "imageId": "rbxassetid://78078299898562",
-      "sourceAssetId": "133147872794996",
-      "creator": "Catalu\u00f1a RP",
-      "store": "https://create.roblox.com/store/asset/133147872794996",
-      "style": "glossy green circle with white check mark"
-    },
-    {
-      "name": "close",
-      "imageId": "rbxassetid://8516027328",
-      "sourceAssetId": "8516027342",
-      "creator": "59995384",
-      "store": "https://create.roblox.com/store/asset/8516027342",
-      "style": "glossy red circle with white X"
-    },
-    {
-      "name": "info",
-      "imageId": "rbxassetid://17116440570",
-      "sourceAssetId": "17116440653",
-      "creator": "Rorodeli12",
-      "store": "https://create.roblox.com/store/asset/17116440653",
-      "style": "bright blue 'i' circle with thick dark outline"
-    },
-    {
-      "name": "clock",
-      "imageId": "rbxassetid://93354520570226",
-      "sourceAssetId": "72655596733689",
-      "creator": "Iooterrr",
-      "store": "https://create.roblox.com/store/asset/72655596733689",
-      "style": "blue 3D clock face with white dial"
-    },
-    {
-      "name": "map",
-      "imageId": "rbxassetid://10478300189",
-      "sourceAssetId": "10478300216",
-      "creator": "MicrowaveHumanoid",
-      "store": "https://create.roblox.com/store/asset/10478300216",
-      "style": "treasure map parchment with brown border, shaded; a rectangular sheet, flatter than the others"
-    },
-    {
-      "name": "home",
-      "imageId": "rbxassetid://111828988237589",
-      "sourceAssetId": "129393836499220",
-      "creator": "oipro800",
-      "store": "https://create.roblox.com/store/asset/129393836499220",
-      "style": "cute cartoon house with red roof and green bushes"
-    },
-    {
-      "name": "backpack",
-      "imageId": "rbxassetid://88156989101405",
-      "sourceAssetId": "82141314077722",
-      "creator": "Sm64cat",
-      "store": "https://create.roblox.com/store/asset/82141314077722",
-      "style": "red backpack with blue straps, thick dark outline"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/platformer-kit",
+      "kit_zip_sha256": "899605d237367688c6b42e41fff2206c0fb8d626163158294556353f7baa7c1b",
+      "model": "Models/GLB format/lock.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "5a11eb6976219b637df64e56786638105639bb48d5fcba8b5fef08fc11fc76b1",
+      "imageId": null
     },
     {
       "name": "pickaxe",
-      "imageId": "rbxassetid://84649374735196",
-      "sourceAssetId": "88849544550116",
-      "creator": "ratituiroblox",
-      "store": "https://create.roblox.com/store/asset/88849544550116",
-      "style": "diamond pickaxe with cyan head, thick dark outline"
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/survival-kit",
+      "kit_zip_sha256": "c3586341b5932c87eb43d75d915434f47daed168b17ed36a03e8ca9977c7443e",
+      "model": "Models/GLB format/tool-pickaxe.glb",
+      "render": {
+        "roll": -35
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "10eb05614b37ef63276dcff56031eb49cbfdc7807115db5ea0c4cb796b5110eb",
+      "imageId": null
     },
     {
-      "name": "fire",
-      "imageId": "rbxassetid://127710415047799",
-      "sourceAssetId": "136285199227362",
-      "creator": "Nyleonix",
-      "store": "https://create.roblox.com/store/asset/136285199227362",
-      "style": "glossy orange-yellow flame"
+      "name": "gear",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/gear.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "f331c0852c8b7b923f5206a84191556e6d6cb04f6a3d29f3fd4a34a023c9fb2b",
+      "imageId": null
     },
     {
-      "name": "ticket",
-      "imageId": "rbxassetid://17368125421",
-      "sourceAssetId": "17368125451",
-      "creator": "Matt746_2",
-      "store": "https://create.roblox.com/store/asset/17368125451",
-      "style": "orange glossy ticket with yellow star and thick dark outline"
+      "name": "rebirth",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/return.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "b378008df5210beae2f61316bfcea7dd9f4b35bdac770240ce8fa6d513c0b265",
+      "imageId": null
     },
     {
-      "name": "calendar",
-      "imageId": "rbxassetid://127173236987889",
-      "sourceAssetId": "127422083417653",
-      "creator": "Escapers Inc.",
-      "store": "https://create.roblox.com/store/asset/127422083417653",
-      "style": "red spiral-bound calendar with dark outline"
+      "name": "trophy",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/trophy.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "92cd5e2207c914d038d9b8d39c9b4920ce714ac4d64255310bca736a10f8e9f1",
+      "imageId": null
     },
     {
-      "name": "scroll",
-      "imageId": "rbxassetid://121588188091233",
-      "sourceAssetId": "77415395006201",
-      "creator": "srnatsuno",
-      "store": "https://create.roblox.com/store/asset/77415395006201",
-      "style": "cartoon parchment scroll tied with a purple ribbon, glossy"
+      "name": "check",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/checkmark.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "b71274d421b78c9a2e838c4840dc8de07934169556ec68c964ee17d5d0120336",
+      "imageId": null
+    },
+    {
+      "name": "close",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/cross.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "70eca5c84a3a91206fc759a6b2ceca4336a608163313556619c695018f8ac775",
+      "imageId": null
+    },
+    {
+      "name": "info",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/information.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "c3e6e7b626b3ad0c21bcaf001f18d78d2e85985d50a5cca1feeaf515545e338a",
+      "imageId": null
+    },
+    {
+      "name": "home",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/home.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "830b2648dbea96c6184d65a5792d727a3d61ceeff32ff3b99995838d1fb8101a",
+      "imageId": null
     },
     {
       "name": "arrow_up",
-      "imageId": "rbxassetid://110770057885112",
-      "sourceAssetId": "90973263112246",
-      "creator": "Mammoth1441",
-      "store": "https://create.roblox.com/store/asset/90973263112246",
-      "style": "green faceted up arrow with dark navy outline"
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/arrowUp.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "6bbf89a8cbc8a1e54cbe42eea5db7a832c421d73da39ec2a0801ad22569ea2cc",
+      "imageId": null
     },
     {
-      "name": "magnet",
-      "imageId": "rbxassetid://13905240521",
-      "sourceAssetId": "13905240588",
-      "creator": "KethuLol",
-      "store": "https://create.roblox.com/store/asset/13905240588",
-      "style": "red horseshoe magnet with white tips, glossy, cyan lines"
+      "name": "pet_cat",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-cat.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "5afd79abb2f5f8b160fd6a411e7815ac60e43e89941d9a31eb67670672d21e33",
+      "imageId": null
     },
     {
-      "name": "boots",
-      "imageId": "rbxassetid://86141670532057",
-      "sourceAssetId": "110839514992128",
-      "creator": "The Duelists",
-      "store": "https://create.roblox.com/store/asset/110839514992128",
-      "style": "gold-brown boots with a speed gauge and blue sparks (more realistic than cartoon)"
-    }
-  ],
-  "missing": [
+      "name": "pet_dog",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-dog.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "de99ef350e11723fcb97362c9700fe2673b37a542487282b308bfea6376c53fe",
+      "imageId": null
+    },
     {
-      "name": "rocket",
-      "tried": [
-        "rocket icon",
-        "rocket icon 3d cartoon",
-        "rocket ship icon",
-        "rocket icon glossy outline game",
-        "simulator rocket icon",
-        "jetpack icon"
-      ],
-      "note": "every free result was a flat white silhouette, had an opaque background, or was a realistic/pixel render; none was a transparent glossy 3D cartoon rocket. Candidate for Roblox AI generation."
+      "name": "pet_bunny",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-bunny.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "d6000856feb9cee9e6e826035b5ca2f0cf9bdef46d84f204fd78328f5c9622e3",
+      "imageId": null
+    },
+    {
+      "name": "pet_fox",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-fox.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "e1b6c6ef7df649025dc7a8dcbb7c7d1514c5759ad77d5607ef6c56b0563bd0b0",
+      "imageId": null
+    },
+    {
+      "name": "pet_panda",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-panda.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "989661fc6bdc48d038bb0d67c0597ee32b4aa8756a835139b3f74bebf0be7bb6",
+      "imageId": null
+    },
+    {
+      "name": "pet_tiger",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-tiger.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "ea0c946e31e18c7ef4cc0452ecfebe8a2f94d89079bb7f7a2a2244e28f10cbcf",
+      "imageId": null
+    },
+    {
+      "name": "pet_lion",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-lion.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "897347450385b42171c43ca68b5e33ce5c40326c66ab947f5134ddaeda541573",
+      "imageId": null
+    },
+    {
+      "name": "pet_penguin",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-penguin.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "498e8f9d5bdf54e774f3e75688ac25602e787afe0a180b098e827e99fe55c50c",
+      "imageId": null
+    },
+    {
+      "name": "pet_parrot",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-parrot.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "c80815c58524e53cdb9fff2d450ee848bb7c9b2e61805a76826ce8057e667510",
+      "imageId": null
+    },
+    {
+      "name": "pet_pig",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-pig.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "36acfdf35e503fb1f074fbd598ec360a911629a1c23f11d13094001dd3e2053a",
+      "imageId": null
+    },
+    {
+      "name": "pet_cow",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-cow.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "cc71a40549ee10b9c63d56a52400816ddf532b151ec48ee833cc9c5fc3d1c2e9",
+      "imageId": null
+    },
+    {
+      "name": "pet_koala",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-koala.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "ce54b5df3fc7a8e39c2a508525c3436f41f8b3287ef1989417562a9fe8b19190",
+      "imageId": null
+    },
+    {
+      "name": "pet_monkey",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-monkey.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "e269917ce9ec92246ee1d31a0fdde053ecb0acb025ef6c266ce740aadc90b7cb",
+      "imageId": null
+    },
+    {
+      "name": "pet_elephant",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-elephant.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "c2cf3aebc90aea6fa7f3ee8c6dbb9c352cdbecb4a1a771562ef158c7cc27a200",
+      "imageId": null
+    },
+    {
+      "name": "pet_bee",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-bee.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "797e9aea834718cdecba533f75c6569a692f1c62c4ab15f04465fdedb343ec7c",
+      "imageId": null
+    },
+    {
+      "name": "pet_chick",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/cube-pets",
+      "kit_zip_sha256": "b3bdc99a2ec92c687b875718c5d01e9231d2711ed0e2845f295b474bb42a1283",
+      "model": "Models/GLB format/animal-chick.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "9e3dedb288fb483791cbd11410e571c67fc1a264f76caa2666453f7c43a3c8ac",
+      "imageId": null
+    },
+    {
+      "name": "music",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/musicOn.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "c02761662b00c97ade0e124f4c97625f3e06f00f89e5d172aa27fd398bf9e8e0",
+      "imageId": null
+    },
+    {
+      "name": "sound",
+      "family": "kenney-glyphs",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/game-icons",
+      "file": "packages/asset-library/packs/kenney-game-icons/white/audioOn.png",
+      "render": {
+        "contour": "#0B1A33"
+      },
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "e0be428be3a81d0ec5e28cb3b61f65d7a48035ec7e20307b5c85bd45565dceb9",
+      "imageId": null
+    },
+    {
+      "name": "cart",
+      "family": "kenney-3d",
+      "author": "Kenney",
+      "source_url": "https://kenney.nl/assets/mini-market",
+      "kit_zip_sha256": "6f2e69090e359204ace43e4c98dc3fb8639b75e423109672b5c890d194c45203",
+      "model": "Models/GLB format/shopping-cart.glb",
+      "render": {},
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "png_sha256": "7e93081f84c6c97c6d442b5d8aae394af6c863db7b7f57d8d9657351020f9f31",
+      "imageId": null
     }
   ]
 }

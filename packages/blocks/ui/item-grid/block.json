@@ -14,9 +14,9 @@
       },
       "currency": {
         "type": "string",
-        "pattern": "^(R\\$ |\\$|\u20ac|\u00a3)?$",
+        "pattern": "^(R\\$ |\\$|€|£)?$",
         "default": "",
-        "description": "Real-money symbol before each price (R$ , $, \u20ac, \u00a3) or \"\" for an in-game currency, which shows as priceIcon"
+        "description": "Real-money symbol before each price (R$ , $, €, £) or \"\" for an in-game currency, which shows as priceIcon"
       },
       "payWith": {
         "type": "string",
@@ -105,7 +105,26 @@
                 "scroll",
                 "arrow_up",
                 "magnet",
-                "boots"
+                "boots",
+                "pet_cat",
+                "pet_dog",
+                "pet_bunny",
+                "pet_fox",
+                "pet_panda",
+                "pet_tiger",
+                "pet_lion",
+                "pet_penguin",
+                "pet_parrot",
+                "pet_pig",
+                "pet_cow",
+                "pet_koala",
+                "pet_monkey",
+                "pet_elephant",
+                "pet_bee",
+                "pet_chick",
+                "music",
+                "sound",
+                "cart"
               ],
               "default": "star",
               "description": "An icon from the kit's pack, by name"
@@ -230,7 +249,26 @@
                 "scroll",
                 "arrow_up",
                 "magnet",
-                "boots"
+                "boots",
+                "pet_cat",
+                "pet_dog",
+                "pet_bunny",
+                "pet_fox",
+                "pet_panda",
+                "pet_tiger",
+                "pet_lion",
+                "pet_penguin",
+                "pet_parrot",
+                "pet_pig",
+                "pet_cow",
+                "pet_koala",
+                "pet_monkey",
+                "pet_elephant",
+                "pet_bee",
+                "pet_chick",
+                "music",
+                "sound",
+                "cart"
               ],
               "default": "star",
               "description": "An icon from the kit's pack, by name"
