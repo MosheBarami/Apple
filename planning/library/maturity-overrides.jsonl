@@ -17,6 +17,16 @@
 {"id": "gi:skoll:tec-9", "maturity": "Mild", "reason": "L4: a real firearm model; offered for shooter or military games only (two critics, L-A4 sample 2 2026-10-08)"}
 {"id": "gi:skoll:thompson-m1", "maturity": "Mild", "reason": "L4: a real firearm model; offered for shooter or military games only (two critics, L-A4 sample 2 2026-10-08)"}
 {"id": "gi:skoll:thompson-m1928", "maturity": "Mild", "reason": "L4: a real firearm model; offered for shooter or military games only (two critics, L-A4 sample 2 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-colored-genericitem-color-049", "grade": "C", "reason": "L4: a real-world brand logo (Apple) on a laptop (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-colored-genericitem-color-099", "grade": "C", "reason": "L4: reads as a cigarette pack (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-colored-genericitem-color-119", "grade": "C", "reason": "L4: alcohol (beer) (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-colored-genericitem-color-120", "grade": "C", "reason": "L4: alcohol (wine) (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-colored-genericitem-color-127", "grade": "C", "reason": "L4: reads as a beer or wine bottle (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-white-genericitem-white-049", "grade": "C", "reason": "L4: a real-world brand logo (Apple) on a laptop (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-white-genericitem-white-099", "grade": "C", "reason": "L4: reads as a cigarette pack (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-white-genericitem-white-119", "grade": "C", "reason": "L4: alcohol (beer) (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-white-genericitem-white-120", "grade": "C", "reason": "L4: alcohol (wine) (two critics, Generic Items sweep 2026-10-08)"}
+{"id": "kenney2d:generic-items:png-white-genericitem-white-127", "grade": "C", "reason": "L4: reads as a beer or wine bottle (two critics, Generic Items sweep 2026-10-08)"}
 {"id": "kenney2d:input-prompts:flairs-flairs-sheet-default", "grade": "C", "reason": "not an icon: a contact sheet of the pack (several icons in one image)"}
 {"id": "kenney2d:input-prompts:flairs-flairs-sheet-double", "grade": "C", "reason": "not an icon: a contact sheet of the pack (several icons in one image)"}
 {"id": "kenney2d:input-prompts:generic-generic-sheet-default", "grade": "C", "reason": "not an icon: a contact sheet of the pack (several icons in one image)"}

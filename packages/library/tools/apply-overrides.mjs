@@ -22,7 +22,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const ov = new Map(readFileSync(ovFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).map((o) => [o.id, o]));
   const touched = [], demoted = [], found = new Set();
   for (const f of readdirSync(dir).filter((x) => x.endsWith('.jsonl'))) {
-    const items = readFileSync(join(dir, f), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    const lines = readFileSync(join(dir, f), 'utf8').split('\n').filter(Boolean);
+    const items = lines.map((l) => JSON.parse(l));
     const out = items.map((it) => {
       const o = ov.get(it.id);
       if (!o) return it;
@@ -32,7 +33,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       touched.push(next);
       return next;
     });
-    if (out.some((it, k) => it !== items[k])) writeFileSync(join(dir, f), out.map((i) => JSON.stringify(i)).join('\n') + '\n'); // untouched files keep their bytes
+    // Untouched files, and untouched lines, keep their bytes: the diff shows only what changed.
+    const changed = out.map((it, k) => JSON.stringify(it) !== JSON.stringify(items[k]));
+    if (changed.some(Boolean)) writeFileSync(join(dir, f), out.map((it, k) => (changed[k] ? JSON.stringify(it) : lines[k])).join('\n') + '\n');
   }
   writeFileSync(touchedFile, touched.map((i) => JSON.stringify(i)).join('\n') + '\n');
   writeFileSync(demotedFile, demoted.join('\n') + '\n');
