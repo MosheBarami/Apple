@@ -64,9 +64,9 @@ test('itemSql upserts an item, escapes quotes, and never overwrites a grade on r
   assert.match(sql, /'Bob''s crate'/);
   assert.match(sql, /ON CONFLICT\(id\) DO UPDATE SET/);
   assert.doesNotMatch(sql.split('DO UPDATE SET')[1], /grade = excluded\.grade/);
-  assert.match(sql, /, NULL, 12, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'no sanitize report, triangles, an empty grade, no code fields, no body, then the update time');
+  assert.match(sql, /, NULL, 12, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'no sanitize report, triangles, an empty grade, no code fields, no body, no maturity, then the update time');
   const skill = itemSql({ id: 'skill:docs:a:b', title: 'B (A)', kind: 'skill', source_url: 'https://x', author: 'Roblox', licence_words: 'CC-BY-4.0', licence_class: 'cc-by-4.0', licence_url: 'https://y', fetched_at: 'T', uploader: 'none', ai_check: { pass: true }, text: "1. Insert a Part.\n2. Name it 'Lava'." }, 'T');
-  assert.match(skill, /, '1\. Insert a Part\.\n2\. Name it ''Lava''\.', 'T'\) ON CONFLICT/, "a skill's steps go to body, quotes escaped");
+  assert.match(skill, /, '1\. Insert a Part\.\n2\. Name it ''Lava''\.', NULL, 'T'\) ON CONFLICT/, "a skill's steps go to body, quotes escaped");
 });
 
 test('gradeSql writes only the grade, its notes and the time, for one id', async () => {
