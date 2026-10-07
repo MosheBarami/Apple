@@ -15,6 +15,7 @@ export function thumbOf(item, priv) {
   const key = item.id.replace(/:/g, '__');
   if (item.id.startsWith('kenney:')) return join(priv, 'library-thumbs', `${key}.png`);
   if (item.id.startsWith('oga:')) return join(priv, 'library-thumbs', 'oga', `${key}.png`);
+  if (item.id.startsWith('kaykit:')) return join(priv, 'library-thumbs', 'kaykit', `${key}.png`);
   if (item.id.startsWith('gi:')) return join(priv, 'library-src', 'game-icons', item.file);
   if (item.id.startsWith('kenney2d:')) return join(priv, 'library-src', 'kenney-2d', item.file);
   return undefined;
