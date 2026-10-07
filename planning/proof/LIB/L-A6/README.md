@@ -39,3 +39,15 @@ unchanged. The code and skill queries that still fail are game mechanics the doc
 proximity door, checkpoints, double jump, a following pet, crate opening, an inventory, a day/night cycle, a mobile
 joystick): next source is permissive open-source Luau modules found by research per gap. StudPilot's own blocks and
 authored skill cards do not count here (product code and AI-written guidance are not library content, L1).
+
+## Open-source code for the mechanics gaps (deep research, 2026-10-08)
+
+A deep-research run (99 agents, every licence checked against the repo's LICENSE file) looked for MIT/Apache/BSD/CC0
+Luau modules for 35 mechanics the code and skill queries ask for. Verified: Trove and Janitor (cleanup), Jest-Lua and
+TestEZ (testing; TestEZ archived), Quenty's Ragdoll package (Nevermore, many dependencies) and IITPP's
+Anchored-Platform-Player-Movement (moving platforms). No qualifying repo survived verification for the other needs
+(doors, checkpoints, double jump, pets and eggs, crates, inventory, dialogue, quests, day/night, pools, projectiles,
+grappling, fishing, tycoons, placement, vehicles, moderation, joystick, name tags, cutscenes and more). The permissive
+open-source Luau ecosystem does not cover game mechanics; those live in Creator Store models (scripts must be audited,
+L4) or are StudPilot's own reviewed blocks (product code, not library content). L-A6 cannot reach 90 % from
+open sources alone: the Creator Store (O-KEY) is the remaining source for props, characters, buildings and mechanics.

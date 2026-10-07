@@ -59,6 +59,10 @@ and put them here; until then this item waits on O-GROUP.
 5. Paste it yourself into `~/Developer/StudPilot/.env` as `ROBLOX_GROUP_ASSETS_KEY=...` and the group ID as
    `ROBLOX_GROUP_ID=...`. Tell Claude Code "group key in".
 
+Why it matters now (2026-10-08): the library retrieval test L-A6 stands at 67.5 % (bar 90 %). Of the queries that
+still fail, nearly all are content the open sources do not have: specific props, characters, landmarks and game
+mechanics. The Creator Store is the remaining source (planning/proof/LIB/L-A6/README.md).
+
 ### O-TOOLBOX. Covered by O-KEY (§4.5.4)
 Research (planning/library/research/roblox-rules.md): the official search is POST
 https://apis.roblox.com/toolbox-service/v2/assets:search with an API key carrying `creator-store-product:read`. Add that
