@@ -66,3 +66,9 @@ test('itemSql upserts an item, escapes quotes, and never overwrites a grade on r
   assert.doesNotMatch(sql.split('DO UPDATE SET')[1], /grade = excluded\.grade/);
   assert.match(sql, /, 12, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'triangles, an empty grade, then the update time');
 });
+
+test('gradeSql writes only the grade, its notes and the time, for one id', async () => {
+  const { gradeSql } = await import('../src/to-sql.mjs');
+  const sql = gradeSql({ id: 'kenney:k:a', grade: 'B', grade_notes: [{ critic: '1', grade: 'B', why: "plain" }] }, 'T');
+  assert.match(sql, /^UPDATE library_items SET grade = 'B', grade_notes = '\[.*\]', updated_at = 'T' WHERE id = 'kenney:k:a';$/);
+});

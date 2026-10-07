@@ -1,5 +1,6 @@
 // Master plan §4.4 step 8 (index, D1 part): library items (JSONL) to SQL upserts for `library_items` (schema.sql).
-// Grade stays as the item has it (empty until two critics grade it), so nothing reaches the build model early (L5).
+// The upsert never touches the grade; a graded item gets its own UPDATE, so only items two critics graded A or B
+// reach the build model (L5).
 //
 //   node packages/library/src/to-sql.mjs planning/library/items/kenney-3d.jsonl > /tmp/kenney.sql
 //   wrangler d1 execute studpilot-corpus --remote --file /tmp/kenney.sql
@@ -21,10 +22,20 @@ export function itemSql(it, now) {
   return `INSERT INTO library_items (${COLUMNS.join(', ')}) VALUES (${values.join(', ')}) ON CONFLICT(id) DO UPDATE SET ${update};`;
 }
 
+/** The grade of a graded item (L5), written by itself so a re-ingest and a re-grade never overwrite each other. Pure. */
+export function gradeSql(it, now) {
+  return `UPDATE library_items SET grade = ${q(it.grade)}, grade_notes = ${json(it.grade_notes)}, updated_at = ${q(now)} WHERE id = ${q(it.id)};`;
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const files = process.argv.slice(2);
   if (!files.length) { console.error('usage: to-sql.mjs <items.jsonl> [...]'); process.exit(2); }
   const now = new Date().toISOString();
   process.stdout.write(readFileSync(new URL('../schema.sql', import.meta.url), 'utf8') + '\n');
-  for (const f of files) for (const line of readFileSync(f, 'utf8').split('\n')) if (line.trim()) process.stdout.write(itemSql(JSON.parse(line), now) + '\n');
+  for (const f of files) for (const line of readFileSync(f, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    const it = JSON.parse(line);
+    process.stdout.write(itemSql(it, now) + '\n');
+    if (it.grade) process.stdout.write(gradeSql(it, now) + '\n');
+  }
 }
