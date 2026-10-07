@@ -44,12 +44,12 @@ export type Ink = keyof typeof INKS;
 
 /** Geometry at 1080p (spec §3.2): contour, rim, corner radius (999 = a pill) and lip. */
 export const GEO = {
-  window: { contour: 6, rim: 5, radius: 22, lip: 0, studs: 0.7 },
-  card: { contour: 5, rim: 4, radius: 14, lip: 4, studs: 0.68 },
-  button: { contour: 4, rim: 3, radius: 12, lip: 8, studs: 1 },
+  window: { contour: 6, rim: 7, radius: 22, lip: 0, studs: 0.7 },
+  card: { contour: 5, rim: 6, radius: 14, lip: 4, studs: 0.68 },
+  button: { contour: 4, rim: 4, radius: 12, lip: 8, studs: 1 },
   chip: { contour: 3, rim: 2, radius: 999, lip: 3, studs: 1 },
-  close: { contour: 4, rim: 3, radius: 12, lip: 5, studs: 1 },
-  tile: { contour: 5, rim: 4, radius: 16, lip: 5, studs: 0.7 },
+  close: { contour: 4, rim: 4, radius: 12, lip: 5, studs: 1 },
+  tile: { contour: 5, rim: 6, radius: 16, lip: 5, studs: 0.7 },
   bar: { contour: 4, rim: 0, radius: 999, lip: 0, studs: 1 },
 } as const;
 /** `studs` is the stud layer's ImageTransparency, measured with ui-metrics.py to land at 1.5-3 % pattern strength. */
@@ -284,7 +284,7 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
           props: { Size: udim2(1, 0, 0.16, 0), BackgroundTransparency: 1, ZIndex: 4 },
           attributes: tag('window', 'header'),
           children: [
-            label('window', 'Title', n.title, { size: [0.62, 0, 0.7, 0], position: [0.17, 0, 0.55, 0], anchor: [0, 0.5], align: 'Left', max: 44, z: 7 }),
+            label('window', 'Title', n.title, { size: [0.62, 0, 0.82, 0], position: [0.17, 0, 0.52, 0], anchor: [0, 0.5], align: 'Left', max: 72, z: 7 }),
             icon('window', n.icon, { size: [0.14, 0, 1.3, 0], position: [0.015, 0, 0.42, 0], anchor: [0, 0.5], z: 9 }),
             face('window', 'Close', 'berry', {
               size: [1, 0, 0.82, 0], position: [1, 0, 0, 0], anchor: [0.62, 0.32], aspect: 1, studs: false, button: true, z: 10, geo: GEO.close,

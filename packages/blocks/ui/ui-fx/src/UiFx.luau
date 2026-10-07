@@ -81,7 +81,7 @@ end
 local function tween(o, t, props, style)
 	TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
 end
--- Hover 1.05 in 0.08 s, growing from the button's centre; inside a list layout (HUD tiles) a scale would push the
+-- Hover 1.08 in 0.08 s, growing from the button's centre; inside a list layout (HUD tiles) a scale would push the
 -- neighbours, so the button tilts 4 degrees instead. The press drops the face fully onto its lip and scales to 0.96 in
 -- 0.05 s, back in 0.09 s. A grey (unaffordable, locked or done) button shakes +-6 px three times in 0.25 s instead.
 local function centre(o)
@@ -100,10 +100,10 @@ local function button(fill)
 	local lip = holder:FindFirstChild("Lip")
 	local depth = lip and (lip:GetAttribute("StudKitLip") or 0) or 0
 	local over = false
-	local function rest() return over and (listed and 1 or 1.05) or 1 end
+	local function rest() return over and (listed and 1 or 1.08) or 1 end
 	fill.MouseEnter:Connect(function()
 		over = true
-		if listed then tween(holder, 0.08, { Rotation = -4 }) else tween(scale, 0.08, { Scale = 1.05 }) end
+		if listed then tween(holder, 0.08, { Rotation = -4 }) else tween(scale, 0.08, { Scale = 1.08 }) end
 	end)
 	fill.MouseLeave:Connect(function()
 		over = false
@@ -123,7 +123,7 @@ local function button(fill)
 			return
 		end
 		tween(fill, 0.05, { Position = UDim2.new(0, 0, 0, depth * k()) })
-		tween(scale, 0.05, { Scale = 0.96 })
+		if not listed then tween(scale, 0.05, { Scale = 0.96 }) end -- in a list a scale would push the neighbours
 	end)
 	fill.MouseButton1Up:Connect(function()
 		tween(fill, 0.09, { Position = UDim2.new(0, 0, 0, 0) })
