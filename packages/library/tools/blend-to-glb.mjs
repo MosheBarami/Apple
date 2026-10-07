@@ -37,19 +37,24 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const manifestFile = join(outDir, 'manifest.json');
     const manifest = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, 'utf8')) : {};
     const todo = blends.map((src) => ({ src, out: join(outDir, basename(src).replace(/\.blend$/i, '.glb')) })).filter((t) => !manifest[basename(t.out)]);
-    for (let i = 0; i < todo.length; i += 40) {
+    const run = (batch) => {
       const list = join(outDir, 'list.json');
-      writeFileSync(list, JSON.stringify(todo.slice(i, i + 40)));
+      writeFileSync(list, JSON.stringify(batch));
       let log = '';
       try { log = execFileSync('blender', ['--background', '--factory-startup', '--disable-autoexec', '--python', script, '--', list], { encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { log = String(e.stdout ?? ''); }
       for (const line of log.split('\n').filter((l) => l.startsWith('BLEND-EXPORT '))) {
         const r = JSON.parse(line.slice(13));
         manifest[basename(r.src).replace(/\.blend$/i, '.glb')] = { from: relative(join(dir, pack), r.src), ...r, src: undefined };
       }
+    };
+    for (let i = 0; i < todo.length; i += 40) run(todo.slice(i, i + 40));
+    // A file that crashes Blender takes the rest of its batch with it: those run alone, and a crash is a failure.
+    for (const t of todo.filter((x) => !manifest[basename(x.out)])) {
+      run([t]);
+      manifest[basename(t.out)] ??= { from: relative(join(dir, pack), t.src), ok: false, error: 'Blender exited without a result' };
     }
     writeFileSync(manifestFile, JSON.stringify(manifest, null, 1));
     const vals = Object.values(manifest);
-    const lost = todo.filter((t) => !manifest[basename(t.out)]).length; // Blender exited before reporting; retried on the next run
-    console.log(`${pack}: ${vals.filter((v) => v.ok).length} converted, ${vals.filter((v) => !v.ok).length} failed${lost ? `, ${lost} without a result (run again)` : ''}`);
+    console.log(`${pack}: ${vals.filter((v) => v.ok).length} converted, ${vals.filter((v) => !v.ok).length} failed`);
   }
 }
