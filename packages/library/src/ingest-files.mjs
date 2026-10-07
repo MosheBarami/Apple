@@ -24,7 +24,9 @@ const convertedFrom = (packDir, f) => {
   const m = join(dirname(f), 'manifest.json');
   return existsSync(m) ? JSON.parse(readFileSync(m, 'utf8'))[basename(f)] : undefined;
 };
-const KIND_OF_CATEGORY = { 1: 'prop', 2: 'building', 3: 'map', 4: 'character', 5: 'vehicle', 13: 'animation' };
+// A pack the ledger files under category 3 (maps and environments) holds terrain and scenery pieces, not finished maps:
+// they are props tagged 'environment'. A complete map is a different item (a place), never a single model.
+const KIND_OF_CATEGORY = { 1: 'prop', 2: 'building', 3: 'prop', 4: 'character', 5: 'vehicle', 13: 'animation' };
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const words = (s) => s.replace(/[-_.]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
 
@@ -95,7 +97,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
           ...(lic.class.startsWith('cc-by') ? { attribution: `${row.pack} by ${author} (${lic.class.toUpperCase()}, ${row.url})${notice ? `. ${notice}` : ''}` } : {}),
           fetched_at: JSON.parse(readFileSync(join(dir, ps, 'fetch.json'), 'utf8')).at,
           uploader: 'none', file: relative(dir, f), file_sha256: createHash('sha256').update(readFileSync(f)).digest('hex'),
-          categories: row.categories, tags,
+          categories: row.categories, tags: (row.categories ?? [])[0] === 3 ? [...tags, 'environment'] : tags,
           checks: { triangles: st.triangles, meshes: st.meshes, size: st.size, format: extname(f).slice(1).toLowerCase(), ...(conv ? { converted_from: conv.from, blender: conv.blender } : {}) },
           ai_check: aiCheck({ title, tags, created: posted, creator: author }, known, new Date().toISOString()),
         };

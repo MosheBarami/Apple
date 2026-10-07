@@ -19,3 +19,12 @@ test('L-A1 counts by category and grade; L-A2 lists any item that fails validati
   assert.deepEqual(r.counts[1], { A: 3, B: 0, C: 1, ungraded: 0 });
   assert.deepEqual(r.failures.map((f) => f.id), ['x:y:nc', 'x:y:by'], 'a banned term, and CC BY without attribution');
 });
+
+test('L-A6 finds each visual item\'s preview where its pipeline left it', async () => {
+  const { thumbOf } = await import('../tools/retrieval-test.mjs');
+  assert.equal(thumbOf({ id: 'kenney:nature-kit:tree' }, '/p'), '/p/library-thumbs/kenney__nature-kit__tree.png');
+  assert.equal(thumbOf({ id: 'oga:pack:rock' }, '/p'), '/p/library-thumbs/oga/oga__pack__rock.png');
+  assert.equal(thumbOf({ id: 'gi:lorc:sword', file: 'lorc/sword.svg' }, '/p'), '/p/library-src/game-icons/lorc/sword.svg');
+  assert.equal(thumbOf({ id: 'kenney2d:ui-pack:x', file: 'ui-pack/PNG/x.png' }, '/p'), '/p/library-src/kenney-2d/ui-pack/PNG/x.png');
+  assert.equal(thumbOf({ id: 'skill:docs:a:b' }, '/p'), undefined);
+});

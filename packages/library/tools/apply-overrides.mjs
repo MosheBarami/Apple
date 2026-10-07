@@ -32,7 +32,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       touched.push(next);
       return next;
     });
-    writeFileSync(join(dir, f), out.map((i) => JSON.stringify(i)).join('\n') + '\n');
+    if (out.some((it, k) => it !== items[k])) writeFileSync(join(dir, f), out.map((i) => JSON.stringify(i)).join('\n') + '\n'); // untouched files keep their bytes
   }
   writeFileSync(touchedFile, touched.map((i) => JSON.stringify(i)).join('\n') + '\n');
   writeFileSync(demotedFile, demoted.join('\n') + '\n');
