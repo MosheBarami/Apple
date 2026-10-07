@@ -137,7 +137,8 @@
          "max": 60,
          "icon": "{{priceIcon}}",
          "attributes": {
-          "UI_Shine": true
+          "UI_Shine": true,
+          "UI_Pulse": true
          }
         },
         {
@@ -160,7 +161,10 @@
          "anchor": [
           0,
           0.5
-         ]
+         ],
+         "attributes": {
+          "UI_Wiggle": true
+         }
         }
        ],
        "each": "featured"

@@ -100,13 +100,27 @@ local function button(fill)
 	local lip = holder:FindFirstChild("Lip")
 	local depth = lip and (lip:GetAttribute("StudKitLip") or 0) or 0
 	local over = false
+	-- A soft white lift on the face while hovered, so the hover reads in a still frame too.
+	local glow = Instance.new("Frame")
+	glow.Name = "StudPilotGlow"
+	glow.BackgroundColor3 = Color3.new(1, 1, 1)
+	glow.BackgroundTransparency = 1
+	glow.BorderSizePixel = 0
+	glow.Size = UDim2.fromScale(1, 1)
+	glow.ZIndex = fill.ZIndex + 1
+	glow:SetAttribute("StudKit", "fx.glow")
+	local round = fill:FindFirstChildOfClass("UICorner")
+	if round then round:Clone().Parent = glow end
+	glow.Parent = fill
 	local function rest() return over and (listed and 1 or 1.08) or 1 end
 	fill.MouseEnter:Connect(function()
 		over = true
+		tween(glow, 0.08, { BackgroundTransparency = 0.8 })
 		if listed then tween(holder, 0.08, { Rotation = -4 }) else tween(scale, 0.08, { Scale = 1.08 }) end
 	end)
 	fill.MouseLeave:Connect(function()
 		over = false
+		tween(glow, 0.12, { BackgroundTransparency = 1 })
 		if listed then tween(holder, 0.08, { Rotation = 0 }) else tween(scale, 0.08, { Scale = 1 }) end
 	end)
 	fill.MouseButton1Down:Connect(function()
@@ -153,10 +167,22 @@ local function pulse(gui)
 	local scale = scaleOf(gui)
 	task.spawn(function()
 		while gui.Parent do
-			tween(scale, 0.6, { Scale = 1.12 }, Enum.EasingStyle.Sine)
+			tween(scale, 0.6, { Scale = gui:GetAttribute("UI_Pulse") and 1.05 or 1.12 }, Enum.EasingStyle.Sine) -- a call to action breathes gently; a badge pulses
 			task.wait(0.6)
 			tween(scale, 0.6, { Scale = 1 }, Enum.EasingStyle.Sine)
 			task.wait(0.6)
+		end
+	end)
+end
+local function wiggle(gui)
+	local base = gui.Rotation
+	task.spawn(function()
+		while gui.Parent do
+			for _, r in { 6, -6, 4, -4, 0 } do
+				tween(gui, 0.12, { Rotation = base + r }, Enum.EasingStyle.Sine)
+				task.wait(0.12)
+			end
+			task.wait(2)
 		end
 	end)
 end
@@ -193,7 +219,8 @@ local function wire(gui)
 	if gui:GetAttribute("UI_Spin") then done[gui] = true; spin(gui, gui:GetAttribute("UI_Spin")) end
 	if gui:GetAttribute("UI_Bob") then done[gui] = true; bob(gui, math.max(4, gui.AbsoluteSize.Y * 0.05 / k()), 1.6) end
 	if gui:GetAttribute("UI_Shine") then done[gui] = true; shine(gui) end
-	if gui:GetAttribute("StudKit") == "badge.holder" then done[gui] = true; pulse(gui) end
+	if gui:GetAttribute("StudKit") == "badge.holder" or gui:GetAttribute("UI_Pulse") then done[gui] = true; pulse(gui) end
+	if gui:GetAttribute("UI_Wiggle") then done[gui] = true; wiggle(gui) end
 	if BOB and string.match(gui.Name, "^Offer%d+$") then done[gui] = true; bob(gui, 4, 3) end
 end
 for _, d in playerGui:GetDescendants() do wire(d) end
