@@ -131,3 +131,15 @@ test('visual-building guides get an embed bucket instead of staying keyword-only
   }
   assert.equal(guidePriority('production/monetization/index.md'), 99);
 });
+
+// 2026-10-07: fetch.mjs clones into owner__repo folders while chunk.mjs read the old bare names, so it wrote an empty
+// chunks.jsonl that upload.mjs would have pruned the live index to; and priority-99 pages were never embedded.
+test('chunk.mjs reads either folder name, refuses an empty corpus, and embeds every page within budget', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('./chunk.mjs', import.meta.url), 'utf8');
+  assert.match(src, /rawDir\('Roblox__creator-docs', 'creator-docs'\)/);
+  assert.match(src, /rawDir\('luau-lang__site', 'luau-site'\)/);
+  assert.match(src, /if \(all\.length < MIN_CHUNKS\) \{[\s\S]{0,300}process\.exit\(1\)/, 'a corpus below the floor is never written');
+  assert.match(src, /c\.embed = embedBudget > 0;\n/, 'priority orders the budget and never excludes a page');
+  assert.doesNotMatch(src, /c\._priority < 99 && embedBudget/);
+});

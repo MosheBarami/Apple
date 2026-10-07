@@ -17,8 +17,15 @@ import YAML from 'yaml';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RAW = path.join(ROOT, 'raw');
 const DATA = path.join(ROOT, 'data');
-const CREATOR = path.join(RAW, 'creator-docs', 'content', 'en-us');
-const LUAU_SITE = path.join(RAW, 'luau-site');
+// fetch.mjs clones into owner__repo folders; checkouts made before that keep their bare names. Either is read.
+const rawDir = (...names) => names.map((n) => path.join(RAW, n)).find((p) => existsSync(p)) ?? path.join(RAW, names[0]);
+const CREATOR_NAME = existsSync(path.join(RAW, 'Roblox__creator-docs')) ? 'Roblox__creator-docs' : 'creator-docs';
+const LUAU_NAME = existsSync(path.join(RAW, 'luau-lang__site')) ? 'luau-lang__site' : 'luau-site';
+const CREATOR = path.join(rawDir('Roblox__creator-docs', 'creator-docs'), 'content', 'en-us');
+const LUAU_SITE = rawDir('luau-lang__site', 'luau-site');
+// A corpus this small means a source was not found, not that the docs shrank: writing it would let upload.mjs prune
+// the live index down to nothing (2026-10-07: the folders were renamed and 0 chunks were written).
+const MIN_CHUNKS = 3000;
 
 const EMBED_CAP = 12000;
 const API_CHUNK_MAX = 3500; // chars per api chunk before splitting by member group
@@ -487,7 +494,8 @@ async function buildLuauChunks() {
   // license gate: fetch.mjs records verification in raw/manifest.json
   try {
     const manifest = JSON.parse(readFileSync(path.join(RAW, 'manifest.json'), 'utf8'));
-    const lic = manifest.sources?.['luau-site']?.license;
+    const entry = manifest.sources?.[LUAU_NAME] ?? manifest.sources?.['luau-site'];
+    const lic = entry?.license ?? entry?.licence;
     if (!lic?.ok) {
       console.warn(`[chunk] luau-site license not verified (${lic?.detail ?? 'unknown'}) — SKIPPING Luau docs.`);
       return { chunks: out, files, skipped: `license ${lic?.detail ?? 'unknown'}` };
@@ -536,7 +544,9 @@ async function main() {
   }
   const guideChunks = [...luau.chunks, ...guides.chunks].sort((a, b) => a._priority - b._priority);
   for (const c of guideChunks) {
-    c.embed = c._priority < 99 && embedBudget > 0;
+    // Priority orders the budget; it never excludes a page while budget remains (master plan §4.3 category 15: 100 %
+    // of the docs). The comment on guidePriority always said 'unless budget allows'; the code never allowed it.
+    c.embed = embedBudget > 0;
     if (c.embed) embedBudget--;
   }
 
@@ -548,6 +558,10 @@ async function main() {
     seen.set(c.vecId, c.url);
   }
 
+  if (all.length < MIN_CHUNKS) {
+    console.error(`[chunk] only ${all.length} chunks (creator-docs at ${CREATOR}, luau at ${LUAU_SITE}): refusing to write data/chunks.jsonl, which upload.mjs would prune the live index to.`);
+    process.exit(1);
+  }
   const outPath = path.join(DATA, 'chunks.jsonl');
   const jsonl = all
     .map(({ _priority, ...c }) => JSON.stringify(c))
