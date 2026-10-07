@@ -1,5 +1,5 @@
-// L5 grading boards for image icons (SVG or PNG): per family, numbered 10 x 10 boards of the icons as they are, each
-// with its name under it, and an index of number -> item id (the same index.json shape as the 3D boards).
+// L5 grading boards for image icons (SVG or PNG): per family, numbered 10 x 10 boards of the icons as they are (pixel-art packs
+// scaled without smoothing), each with its name under it, and an index of number -> item id (the same index.json shape as the 3D boards).
 //
 //   node packages/library/tools/icon-boards.mjs <items.jsonl> <root-dir> <out-dir>
 import http from 'node:http';
@@ -33,7 +33,7 @@ for (const [family, its] of [...families].sort()) {
   its.sort((x, y) => x.id.localeCompare(y.id));
   for (let s = 0; s * PER < its.length; s++) {
     const chunk = its.slice(s * PER, (s + 1) * PER);
-    const cells = chunk.map((it, k) => `<div class=c><b>${k + 1}</b><img src="http://127.0.0.1:${server.address().port}/${it.file.split('/').map(encodeURIComponent).join('/')}"><i>${esc(it.title.replace(/ icon$/, ''))}</i></div>`).join('');
+    const cells = chunk.map((it, k) => `<div class=c><b>${k + 1}</b><img${/pixel|1-bit/.test(it.family) ? ' style="image-rendering:pixelated"' : ''} src="http://127.0.0.1:${server.address().port}/${it.file.split('/').map(encodeURIComponent).join('/')}"><i>${esc(it.title.replace(/ icon$/, ''))}</i></div>`).join('');
     await page.setContent(`<style>body{margin:0;background:#e2e8f0;font:11px Arial}#g{display:grid;grid-template-columns:repeat(${COLS},${CELL}px)}.c{position:relative;height:${CELL + 14}px;text-align:center}.c img{width:88px;height:88px;margin-top:16px;object-fit:contain}.c b{position:absolute;left:4px;top:2px;color:#c8143c;font-size:14px}.c i{display:block;font-style:normal;color:#334;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 4px}</style><div id=g>${cells}</div>`, { waitUntil: 'networkidle' });
     const name = `${family.replace(/:/g, '__')}--${s + 1}`;
     await (await page.$('#g')).screenshot({ path: join(outDir, `${name}.jpg`), type: 'jpeg', quality: 85 });
