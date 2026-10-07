@@ -147,9 +147,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const d = existsSync(b) ? readdirSync(b).filter((x) => x.startsWith('chromium_headless_shell-')).sort().pop() : undefined;
     return d ? join(b, d, 'chrome-headless-shell-mac-arm64', 'chrome-headless-shell') : undefined;
   };
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? shell(), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const launch = () => chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? shell(), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  let browser = await launch();
   let ok = 0, failed = 0, tab;
-  const open = async () => { tab = await browser.newPage(); await tab.goto(`http://127.0.0.1:${server.address().port}/`); await tab.waitForFunction(() => window.ready); };
+  // A model can take the whole browser down (out of memory): start a new one and go on.
+  const open = async () => { if (!browser.isConnected()) { await browser.close().catch(() => {}); browser = await launch(); } tab = await browser.newPage(); await tab.goto(`http://127.0.0.1:${server.address().port}/`); await tab.waitForFunction(() => window.ready); };
   try {
     await open();
     for (const [i, it] of list.entries()) {
@@ -165,7 +167,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         failed += 1;
         await tab.close().catch(() => {}); await open();
       }
-      if (i % 200 === 199) { console.log(`${i + 1}/${list.length}`); await tab.close(); await open(); }
+      if (i % 200 === 199) { console.log(`${i + 1}/${list.length}`); await tab.close().catch(() => {}); await open(); }
     }
   } finally { await browser.close(); server.close(); }
   console.log(`${ok} rendered, ${failed} failed -> ${outDir}`);
