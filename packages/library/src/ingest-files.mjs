@@ -5,9 +5,9 @@
 //   node packages/library/tools/render-models.mjs <list.json> <packs> <thumbs>          (thumbnails + stats.jsonl)
 //   node packages/library/src/ingest-files.mjs ingest --ledger <jsonl> --dir <packs> --stats <thumbs>/stats.jsonl --out <items.jsonl>
 //
-// One file per model name: GLB, then glTF, FBX, OBJ, Collada. The licence comes from the ledger row (the page's own
+// One file per model name: GLB (including one blend-to-glb.mjs made from the pack's .blend), then glTF, FBX, OBJ, Collada. The licence comes from the ledger row (the page's own
 // licence line); CC-BY attribution names the pack, author, licence and page, plus the page's own notice; the author and the post date from its evidence. Only models the
-// renderer loaded become items. Authors with a pack posted before 2023 count as known humans for the 2024 rule.
+// renderer loaded with every file they name become items. Authors with a pack posted before 2023 count as known humans for the 2024 rule.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname, basename, extname, relative } from 'node:path';
@@ -18,6 +18,12 @@ import { KNOWN_HUMAN } from './ingest-pack.mjs';
 
 const RANK = { '.glb': 0, '.gltf': 1, '.fbx': 2, '.obj': 3, '.dae': 4 };
 const SKIP = /(^|[\\/])(__MACOSX|textures?|materials?|previews?|screenshots?|source|blend)([\\/]|$)/i;
+// A GLB that blend-to-glb.mjs made from the pack's own .blend: where it came from (or undefined).
+const convertedFrom = (packDir, f) => {
+  if (basename(dirname(f)) !== 'blend-glb') return undefined;
+  const m = join(dirname(f), 'manifest.json');
+  return existsSync(m) ? JSON.parse(readFileSync(m, 'utf8'))[basename(f)] : undefined;
+};
 const KIND_OF_CATEGORY = { 1: 'prop', 2: 'building', 3: 'map', 4: 'character', 5: 'vehicle', 13: 'animation' };
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const words = (s) => s.replace(/[-_.]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
@@ -32,16 +38,16 @@ function files(dir, root = dir, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name);
     if (SKIP.test(relative(root, p))) continue;
-    if (e.isDirectory()) files(p, root, out); else if (RANK[extname(e.name).toLowerCase()] !== undefined) out.push(p);
+    if (e.isDirectory()) files(p, root, out); else if (RANK[extname(e.name).toLowerCase()] !== undefined && (basename(dir) !== 'blend-glb' || convertedFrom(root, p)?.ok)) out.push(p);
   }
   return out;
 }
 
-/** One model file per model name in a pack folder, the best format first. Pure apart from reading the folder. */
+/** One model file per model name (as its id spells it) in a pack folder, the best format first. Pure apart from reading the folder. */
 export function packModels(packDir) {
   const best = new Map();
   for (const f of files(packDir)) {
-    const name = basename(f, extname(f)).toLowerCase();
+    const name = slug(basename(f, extname(f))); // the id and thumbnail key are made from it: one file per slug
     const cur = best.get(name);
     if (!cur || RANK[extname(f).toLowerCase()] < RANK[extname(cur).toLowerCase()]) best.set(name, f);
   }
@@ -67,7 +73,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else {
     const stats = new Map(readFileSync(arg('stats'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).map((s) => [s.key, s]));
     const items = [];
-    let rejected = 0, unloadable = 0;
+    let rejected = 0, unloadable = 0, incomplete = 0;
     for (const { row, slug: ps } of packs) {
       const [posted, author] = authorOf(row.human_made_evidence);
       const lic = classifyLicence(firstLicence(row.licence_words));
@@ -76,8 +82,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       for (const f of packModels(join(dir, ps))) {
         const key = keyOf(ps, f), st = stats.get(key);
         if (!st?.ok) { unloadable += 1; continue; }
+        if (st.missing) { incomplete += 1; continue; } // names a file its pack does not ship (or a .psd): not as its author made it
         const name = words(basename(f, extname(f)));
         const title = `${name} (${row.pack})`;
+        const conv = convertedFrom(join(dir, ps), f);
         const tags = [...new Set(name.toLowerCase().split(' ').filter((w) => w.length > 1))];
         const item = {
           id: idOf(ps, f),
@@ -88,7 +96,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
           fetched_at: JSON.parse(readFileSync(join(dir, ps, 'fetch.json'), 'utf8')).at,
           uploader: 'none', file: relative(dir, f), file_sha256: createHash('sha256').update(readFileSync(f)).digest('hex'),
           categories: row.categories, tags,
-          checks: { triangles: st.triangles, meshes: st.meshes, size: st.size, format: extname(f).slice(1).toLowerCase() },
+          checks: { triangles: st.triangles, meshes: st.meshes, size: st.size, format: extname(f).slice(1).toLowerCase(), ...(conv ? { converted_from: conv.from, blender: conv.blender } : {}) },
           ai_check: aiCheck({ title, tags, created: posted, creator: author }, known, new Date().toISOString()),
         };
         const errs = validateItem(item);
@@ -97,6 +105,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     mkdirSync(dirname(out), { recursive: true });
     writeFileSync(out, items.map((i) => JSON.stringify(i)).join('\n') + '\n');
-    console.log(`${items.length} items, ${rejected} rejected, ${unloadable} not loadable -> ${out}`);
+    console.log(`${items.length} items, ${rejected} rejected, ${unloadable} not loadable, ${incomplete} incomplete -> ${out}`);
   }
 }

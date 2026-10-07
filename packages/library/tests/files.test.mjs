@@ -26,15 +26,37 @@ test('one model per name, the best format first, texture and macOS folders skipp
   assert.deepEqual(packModels(d).map((p) => basename(p)), ['Rock.glb', 'Tree.fbx']);
 });
 
-test('the fetcher skips refused licences, Kenney uploads and .blend-only packs', () => {
+test('the fetcher skips refused licences, Kenney uploads and packs with no model format', () => {
   const row = { licence_words: 'License(s): CC0', human_made_evidence: 'Posted 2020-01-01 by Ann', formats: ['FBX'] };
   assert.equal(wanted(row), true);
   assert.equal(wanted({ ...row, licence_words: 'License(s): CC-BY-NC 3.0' }), false);
   assert.equal(wanted({ ...row, human_made_evidence: 'Posted 2018-04-12 by Kenney; x' }), false);
-  assert.equal(wanted({ ...row, formats: ['BLEND'] }), false);
+  assert.equal(wanted({ ...row, formats: ['BLEND'] }), true);
+  assert.equal(wanted({ ...row, formats: ['PNG'] }), false);
 });
 
 test('the fetcher keeps only model and archive links from a page', () => {
   const html = '<a href="https://opengameart.org/sites/default/files/pack.zip">z</a> <img src="https://opengameart.org/sites/default/files/styles/thumb/a.png"> <a href="https://opengameart.org/sites/default/files/tree%20a.fbx">f</a>';
   assert.deepEqual(fileLinks(html), ['https://opengameart.org/sites/default/files/pack.zip', 'https://opengameart.org/sites/default/files/tree%20a.fbx']);
+});
+
+test('a pack whose MTLs hold only default grey and no texture is converted from its .blend', async () => {
+  const { greyExports } = await import('../tools/blend-to-glb.mjs');
+  assert.equal(greyExports(['newmtl A\nKd 0.640000 0.640000 0.640000\n', 'newmtl B\nKd 0.800000 0.800000 0.800000\n']), true);
+  assert.equal(greyExports(['newmtl A\nKd 0.053442 0.029807 0.017608\n']), false);
+  assert.equal(greyExports(['newmtl A\nKd 0.640000 0.640000 0.640000\nmap_Kd tex.png\n']), false);
+  assert.equal(greyExports([]), false);
+});
+
+test('a converted GLB wins over the FBX of the same name only when its conversion succeeded', () => {
+  const d = mkdtempSync(join(tmpdir(), 'oga-'));
+  for (const f of ['x/FBX/Chair.fbx', 'x/FBX/Lamp.fbx', 'blend-glb/Chair.glb', 'blend-glb/Lamp.glb']) { mkdirSync(join(d, f, '..'), { recursive: true }); writeFileSync(join(d, f), 'x'); }
+  writeFileSync(join(d, 'blend-glb/manifest.json'), JSON.stringify({ 'Chair.glb': { ok: true, from: 'x/Chair.blend' }, 'Lamp.glb': { ok: false } }));
+  assert.deepEqual(packModels(d).map((p) => p.slice(d.length + 1)), ['blend-glb/Chair.glb', 'x/FBX/Lamp.fbx']);
+});
+
+test('names that differ only by punctuation are one model (they would share an id and a thumbnail)', () => {
+  const d = mkdtempSync(join(tmpdir(), 'oga-'));
+  for (const f of ['x/rock_05..fbx', 'x/rock_05.obj', 'x/flask_large.glb', 'x/flask_large_.glb']) { mkdirSync(join(d, f, '..'), { recursive: true }); writeFileSync(join(d, f), 'x'); }
+  assert.deepEqual(packModels(d).map((p) => basename(p)).sort(), ['flask_large.glb', 'rock_05..fbx']);
 });

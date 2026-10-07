@@ -7,11 +7,11 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 
 | # | Category | Target | Ingested (A / B / C) | Where it stands |
 |---|---|---|---|---|
-| 1 | Props and models | 10,000 | 3,210 (907 / 1,888 / 415) | 19 Kenney packs, 24 OpenGameArt packs |
-| 2 | Modular building sets | 150 families / 5,000 parts | 2,634 (278 / 1,743 / 613) | 29 families (20 Kenney, 9 OpenGameArt) |
-| 3 | Complete maps and environments | 300 | 0 | not started |
-| 4 | Characters, NPCs, creatures, pets | 1,500 | 217 (119 / 50 / 48) | 3 Kenney packs, 10 OpenGameArt packs |
-| 5 | Vehicles and mechanisms | 400 | 399 (121 / 227 / 51) | 4 Kenney packs, 6 OpenGameArt packs |
+| 1 | Props and models | 10,000 | 6,209 (1,403 / 3,502 / 1,304) | 19 Kenney packs, 131 OpenGameArt packs |
+| 2 | Modular building sets | 150 families / 5,000 parts | 5,111 (562 / 3,230 / 1,319) | 63 families (20 Kenney, 43 OpenGameArt) |
+| 3 | Complete maps and environments | 300 | 0 complete maps; 477 environment pieces (41 / 317 / 119) from 10 OpenGameArt packs | terrain and scenery parts, not finished maps |
+| 4 | Characters, NPCs, creatures, pets | 1,500 | 389 (140 / 71 / 178) | 3 Kenney packs, 21 OpenGameArt packs |
+| 5 | Vehicles and mechanisms | 400 | 691 (327 / 291 / 73) | 4 Kenney packs, 14 OpenGameArt packs |
 | 6 | Textures, materials, terrain presets | 1,000 | 0 | ledger only (ambientCG, Poly Haven) |
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: 11,652 icons (A 5,869 / B 4,193 / C 1,590) and 1,856 frames (A 649 / B 1,198 / C 9), plus 43 kit icons | 27 families: game-icons.net, 25 Kenney 2D packs (one per pack), the Kenney 3D renders; A/B: 10,062 icons, 1,847 frames; not uploaded yet (O-GROUP) |
@@ -19,7 +19,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 10 | VFX | 2,000 | 0 | ledger only |
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
 | 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
-| 13 | Animations | 1,000 | 5 (0 / 0 / 5) | 2 OpenGameArt rigs (graded as models; clips not yet split out) |
+| 13 | Animations | 1,000 | 47 (0 / 2 / 45) | 3 OpenGameArt rigs graded as models; clips not yet split out |
 | 14 | Code modules | 300 | 404 (29 / 296 / 79) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4: 315 clean static scans; the 89 flagged reviewed by two reviewers each: 65 safe, 18 restricted (purchases, web, teleport: only when the game asks), 6 unsafe and kept out |
 | 15 | Knowledge | 100 % of the docs | 8,447 doc chunks, all embedded | creator-docs (966 guide pages, 1,200 API files) and luau.org, refreshed 2026-10-07 (#120): 1,170 new or changed, 90 removed upstream pruned; plus research and skill chunks |
 | 16 | Skills | 500 | 1,170 (77 / 469 / 624) | Creator Documentation procedures copied word for word (CC BY 4.0): every numbered list of 3+ steps under a heading on 446 pages; the 546 A/B reach the agent through search_creation_skills / read_creation_skill; plus 23 authored skill cards in the live corpus |
@@ -31,12 +31,14 @@ median 138, 95th percentile 1,060, max 10,880. Source zips (741 MB) stay in the 
 Grading (2026-10-07): 93 boards, 38 critic runs (two per board), 4,402 items: A 931, B 2,739, C 732; the two critics
 agreed on 3,975 (90 %). Each item keeps both critics' grade and reason in `grade_notes`.
 
-OpenGameArt 3D (2026-10-07, in progress): the ledger's 207 allowed packs (Kenney re-uploads and .blend-only packs
-skipped) are fetched at one request a second; 51 packs so far, 2,063 models (FBX 1,448, glTF 565, OBJ 47, GLB 3), all
-CC0 by Quaternius, 0 rejected; triangles median 564, 95th percentile 5,044, max 24,800. Rendered from the files as they
-are (no texture missing in any model); two critics per board: A 494, B 1,169, C 400, agreeing on 1,745 (85 %). Some
-Quaternius packs export every material as Blender's default grey (the colours live only in the .blend), so they render
-and import white and graded B or C; a Blender conversion would recover them (not installed).
+OpenGameArt 3D (2026-10-08): all 247 allowed packs in the ledger fetched (Kenney re-uploads skipped), including the 40
+that ship only .blend. Packs whose exports lost their colours (every MTL Blender's default grey) or ship only .blend are
+converted from their .blend with Blender 5.2 (factory settings, scripts off), an old Diffuse-BSDF material given a
+Principled BSDF of the same colour; 63 packs, 722 files, 2 failed. Every model is rendered from its files (textures found
+by name in the pack; the loaders' requests awaited). 8,522 items from 222 packs: A 1,542, B 4,674, C 2,306; 265 refused under the
+2024 rule (packs from 2024-2026 by artists not on the known-human list), 556 left out as incomplete (they name a texture
+the pack does not ship, or a .psd), 108 the renderer could not load. Two critics per board; 62 boards whose items and
+thumbnails were unchanged since batch 1 keep their grades.
 
 Icons (2026-10-07): game-icons.net (github.com/game-icons/icons at 82d9488), 4,173 SVGs by 34 artists, CC BY 3.0 except
 the two its license.txt marks CC0 (123 icons); each CC BY icon carries "made by {artist}" as the licence asks. 5 refused

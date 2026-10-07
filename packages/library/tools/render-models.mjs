@@ -27,6 +27,13 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { TGALoader } from 'three/addons/loaders/TGALoader.js';
+THREE.DefaultLoadingManager.addHandler(/\\.tga$/i, new TGALoader()); // FBX and MTL often name .tga textures
+// Requests the loaders still have open (textures, MTL): a model is drawn once none is left, found or not.
+let pending = 0;
+const M = THREE.DefaultLoadingManager, start = M.itemStart.bind(M), end = M.itemEnd.bind(M);
+M.itemStart = (u) => { pending += 1; start(u); };
+M.itemEnd = (u) => { pending = Math.max(0, pending - 1); end(u); };
 const N = 256, LINE = 4, CONTOUR = '#0B1A33';
 const canvas = (n) => { const c = document.createElement('canvas'); c.width = c.height = n; return c; };
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -40,8 +47,11 @@ async function load(url) {
   if (ext === 'dae') return (await new ColladaLoader().loadAsync(url)).scene;
   if (ext === 'obj') {
     const loader = new OBJLoader();
-    try { const mtl = await new MTLLoader().loadAsync(url.replace(/\\.obj$/i, '.mtl')); mtl.preload(); loader.setMaterials(mtl); } catch {}
-    return await loader.loadAsync(url);
+    // The materials file is the one the OBJ names (often one shared by a whole pack); none named, none loaded.
+    const text = await (await fetch(url)).text();
+    const lib = (text.match(/^mtllib\\s+(.+?)\\s*$/m) ?? [])[1];
+    if (lib) { try { const mtl = await new MTLLoader().loadAsync(url.slice(0, url.lastIndexOf('/') + 1) + encodeURIComponent(lib)); mtl.preload(); loader.setMaterials(mtl); } catch {} }
+    return loader.parse(text);
   }
   throw new Error('unsupported format ' + ext);
 }
@@ -68,6 +78,12 @@ window.model = async (url) => {
     o.frustumCulled = false;
   });
   if (!meshes) throw new Error('no meshes');
+  // FBX, OBJ and Collada return before their textures arrive: wait (at most 10 s) until the loaders have no request
+  // open, or the thumbnail shows the 1-pixel placeholder. A texture that never arrives is counted missing by the server.
+  const maps = [];
+  m.traverse((o) => { if (o.isMesh) for (const mat of [].concat(o.material)) if (mat.map) maps.push(mat.map); });
+  for (let i = 0; i < 200 && pending > 0; i++) await new Promise((r) => setTimeout(r, 50));
+  for (const t of maps) t.needsUpdate = true;
   const box = new THREE.Box3().setFromObject(m);
   const size = box.getSize(new THREE.Vector3());
   const scene = new THREE.Scene(); scene.environment = env; scene.environmentIntensity = 0.5;
@@ -110,7 +126,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Packs often keep textures in a folder of their own while the model names them as siblings: a texture that is not
   // where the model says is found by file name anywhere in the same pack (the first path segment under <root-dir>).
   const byName = new Map();
-  let missing = 0;
+  let missing = [];
   const packFiles = (pack) => {
     if (!byName.has(pack)) {
       const m = new Map();
@@ -126,7 +142,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const base = u.startsWith('/three/') ? THREE_DIR : u.startsWith('/files/') ? ROOT : null;
     let file = base ? resolve(join(base, u.replace(/^\/(three|files)\//, ''))) : '';
     if (base === ROOT && file.startsWith(ROOT) && !existsSync(file)) file = packFiles(u.split('/')[2]).get(u.split('/').pop().toLowerCase()) ?? file;
-    if (!base || !file.startsWith(base) || !existsSync(file)) { if (base === ROOT) missing += 1; res.statusCode = 404; return res.end(); }
+    if (!base || !file.startsWith(base) || !existsSync(file)) { if (base === ROOT) missing.push(u.split('/').pop()); res.statusCode = 404; return res.end(); }
     res.setHeader('content-type', TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream');
     res.end(readFileSync(file));
   }).listen(0, '127.0.0.1');
@@ -135,25 +151,27 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const d = existsSync(b) ? readdirSync(b).filter((x) => x.startsWith('chromium_headless_shell-')).sort().pop() : undefined;
     return d ? join(b, d, 'chrome-headless-shell-mac-arm64', 'chrome-headless-shell') : undefined;
   };
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? shell(), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const launch = () => chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? shell(), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  let browser = await launch();
   let ok = 0, failed = 0, tab;
-  const open = async () => { tab = await browser.newPage(); await tab.goto(`http://127.0.0.1:${server.address().port}/`); await tab.waitForFunction(() => window.ready); };
+  // A model can take the whole browser down (out of memory): start a new one and go on.
+  const open = async () => { if (!browser.isConnected()) { await browser.close().catch(() => {}); browser = await launch(); } tab = await browser.newPage(); await tab.goto(`http://127.0.0.1:${server.address().port}/`); await tab.waitForFunction(() => window.ready); };
   try {
     await open();
     for (const [i, it] of list.entries()) {
       const url = '/files/' + it.file.split('/').map(encodeURIComponent).join('/');
-      missing = 0;
+      missing = [];
       try {
-        const r = await Promise.race([tab.evaluate((u) => window.model(u), url), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 40 s')), 40_000))]);
+        const r = await Promise.race([tab.evaluate((u) => window.model(u), url), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 40 s')), 40_000).unref())]);
         writeFileSync(join(outDir, `${it.key}.png`), Buffer.from(r.png.split(',')[1], 'base64'));
-        appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: true, triangles: r.triangles, meshes: r.meshes, size: r.size, missing }) + '\n');
+        appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: true, triangles: r.triangles, meshes: r.meshes, size: r.size, missing: missing.length, ...(missing.length ? { missing_files: [...new Set(missing)].slice(0, 5) } : {}) }) + '\n');
         ok += 1;
       } catch (e) {
         appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: false, error: String(e.message).slice(0, 160) }) + '\n');
         failed += 1;
         await tab.close().catch(() => {}); await open();
       }
-      if (i % 200 === 199) { console.log(`${i + 1}/${list.length}`); await tab.close(); await open(); }
+      if (i % 200 === 199) { console.log(`${i + 1}/${list.length}`); await tab.close().catch(() => {}); await open(); }
     }
   } finally { await browser.close(); server.close(); }
   console.log(`${ok} rendered, ${failed} failed -> ${outDir}`);
