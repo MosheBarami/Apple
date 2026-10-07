@@ -43,7 +43,10 @@
           0,
           0.5
          ],
-         "z": 8
+         "z": 8,
+         "attributes": {
+          "UI_Bob": true
+         }
         },
         {
          "kit": "text",

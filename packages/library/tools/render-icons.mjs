@@ -59,13 +59,20 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserv
 renderer.setSize(N, N); renderer.setPixelRatio(1);
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping;
 const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+// A saturation lift after lighting, so the family reads as glossy toy plastic rather than matte clay (critic v3 round 2).
+function saturate(c, k) {
+  const x = c.getContext('2d'), im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; for (let j = 0; j < 3; j++) d[i + j] = Math.max(0, Math.min(255, l + (d[i + j] - l) * k)); }
+  x.putImageData(im, 0, 0);
+  return c;
+}
 window.model = async (url, roll = 0, tint = '') => {
-  const scene = new THREE.Scene(); scene.environment = env; scene.environmentIntensity = 0.45;
+  const scene = new THREE.Scene(); scene.environment = env; scene.environmentIntensity = 0.6;
   const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(3, 5, 4); scene.add(key);
   const rim = new THREE.DirectionalLight(0xbfe4ff, 1.4); rim.position.set(-4, 2, -3); scene.add(rim);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6677aa, 0.35));
   const m = (await new GLTFLoader().loadAsync(url)).scene;
-  m.traverse((o) => { if (!o.isMesh) return; if (tint) { o.material = o.material.clone(); o.material.map = null; o.material.color = new THREE.Color(tint); } o.material.roughness = 0.32; o.material.metalness = Math.min(o.material.metalness ?? 0, 0.2); });
+  m.traverse((o) => { if (!o.isMesh) return; if (tint) { o.material = o.material.clone(); o.material.map = null; o.material.color = new THREE.Color(tint); } o.material.roughness = 0.22; o.material.metalness = Math.min(o.material.metalness ?? 0, 0.2); });
   m.rotation.y = -Math.PI / 6;
   m.position.sub(new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()));
   const pivot = new THREE.Group(); pivot.add(m); pivot.rotation.x = 0.32; pivot.rotation.z = THREE.MathUtils.degToRad(roll); scene.add(pivot);
@@ -74,13 +81,13 @@ window.model = async (url, roll = 0, tint = '') => {
   cam.position.set(0, 0, r / Math.sin(THREE.MathUtils.degToRad(11)) * 1.14); cam.lookAt(0, 0, 0);
   renderer.setClearColor(0x000000, 0); renderer.render(scene, cam);
   const src = canvas(N); src.getContext('2d').drawImage(renderer.domElement, 0, 0);
-  return outline(src, N, 10);
+  return outline(saturate(src, 1.3), N, 20);
 };
 window.glyph = async (url) => {
   const img = new Image(); img.src = url; await img.decode();
   const src = canvas(img.width * 3); const c = src.getContext('2d'); c.imageSmoothingQuality = 'high';
   c.drawImage(img, 0, 0, src.width, src.height);
-  return outline(src, 256, 8);
+  return outline(src, 256, 12);
 };
 window.ready = true;
 </script></body></html>`;

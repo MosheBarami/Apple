@@ -44,9 +44,9 @@ export type Ink = keyof typeof INKS;
 
 /** Geometry at 1080p (spec §3.2): contour, rim, corner radius (999 = a pill) and lip. */
 export const GEO = {
-  window: { contour: 6, rim: 5, radius: 22, lip: 0, studs: 0.6 },
+  window: { contour: 6, rim: 5, radius: 22, lip: 0, studs: 0.7 },
   card: { contour: 5, rim: 4, radius: 14, lip: 4, studs: 0.68 },
-  button: { contour: 4, rim: 3, radius: 12, lip: 6, studs: 0.8 },
+  button: { contour: 4, rim: 3, radius: 12, lip: 8, studs: 1 },
   chip: { contour: 3, rim: 2, radius: 999, lip: 3, studs: 1 },
   close: { contour: 4, rim: 3, radius: 12, lip: 5, studs: 1 },
   tile: { contour: 5, rim: 4, radius: 16, lip: 5, studs: 0.7 },
@@ -215,8 +215,8 @@ const COMPONENTS: Record<string, (n: V) => Spec> = {
     return face('button', String(n.name ?? 'Button'), t, {
       ...(n as Place), geo: GEO.button, button: true, attributes: n.attributes as V | undefined,
       children: [
-        ...(n.icon ? [icon('button', n.icon, { size: [0.28, 0, 1.25, 0], position: [0.03, 0, 0.5, 0], anchor: [0, 0.5] })] : []),
-        label('button', 'Label', n.text, { size: n.icon ? [0.64, 0, 0.66, 0] : [0.86, 0, 0.66, 0], position: n.icon ? [0.95, 0, 0.5, 0] : [0.5, 0, 0.5, 0], anchor: n.icon ? [1, 0.5] : [0.5, 0.5], max: Number(n.max ?? 40), z: 7, line: true }),
+        ...(n.icon ? [icon('button', n.icon, { size: [0.24, 0, 0.92, 0], position: [0.05, 0, 0.5, 0], anchor: [0, 0.5] })] : []),
+        label('button', 'Label', n.text, { size: n.icon ? [0.64, 0, 0.74, 0] : [0.86, 0, 0.74, 0], position: n.icon ? [0.95, 0, 0.5, 0] : [0.5, 0, 0.5, 0], anchor: n.icon ? [1, 0.5] : [0.5, 0.5], max: Number(n.max ?? 40), z: 7, line: true }),
       ],
     });
   },
@@ -427,14 +427,17 @@ export function gridLayout(count: number, featured: boolean, columns: number, ra
   // Cards take their column's full width (spec §5.3: content covers at least 80 % of the body).
   const w = widthMax;
   const height = scroll ? top + rows * h + (rows - 1) * gap + pad : 1;
-  // A partial last row is stretched to the full row's width (spec §5.2: no orphan rows, never a lonely card).
+  // A partial last row keeps the columns, and its last card spans the columns left over (spec §5.2: no orphan rows;
+  // critic v3: the grand prize, Day 7, gets the double-width slot as in P06, and the columns stay aligned).
   const fullRow = cols * w + (cols - 1) * gap;
   const cards = Array.from({ length: count }, (_, i) => {
     const row = Math.floor(i / cols);
     const inRow = Math.min(cols, count - row * cols);
-    const cw = inRow < cols ? (fullRow - (inRow - 1) * gap) / inRow : w;
+    const col = i % cols;
+    const span = inRow < cols && col === inRow - 1 ? cols - inRow + 1 : 1;
+    const cw = span * w + (span - 1) * gap;
     const x0 = (ratio - fullRow) / 2;
-    return { x: (x0 + (i % cols) * (cw + gap)) / ratio, y: (top + row * (h + gap)) / height, w: cw / ratio, h: h / height };
+    return { x: (x0 + col * (w + gap)) / ratio, y: (top + row * (h + gap)) / height, w: cw / ratio, h: h / height };
   });
   return { scroll, height, featured: featured ? { x: (ratio - fullRow) / 2 / ratio, y: pad / height, w: fullRow / ratio, h: band / height } : null, cards };
 }
@@ -466,7 +469,15 @@ COMPONENTS.grid = (n) => {
   const at = (k: V, b: Box, p: Box) => {
     // A card taller than wide stacks its parts (title, a big icon, the note, the button) instead of a cramped row.
     const portrait = k.name !== 'Featured' && b.h * L.height > 0.8 * b.w * ratio;
-    const node = portrait ? { ...k, children: ((k.children as V[] | undefined) ?? []).map(stack) } : k;
+    const phonePortrait = k.name !== 'Featured' && p.h * P.height > 0.8 * p.w * ratio;
+    // Each part also carries where it goes on a phone, whose card may have the other shape (UiFx swaps them).
+    const place = (c: V, tall: boolean) => (tall ? stack(c) : c);
+    const node = { ...k, children: ((k.children as V[] | undefined) ?? []).map((c) => {
+      const here = place(c, portrait), there = place(c, phonePortrait);
+      if (here === there || !Array.isArray(there.size) || !Array.isArray(there.position)) return here;
+      const [sx, so, sy, syo] = there.size as number[], [px, po, py, pyo] = there.position as number[], [ax, ay] = (there.anchor as number[] | undefined) ?? [0, 0];
+      return { ...here, attributes: { ...((here.attributes as V | undefined) ?? {}), StudKitPhoneSize: udim2(sx!, so!, sy!, syo!), StudKitPhonePos: udim2(px!, po!, py!, pyo!), StudKitPhoneAnchor: vec2(ax!, ay!) } };
+    }) };
     const sp = expandKit({ ...node, size: [b.w, 0, b.h, 0], position: [b.x, 0, b.y, 0], anchor: [0, 0] }) as Spec;
     return { ...sp, attributes: { ...(sp.attributes ?? {}), StudKitPhoneSize: udim2(p.w, 0, p.h, 0), StudKitPhonePos: udim2(p.x, 0, p.y, 0) } } as Spec;
   };

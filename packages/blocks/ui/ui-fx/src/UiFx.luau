@@ -54,13 +54,15 @@ local function phone(o)
 	if not (size or pos or canvas) then return end
 	local d = desk[o]
 	if not d then
-		d = { Size = o.Size, Position = o.Position }
+		d = { Size = o.Size, Position = o.Position, AnchorPoint = o.AnchorPoint }
 		if o:IsA("ScrollingFrame") then d.CanvasSize, d.ScrollBarThickness = o.CanvasSize, o.ScrollBarThickness end
 		desk[o] = d
 	end
 	local on = isPhone()
 	if size then o.Size = on and size or d.Size end
 	if pos then o.Position = on and pos or d.Position end
+	local anchor = o:GetAttribute("StudKitPhoneAnchor")
+	if anchor then o.AnchorPoint = on and anchor or d.AnchorPoint end
 	if canvas and o:IsA("ScrollingFrame") then
 		o.CanvasSize = on and canvas or d.CanvasSize
 		o.ScrollBarThickness = on and (o:GetAttribute("StudKitPhoneBar") or 0) or d.ScrollBarThickness
@@ -189,7 +191,7 @@ local function wire(gui)
 	if done[gui] or not gui:IsA("GuiObject") then return end
 	if gui:GetAttribute("UI_Click") and gui:IsA("GuiButton") then done[gui] = true; button(gui) end
 	if gui:GetAttribute("UI_Spin") then done[gui] = true; spin(gui, gui:GetAttribute("UI_Spin")) end
-	if gui:GetAttribute("UI_Bob") then done[gui] = true; bob(gui, 4, 1.6) end
+	if gui:GetAttribute("UI_Bob") then done[gui] = true; bob(gui, math.max(4, gui.AbsoluteSize.Y * 0.05 / k()), 1.6) end
 	if gui:GetAttribute("UI_Shine") then done[gui] = true; shine(gui) end
 	if gui:GetAttribute("StudKit") == "badge.holder" then done[gui] = true; pulse(gui) end
 	if BOB and string.match(gui.Name, "^Offer%d+$") then done[gui] = true; bob(gui, 4, 3) end
