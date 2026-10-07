@@ -69,6 +69,22 @@ which the master plan's L9 does not allow, so it is re-checked through the offic
 If library research is slowed by the workflow size limit: in a `claude` terminal run `/config` → **Dynamic workflow
 size** → raise it. (Not a blocker today: research runs in smaller batches.)
 
+### O-ARTIST. A human icon artist for the art no free family has (money: needs your decision) (§6.1)
+The kit's icon family is now Kenney's CC0 3D models, rendered by one fixed camera, light and navy contour
+(`packages/library/tools/render-icons.mjs`, 43 icons, 16 of them Cube Pets). Deep research found no free, human-made,
+glossy 3D family that covers everything. What it cannot cover, and the critics keep marking down:
+- **patterned eggs** (today: one plain Kenney egg in rarity tints; both critics call it "same shape in five tints");
+- 16 names with no model: backpack, bolt, book, boots, calendar, cash, clock, clover, fire, magnet, map, money bag,
+  rocket, scroll, ticket, vip;
+- a round embossed coin (the Kenney coin reads as a hex nut to the critics).
+Options: (a) commission a human 3D or 2D icon artist, about 30 pieces, with a commercial licence that allows
+redistribution inside other people's games (budget is yours to set); (b) keep the gaps: those names draw nothing and
+eggs stay plain. Answer "a, budget X" or "b". Never AI (rule L1).
+
+### O-EYE-UI. The 6-screen UI eye check (§6.6), not sent yet
+Sent only when the two fresh critics pass (style 8+, no weak signature, pairwise 35 %+). Round 1: 5 and 5, 0/10.
+Round 2: 6 and 6, 0/10. Work continues; the record is in `planning/proof/STYLE/`.
+
 ## Before charging money
 
 ### N9. An adult or a company becomes the named operator (D-15)
@@ -122,7 +138,8 @@ monthly backstop now binds after about 7 days at the daily ceiling (docs/COST-MO
 gets about 37 pieces a day. Test spend still stays at or below $20 a month (the harness's --max-month-usd).
 
 
-## N12 (2026-10-06): one icon of the kit's pack needs an upload: `rocket`
+## N12. SUPERSEDED 2026-10-07 by O-ARTIST: the community icon pack was replaced by the Kenney family
+(Former title: one icon of the kit's pack needs an upload: `rocket`.)
 The pack (`packages/blocks/assets/icons.json`, 39 free Creator Store images, style bible S-4) has no free glossy 3D rocket
 (searched: rocket icon, rocket icon 3d cartoon, rocket ship icon, rocket icon glossy outline game, simulator rocket icon,
 jetpack icon). Roblox's AI generator could make one, but the result is uploaded to the account that runs it, and nothing
