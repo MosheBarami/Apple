@@ -1,0 +1,496 @@
+{"id": "Q001", "query": "a juicy cheeseburger with lettuce and tomato", "kind": "prop", "multi": false}
+{"id": "Q002", "query": "slice of pepperoni pizza", "kind": "prop", "multi": false}
+{"id": "Q003", "query": "bowl of steaming ramen noodles", "kind": "prop", "multi": false}
+{"id": "Q004", "query": "chocolate donut with pink sprinkles", "kind": "prop", "multi": false}
+{"id": "Q005", "query": "whole roasted turkey on a silver platter", "kind": "prop", "multi": false}
+{"id": "Q006", "query": "red apple that heals the player", "kind": "prop", "multi": false}
+{"id": "Q007", "query": "bottle of green health potion", "kind": "prop", "multi": false}
+{"id": "Q008", "query": "loaf of fresh baked bread", "kind": "prop", "multi": false}
+{"id": "Q009", "query": "stack of pancakes with syrup", "kind": "prop", "multi": false}
+{"id": "Q010", "query": "ice cream cone with two scoops", "kind": "prop", "multi": false}
+{"id": "Q011", "query": "cozy fabric sofa for a living room", "kind": "prop", "multi": false}
+{"id": "Q012", "query": "a wooden dining table with four matching chairs", "kind": "prop", "multi": true}
+{"id": "Q013", "query": "tall bookshelf filled with old books", "kind": "prop", "multi": false}
+{"id": "Q014", "query": "simple single bed with a blue blanket", "kind": "prop", "multi": false}
+{"id": "Q015", "query": "office desk with a computer monitor", "kind": "prop", "multi": false}
+{"id": "Q016", "query": "rustic wooden barrel", "kind": "prop", "multi": false}
+{"id": "Q017", "query": "kitchen set with a fridge, stove and counter that match", "kind": "prop", "multi": true}
+{"id": "Q018", "query": "grandfather clock for a mansion hallway", "kind": "prop", "multi": false}
+{"id": "Q019", "query": "porcelain bathtub with gold feet", "kind": "prop", "multi": false}
+{"id": "Q020", "query": "round rug for a bedroom floor", "kind": "prop", "multi": false}
+{"id": "Q021", "query": "glowing fire sword", "kind": "prop", "multi": false}
+{"id": "Q022", "query": "wooden longbow", "kind": "prop", "multi": false}
+{"id": "Q023", "query": "double barrel shotgun", "kind": "prop", "multi": false}
+{"id": "Q024", "query": "spiked mace for a knight", "kind": "prop", "multi": false}
+{"id": "Q025", "query": "throwing knife", "kind": "prop", "multi": false}
+{"id": "Q026", "query": "rocket launcher with a big barrel", "kind": "prop", "multi": false}
+{"id": "Q027", "query": "wizard staff with a crystal on top", "kind": "prop", "multi": false}
+{"id": "Q028", "query": "round steel shield with a lion emblem", "kind": "prop", "multi": false}
+{"id": "Q029", "query": "rusty pickaxe for mining ore", "kind": "prop", "multi": false}
+{"id": "Q030", "query": "woodcutting axe stuck in a stump", "kind": "prop", "multi": false}
+{"id": "Q031", "query": "claw hammer", "kind": "prop", "multi": false}
+{"id": "Q032", "query": "fishing rod with a bobber", "kind": "prop", "multi": false}
+{"id": "Q033", "query": "matching shovel, pickaxe and lantern for a miner", "kind": "prop", "multi": true}
+{"id": "Q034", "query": "flashlight the player can hold", "kind": "prop", "multi": false}
+{"id": "Q035", "query": "a wooden treasure chest full of gold", "kind": "prop", "multi": false}
+{"id": "Q036", "query": "pile of gold coins", "kind": "prop", "multi": false}
+{"id": "Q037", "query": "glowing blue gem collectible", "kind": "prop", "multi": false}
+{"id": "Q038", "query": "legendary golden chest with purple glow", "kind": "prop", "multi": false}
+{"id": "Q039", "query": "military base props: ammo crates, sandbags and a radio", "kind": "prop", "multi": true}
+{"id": "Q040", "query": "spinning coin pickup for an obby", "kind": "prop", "multi": false}
+{"id": "Q041", "query": "first aid kit health pickup", "kind": "prop", "multi": false}
+{"id": "Q042", "query": "mystery loot box with a question mark", "kind": "prop", "multi": false}
+{"id": "Q043", "query": "tall pine tree covered in snow", "kind": "prop", "multi": false}
+{"id": "Q044", "query": "low poly oak tree", "kind": "prop", "multi": false}
+{"id": "Q045", "query": "mossy boulder", "kind": "prop", "multi": false}
+{"id": "Q046", "query": "cluster of red mushrooms", "kind": "prop", "multi": false}
+{"id": "Q047", "query": "palm tree for a beach island", "kind": "prop", "multi": false}
+{"id": "Q048", "query": "patch of tall grass", "kind": "prop", "multi": false}
+{"id": "Q049", "query": "cactus for a desert level", "kind": "prop", "multi": false}
+{"id": "Q050", "query": "yellow sunflowers growing in a patch", "kind": "prop", "multi": false}
+{"id": "Q051", "query": "fallen log covered in moss", "kind": "prop", "multi": false}
+{"id": "Q052", "query": "cherry blossom tree with pink petals", "kind": "prop", "multi": false}
+{"id": "Q053", "query": "campfire with stones around it", "kind": "prop", "multi": false}
+{"id": "Q054", "query": "forest set of pines, ferns and mossy rocks in one style", "kind": "prop", "multi": true}
+{"id": "Q055", "query": "wall torch with flickering flame", "kind": "prop", "multi": false}
+{"id": "Q056", "query": "iron prison cell door", "kind": "prop", "multi": false}
+{"id": "Q057", "query": "skeleton lying on the floor", "kind": "prop", "multi": false}
+{"id": "Q058", "query": "cobweb for a dark corner", "kind": "prop", "multi": false}
+{"id": "Q059", "query": "stone sarcophagus with a heavy lid", "kind": "prop", "multi": false}
+{"id": "Q060", "query": "hanging chains and shackles", "kind": "prop", "multi": false}
+{"id": "Q061", "query": "dungeon dressing: crates, bones and a broken barrel", "kind": "prop", "multi": true}
+{"id": "Q062", "query": "bubbling witch cauldron", "kind": "prop", "multi": false}
+{"id": "Q063", "query": "futuristic control panel with blinking lights", "kind": "prop", "multi": false}
+{"id": "Q064", "query": "cryo pod with frosted glass", "kind": "prop", "multi": false}
+{"id": "Q065", "query": "hovering drone robot", "kind": "prop", "multi": false}
+{"id": "Q066", "query": "glowing energy core in a glass tube", "kind": "prop", "multi": false}
+{"id": "Q067", "query": "sci-fi sliding door", "kind": "prop", "multi": false}
+{"id": "Q068", "query": "alien egg pod", "kind": "prop", "multi": false}
+{"id": "Q069", "query": "laser turret that tracks players", "kind": "prop", "multi": false}
+{"id": "Q070", "query": "space station set: airlock hatch, console and cargo crates", "kind": "prop", "multi": true}
+{"id": "Q071", "query": "colorful stack of building blocks", "kind": "prop", "multi": false}
+{"id": "Q072", "query": "teddy bear plush", "kind": "prop", "multi": false}
+{"id": "Q073", "query": "wind-up toy robot", "kind": "prop", "multi": false}
+{"id": "Q074", "query": "rubber duck", "kind": "prop", "multi": false}
+{"id": "Q075", "query": "nursery set: crib, teddy bear and toy blocks", "kind": "prop", "multi": true}
+{"id": "Q076", "query": "basketball hoop with backboard", "kind": "prop", "multi": false}
+{"id": "Q077", "query": "soccer ball", "kind": "prop", "multi": false}
+{"id": "Q078", "query": "wooden baseball bat", "kind": "prop", "multi": false}
+{"id": "Q079", "query": "red boxing gloves", "kind": "prop", "multi": false}
+{"id": "Q080", "query": "skateboard with a flame deck", "kind": "prop", "multi": false}
+{"id": "Q081", "query": "a rocky cliff face with ledges", "kind": "map", "multi": false}
+{"id": "Q082", "query": "wooden dock extending into the water", "kind": "map", "multi": false}
+{"id": "Q083", "query": "winding dirt path through a forest", "kind": "map", "multi": false}
+{"id": "Q084", "query": "crumbling ancient stone ruins", "kind": "map", "multi": false}
+{"id": "Q085", "query": "sandy beach shoreline with a gentle slope", "kind": "map", "multi": false}
+{"id": "Q086", "query": "grassy hill with rolling terrain", "kind": "map", "multi": false}
+{"id": "Q087", "query": "snowy mountain peak", "kind": "map", "multi": false}
+{"id": "Q088", "query": "stone bridge over a river", "kind": "map", "multi": false}
+{"id": "Q089", "query": "canyon with red rock walls", "kind": "map", "multi": false}
+{"id": "Q090", "query": "swampy ground with muddy patches", "kind": "map", "multi": false}
+{"id": "Q091", "query": "lava field with cooled black rock", "kind": "map", "multi": false}
+{"id": "Q092", "query": "cobblestone road for a town", "kind": "map", "multi": false}
+{"id": "Q093", "query": "small floating island with a grass top", "kind": "map", "multi": false}
+{"id": "Q094", "query": "cave entrance carved into a cliff", "kind": "map", "multi": false}
+{"id": "Q095", "query": "desert dunes with rippled sand", "kind": "map", "multi": false}
+{"id": "Q096", "query": "waterfall dropping into a pool", "kind": "map", "multi": false}
+{"id": "Q097", "query": "overgrown temple ruins in a jungle", "kind": "map", "multi": false}
+{"id": "Q098", "query": "a harbor with a pier, boat slips and matching cargo crates", "kind": "map", "multi": true}
+{"id": "Q099", "query": "ruined castle wall with broken towers", "kind": "map", "multi": false}
+{"id": "Q100", "query": "stepping stone path across a lake", "kind": "map", "multi": false}
+{"id": "Q101", "query": "modular stone castle wall segment", "kind": "building", "multi": false}
+{"id": "Q102", "query": "wooden floor tile for a cabin", "kind": "building", "multi": false}
+{"id": "Q103", "query": "thatched roof for a medieval cottage", "kind": "building", "multi": false}
+{"id": "Q104", "query": "heavy iron-banded dungeon door", "kind": "building", "multi": false}
+{"id": "Q105", "query": "spiral staircase for a wizard tower", "kind": "building", "multi": false}
+{"id": "Q106", "query": "picket fence for a suburban yard", "kind": "building", "multi": false}
+{"id": "Q107", "query": "sci-fi sliding door with glowing frame", "kind": "building", "multi": false}
+{"id": "Q108", "query": "modern two-story house with a flat roof", "kind": "building", "multi": false}
+{"id": "Q109", "query": "medieval watchtower with a wooden lookout", "kind": "building", "multi": false}
+{"id": "Q110", "query": "dungeon cell with iron bars", "kind": "building", "multi": false}
+{"id": "Q111", "query": "curved stone stairs leading down to a crypt", "kind": "building", "multi": false}
+{"id": "Q112", "query": "glass skyscraper lobby entrance", "kind": "building", "multi": false}
+{"id": "Q113", "query": "corner piece for a castle battlement", "kind": "building", "multi": false}
+{"id": "Q114", "query": "gothic cathedral with stained glass windows", "kind": "building", "multi": false}
+{"id": "Q115", "query": "futuristic space station corridor section", "kind": "building", "multi": false}
+{"id": "Q116", "query": "rustic barn with a hayloft", "kind": "building", "multi": false}
+{"id": "Q117", "query": "wooden dock extending over a lake", "kind": "building", "multi": false}
+{"id": "Q118", "query": "low-poly gas station on a desert road", "kind": "building", "multi": false}
+{"id": "Q119", "query": "ruined stone archway overgrown with vines", "kind": "building", "multi": false}
+{"id": "Q120", "query": "tiled roof ridge piece for a modular house", "kind": "building", "multi": false}
+{"id": "Q121", "query": "spooky haunted mansion with broken windows", "kind": "building", "multi": false}
+{"id": "Q122", "query": "metal grated floor panel for a factory", "kind": "building", "multi": false}
+{"id": "Q123", "query": "ancient temple entrance with tall pillars", "kind": "building", "multi": false}
+{"id": "Q124", "query": "snowy log cabin with a chimney", "kind": "building", "multi": false}
+{"id": "Q125", "query": "blacksmith shop with an open forge", "kind": "building", "multi": false}
+{"id": "Q126", "query": "sci-fi airlock door between two modules", "kind": "building", "multi": false}
+{"id": "Q127", "query": "wrought iron garden fence with gate", "kind": "building", "multi": false}
+{"id": "Q128", "query": "castle gatehouse with a portcullis", "kind": "building", "multi": false}
+{"id": "Q129", "query": "tavern with a hanging sign and upstairs rooms", "kind": "building", "multi": false}
+{"id": "Q130", "query": "concrete bunker entrance with a steel hatch", "kind": "building", "multi": false}
+{"id": "Q131", "query": "wooden bridge spanning a small stream", "kind": "building", "multi": false}
+{"id": "Q132", "query": "lighthouse on a rocky cliff", "kind": "building", "multi": false}
+{"id": "Q133", "query": "small apartment building with balconies", "kind": "building", "multi": false}
+{"id": "Q134", "query": "mossy dungeon wall with torch holder", "kind": "building", "multi": false}
+{"id": "Q135", "query": "pagoda style tower with curved roofs", "kind": "building", "multi": false}
+{"id": "Q136", "query": "glowing neon cyberpunk shop front", "kind": "building", "multi": false}
+{"id": "Q137", "query": "wooden ladder to a treehouse platform", "kind": "building", "multi": false}
+{"id": "Q138", "query": "cozy cottage with a stone chimney", "kind": "building", "multi": false}
+{"id": "Q139", "query": "round stone tower roof, conical shape", "kind": "building", "multi": false}
+{"id": "Q140", "query": "drawbridge across a castle moat", "kind": "building", "multi": false}
+{"id": "Q141", "query": "a medieval village: houses, a well and a market stall", "kind": "building", "multi": true}
+{"id": "Q142", "query": "matching castle wall, corner tower and gate", "kind": "building", "multi": true}
+{"id": "Q143", "query": "sci-fi base with hangar, control tower and landing pad", "kind": "building", "multi": true}
+{"id": "Q144", "query": "a spooky graveyard with fence, crypt and iron gate", "kind": "building", "multi": true}
+{"id": "Q145", "query": "modular dungeon kit: floor tiles, walls, doors and stairs", "kind": "building", "multi": true}
+{"id": "Q146", "query": "fast red sports car", "kind": "vehicle", "multi": false}
+{"id": "Q147", "query": "wooden horse cart with two wheels", "kind": "vehicle", "multi": false}
+{"id": "Q148", "query": "pirate sailing ship with cannons", "kind": "vehicle", "multi": false}
+{"id": "Q149", "query": "small rowboat with oars", "kind": "vehicle", "multi": false}
+{"id": "Q150", "query": "sleek spaceship with twin engines", "kind": "vehicle", "multi": false}
+{"id": "Q151", "query": "go-kart with big rear tires", "kind": "vehicle", "multi": false}
+{"id": "Q152", "query": "police car with flashing lights", "kind": "vehicle", "multi": false}
+{"id": "Q153", "query": "military tank with rotating turret", "kind": "vehicle", "multi": false}
+{"id": "Q154", "query": "hovering sci-fi bike", "kind": "vehicle", "multi": false}
+{"id": "Q155", "query": "old rusty pickup truck", "kind": "vehicle", "multi": false}
+{"id": "Q156", "query": "steam locomotive with coal car", "kind": "vehicle", "multi": false}
+{"id": "Q157", "query": "yellow school bus", "kind": "vehicle", "multi": false}
+{"id": "Q158", "query": "speedboat with an outboard motor", "kind": "vehicle", "multi": false}
+{"id": "Q159", "query": "helicopter with spinning rotor", "kind": "vehicle", "multi": false}
+{"id": "Q160", "query": "biplane with open cockpit", "kind": "vehicle", "multi": false}
+{"id": "Q161", "query": "medieval siege catapult on wheels", "kind": "vehicle", "multi": false}
+{"id": "Q162", "query": "monster truck with huge tires", "kind": "vehicle", "multi": false}
+{"id": "Q163", "query": "submarine with periscope", "kind": "vehicle", "multi": false}
+{"id": "Q164", "query": "motorcycle with a sidecar", "kind": "vehicle", "multi": false}
+{"id": "Q165", "query": "mine cart on rails", "kind": "vehicle", "multi": false}
+{"id": "Q166", "query": "futuristic hover car with glowing underside", "kind": "vehicle", "multi": false}
+{"id": "Q167", "query": "viking longship with dragon head", "kind": "vehicle", "multi": false}
+{"id": "Q168", "query": "white and red ambulance van", "kind": "vehicle", "multi": false}
+{"id": "Q169", "query": "three matching karts in team colors", "kind": "vehicle", "multi": true}
+{"id": "Q170", "query": "a pirate fleet: galleon, sloop and rowboat", "kind": "vehicle", "multi": true}
+{"id": "Q171", "query": "friendly shopkeeper NPC with apron", "kind": "character", "multi": false}
+{"id": "Q172", "query": "grumpy old blacksmith", "kind": "character", "multi": false}
+{"id": "Q173", "query": "fire-breathing dragon boss", "kind": "character", "multi": false}
+{"id": "Q174", "query": "cute fluffy cat", "kind": "character", "multi": false}
+{"id": "Q175", "query": "zombie in tattered clothes", "kind": "character", "multi": false}
+{"id": "Q176", "query": "robot helper with a round head", "kind": "character", "multi": false}
+{"id": "Q177", "query": "knight in shining plate armor", "kind": "character", "multi": false}
+{"id": "Q178", "query": "wizard with a long beard and pointy hat", "kind": "character", "multi": false}
+{"id": "Q179", "query": "wolf that patrols the forest", "kind": "character", "multi": false}
+{"id": "Q180", "query": "pirate captain with an eye patch", "kind": "character", "multi": false}
+{"id": "Q181", "query": "skeleton warrior with a rusty sword", "kind": "character", "multi": false}
+{"id": "Q182", "query": "farm cow for a farming game", "kind": "character", "multi": false}
+{"id": "Q183", "query": "ninja in a black outfit", "kind": "character", "multi": false}
+{"id": "Q184", "query": "astronaut in a white suit", "kind": "character", "multi": false}
+{"id": "Q185", "query": "goblin merchant with a big sack", "kind": "character", "multi": false}
+{"id": "Q186", "query": "giant spider for a cave level", "kind": "character", "multi": false}
+{"id": "Q187", "query": "cheerful chef in a tall hat", "kind": "character", "multi": false}
+{"id": "Q188", "query": "guard dog that barks at strangers", "kind": "character", "multi": false}
+{"id": "Q189", "query": "dinosaur with a long tail", "kind": "character", "multi": false}
+{"id": "Q190", "query": "ghost floating with a lantern", "kind": "character", "multi": false}
+{"id": "Q191", "query": "quest giver villager with an exclamation mark", "kind": "character", "multi": false}
+{"id": "Q192", "query": "robot enemy with a laser arm", "kind": "character", "multi": false}
+{"id": "Q193", "query": "mermaid with a shimmering tail", "kind": "character", "multi": false}
+{"id": "Q194", "query": "scarecrow standing in a cornfield", "kind": "character", "multi": false}
+{"id": "Q195", "query": "person in a banana costume", "kind": "character", "multi": false}
+{"id": "Q196", "query": "alien with big eyes and tentacles", "kind": "character", "multi": false}
+{"id": "Q197", "query": "a party of adventurers: warrior, mage and archer", "kind": "character", "multi": true}
+{"id": "Q198", "query": "a mother duck with three ducklings", "kind": "character", "multi": true}
+{"id": "Q199", "query": "matching school students in the same uniform", "kind": "character", "multi": true}
+{"id": "Q200", "query": "shiny gold coin icon", "kind": "icon", "multi": false}
+{"id": "Q201", "query": "blue diamond gem premium currency", "kind": "icon", "multi": false}
+{"id": "Q202", "query": "stack of green cash bills", "kind": "icon", "multi": false}
+{"id": "Q203", "query": "glowing green emerald crystal", "kind": "icon", "multi": false}
+{"id": "Q204", "query": "pile of gold bars", "kind": "icon", "multi": false}
+{"id": "Q205", "query": "glowing energy orb token", "kind": "icon", "multi": false}
+{"id": "Q206", "query": "coin, gem and ticket currency icons in one matching style", "kind": "icon", "multi": true}
+{"id": "Q207", "query": "red heart health icon", "kind": "icon", "multi": false}
+{"id": "Q208", "query": "matching health, mana and stamina icons as one set", "kind": "icon", "multi": true}
+{"id": "Q209", "query": "blue mana potion bottle", "kind": "icon", "multi": false}
+{"id": "Q210", "query": "lightning bolt for stamina or energy", "kind": "icon", "multi": false}
+{"id": "Q211", "query": "shield icon for armor stat", "kind": "icon", "multi": false}
+{"id": "Q212", "query": "crossed swords attack damage stat", "kind": "icon", "multi": false}
+{"id": "Q213", "query": "winged boot for movement speed", "kind": "icon", "multi": false}
+{"id": "Q214", "query": "gold star experience level up icon", "kind": "icon", "multi": false}
+{"id": "Q215", "query": "lucky four leaf clover", "kind": "icon", "multi": false}
+{"id": "Q216", "query": "flexed bicep strength stat", "kind": "icon", "multi": false}
+{"id": "Q217", "query": "iron sword item icon", "kind": "icon", "multi": false}
+{"id": "Q218", "query": "sword, shield and bow icons in a matching fantasy style", "kind": "icon", "multi": true}
+{"id": "Q219", "query": "magic staff with a purple orb", "kind": "icon", "multi": false}
+{"id": "Q220", "query": "leather backpack inventory icon", "kind": "icon", "multi": false}
+{"id": "Q221", "query": "glowing golden key for unlocking doors", "kind": "icon", "multi": false}
+{"id": "Q222", "query": "loaf of bread food item", "kind": "icon", "multi": false}
+{"id": "Q223", "query": "pickaxe for mining ore", "kind": "icon", "multi": false}
+{"id": "Q224", "query": "wooden axe for chopping trees", "kind": "icon", "multi": false}
+{"id": "Q225", "query": "fishing rod with a hook", "kind": "icon", "multi": false}
+{"id": "Q226", "query": "wrapped gift box daily reward", "kind": "icon", "multi": false}
+{"id": "Q227", "query": "settings gear icon", "kind": "icon", "multi": false}
+{"id": "Q228", "query": "trash can delete icon", "kind": "icon", "multi": false}
+{"id": "Q229", "query": "magnifying glass search icon", "kind": "icon", "multi": false}
+{"id": "Q230", "query": "green checkmark confirm icon", "kind": "icon", "multi": false}
+{"id": "Q231", "query": "red X close icon", "kind": "icon", "multi": false}
+{"id": "Q232", "query": "plus sign add button icon", "kind": "icon", "multi": false}
+{"id": "Q233", "query": "home house icon", "kind": "icon", "multi": false}
+{"id": "Q234", "query": "speaker with a slash for mute", "kind": "icon", "multi": false}
+{"id": "Q235", "query": "musical note music toggle", "kind": "icon", "multi": false}
+{"id": "Q236", "query": "heart outline for favorites", "kind": "icon", "multi": false}
+{"id": "Q237", "query": "share icon with arrow out of a box", "kind": "icon", "multi": false}
+{"id": "Q238", "query": "circular refresh arrows", "kind": "icon", "multi": false}
+{"id": "Q239", "query": "padlock locked item icon", "kind": "icon", "multi": false}
+{"id": "Q240", "query": "open padlock unlocked", "kind": "icon", "multi": false}
+{"id": "Q241", "query": "left arrow to go back", "kind": "icon", "multi": false}
+{"id": "Q242", "query": "big chunky right arrow for next page", "kind": "icon", "multi": false}
+{"id": "Q243", "query": "four arrow icons: up, down, left and right, same style", "kind": "icon", "multi": true}
+{"id": "Q244", "query": "upgrade arrow pointing up with sparkles", "kind": "icon", "multi": false}
+{"id": "Q245", "query": "curved u-turn arrow", "kind": "icon", "multi": false}
+{"id": "Q246", "query": "keyboard E key interact prompt", "kind": "icon", "multi": false}
+{"id": "Q247", "query": "gamepad A button prompt", "kind": "icon", "multi": false}
+{"id": "Q248", "query": "space bar key prompt", "kind": "icon", "multi": false}
+{"id": "Q249", "query": "mouse left click prompt icon", "kind": "icon", "multi": false}
+{"id": "Q250", "query": "finger tap touch icon for mobile", "kind": "icon", "multi": false}
+{"id": "Q251", "query": "laughing face emote", "kind": "icon", "multi": false}
+{"id": "Q252", "query": "happy, sad, angry and surprised emote faces as a set", "kind": "icon", "multi": true}
+{"id": "Q253", "query": "angry red face emote", "kind": "icon", "multi": false}
+{"id": "Q254", "query": "thumbs up emote", "kind": "icon", "multi": false}
+{"id": "Q255", "query": "waving hand hello emote", "kind": "icon", "multi": false}
+{"id": "Q256", "query": "skull icon for defeat", "kind": "icon", "multi": false}
+{"id": "Q257", "query": "red map pin location marker", "kind": "icon", "multi": false}
+{"id": "Q258", "query": "yellow exclamation mark quest marker above NPC", "kind": "icon", "multi": false}
+{"id": "Q259", "query": "X marks the spot treasure map marker", "kind": "icon", "multi": false}
+{"id": "Q260", "query": "compass pointing north icon", "kind": "icon", "multi": false}
+{"id": "Q261", "query": "gold, silver and bronze medal icons that look like a set", "kind": "icon", "multi": true}
+{"id": "Q262", "query": "bronze rank badge with chevrons", "kind": "icon", "multi": false}
+{"id": "Q263", "query": "diamond rank emblem for ranked ladder", "kind": "icon", "multi": false}
+{"id": "Q264", "query": "golden winner trophy cup", "kind": "icon", "multi": false}
+{"id": "Q265", "query": "checkered racing flag", "kind": "icon", "multi": false}
+{"id": "Q266", "query": "white surrender flag", "kind": "icon", "multi": false}
+{"id": "Q267", "query": "red team capture flag", "kind": "icon", "multi": false}
+{"id": "Q268", "query": "simple dot crosshair for shooter", "kind": "icon", "multi": false}
+{"id": "Q269", "query": "sniper scope crosshair", "kind": "icon", "multi": false}
+{"id": "Q270", "query": "hand pointer cursor", "kind": "icon", "multi": false}
+{"id": "Q271", "query": "glowing sword cursor for fantasy game", "kind": "icon", "multi": false}
+{"id": "Q272", "query": "skull and crossbones danger warning icon", "kind": "icon", "multi": false}
+{"id": "Q273", "query": "paw print pet icon", "kind": "icon", "multi": false}
+{"id": "Q274", "query": "red pause button", "kind": "frame", "multi": false}
+{"id": "Q275", "query": "green play button with rounded corners", "kind": "frame", "multi": false}
+{"id": "Q276", "query": "big yellow buy button for the shop", "kind": "frame", "multi": false}
+{"id": "Q277", "query": "matching inventory slot, close button and panel", "kind": "frame", "multi": true}
+{"id": "Q278", "query": "wooden plank panel for a menu", "kind": "frame", "multi": false}
+{"id": "Q279", "query": "parchment scroll panel for quests", "kind": "frame", "multi": false}
+{"id": "Q280", "query": "dark sci-fi glass panel with glowing edges", "kind": "frame", "multi": false}
+{"id": "Q281", "query": "health bar frame with red fill", "kind": "frame", "multi": false}
+{"id": "Q282", "query": "health bar, mana bar and stamina bar in the same style", "kind": "frame", "multi": true}
+{"id": "Q283", "query": "horizontal xp progress bar track", "kind": "frame", "multi": false}
+{"id": "Q284", "query": "circular cooldown ring around an ability", "kind": "frame", "multi": false}
+{"id": "Q285", "query": "ornate gold border for a popup window", "kind": "frame", "multi": false}
+{"id": "Q286", "query": "pixel art border for dialogue box", "kind": "frame", "multi": false}
+{"id": "Q287", "query": "toggle switch on and off", "kind": "frame", "multi": false}
+{"id": "Q288", "query": "checkbox with checkmark", "kind": "frame", "multi": false}
+{"id": "Q289", "query": "square inventory slot with rarity glow", "kind": "frame", "multi": false}
+{"id": "Q290", "query": "mobile control set: joystick, jump and action buttons", "kind": "frame", "multi": true}
+{"id": "Q291", "query": "hotbar slot with number label", "kind": "frame", "multi": false}
+{"id": "Q292", "query": "mobile jump button circular", "kind": "frame", "multi": false}
+{"id": "Q293", "query": "button set in candy style: play, settings and shop", "kind": "frame", "multi": true}
+{"id": "Q294", "query": "tooltip bubble with arrow pointer", "kind": "frame", "multi": false}
+{"id": "Q295", "query": "name tag plate above player head", "kind": "frame", "multi": false}
+{"id": "Q296", "query": "tab button for switching menu pages", "kind": "frame", "multi": false}
+{"id": "Q297", "query": "slider track with round handle", "kind": "frame", "multi": false}
+{"id": "Q298", "query": "notification toast banner at top of screen", "kind": "frame", "multi": false}
+{"id": "Q299", "query": "save and load player cash and levels", "kind": "code", "multi": false}
+{"id": "Q300", "query": "safe player data saving with session locking", "kind": "code", "multi": false}
+{"id": "Q301", "query": "signal class for custom events between scripts", "kind": "code", "multi": false}
+{"id": "Q302", "query": "promise library for handling async code", "kind": "code", "multi": false}
+{"id": "Q303", "query": "helper to disconnect connections and destroy instances automatically", "kind": "code", "multi": false}
+{"id": "Q304", "query": "detect when a player enters or leaves a zone", "kind": "code", "multi": false}
+{"id": "Q305", "query": "UI framework with reactive state", "kind": "code", "multi": false}
+{"id": "Q306", "query": "tween a gui button smoothly on hover", "kind": "code", "multi": false}
+{"id": "Q307", "query": "spring physics for smooth motion", "kind": "code", "multi": false}
+{"id": "Q308", "query": "pathfinding for NPCs avoiding obstacles", "kind": "code", "multi": false}
+{"id": "Q309", "query": "networking library for fast remote events", "kind": "code", "multi": false}
+{"id": "Q310", "query": "admin commands module with chat prefix", "kind": "code", "multi": false}
+{"id": "Q311", "query": "raycast hitbox for melee swords", "kind": "code", "multi": false}
+{"id": "Q312", "query": "custom camera that follows the player", "kind": "code", "multi": false}
+{"id": "Q313", "query": "input handler for keyboard gamepad and touch", "kind": "code", "multi": false}
+{"id": "Q314", "query": "script a lava part that damages players", "kind": "code", "multi": false}
+{"id": "Q315", "query": "global leaderboard of top players", "kind": "code", "multi": false}
+{"id": "Q316", "query": "datastore wrapper with automatic retries", "kind": "code", "multi": false}
+{"id": "Q317", "query": "rate limiter for remote events", "kind": "code", "multi": false}
+{"id": "Q318", "query": "state machine for enemy AI", "kind": "code", "multi": false}
+{"id": "Q319", "query": "object pool for reusing bullets", "kind": "code", "multi": false}
+{"id": "Q320", "query": "inventory system with item slots, tooltips and drag and drop", "kind": "code", "multi": true}
+{"id": "Q321", "query": "round system with lobby, map voting and map loading", "kind": "code", "multi": true}
+{"id": "Q322", "query": "teleport players between places with a matchmaking queue", "kind": "code", "multi": false}
+{"id": "Q323", "query": "shop with buy buttons, currency display and purchase saving", "kind": "code", "multi": true}
+{"id": "Q324", "query": "check if a player owns a gamepass", "kind": "code", "multi": false}
+{"id": "Q325", "query": "NPC dialogue system with choices", "kind": "code", "multi": false}
+{"id": "Q326", "query": "quest system with tracker UI, objectives and reward payout", "kind": "code", "multi": true}
+{"id": "Q327", "query": "day night cycle script", "kind": "code", "multi": false}
+{"id": "Q328", "query": "rain and snow weather system", "kind": "code", "multi": false}
+{"id": "Q329", "query": "procedural terrain using perlin noise", "kind": "code", "multi": false}
+{"id": "Q330", "query": "random maze generator", "kind": "code", "multi": false}
+{"id": "Q331", "query": "ability cooldown manager", "kind": "code", "multi": false}
+{"id": "Q332", "query": "projectile with gravity and arc", "kind": "code", "multi": false}
+{"id": "Q333", "query": "combat kit with sword swing, hitbox, damage and knockback", "kind": "code", "multi": true}
+{"id": "Q334", "query": "floating damage numbers", "kind": "code", "multi": false}
+{"id": "Q335", "query": "ragdoll when a character dies", "kind": "code", "multi": false}
+{"id": "Q336", "query": "checkpoint system for an obby", "kind": "code", "multi": false}
+{"id": "Q337", "query": "door that opens with a proximity prompt", "kind": "code", "multi": false}
+{"id": "Q338", "query": "moving platform that carries players", "kind": "code", "multi": false}
+{"id": "Q339", "query": "conveyor belt that pushes parts", "kind": "code", "multi": false}
+{"id": "Q340", "query": "camera shake on explosion", "kind": "code", "multi": false}
+{"id": "Q341", "query": "first person camera lock", "kind": "code", "multi": false}
+{"id": "Q342", "query": "sprint with stamina bar", "kind": "code", "multi": false}
+{"id": "Q343", "query": "movement set with double jump, dash and sprint", "kind": "code", "multi": true}
+{"id": "Q344", "query": "grappling hook mechanic", "kind": "code", "multi": false}
+{"id": "Q345", "query": "fishing minigame logic", "kind": "code", "multi": false}
+{"id": "Q346", "query": "tycoon with droppers, conveyor and collector with saved progress", "kind": "code", "multi": true}
+{"id": "Q347", "query": "pet system with following, egg hatching and rarity rolls", "kind": "code", "multi": true}
+{"id": "Q348", "query": "grid based building placement system", "kind": "code", "multi": false}
+{"id": "Q349", "query": "sound manager with music crossfade", "kind": "code", "multi": false}
+{"id": "Q350", "query": "per-player settings saved between sessions, like volume", "kind": "code", "multi": false}
+{"id": "Q351", "query": "toast notifications in the UI", "kind": "code", "multi": false}
+{"id": "Q352", "query": "scrolling list that handles thousands of items", "kind": "code", "multi": false}
+{"id": "Q353", "query": "format big numbers as 1.5K or 2M", "kind": "code", "multi": false}
+{"id": "Q354", "query": "countdown timer formatted as minutes and seconds", "kind": "code", "multi": false}
+{"id": "Q355", "query": "weighted random loot drops", "kind": "code", "multi": false}
+{"id": "Q356", "query": "spatial partitioning to find nearby entities fast", "kind": "code", "multi": false}
+{"id": "Q357", "query": "behavior tree for NPC decisions", "kind": "code", "multi": false}
+{"id": "Q358", "query": "animation controller that blends animations", "kind": "code", "multi": false}
+{"id": "Q359", "query": "car driving script with steering", "kind": "code", "multi": false}
+{"id": "Q360", "query": "validate remote event arguments for exploit protection", "kind": "code", "multi": false}
+{"id": "Q361", "query": "ban and kick moderation module", "kind": "code", "multi": false}
+{"id": "Q362", "query": "unit testing framework for Luau modules", "kind": "code", "multi": false}
+{"id": "Q363", "query": "benchmark helper to profile slow code", "kind": "code", "multi": false}
+{"id": "Q364", "query": "server side check for speed hacking", "kind": "code", "multi": false}
+{"id": "Q365", "query": "mobile touch joystick", "kind": "code", "multi": false}
+{"id": "Q366", "query": "emote wheel menu", "kind": "code", "multi": false}
+{"id": "Q367", "query": "overhead name tag showing player rank", "kind": "code", "multi": false}
+{"id": "Q368", "query": "jump pad that launches players", "kind": "code", "multi": false}
+{"id": "Q369", "query": "health regeneration over time", "kind": "code", "multi": false}
+{"id": "Q370", "query": "click to move character", "kind": "code", "multi": false}
+{"id": "Q371", "query": "preload assets behind a loading screen", "kind": "code", "multi": false}
+{"id": "Q372", "query": "camera cutscene along a path", "kind": "code", "multi": false}
+{"id": "Q373", "query": "auto balance players across teams", "kind": "code", "multi": false}
+{"id": "Q374", "query": "spooky horror title font", "kind": "font", "multi": false}
+{"id": "Q375", "query": "cute bubbly font for a pet game", "kind": "font", "multi": false}
+{"id": "Q376", "query": "pixel art retro font", "kind": "font", "multi": false}
+{"id": "Q377", "query": "sci-fi futuristic font", "kind": "font", "multi": false}
+{"id": "Q378", "query": "medieval fantasy font", "kind": "font", "multi": false}
+{"id": "Q379", "query": "comic book speech bubble font", "kind": "font", "multi": false}
+{"id": "Q380", "query": "clean readable UI font", "kind": "font", "multi": false}
+{"id": "Q381", "query": "handwritten diary font", "kind": "font", "multi": false}
+{"id": "Q382", "query": "wild west wanted poster font", "kind": "font", "multi": false}
+{"id": "Q383", "query": "graffiti street style font", "kind": "font", "multi": false}
+{"id": "Q384", "query": "elegant serif font for a luxury shop", "kind": "font", "multi": false}
+{"id": "Q385", "query": "bold blocky font for damage numbers", "kind": "font", "multi": false}
+{"id": "Q386", "query": "neon cyberpunk display font", "kind": "font", "multi": false}
+{"id": "Q387", "query": "pirate treasure map font", "kind": "font", "multi": false}
+{"id": "Q388", "query": "kids cartoon playful font", "kind": "font", "multi": false}
+{"id": "Q389", "query": "gothic blackletter font", "kind": "font", "multi": false}
+{"id": "Q390", "query": "typewriter monospaced terminal font", "kind": "font", "multi": false}
+{"id": "Q391", "query": "candy sweet bubble letters font", "kind": "font", "multi": false}
+{"id": "Q392", "query": "ancient runes mystical font", "kind": "font", "multi": false}
+{"id": "Q393", "query": "military stencil font", "kind": "font", "multi": false}
+{"id": "Q394", "query": "clean rounded font for buttons and menus", "kind": "font", "multi": false}
+{"id": "Q395", "query": "fairy tale storybook font", "kind": "font", "multi": false}
+{"id": "Q396", "query": "a title font and readable body font for a fantasy RPG", "kind": "font", "multi": true}
+{"id": "Q397", "query": "matching header and score counter fonts for a retro arcade game", "kind": "font", "multi": true}
+{"id": "Q398", "query": "space exploration thin tech font", "kind": "font", "multi": false}
+{"id": "Q399", "query": "how to make a part kill players on touch", "kind": "skill", "multi": false}
+{"id": "Q400", "query": "script a door that opens when a player gets near", "kind": "skill", "multi": false}
+{"id": "Q401", "query": "global leaderboard for top coins collected", "kind": "skill", "multi": false}
+{"id": "Q402", "query": "shop with buy buttons, currency display and purchase sound", "kind": "skill", "multi": true}
+{"id": "Q403", "query": "save player data with DataStore", "kind": "skill", "multi": false}
+{"id": "Q404", "query": "checkpoint with spawn pad, flag visual and saved progress", "kind": "skill", "multi": true}
+{"id": "Q405", "query": "a tool that shoots a projectile on click", "kind": "skill", "multi": false}
+{"id": "Q406", "query": "hinge constraint for a swinging door", "kind": "skill", "multi": false}
+{"id": "Q407", "query": "make the lighting look like a sunset", "kind": "skill", "multi": false}
+{"id": "Q408", "query": "campfire with flames, smoke and crackling sound", "kind": "skill", "multi": true}
+{"id": "Q409", "query": "play a sound when a button is pressed", "kind": "skill", "multi": false}
+{"id": "Q410", "query": "inventory grid with slots, close button and matching panel", "kind": "skill", "multi": true}
+{"id": "Q411", "query": "play an animation when the player jumps", "kind": "skill", "multi": false}
+{"id": "Q412", "query": "NPC pathfinding to chase the nearest player", "kind": "skill", "multi": false}
+{"id": "Q413", "query": "teleport player to another place in the experience", "kind": "skill", "multi": false}
+{"id": "Q414", "query": "award a badge when a player reaches the finish", "kind": "skill", "multi": false}
+{"id": "Q415", "query": "prompt gamepass purchase to unlock a VIP room", "kind": "skill", "multi": false}
+{"id": "Q416", "query": "rope constraint to hang a lantern from the ceiling", "kind": "skill", "multi": false}
+{"id": "Q417", "query": "day and night cycle script", "kind": "skill", "multi": false}
+{"id": "Q418", "query": "combat health bar, damage numbers and hit sound", "kind": "skill", "multi": true}
+{"id": "Q419", "query": "spawn pad that gives a forcefield for a few seconds", "kind": "skill", "multi": false}
+{"id": "Q420", "query": "conveyor belt that moves parts along", "kind": "skill", "multi": false}
+{"id": "Q421", "query": "elevator that travels between floors", "kind": "skill", "multi": false}
+{"id": "Q422", "query": "jump pad that launches players upward", "kind": "skill", "multi": false}
+{"id": "Q423", "query": "speed boost pad", "kind": "skill", "multi": false}
+{"id": "Q424", "query": "lobby with team selection GUI, countdown timer and arena teleport", "kind": "skill", "multi": true}
+{"id": "Q425", "query": "module to save player coins", "kind": "skill", "multi": false}
+{"id": "Q426", "query": "rotating platform obstacle for an obby", "kind": "skill", "multi": false}
+{"id": "Q427", "query": "obby stage with lava, moving platforms and a checkpoint", "kind": "skill", "multi": true}
+{"id": "Q428", "query": "disappearing floor tiles after stepping", "kind": "skill", "multi": false}
+{"id": "Q429", "query": "lava floor that damages over time", "kind": "skill", "multi": false}
+{"id": "Q430", "query": "proximity prompt to pick up an item", "kind": "skill", "multi": false}
+{"id": "Q431", "query": "sprint with shift key and stamina bar", "kind": "skill", "multi": false}
+{"id": "Q432", "query": "double jump for the player", "kind": "skill", "multi": false}
+{"id": "Q433", "query": "explosion effect when a part is touched", "kind": "skill", "multi": false}
+{"id": "Q434", "query": "footstep sounds that change by material", "kind": "skill", "multi": false}
+{"id": "Q435", "query": "background music playlist that loops", "kind": "skill", "multi": false}
+{"id": "Q436", "query": "fade screen to black for a transition", "kind": "skill", "multi": false}
+{"id": "Q437", "query": "loading screen with logo, progress bar and tips", "kind": "skill", "multi": true}
+{"id": "Q438", "query": "settings menu with volume slider", "kind": "skill", "multi": false}
+{"id": "Q439", "query": "dialog system for NPC conversations", "kind": "skill", "multi": false}
+{"id": "Q440", "query": "quest tracker UI on the side of the screen", "kind": "skill", "multi": false}
+{"id": "Q441", "query": "minimap in the corner of the screen", "kind": "skill", "multi": false}
+{"id": "Q442", "query": "cooldown on an ability button", "kind": "skill", "multi": false}
+{"id": "Q443", "query": "raycast weapon with hit detection", "kind": "skill", "multi": false}
+{"id": "Q444", "query": "sword swing that deals damage", "kind": "skill", "multi": false}
+{"id": "Q445", "query": "spring constraint trampoline", "kind": "skill", "multi": false}
+{"id": "Q446", "query": "car with wheels, steering seat and speedometer UI", "kind": "skill", "multi": true}
+{"id": "Q447", "query": "boat floating on water", "kind": "skill", "multi": false}
+{"id": "Q448", "query": "weld parts together at runtime", "kind": "skill", "multi": false}
+{"id": "Q449", "query": "tween a part to move smoothly", "kind": "skill", "multi": false}
+{"id": "Q450", "query": "name tag above each player's head", "kind": "skill", "multi": false}
+{"id": "Q451", "query": "custom chat commands for admins", "kind": "skill", "multi": false}
+{"id": "Q452", "query": "kick or ban players from an admin panel", "kind": "skill", "multi": false}
+{"id": "Q453", "query": "leaderstats showing kills and deaths", "kind": "skill", "multi": false}
+{"id": "Q454", "query": "spawn enemies in waves", "kind": "skill", "multi": false}
+{"id": "Q455", "query": "loot drop from a defeated enemy", "kind": "skill", "multi": false}
+{"id": "Q456", "query": "random item crate opening with rarities", "kind": "skill", "multi": false}
+{"id": "Q457", "query": "daily reward login streak", "kind": "skill", "multi": false}
+{"id": "Q458", "query": "trading items between two players", "kind": "skill", "multi": false}
+{"id": "Q459", "query": "pet that follows the player", "kind": "skill", "multi": false}
+{"id": "Q460", "query": "ride a horse mount", "kind": "skill", "multi": false}
+{"id": "Q461", "query": "swimming in water volume", "kind": "skill", "multi": false}
+{"id": "Q462", "query": "climbable ladder", "kind": "skill", "multi": false}
+{"id": "Q463", "query": "fog and atmosphere for a spooky forest", "kind": "skill", "multi": false}
+{"id": "Q464", "query": "bloom and color correction effect", "kind": "skill", "multi": false}
+{"id": "Q465", "query": "swap the skybox at night", "kind": "skill", "multi": false}
+{"id": "Q466", "query": "neon light that flickers", "kind": "skill", "multi": false}
+{"id": "Q467", "query": "rain with clouds, thunder sound and darker lighting", "kind": "skill", "multi": true}
+{"id": "Q468", "query": "trail behind a moving part", "kind": "skill", "multi": false}
+{"id": "Q469", "query": "dust particles when the player runs", "kind": "skill", "multi": false}
+{"id": "Q470", "query": "snow falling over an area", "kind": "skill", "multi": false}
+{"id": "Q471", "query": "typewriter text effect for subtitles", "kind": "skill", "multi": false}
+{"id": "Q472", "query": "scrolling list UI of players", "kind": "skill", "multi": false}
+{"id": "Q473", "query": "button hover animation", "kind": "skill", "multi": false}
+{"id": "Q474", "query": "on-screen joystick for mobile touch controls", "kind": "skill", "multi": false}
+{"id": "Q475", "query": "detect if player is on mobile or PC", "kind": "skill", "multi": false}
+{"id": "Q476", "query": "loop a custom animation on an NPC", "kind": "skill", "multi": false}
+{"id": "Q477", "query": "emote menu for R15 characters", "kind": "skill", "multi": false}
+{"id": "Q478", "query": "cutscene with a camera path", "kind": "skill", "multi": false}
+{"id": "Q479", "query": "lock the camera to first person", "kind": "skill", "multi": false}
+{"id": "Q480", "query": "top-down camera for a strategy game", "kind": "skill", "multi": false}
+{"id": "Q481", "query": "send messages from server to client with a remote event", "kind": "skill", "multi": false}
+{"id": "Q482", "query": "rate limit remote events against exploiters", "kind": "skill", "multi": false}
+{"id": "Q483", "query": "matchmaking queue using memory store", "kind": "skill", "multi": false}
+{"id": "Q484", "query": "announcement sent to every server", "kind": "skill", "multi": false}
+{"id": "Q485", "query": "process receipts for developer product purchases", "kind": "skill", "multi": false}
+{"id": "Q486", "query": "check if a player owns a gamepass on join", "kind": "skill", "multi": false}
+{"id": "Q487", "query": "teleport a party to a reserved server", "kind": "skill", "multi": false}
+{"id": "Q488", "query": "weapon ammo and reload system", "kind": "skill", "multi": false}
+{"id": "Q489", "query": "grappling hook using a rope constraint", "kind": "skill", "multi": false}
+{"id": "Q490", "query": "wind zone that pushes players", "kind": "skill", "multi": false}
+{"id": "Q491", "query": "magnet that pulls coins toward the player", "kind": "skill", "multi": false}
+{"id": "Q492", "query": "spinning collectible coin that adds to score", "kind": "skill", "multi": false}
+{"id": "Q493", "query": "race timer stopwatch on screen", "kind": "skill", "multi": false}
+{"id": "Q494", "query": "locked door that needs a key", "kind": "skill", "multi": false}
+{"id": "Q495", "query": "pressure plate that opens a gate", "kind": "skill", "multi": false}
+{"id": "Q496", "query": "destructible wall that breaks into pieces", "kind": "skill", "multi": false}

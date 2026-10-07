@@ -19,7 +19,10 @@
     "ingest:game-icons": "node src/ingest-game-icons.mjs --repo ../../private/library-src/game-icons --out ../../planning/library/items/game-icons.jsonl",
     "fetch:kenney-2d": "node tools/fetch-kenney.mjs ../../planning/library/ledger/kenney-2d-ui.jsonl ../../private/library-src/kenney-2d",
     "ingest:kenney-2d": "node src/ingest-kenney-2d.mjs --ledger ../../planning/library/ledger/kenney-2d-ui.jsonl --dir ../../private/library-src/kenney-2d --out ../../planning/library/items/kenney-2d.jsonl",
-    "boards:kenney-2d": "node tools/icon-boards.mjs ../../planning/library/items/kenney-2d.jsonl ../../private/library-src/kenney-2d ../../private/library-boards/kenney-2d"
+    "boards:kenney-2d": "node tools/icon-boards.mjs ../../planning/library/items/kenney-2d.jsonl ../../private/library-src/kenney-2d ../../private/library-boards/kenney-2d",
+    "acceptance": "node tools/acceptance.mjs --items ../../planning/library/items",
+    "overrides": "node tools/apply-overrides.mjs ../../planning/library/maturity-overrides.jsonl ../../planning/library/items ../../private/library-overrides-touched.jsonl ../../private/library-overrides-demoted.txt",
+    "retrieval-test": "node tools/retrieval-test.mjs ../../planning/library/acceptance/L-A6-queries.jsonl ../../planning/library/items ../../private ../../private/library-acceptance/L-A6"
   },
   "devDependencies": {
     "playwright-core": "1.58.0",

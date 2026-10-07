@@ -7,14 +7,14 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 
 | # | Category | Target | Ingested (A / B / C) | Where it stands |
 |---|---|---|---|---|
-| 1 | Props and models | 10,000 | 6,209 (1,403 / 3,502 / 1,304) | 19 Kenney packs, 131 OpenGameArt packs |
+| 1 | Props and models | 10,000 | 6,686 (1,442 / 3,799 / 1,445) | Kenney and OpenGameArt packs, incl. terrain and scenery pieces tagged environment |
 | 2 | Modular building sets | 150 families / 5,000 parts | 5,111 (562 / 3,230 / 1,319) | 63 families (20 Kenney, 43 OpenGameArt) |
-| 3 | Complete maps and environments | 300 | 0 complete maps; 477 environment pieces (41 / 317 / 119) from 10 OpenGameArt packs | terrain and scenery parts, not finished maps |
+| 3 | Complete maps and environments | 300 | 0 | not started (terrain and scenery pieces are props, row 1) |
 | 4 | Characters, NPCs, creatures, pets | 1,500 | 389 (140 / 71 / 178) | 3 Kenney packs, 21 OpenGameArt packs |
 | 5 | Vehicles and mechanisms | 400 | 691 (327 / 291 / 73) | 4 Kenney packs, 14 OpenGameArt packs |
 | 6 | Textures, materials, terrain presets | 1,000 | 0 | ledger only (ambientCG, Poly Haven) |
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
-| 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: 11,652 icons (A 5,869 / B 4,193 / C 1,590) and 1,856 frames (A 649 / B 1,198 / C 9), plus 43 kit icons | 27 families: game-icons.net, 25 Kenney 2D packs (one per pack), the Kenney 3D renders; A/B: 10,062 icons, 1,847 frames; not uploaded yet (O-GROUP) |
+| 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: icons A 5,421 / B 4,030 / C 2,201, frames A 649 / B 1,198 / C 9, plus 43 kit icons | 27 families; after the L4 overrides; not uploaded yet (O-GROUP) |
 | 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
 | 10 | VFX | 2,000 | 0 | ledger only |
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
@@ -57,6 +57,11 @@ cited to page and heading. 9 refused: 7 under L1 (their own words are about Robl
 credential-shaped example (a Slack webhook URL). Two critics per item
 graded them for an agent working in Studio: A 77, B 469, C 624 (C: Blender, the Creator Dashboard, Open Cloud admin,
 classroom logistics), agreeing on 1,073 (92 %). The steps are in D1 (`body`); the A/B are in `studpilot-library`.
+
+Acceptance (2026-10-08, planning/proof/LIB/acceptance-2026-10-08.md): L-A2 and L-A3 pass; L-A4 passes on its fourth
+sample after 708 L4 decisions (planning/library/maturity-overrides.jsonl: brand-named console prompts, logos, contact
+sheets, gambling and alcohol to C; Nosifer and 26 real firearm models to maturity Mild, offered only when asked); L-A5
+waits on O-GROUP; L-A6 queries frozen (496).
 
 Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
 Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.
