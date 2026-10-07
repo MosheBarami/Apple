@@ -7,7 +7,7 @@
 //
 // One file per model name: GLB (including one blend-to-glb.mjs made from the pack's .blend), then glTF, FBX, OBJ, Collada. The licence comes from the ledger row (the page's own
 // licence line); CC-BY attribution names the pack, author, licence and page, plus the page's own notice; the author and the post date from its evidence. Only models the
-// renderer loaded become items. Authors with a pack posted before 2023 count as known humans for the 2024 rule.
+// renderer loaded with every file they name become items. Authors with a pack posted before 2023 count as known humans for the 2024 rule.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname, basename, extname, relative } from 'node:path';
@@ -73,7 +73,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else {
     const stats = new Map(readFileSync(arg('stats'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).map((s) => [s.key, s]));
     const items = [];
-    let rejected = 0, unloadable = 0;
+    let rejected = 0, unloadable = 0, incomplete = 0;
     for (const { row, slug: ps } of packs) {
       const [posted, author] = authorOf(row.human_made_evidence);
       const lic = classifyLicence(firstLicence(row.licence_words));
@@ -82,6 +82,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       for (const f of packModels(join(dir, ps))) {
         const key = keyOf(ps, f), st = stats.get(key);
         if (!st?.ok) { unloadable += 1; continue; }
+        if (st.missing) { incomplete += 1; continue; } // names a file its pack does not ship (or a .psd): not as its author made it
         const name = words(basename(f, extname(f)));
         const title = `${name} (${row.pack})`;
         const conv = convertedFrom(join(dir, ps), f);
@@ -104,6 +105,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     mkdirSync(dirname(out), { recursive: true });
     writeFileSync(out, items.map((i) => JSON.stringify(i)).join('\n') + '\n');
-    console.log(`${items.length} items, ${rejected} rejected, ${unloadable} not loadable -> ${out}`);
+    console.log(`${items.length} items, ${rejected} rejected, ${unloadable} not loadable, ${incomplete} incomplete -> ${out}`);
   }
 }
