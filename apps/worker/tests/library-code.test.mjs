@@ -14,6 +14,8 @@ test('offered: A or B, standalone, bundled, not unsafe; a restricted package say
   assert.equal(offerable(row('code:a:x', { grade: 'C' })), false);
   assert.equal(offerable(row('code:a:x', { standalone: 0 })), false, 'a loader-bound module never reaches a plain place');
   assert.equal(offerable(row('code:a:x', { sanitize: JSON.stringify({ audit: 'unsafe' }) })), false);
+  assert.equal(offerable(row('code:a:x', { load_test: JSON.stringify({ ok: false }) })), false, 'L8: failed to load in Studio');
+  assert.equal(offerable(row('code:a:x', { load_test: JSON.stringify({ ok: true }) })), true);
   const r = row('code:a:x', { sanitize: JSON.stringify({ audit: 'restricted', audit_notes: [{ verdict: 'restricted', why: 'prompts real purchases; only for a shop' }] }) });
   assert.equal(offerable(r), true);
   assert.match(audit(r).note, /only for a shop/);

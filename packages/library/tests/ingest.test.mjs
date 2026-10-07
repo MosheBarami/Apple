@@ -64,7 +64,7 @@ test('itemSql upserts an item, escapes quotes, and never overwrites a grade on r
   assert.match(sql, /'Bob''s crate'/);
   assert.match(sql, /ON CONFLICT\(id\) DO UPDATE SET/);
   assert.doesNotMatch(sql.split('DO UPDATE SET')[1], /grade = excluded\.grade/);
-  assert.match(sql, /, NULL, 12, NULL, NULL, NULL, NULL, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'no sanitize report, triangles, an empty grade, no code fields, then the update time');
+  assert.match(sql, /, NULL, 12, NULL, NULL, NULL, NULL, NULL, NULL, '2026-10-07T00:00:00Z'\) ON CONFLICT/, 'no sanitize report, triangles, an empty grade, no code fields, then the update time');
 });
 
 test('gradeSql writes only the grade, its notes and the time, for one id', async () => {

@@ -17,6 +17,7 @@ export interface CodeRow {
   deps: string | null;
   standalone: number | null;
   bundle_key: string | null;
+  load_test: string | null;
   licence_class: string;
   attribution: string | null;
   source_url: string;
@@ -24,12 +25,14 @@ export interface CodeRow {
 export interface TreeNode { name: string; className: 'ModuleScript' | 'Script' | 'LocalScript' | 'Folder'; source?: string; children?: TreeNode[] }
 export interface Bundle { id: string; name: string; tree: TreeNode; deps: { alias: string; id: string | null }[]; licence: string; attribution?: string; source_url: string }
 
-const COLUMNS = 'id, title, package_name, grade, sanitize, grade_notes, deps, standalone, bundle_key, licence_class, attribution, source_url';
+const COLUMNS = 'id, title, package_name, grade, sanitize, grade_notes, deps, standalone, bundle_key, load_test, licence_class, attribution, source_url';
 
-/** Whether a row may reach a user's place: graded A/B, standalone, bundled, and not audited unsafe. Pure. */
+/** Whether a row may reach a user's place: graded A/B, standalone, bundled, not audited unsafe, and not failed to load. Pure. */
 export function offerable(r: CodeRow): boolean {
   if (r.grade !== 'A' && r.grade !== 'B') return false;
   if (r.standalone !== 1 || !r.bundle_key) return false;
+  // L8: a package that did not load when built and required in Studio is never offered.
+  try { if ((JSON.parse(r.load_test ?? 'null') as { ok?: boolean } | null)?.ok === false) return false; } catch { return false; }
   return audit(r).verdict !== 'unsafe';
 }
 
