@@ -15,7 +15,8 @@
     "fetch:oga": "node tools/fetch-oga.mjs ../../planning/library/ledger/opengameart-3d.jsonl ../../private/library-src/oga",
     "list:oga": "node src/ingest-files.mjs list --ledger ../../planning/library/ledger/opengameart-3d.jsonl --dir ../../private/library-src/oga --out ../../private/library-src/oga/list.json",
     "thumbs:oga": "node tools/render-models.mjs ../../private/library-src/oga/list.json ../../private/library-src/oga ../../private/library-thumbs/oga",
-    "ingest:oga": "node src/ingest-files.mjs ingest --ledger ../../planning/library/ledger/opengameart-3d.jsonl --dir ../../private/library-src/oga --stats ../../private/library-thumbs/oga/stats.jsonl --out ../../planning/library/items/opengameart-3d.jsonl"
+    "ingest:oga": "node src/ingest-files.mjs ingest --ledger ../../planning/library/ledger/opengameart-3d.jsonl --dir ../../private/library-src/oga --stats ../../private/library-thumbs/oga/stats.jsonl --out ../../planning/library/items/opengameart-3d.jsonl",
+    "acceptance": "node tools/acceptance.mjs --items ../../planning/library/items"
   },
   "devDependencies": {
     "playwright-core": "1.58.0",
