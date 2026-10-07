@@ -17,7 +17,7 @@ import { validateItem } from './item.mjs';
 import { readGlbStats } from './glb.mjs';
 
 const KIND_OF_CATEGORY = { 1: 'prop', 2: 'building', 4: 'character', 5: 'vehicle', 13: 'animation' };
-const KNOWN_HUMAN = new Set(['kenney', 'quaternius', 'kay lousberg', 'kaykit']);
+export const KNOWN_HUMAN = new Set(['kenney', 'quaternius', 'kay lousberg', 'kaykit']);
 
 const arg = (name) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : undefined; };
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

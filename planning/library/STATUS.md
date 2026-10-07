@@ -7,11 +7,11 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 
 | # | Category | Target | Ingested (A / B / C) | Where it stands |
 |---|---|---|---|---|
-| 1 | Props and models | 10,000 | 2,075 (569 / 1,248 / 258) | 19 Kenney packs |
-| 2 | Modular building sets | 150 families / 5,000 parts | 1,903 (194 / 1,280 / 429) | 20 families |
+| 1 | Props and models | 10,000 | 3,210 (907 / 1,888 / 415) | 19 Kenney packs, 24 OpenGameArt packs |
+| 2 | Modular building sets | 150 families / 5,000 parts | 2,634 (278 / 1,743 / 613) | 29 families (20 Kenney, 9 OpenGameArt) |
 | 3 | Complete maps and environments | 300 | 0 | not started |
-| 4 | Characters, NPCs, creatures, pets | 1,500 | 68 (54 / 8 / 6) | 3 packs |
-| 5 | Vehicles and mechanisms | 400 | 356 (114 / 203 / 39) | 4 packs |
+| 4 | Characters, NPCs, creatures, pets | 1,500 | 217 (119 / 50 / 48) | 3 Kenney packs, 10 OpenGameArt packs |
+| 5 | Vehicles and mechanisms | 400 | 399 (121 / 227 / 51) | 4 Kenney packs, 6 OpenGameArt packs |
 | 6 | Textures, materials, terrain presets | 1,000 | 0 | ledger only (ambientCG, Poly Haven) |
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 43 | 1 family (Kenney 3D renders, kit icons); 2D packs in the ledger |
@@ -19,7 +19,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 10 | VFX | 2,000 | 0 | ledger only |
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
 | 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
-| 13 | Animations | 1,000 | 0 | ledger only |
+| 13 | Animations | 1,000 | 5 (0 / 0 / 5) | 2 OpenGameArt rigs (graded as models; clips not yet split out) |
 | 14 | Code modules | 300 | 404 (29 / 296 / 79) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4: 315 clean static scans; the 89 flagged reviewed by two reviewers each: 65 safe, 18 restricted (purchases, web, teleport: only when the game asks), 6 unsafe and kept out |
 | 15 | Knowledge | 100 % of the docs | 8,447 doc chunks, all embedded | creator-docs (966 guide pages, 1,200 API files) and luau.org, refreshed 2026-10-07 (#120): 1,170 new or changed, 90 removed upstream pruned; plus research and skill chunks |
 | 16 | Skills | 500 | 23 | live corpus |
@@ -30,6 +30,13 @@ median 138, 95th percentile 1,060, max 10,880. Source zips (741 MB) stay in the 
 
 Grading (2026-10-07): 93 boards, 38 critic runs (two per board), 4,402 items: A 931, B 2,739, C 732; the two critics
 agreed on 3,975 (90 %). Each item keeps both critics' grade and reason in `grade_notes`.
+
+OpenGameArt 3D (2026-10-07, in progress): the ledger's 207 allowed packs (Kenney re-uploads and .blend-only packs
+skipped) are fetched at one request a second; 51 packs so far, 2,063 models (FBX 1,448, glTF 565, OBJ 47, GLB 3), all
+CC0 by Quaternius, 0 rejected; triangles median 564, 95th percentile 5,044, max 24,800. Rendered from the files as they
+are (no texture missing in any model); two critics per board: A 494, B 1,169, C 400, agreeing on 1,745 (85 %). Some
+Quaternius packs export every material as Blender's default grey (the colours live only in the .blend), so they render
+and import white and graded B or C; a Blender conversion would recover them (not installed).
 
 Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
 Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.
