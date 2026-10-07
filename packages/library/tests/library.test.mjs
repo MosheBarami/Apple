@@ -64,3 +64,19 @@ test('the standard Apache header and a padded MIT notice classify (code-luau ing
   assert.equal(classifyLicence('Apache License, Version 2.0').class, 'apache-2.0');
   assert.equal(classifyLicence('MIT License: Copyright (c) 2020 Reselim Permission is hereby granted').class, 'mit');
 });
+
+test('the MIT grant classifies without the word MIT (Builder fonts, 2026-10-07)', () => {
+  assert.equal(classifyLicence('Permission is hereby granted, free of charge, to any person obtaining a copy of this software').class, 'mit');
+});
+
+test('a font item: Creator Store fonts by asset id, built-ins by family file; designer and date from the evidence', async () => {
+  const { fontItem, designerOf, firstDate } = await import('../src/ingest-fonts.mjs');
+  assert.equal(designerOf('Type designer: Vernon Adams, Ben Nathan; embedded copyright'), 'Vernon Adams, Ben Nathan');
+  assert.equal(firstDate('on Google Fonts since 2012-09-23; uploaded 2023-01-17'), '2012-09-23');
+  const r = fontItem({ family: 'Akronim', url: 'https://create.roblox.com/store/asset/12187368317', roblox_ref: { asset_id: 'rbxassetid://12187368317' }, licence_words: 'This Font Software is licensed under the SIL Open Font License, Version 1.1.', licence_url: 'https://scripts.sil.org/OFL', mood: ['horror'], faces: 1, checked_at: '2026-10-07', human_made_evidence: 'Type designer: Grzegorz Klimczewski; on Google Fonts since 2012-09-23' }, '/nowhere');
+  assert.equal(r.item.roblox_asset_id, 12187368317);
+  assert.equal(r.item.licence_class, 'ofl-1.1');
+  assert.match(r.item.attribution, /Akronim by Grzegorz Klimczewski/);
+  assert.equal(r.item.ai_check.pass, true);
+  assert.match(fontItem({ family: 'Ghost', url: 'https://x', roblox_ref: { family_uri: 'rbxasset://fonts/families/Ghost.json' }, licence_words: 'OFL', licence_url: 'https://x', checked_at: '2026-10-07', human_made_evidence: '2010-01-01' }, '/nowhere').error, /no asset id and no family file/);
+});

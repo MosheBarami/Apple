@@ -11,7 +11,8 @@ const CLASSES = [
   ['apache-2.0', /apache[- ]?(license,?[- ]?)?(version[- ]?)?2(\.0)?/i], // also the standard header 'Apache License Version 2.0'
   ['bsd-3-clause', /bsd[- ]?3/i],
   ['bsd-2-clause', /bsd[- ]?2/i],
-  ['mit', /^\s*mit(\s+licen[cs]e)?\s*$|\bmit licen[cs]e\b/i],
+  // The MIT grant is often published without the word 'MIT' (Roblox's Builder fonts, many repos).
+  ['mit', /^\s*mit(\s+licen[cs]e)?\s*$|\bmit licen[cs]e\b|permission is hereby granted, free of charge, to any person obtaining a copy/i],
   ['ofl-1.1', /\bofl\b|open font licen[cs]e/i],
   ['roblox-licensed-audio', /roblox[- ]licen[cs]ed (audio|music)|\bapm\b/i],
   ['roblox-owned', /roblox[- ]owned/i],

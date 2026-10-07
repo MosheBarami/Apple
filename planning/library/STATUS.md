@@ -15,13 +15,13 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 6 | Textures, materials, terrain presets | 1,000 | 0 | ledger only (ambientCG, Poly Haven) |
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 43 | 1 family (Kenney 3D renders, kit icons); 2D packs in the ledger |
-| 9 | Fonts | all | 0 | ledger: 120 OFL families |
+| 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
 | 10 | VFX | 2,000 | 0 | ledger only |
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
 | 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
 | 13 | Animations | 1,000 | 0 | ledger only |
 | 14 | Code modules | 300 | 404 (29 / 296 / 79) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4: 315 clean static scans; the 89 flagged reviewed by two reviewers each: 65 safe, 18 restricted (purchases, web, teleport: only when the game asks), 6 unsafe and kept out |
-| 15 | Knowledge | 100 % of the docs | 2,195 docs | live corpus: 9,376 chunks, 9,527 vectors; creator-docs upstream has 2,168 pages; fetched 2026-08-30, refresh due |
+| 15 | Knowledge | 100 % of the docs | 8,447 doc chunks, all embedded | creator-docs (966 guide pages, 1,200 API files) and luau.org, refreshed 2026-10-07 (#120): 1,170 new or changed, 90 removed upstream pruned; plus research and skill chunks |
 | 16 | Skills | 500 | 23 | live corpus |
 | 17 | Game templates and starters | 50 | 0 | not started |
 
