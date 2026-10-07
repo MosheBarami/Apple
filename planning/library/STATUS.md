@@ -14,7 +14,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 5 | Vehicles and mechanisms | 400 | 399 (121 / 227 / 51) | 4 Kenney packs, 6 OpenGameArt packs |
 | 6 | Textures, materials, terrain presets | 1,000 | 0 | ledger only (ambientCG, Poly Haven) |
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
-| 8 | UI art: icons in 10+ families | 8,000 + 500 | 43 | 1 family (Kenney 3D renders, kit icons); 2D packs in the ledger |
+| 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: 11,652 icons (A 5,869 / B 4,193 / C 1,590) and 1,856 frames (A 649 / B 1,198 / C 9), plus 43 kit icons | 27 families: game-icons.net, 25 Kenney 2D packs (one per pack), the Kenney 3D renders; A/B: 10,062 icons, 1,847 frames; not uploaded yet (O-GROUP) |
 | 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
 | 10 | VFX | 2,000 | 0 | ledger only |
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
@@ -37,6 +37,17 @@ CC0 by Quaternius, 0 rejected; triangles median 564, 95th percentile 5,044, max 
 are (no texture missing in any model); two critics per board: A 494, B 1,169, C 400, agreeing on 1,745 (85 %). Some
 Quaternius packs export every material as Blender's default grey (the colours live only in the .blend), so they render
 and import white and graded B or C; a Blender conversion would recover them (not installed).
+
+Icons (2026-10-07): game-icons.net (github.com/game-icons/icons at 82d9488), 4,173 SVGs by 34 artists, CC BY 3.0 except
+the two its license.txt marks CC0 (123 icons); each CC BY icon carries "made by {artist}" as the licence asks. 5 refused
+under the 2024 rule (an artist new in 2025). Badges (overlay pieces) and various-artists (no one to credit) left out.
+Two critics per numbered board of 100 graded readability at HUD size and fit for all-ages games: A 1,052, B 1,773,
+C 1,348, agreeing on 3,209 (77 %); C includes busy or abstract glyphs, gore, gambling, brands and extremist symbols.
+
+Kenney 2D (2026-10-07): 26 packs from kenney.nl (CC0, each License.txt checked), one item per distinct base-size PNG
+(2x copies, sheets and previews left out; byte-identical files kept once across packs): 9,335 items in 25 families
+(1-Bit Pack ships only sheets), 1 refused (the Anguilla flag's ISO code "ai" trips the L1 word check). Two critics per
+board: A 5,466, B 3,618, C 251, agreeing on 8,244 (88 %).
 
 Skills (2026-10-07): 1,170 procedures from the Roblox Creator Documentation (CC BY 4.0), each the heading, its
 introducing paragraph and the steps with their code, word for word; images, videos and the docs site's widgets removed,
