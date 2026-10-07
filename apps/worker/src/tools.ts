@@ -1,5 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
+import { searchLibraryCode, insertPlan, aliasFor, treeOps, header, audit } from './library-code';
+import { embed } from './gateway';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
@@ -4803,6 +4805,59 @@ export const TOOLS: Record<string, ToolImpl> = {
   //   Two-step on purpose: describe the NEED and get a shortlist, then ask for the ID and get the
   //   source. Returning source on a fuzzy match would hand over a plausible wrong module, and a
   //   plausible wrong module is worse than none — nothing downstream checks it. ]]
+  library_code: {
+    def: {
+      name: 'library_code',
+      description:
+        'The StudPilot Library\'s open-source Luau packages (data saving, signals, promises, cleanup, networking, zones, springs, state machines, pathfinding, ECS): each audited for safety and graded by two reviewers; only A/B, standalone ones are offered. '
+        + '`need` (plain words) returns a shortlist; `id` installs that package with its dependencies under game.ReplicatedStorage.Packages, licence notice kept, and says how to require it. A package marked only_when is for that feature only. Installing never overwrites: a package already there is left as it is.',
+      parameters: S({
+        need: { type: 'string', description: 'What the code must do, in plain words. Returns a shortlist.' },
+        id: { type: 'string', description: 'A package id from a shortlist. Installs it.' },
+        limit: { type: 'number', description: 'Shortlist size, 1 to 15 (default 8).' },
+      }, []),
+    },
+    studio: true,
+    studioOps: ['get_instance', 'read_script', 'edit_script', 'create_instances'],
+    mutatesProject: (result) => !!result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).installed) && ((result as { installed: unknown[] }).installed.length > 0),
+    run: async (ctx, a) => {
+      if (a.id === undefined) {
+        if (typeof a.need !== 'string' || !a.need.trim()) return { error: 'pass need (plain words) for a shortlist, or id to install one' };
+        return searchLibraryCode(ctx.env, a.need, embed, Number(a.limit ?? 8));
+      }
+      if (typeof a.id !== 'string') return { error: 'id must be a string' };
+      const plan = await insertPlan(ctx.env, a.id);
+      if ('error' in plan) return { error: `Nothing installed: ${plan.error}` };
+      const root = 'game.ReplicatedStorage.Packages';
+      const holder = await op(ctx, { op: 'get_instance', path: root });
+      const holderError = holder && typeof holder === 'object' && 'error' in (holder as Record<string, unknown>) ? String((holder as { error: unknown }).error) : null;
+      if (holderError !== null) {
+        if (!/\bnot found\b/i.test(holderError)) return { error: `Nothing installed: could not read ${root} (${holderError})` };
+        const made = await op(ctx, { op: 'create_instances', items: [{ className: 'Folder', name: 'Packages', parent: 'game.ReplicatedStorage' }] });
+        if (made && typeof made === 'object' && 'error' in (made as Record<string, unknown>)) return { error: `Nothing installed: could not create ${root} (${String((made as { error: unknown }).error)})` };
+      }
+      const installed: string[] = [], present: string[] = [];
+      let use = '';
+      for (const b of plan.bundles) {
+        const name = b.id === a.id ? b.name : aliasFor(plan.bundles, b.id, b.name);
+        const path = `${root}.${name}`;
+        const existing = await op(ctx, { op: 'read_script', path });
+        const readError = existing && typeof existing === 'object' && 'error' in (existing as Record<string, unknown>) ? String((existing as { error: unknown }).error) : null;
+        if (b.id === a.id) use = `local ${name.replace(/[^A-Za-z0-9_]/g, '')} = require(game.ReplicatedStorage.Packages.${name})`;
+        if (readError === null) { present.push(name); continue; }
+        if (!/\bnot found\b/i.test(readError)) return { error: `Stopped before ${name}: could not read ${path} (${readError})`, installed };
+        let ops;
+        try { ops = treeOps({ ...b.tree, name }, root, header(b)); } catch (e) { return { error: `Stopped before ${name}: ${(e as Error).message}`, installed }; }
+        for (const o of ops) {
+          const res = await op(ctx, o as never);
+          if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return { error: `Stopped inside ${name}: ${String((res as { error: unknown }).error)}`, installed };
+        }
+        installed.push(name);
+      }
+      const a0 = audit(plan.bundles[plan.bundles.length - 1]!.row);
+      return { installed, ...(present.length ? { already_present: present } : {}), use, ...(a0.note ? { only_when: a0.note } : {}), note: 'The licence notice is at the top of each package; keep it.' };
+    },
+  },
   get_verified_module: {
     def: {
       name: 'get_verified_module',
@@ -6045,7 +6100,7 @@ export const DEFERRED_GROUPS: Readonly<Record<string, readonly string[]>> = {
   terrain: ['edit_terrain', 'shape_terrain', 'read_terrain'],
   models: ['generate_model', 'generate_model_external'],
   web: ['web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'github_lookup'],
-  code: ['git_history', 'review_scripts', 'format_script', 'find_symbol', 'run_spec', 'collision_groups'],
+  code: ['git_history', 'review_scripts', 'format_script', 'find_symbol', 'run_spec', 'collision_groups', 'library_code'],
   workspace: ['workspace_list', 'workspace_read', 'workspace_write'],
   ui: ['build_ui', 'insert_ui_component'],
 };

@@ -53,3 +53,25 @@ test('an Apache repo classifies from its own file; no creation date means no pas
   assert.match(undated.rejected[0], /ai_check failed/);
   assert.match(repoItems({ ...row, licence_words: 'MIT' }, repo({ 'src/init.luau': 'return 1' }, 'All rights reserved.'), '2026-10-07T00:00:00.000Z').skipped, /licence file/);
 });
+
+test('code trees follow Rojo: init is the folder module, .server is a Script, a folder without init is a Folder', async () => {
+  const { buildTree, countScripts } = await import('../src/code-tree.mjs');
+  const dir = repo({ 'src/init.luau': 'return {}', 'src/Util.luau': 'return 1', 'src/Boot.server.luau': 'print(1)', 'src/Parts/A.luau': 'return 2', 'src/x.spec.luau': '--' });
+  const t = buildTree(join(dir, 'src'), 'Thing');
+  assert.equal(t.className, 'ModuleScript');
+  assert.equal(t.source, 'return {}');
+  const kids = Object.fromEntries(t.children.map((c) => [c.name, c.className]));
+  assert.deepEqual(kids, { Boot: 'Script', Parts: 'Folder', Util: 'ModuleScript' });
+  assert.equal(countScripts(t), 4, 'the spec stays out');
+});
+
+test('package names keep their authors\' casing; generic roots take the repo name; wally deps are read', async () => {
+  const { packageName, wallyInfo, needsLoader } = await import('../src/code-tree.mjs');
+  assert.equal(packageName('madstudioroblox/profilestore', 'ProfileStore', 'ProfileStore'), 'ProfileStore');
+  assert.equal(packageName(undefined, 'src', 'ZonePlus'), 'ZonePlus');
+  assert.equal(packageName(undefined, 'lib', 'roblox-lua-promise'), 'RobloxLuaPromise');
+  const dir = repo({ 'modules/comm/init.luau': 'return {}', 'modules/comm/wally.toml': '[package]\nname = "sleitnick/comm"\n\n[dependencies]\nSignal = "sleitnick/signal@2"\nPromise = "evaera/promise@4"\n' });
+  assert.deepEqual(wallyInfo(join(dir, 'modules', 'comm'), dir), { name: 'sleitnick/comm', deps: { Signal: 'sleitnick/signal', Promise: 'evaera/promise' } });
+  assert.equal(needsLoader('local Maid = require("Maid")'), true, "Nevermore's string require needs its loader");
+  assert.equal(needsLoader('local Maid = require(script.Parent.Maid)'), false);
+});

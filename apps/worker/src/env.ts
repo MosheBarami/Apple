@@ -188,6 +188,8 @@ export interface Env {
   HF_TOKEN?: string;
   /** Optional dedicated Vectorize index for the asset library; falls back to VEC. */
   VEC_ASSETS?: VectorizeIndex;
+  /** The StudPilot Library index (studpilot-library): A/B items, searched by library_code; optional so a dev worker runs without it. */
+  LIBRARY?: VectorizeIndex;
   // ---------------------------------------------------------------------------
   // The web-facing tools (webtools.ts). Every one of these is OPTIONAL and unset by default, and
   // each absence has a defined, visible answer rather than a silent degradation — a tool whose

@@ -274,6 +274,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   add_effect: 'Attaches particle and light emitters to instances in the place, which is a visible change to the scene the owner is looking at.',
   remove_effect: 'Strips emitters off instances in the place, destroying work an agent run or a person put there.',
   install_module: 'Writes a ModuleScript into the place and wires it up: a code change made by a program nobody was watching.',
+  library_code: 'Installs third-party packages (and their dependencies) into the place: a code change made by a program nobody was watching, on the same rule as install_module.',
   insert_asset: 'Brings third-party content into the place. It passes an asset policy and a post-insertion script scan inside an agent run; a direct caller would be the one path around them.',
   generate_model: 'Creates geometry and parents it into the place, and spends on generation to do it.',
   remember: 'Writes a durable fact into project memory, which steers every later agent run. A program that can edit the agent\'s standing instructions is writing the place slowly.',

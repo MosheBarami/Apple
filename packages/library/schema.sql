@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS library_items (
   grade_notes TEXT,                  -- JSON: the two critics' grades and reasons
   load_test TEXT,                    -- JSON { ok, place, at } (L8)
   maturity TEXT,                     -- Minimal | Mild (L4)
+  package_name TEXT,                 -- code: the name it takes under ReplicatedStorage.Packages
+  deps TEXT,                         -- code: JSON [{ alias, id, wally }], inserted with it
+  standalone INTEGER,                -- code: 1 when it runs without a loader and every dependency is in the library
+  bundle_key TEXT,                   -- code: R2 key of its instance tree (library/code/<vector id>.json)
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS library_items_kind ON library_items (kind, grade);
