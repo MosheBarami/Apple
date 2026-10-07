@@ -57,7 +57,11 @@ export async function searchLibraryCode(env: Env, need: string, embed: Embed, li
   if (!ids.length) return { modules: [] };
   const rows = (await env.CORPUS.prepare(`select ${COLUMNS} from library_items where id in (${ids.map(() => '?').join(',')})`).bind(...ids).all<CodeRow>()).results ?? [];
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const modules = ids.map((id) => byId.get(id)).filter((r): r is CodeRow => !!r && offerable(r)).slice(0, Math.max(1, Math.min(limit, 15))).map((r) => {
+  // The most relevant offerable packages, A before B (stable, so relevance orders each grade): a superseded B like
+  // ProfileService must not shadow its A successor ProfileStore.
+  const top = ids.map((id) => byId.get(id)).filter((r): r is CodeRow => !!r && offerable(r)).slice(0, Math.max(1, Math.min(limit, 15)));
+  top.sort((x, y) => (x.grade === y.grade ? 0 : x.grade === 'A' ? -1 : 1));
+  const modules = top.map((r) => {
     const a = audit(r);
     return { id: r.id, name: r.package_name, grade: r.grade, use: use(r), audit: a.verdict, ...(a.note ? { only_when: a.note } : {}), needs: (JSON.parse(r.deps ?? '[]') as { alias: string }[]).map((d) => d.alias), licence: r.licence_class };
   });

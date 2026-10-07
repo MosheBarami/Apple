@@ -80,4 +80,6 @@ test('a vector id fits Vectorize (40 hex chars) and the embedded text is the car
   const t = embedText({ id: 'kenney:k:stall-red', title: 'stall red (Fantasy Town Kit)', kind: 'prop', family: 'kenney:k', grade: 'A', tags: ['stall', 'red'], checks: { triangles: 300 } });
   assert.match(t, /stall red \(Fantasy Town Kit\) \| prop \| family kenney:k \| grade A/);
   assert.match(t, /stall, red/);
+  const code = embedText({ id: 'code:m:profilestore', title: 'ProfileStore (MadStudioRoblox/ProfileStore)', kind: 'code', grade: 'A', tags: ['profile'], grade_notes: [{ why: 'Session-locked player data saving' }, { why: 'Session-locked player data saving' }] });
+  assert.match(code, /\| Session-locked player data saving$/, 'what it is for, once');
 });

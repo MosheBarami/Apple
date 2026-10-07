@@ -60,3 +60,11 @@ test('tree ops: parents before children, the notice on the root only, folders as
   assert.equal(ops[3].create.className, 'Script');
   assert.throws(() => treeOps({ name: 'a.b', className: 'ModuleScript', source: '' }, 'game'), /cannot name/);
 });
+
+test('the shortlist lists A before B, relevance order kept within a grade', async () => {
+  const { searchLibraryCode } = await import('../src/library-code.ts');
+  const rows = { 'code:m:profileservice': row('code:m:profileservice', { grade: 'B' }), 'code:m:profilestore': row('code:m:profilestore'), 'code:x:other': row('code:x:other', { grade: 'B' }) };
+  const e = { ...env(rows, {}), LIBRARY: { query: async () => ({ matches: ['code:m:profileservice', 'code:m:profilestore', 'code:x:other'].map((item) => ({ metadata: { item } })) }) } };
+  const r = await searchLibraryCode(e, 'save player data', async () => [[0]]);
+  assert.deepEqual(r.modules.map((m) => m.id), ['code:m:profilestore', 'code:m:profileservice', 'code:x:other']);
+});
