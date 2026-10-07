@@ -1,0 +1,490 @@
+{
+ "critics": [
+  {
+   "style": 6,
+   "signatures": [
+    {
+     "signature": "1. navy contour everywhere",
+     "grade": "present",
+     "why": "Windows, cards, price buttons, HUD tiles, currency pills, XP bar and hotbar all carry a dark navy outline. This is the strongest part of the kit and fixes X3/KITpass9 #13."
+    },
+    {
+     "signature": "2. pale inner rim",
+     "grade": "present",
+     "why": "There is a light inner line inside the window frame (pink and cyan), the hero cards and the HUD tiles. It is thin, about 3 px, and reads more weakly on the yellow Daily Rewards frame and the teal Settings frame than on P05."
+    },
+    {
+     "signature": "3. gradient faces with solid lips",
+     "grade": "present",
+     "why": "Price, Equip and Claim buttons have a vertical gradient face over a darker solid lip, and the press shot shows the HUD Shop face dropping about 5 px onto it. The '+' buttons on the currency pills show a doubled lip (E5 338,885)."
+    },
+    {
+     "signature": "4. faint studs",
+     "grade": "weak",
+     "why": "Studs are on every surface and are much quieter than KITpass9, but the header bands (E1 1000,280; E4 1200,280) and the grey Claimed cards (E4 573,450) still read as a visible grid behind the titles, louder than P05's checker. Card faces are about right."
+    },
+    {
+     "signature": "5. white text with navy strokes and real currency glyphs",
+     "grade": "weak",
+     "why": "Titles and labels use white text with navy strokes, and the Robux hex glyph is real. But the soft-currency coin is a hex nut / washer render (E5 88,885), the gem is a plain octahedron, and the XP label is small grey-white text that crosses the fill edge (E5 958,132)."
+    },
+    {
+     "signature": "6. one consistent human-made icon family, big",
+     "grade": "weak",
+     "why": "Two families are mixed: desaturated low-poly 3D clay renders (cart, chest, gift, key, pets) and flat white line glyphs in Settings (music, speaker, gear, E6 520,430). The eggs are featureless tinted ellipsoids, exactly the X4 #2/#4 failure. Nothing has the glossy, saturated, painted finish of P07-P09."
+    },
+    {
+     "signature": "7. one hero and a clean, full grid",
+     "grade": "present",
+     "why": "E1 and E2 have a full-width hero plus a 3 + 2-wide grid with no orphans. E3 is a full 4x2 grid and E4 copies the P06 seven-day layout with a wide Day 7. Weaknesses: E6 is three over-tall rows with dead middles, and the E4 Day 7 hero is dominated by a grey disabled button."
+    },
+    {
+     "signature": "8. visible motion",
+     "grade": "weak",
+     "why": "Comparing play0 with play1, the only changes are the ray burst rotating and slight icon bob inside cards (diff bounding box limited to the card icons). Hover produces zero pixel change on the hovered HUD Shop button in all six screens, so the 1.05 scale never renders. The NEW! badge, the Today card, the hero buy button and the Starter Pack tile are all static."
+    }
+   ],
+   "defects": [
+    {
+     "screen": "E1-E6 hover",
+     "x": 83,
+     "y": 330,
+     "severity": "high",
+     "defect": "The hover state is invisible. A pixel diff of play0 against hover over the HUD Shop button region (0-170, 250-420) shows 0 changed pixels on all six screens. The only hover-shot differences are the animated rays inside the cards, so the specified 1.05 scale is either not applied or not tweened before capture.",
+     "fix": "Tween the button's UIScale to 1.05 over about 0.08 s on MouseEnter (and on SelectionGained for gamepad). Brighten the face by +8% at the same time, and capture the hover shot only after the tween finishes so the proof catches it."
+    },
+    {
+     "screen": "E2",
+     "x": 595,
+     "y": 470,
+     "severity": "high",
+     "defect": "Every egg (hero, the five cards and the header) is the same smooth low-poly ellipsoid in pastel tints: no pattern, spots, cracks, glow or sparkle. The 'Golden Egg' (925,830) is pale cream and the 'Void Egg' is lavender. This repeats anti-reference X4 defects 2 and 4.",
+     "fix": "Give each egg its own decal and pattern (spots, swirls, cracks, crystal facets, lava veins) and a saturated two-tone colour. Make Golden metallic yellow with a specular highlight and Void deep purple/black with stars. Add a soft glow behind the hero egg."
+    },
+    {
+     "screen": "E5",
+     "x": 88,
+     "y": 885,
+     "severity": "high",
+     "defect": "The coin icon on the HUD pill, the E1 Coin Pack card (858,680) and the E4 Day 1/Day 4 cards is an octagonal ring that reads as a hex nut or washer, not a coin. It has no emblem and no rim shine, and it is the most-seen icon in the game.",
+     "fix": "Replace it with a round, thick gold coin: a bright rim, an embossed star or '$' face, a white specular glint and a navy contour. Use the same asset everywhere coins appear."
+    },
+    {
+     "screen": "E1",
+     "x": 925,
+     "y": 830,
+     "severity": "medium",
+     "defect": "The 3D icon set is desaturated clay: a grey cart (497,240 and the HUD at 83,320), a grey-silver Mega Chest, a white gift and a grey cat. Next to P07-P09's glossy, saturated painted icons it reads as untextured placeholder renders.",
+     "fix": "Re-render or replace the icons with saturated base colours, a specular highlight and a 2-3 px navy outline baked into the image. The cart should be red/pink like P07's basket, the chest wood-brown with gold trim and the gift a coloured box."
+    },
+    {
+     "screen": "E6",
+     "x": 520,
+     "y": 430,
+     "severity": "medium",
+     "defect": "The Settings row icons (music note, speaker, gear) are flat white line glyphs, a second icon family next to the 3D renders used everywhere else. The Graphics row gear (520,818) also duplicates the header gear (505,240) and the HUD gear (83,715).",
+     "fix": "Use the same 3D icon family for the settings rows (a coloured music note, speaker and monitor or paintbrush) and give Graphics a distinct icon."
+    },
+    {
+     "screen": "E6",
+     "x": 1225,
+     "y": 433,
+     "severity": "medium",
+     "defect": "The Music and Sound Effects sliders have no knob, handle or value readout. They look identical to the XP progress bar, so a player cannot tell they are draggable.",
+     "fix": "Add a round white knob with a navy contour at the fill edge, show a percentage label (for example '70%') at the right end, and grow the knob on drag."
+    },
+    {
+     "screen": "E6",
+     "x": 850,
+     "y": 620,
+     "severity": "medium",
+     "defect": "The window is far too large for three settings. Each row is about 180 px tall, with about 300 px of empty studded field between the label (ending x~830) and the control (starting x~1020).",
+     "fix": "Shrink the rows to about 110 px, or make the window narrower. Alternatively, add the expected toggles (Low Detail, Show Damage, Trade Requests, Reset Camera) to fill a real list."
+    },
+    {
+     "screen": "E2",
+     "x": 1015,
+     "y": 715,
+     "severity": "medium",
+     "defect": "The buy buttons carry no state. Forest Egg's is orange while every other price button is green, for no stated reason. The player holds 320 gems, yet the 750, 2,000, 5,000 and 12,500 buttons all render as active green buys.",
+     "fix": "Use one colour rule: green when affordable, grey/red with the number in red when not. Drop the arbitrary orange."
+    },
+    {
+     "screen": "E2",
+     "x": 1200,
+     "y": 872,
+     "severity": "low",
+     "defect": "In the wide Golden Egg buy button, the gem glyph sits at x~1117 and the number '5,000' is centred at x~1285, about 170 px apart, so they read as two separate elements. E1's Mega Chest (1240,872) groups the glyph and number correctly.",
+     "fix": "Lay out the glyph and number together in one centred horizontal UIListLayout in every price button."
+    },
+    {
+     "screen": "E5",
+     "x": 958,
+     "y": 132,
+     "severity": "medium",
+     "defect": "The XP bar label 'Level 7  640 / 1,000 XP' is about 22 px tall in a 1920 frame. It sits half on the green fill and half on the navy track, which makes the stroke fight both backgrounds, and the level is not visually separated from the progress.",
+     "fix": "Move the level into a separate star or shield badge at the bar's left end with a large white number. Put '640 / 1,000' centred in the bar at 28-30 px with a thicker navy stroke."
+    },
+    {
+     "screen": "E5",
+     "x": 250,
+     "y": 885,
+     "severity": "medium",
+     "defect": "The currency pills have a light-grey body that reads like a disabled text field. There is dead space between the number and the '+' (x 260-310), and the '+' button (338,885) has a doubled green lip and pokes past the pill's right contour.",
+     "fix": "Use a dark navy pill body (as in P10 and P11), or a tinted gradient matching the currency. Right-align the number toward the '+' or shorten the pill, and give the '+' a single lip seated inside the pill outline."
+    },
+    {
+     "screen": "E3",
+     "x": 573,
+     "y": 548,
+     "severity": "medium",
+     "defect": "The rarity labels ('Legendary', 'Epic', 'Common') are about 18 px tall and sit flush on the top contour of the Equip button, touching it. Common Dog and Bunny share teal with Uncommon Cat, so the rarity colour coding does not hold.",
+     "fix": "Move rarity into a coloured ribbon or pill at the top-left of the card (or under the name) with 8+ px clearance. Use a standard rarity ramp: Common grey, Uncommon green, Rare blue, Epic purple, Legendary gold."
+    },
+    {
+     "screen": "E4",
+     "x": 1347,
+     "y": 580,
+     "severity": "medium",
+     "defect": "Past and future reward states look the same. 'Claimed' (573,580) and 'Tomorrow' / 'In 2 days' use the identical grey pill, and claimed cards have no checkmark or dimming beyond a grey face.",
+     "fix": "Overlay a large green check over a 50%-dimmed icon on claimed cards. Give future days a lock or clock glyph on a muted pill, and keep the bright green pulse for Today only."
+    },
+    {
+     "screen": "E4",
+     "x": 1307,
+     "y": 843,
+     "severity": "medium",
+     "defect": "The Day 7 grand-prize hero is dominated by a huge grey disabled 'In 4 days' button. 'Day 7' (1200,693) is left-aligned while every other day title is centred, and the chest is a grey-silver arch that does not read as a treasure chest.",
+     "fix": "Make the chest twice as large with a gold glow and a 'GRAND PRIZE' ribbon. Replace the button with a small countdown pill and centre the title, or align all titles the same way."
+    },
+    {
+     "screen": "E1",
+     "x": 800,
+     "y": 357,
+     "severity": "low",
+     "defect": "Motion is limited to rays and icon bob. The NEW! badge, the hero buy button (1268,480) and the Starter Pack HUD tile (1810,330) are identical between play0 and play1, so nothing draws the eye to the offer meant to sell.",
+     "fix": "Add a \u00b14\u00b0 wobble or 1.0-1.08 pulse to the NEW! badge, a periodic diagonal shine sweep across the hero buy button, and a slow bob on the Starter Pack tile."
+    },
+    {
+     "screen": "E1",
+     "x": 1810,
+     "y": 240,
+     "severity": "low",
+     "defect": "The Starter Pack price pill '99' sits on top of the tile's top contour, so the two outlines collide (a softened version of KITpass9 #7).",
+     "fix": "Either seat the pill fully inside the tile bottom as a price strip, or float it clearly above with 6+ px clearance and its own drop shadow."
+    },
+    {
+     "screen": "E3",
+     "x": 573,
+     "y": 760,
+     "severity": "low",
+     "defect": "The Dog render is a brown block with a crushed face, and the Bunny's ears (1088,700) and the Tiger's tail touch the name text above. The pets are not framed consistently in their cards.",
+     "fix": "Normalise the pet camera framing (the same bounding-box fill, about 70% of the art area) and keep 8 px clearance under the name. Re-render the Dog with a readable snout and ears."
+    },
+    {
+     "screen": "E1",
+     "x": 1000,
+     "y": 280,
+     "severity": "low",
+     "defect": "The header band studs are more visible than the card-face studs. On the pink and yellow headers they form a busy grid right behind the white title.",
+     "fix": "Drop header stud opacity to about 10-12%, or fade it out behind the title text area."
+    }
+   ],
+   "verdict": "This is a competent kit and no longer looks like the anti-references. It has navy contours everywhere, lipped gradient buttons, the real Robux glyph, white bodies with coloured frames and full hero-plus-grid layouts, so it sits beside P05 and P06 comfortably. It cannot yet sit beside P07-P09 because the art inside the frames is weak, and in Play mode the UI is close to static. I score it 6. The three changes that would raise the score most: (1) Replace the icon set with one saturated, glossy, outlined family: a real round gold coin, a coloured cart and chest, distinct patterned eggs (Golden actually gold, Void actually dark) and 3D settings icons instead of flat glyphs. Weak art is now the largest gap between this kit and P07-P09. (2) Make interaction and motion visible. The 1.05 hover never renders (zero pixel change on every screen). The NEW! badge, the hero buy button and the Starter Pack tile need a pulse, wobble or shine sweep, and the Today reward needs to breathe. (3) Fix state semantics and the HUD chips: affordability colours on buy buttons, a checkmark for Claimed versus a lock for future days, slider knobs with values, a rarity ribbon with a standard colour ramp, and darker currency pills plus a level badge on the XP bar so the HUD reads as finished rather than placeholder."
+  },
+  {
+   "style": 6,
+   "signatures": [
+    {
+     "signature": "1. navy contour everywhere",
+     "grade": "present",
+     "why": "Window, header, cards, buttons, HUD tiles, pills, hotbar and close button all carry a 3-4px navy contour; edges no longer melt the way KITpass9 #13 did."
+    },
+    {
+     "signature": "2. pale inner rim",
+     "grade": "present",
+     "why": "There is a pale rim inside the window frame (pink, blue, yellow and teal variants) and a light inner line on every card. It is thin on the HUD currency pills, where the silver body swallows it."
+    },
+    {
+     "signature": "3. gradient faces with solid lips",
+     "grade": "present",
+     "why": "Price and Equip buttons have a top-to-bottom gradient face over a darker solid lip, and the press shot sinks the HUD Shop tile onto its lip (about 5px). Card faces are gradients too."
+    },
+    {
+     "signature": "4. faint studs",
+     "grade": "present",
+     "why": "Studs sit at roughly 15-20% on headers and card faces and are absent on the white body. They are slightly loud on the E6 teal header and E3 blue header, but nowhere near the 70% in KITpass9."
+    },
+    {
+     "signature": "5. white text with navy strokes and real currency glyphs",
+     "grade": "weak",
+     "why": "Titles and labels are white with navy strokes, and the Robux and gem glyphs are real. But the soft-currency coin is a faceted octagon that reads as a hex nut, the XP label is grey-white rather than white, and in the wide E2 buttons the gem glyph sits 170px away from its number."
+    },
+    {
+     "signature": "6. one consistent human-made icon family, big",
+     "grade": "weak",
+     "why": "Most icons are low-poly 3D renders, but they are untextured and desaturated (grey cart, silver chest, blank pastel eggs). E6 then switches to flat white 2D glyphs (note, speaker, gear), which clash with the 3D grey gear on the HUD. The family reads as mesh primitives, not illustrated art like P07-P09."
+    },
+    {
+     "signature": "7. one hero and a clean, full grid",
+     "grade": "present",
+     "why": "E1 and E2 each have a full-width hero with a NEW tag and a 3+2 grid closed off by a double-wide last card. In E4, Day 7 spans two columns. E3 is a full 4x2 grid. No orphan rows, no cut-off rows."
+    },
+    {
+     "signature": "8. visible motion",
+     "grade": "weak",
+     "why": "play0 vs play1 shows only small ray rotation and a bob of about 5px on item icons. The hover shot shows zero pixel change on the hovered button (HUD Shop tile diff = 0 px), the hero CTA has no pulse or shine, and the NEW badge is static."
+    }
+   ],
+   "defects": [
+    {
+     "screen": "E2",
+     "x": 593,
+     "y": 470,
+     "severity": "high",
+     "defect": "Every egg (hero Void Egg, 5 cards, header) is the same untextured faceted ellipsoid in pastel tints. This is the exact X4 defect #2/#4. The 'Void' egg is pale lavender and the Golden egg is cream.",
+     "fix": "Give each egg its own art: void = dark purple with stars and a glow, lava = cracks with orange veins, crystal = facets with sparkle, forest = leaf spots, golden = saturated gold with a specular highlight. Raise saturation so each egg stands apart from its card colour."
+    },
+    {
+     "screen": "E6",
+     "x": 520,
+     "y": 620,
+     "severity": "high",
+     "defect": "The settings icons (music note 520,430; speaker 520,620; gear 520,815; header gear 505,240) are flat white 2D line glyphs, while every other screen and the HUD Settings tile (82,715) use 3D rendered icons. There are two icon families on one HUD.",
+     "fix": "Replace the four glyphs with renders from the same 3D family (a coloured note, a speaker, a gear matching the HUD gear), or switch the whole kit to one illustrated 2D family."
+    },
+    {
+     "screen": "E1",
+     "x": 858,
+     "y": 680,
+     "severity": "high",
+     "defect": "The coin (card icon 858,680; HUD coin 90,885; E4 Day 1/Day 4 470,460) is an octagonal low-poly washer with a hole. It reads as a hex nut, not money, and it is the primary soft currency on every screen.",
+     "fix": "Use a round coin with a thick rim, an embossed star or $ mark, warm gold gradient, a white specular glint and a navy contour."
+    },
+    {
+     "screen": "E1",
+     "x": 82,
+     "y": 330,
+     "severity": "high",
+     "defect": "The hover state is invisible. The pixel diff of the HUD Shop tile (11-155, 257-410) between play0 and hover is 0 on all six screens, and no other button in the hover shots scales. The promised 1.05 hover does not register or does not show.",
+     "fix": "Drive hover through a UIScale tween (0.08s, to 1.06) on MouseEnter, and capture after the tween completes. Add a brightness lift on the face as well, so the hover reads even in a still frame."
+    },
+    {
+     "screen": "E1",
+     "x": 1268,
+     "y": 480,
+     "severity": "medium",
+     "defect": "Motion is too timid to read. Between t=0 and t=1.75s only the ray fans rotate a few degrees and icons bob about 5px. The hero buy button, the NEW badge (800,358) and the Starter Pack HUD tile (1810,340) are completely static.",
+     "fix": "Add a looping shine sweep across the hero CTA every 2-3s, a 1.0-1.04 pulse on it, a \u00b16 degree wiggle on the NEW tag, and a bob plus sparkle on the Starter Pack HUD gift."
+    },
+    {
+     "screen": "E1",
+     "x": 500,
+     "y": 240,
+     "severity": "medium",
+     "defect": "The title and HUD icons are desaturated grey metal: the cart (500,240 and 82,320) and the Mega Chest (925,830, also E4 1065,770) are mostly grey-silver. On pink and purple they look like untextured models, not the saturated candy icons of P07/P10.",
+     "fix": "Recolour to saturated material colours: a red or orange basket with a gold rim, a wooden chest with gold bands, and a stronger key-light highlight on each."
+    },
+    {
+     "screen": "E5",
+     "x": 960,
+     "y": 132,
+     "severity": "medium",
+     "defect": "The XP bar label is about 20px, grey-white rather than white, and straddles the fill edge so 'XP' sits on navy and the rest on green. There is no level badge. On a 700px-wide hero HUD element it reads as debug text.",
+     "fix": "Add a star or level badge at the left end with the level number, make the label 26-28px pure white with a 3px navy stroke, and keep it centred over the whole bar."
+    },
+    {
+     "screen": "E5",
+     "x": 200,
+     "y": 885,
+     "severity": "medium",
+     "defect": "The currency pill bodies are a silver-lilac grey that reads as disabled. The coin and gem icons hang off the pill's left edge (x around 45), and the pills look dull next to the saturated tiles above them.",
+     "fix": "Use a white or dark-navy body with a coloured rim (gold for coins, blue for gems), sit the icon fully inside or deliberately overlapping by a fixed amount, and keep the green + button."
+    },
+    {
+     "screen": "E3",
+     "x": 1347,
+     "y": 480,
+     "severity": "medium",
+     "defect": "The rarity colours are incoherent. Uncommon Cat (1347,480) and Common Dog and Bunny (572,770 and 1088,770) are all the same teal, and Rare Fox and Penguin are blue. Players cannot tell Common from Uncommon at a glance (the X3 #14 complaint).",
+     "fix": "Use the standard ramp: Common grey, Uncommon green, Rare blue, Epic purple, Legendary gold, and match the card face and label colour to it."
+    },
+    {
+     "screen": "E3",
+     "x": 573,
+     "y": 549,
+     "severity": "medium",
+     "defect": "The rarity text ('Legendary', 'Common', 18px) is jammed onto the top edge of the Equip button with no gap, and on the bottom row it overlaps the pet's feet (Lion at 1347,830).",
+     "fix": "Move rarity into a small coloured pill under the name, or into a corner ribbon. Leave at least 8px between the icon, the label and the button."
+    },
+    {
+     "screen": "E4",
+     "x": 1307,
+     "y": 843,
+     "severity": "medium",
+     "defect": "On the Day 7 hero card, the largest button on the screen is a disabled grey 'In 4 days' slab. The hero's visual weight goes to a dead control, while the only actionable 'Claim!' (1088,580) is small.",
+     "fix": "Make the Day 7 locked state a small pill with a lock glyph and countdown, let the chest dominate the card, and give the Today card a glow outline and pulse so the claim is the clear focus."
+    },
+    {
+     "screen": "E4",
+     "x": 573,
+     "y": 470,
+     "severity": "medium",
+     "defect": "The claimed days (Day 1 573,470; Day 2 830,470) are just grey cards with a grey 'Claimed' button. There is no check stamp, and they read like locked or disabled rather than done.",
+     "fix": "Overlay a big green check badge with a navy contour on claimed cards and dim the icon to 60%. Keep the grey button smaller."
+    },
+    {
+     "screen": "E6",
+     "x": 1225,
+     "y": 433,
+     "severity": "medium",
+     "defect": "The Music and Sound Effects sliders have no knob and no value readout, and the fill ends in a clipped flat cap. The Graphics 'High' control (1295,818) is a giant green button with no arrows or segments, so nothing shows it cycles.",
+     "fix": "Add a round white knob with a navy contour and a percent label to each slider. Make Graphics a segmented Low/Med/High control, or add arrow chevrons either side of the value."
+    },
+    {
+     "screen": "E2",
+     "x": 1200,
+     "y": 872,
+     "severity": "low",
+     "defect": "The price buttons are inconsistent. Forest Egg's price button (1015,715) is orange while every other egg's is green. In the wide Golden Egg button the gem glyph sits at x=1115 and the number at x=1285, so they read as two separate things.",
+     "fix": "Use one colour for gem-priced buttons (or use colour deliberately for affordability) and centre the glyph and number as one group with a 6-8px gap."
+    },
+    {
+     "screen": "E1",
+     "x": 690,
+     "y": 740,
+     "severity": "low",
+     "defect": "The small-card price buttons sit with their lip almost flush on the card's bottom contour, and they overlap the icon column (the Gem Pack button starts over the gem). The cards feel cramped next to P09's padding.",
+     "fix": "Inset the buttons 10-12px from the card bottom and right, and constrain them to the text column, or centre them full-width under the icon and text."
+    },
+    {
+     "screen": "E5",
+     "x": 960,
+     "y": 690,
+     "severity": "low",
+     "defect": "The HUD shot keeps the default spawn ForceField bubble and a white studded SpawnLocation under the character. Read with the flat grass baseplate, it is 'Studio test', not a game (X3 #12).",
+     "fix": "Set the SpawnLocation's ForceField duration to 0 and make the spawn pad transparent or themed for captures. Add a minimal set dressing pass."
+    },
+    {
+     "screen": "E6",
+     "x": 880,
+     "y": 525,
+     "severity": "low",
+     "defect": "The Settings window is oversized for three rows. There is a ~300px dead band of plain blue between each label and its control, and the rows are 180px tall with nothing in them.",
+     "fix": "Shrink the window to about 70% height, put the controls closer to the labels, or add useful rows (Low Detail, Show Pets, Codes)."
+    },
+    {
+     "screen": "E1",
+     "x": 1810,
+     "y": 240,
+     "severity": "low",
+     "defect": "The Starter Pack HUD price tag's Robux glyph is about 16px inside a white disc, much smaller than the 28px '99'. The tag also covers the tile's top contour and dims to murky olive when a window is open.",
+     "fix": "Scale the glyph to about 80% of the cap height, drop the white disc (use a white glyph with a navy stroke), and exclude the monetisation tile from the HUD dim."
+    }
+   ],
+   "verdict": "This is a real step up from the anti-references. The contour, rim, lip, faint studs, white body, real Robux glyph, a hero card and closed grids are all here, so structurally it could sit near P05/P06. What keeps it at 6 rather than 8 is the art inside the frames. The icons look like grey, untextured low-poly mesh renders, the eggs are one blank pastel ellipsoid in six tints, the coin reads as a hex nut, and the settings screen switches to flat white 2D glyphs. P07-P09 win on illustrated, saturated, glinting icons that fill their cards. The three changes that would most raise the score: (1) Commission or render one consistent illustrated icon set at full saturation, with specular glints and navy outlines: distinct eggs per tier, a proper round coin, a coloured cart, a wooden-and-gold chest, and 3D settings icons. Swap them in everywhere, including the HUD. (2) Make motion readable in stills and video: a hover scale that actually fires (it currently diffs to 0 px), a shine sweep and pulse on every hero CTA, a NEW-tag wiggle, a Starter Pack bob, and a check-stamp pop on claim. (3) Fix the semantic and state polish: a standard rarity colour ramp on pets, claimed states with check badges, a small locked pill instead of a giant grey Day 7 button, slider knobs with values, a white XP label with a level badge, and currency pills with coloured rims instead of disabled-looking silver."
+  }
+ ],
+ "pairwise": [
+  {
+   "trial": 1,
+   "pick": "right",
+   "confidence": 0.9,
+   "why": "Right is Pet Simulator 99's Exclusive Shop (Mega Lucky, Huge Hunter, VIP) captured in a live game; left is a generic shop mockup on a plain grass baseplate.",
+   "ours": "E1",
+   "anchor": "P07",
+   "ours_side": "left",
+   "picked_ours": false
+  },
+  {
+   "trial": 6,
+   "pick": "left",
+   "confidence": 0.65,
+   "why": "Left looks like a premium UI kit preview (placeholder 'Item Name' cards, polished checker-pattern style); right uses the same generic baseplate HUD as the mockup in trial 1.",
+   "ours": "E4",
+   "anchor": "P06",
+   "ours_side": "right",
+   "picked_ours": false
+  },
+  {
+   "trial": 5,
+   "pick": "right",
+   "confidence": 0.75,
+   "why": "Right uses placeholder text ('Item Name', 'Button'), which marks a sold premium UI kit, and its dense rarity-coloured index layout looks like a kit; left is a cleaner, more uniform mockup on a default baseplate.",
+   "ours": "E3",
+   "anchor": "P03",
+   "ours_side": "left",
+   "picked_ours": false
+  },
+  {
+   "trial": 10,
+   "pick": "right",
+   "confidence": 0.75,
+   "why": "Right is a busy Robux shop with a limited-time egg offer, x1/x5/x10 prices and a bundle timer, plus placeholder labels, which fits a commercial simulator UI kit; left is a generic pets grid on a default baseplate.",
+   "ours": "E3",
+   "anchor": "P02",
+   "ours_side": "left",
+   "picked_ours": false
+  },
+  {
+   "trial": 4,
+   "pick": "right",
+   "confidence": 0.85,
+   "why": "Right is a real in-game capture with custom-illustrated shop tiles, live HUD (potions, timers, roll button); left is a template egg shop on a default baseplate with placeholder egg shapes.",
+   "ours": "E2",
+   "anchor": "P10",
+   "ours_side": "left",
+   "picked_ours": false
+  },
+  {
+   "trial": 9,
+   "pick": "left",
+   "confidence": 0.9,
+   "why": "Left has bespoke illustrated product cards (clover, cracked egg, collar) with radial-burst backgrounds typical of top pet sims; right reuses the same baseplate template HUD with tiny generic text.",
+   "ours": "E1",
+   "anchor": "P08",
+   "ours_side": "right",
+   "picked_ours": false
+  },
+  {
+   "trial": 3,
+   "pick": "left",
+   "confidence": 0.85,
+   "why": "Left is a live, busy game (offline-earnings banner, Brainrot index, R$ priced packs, real world behind it); right sits on an empty default baseplate with placeholder eggs, which looks like a mockup.",
+   "ours": "E2",
+   "anchor": "P01",
+   "ours_side": "right",
+   "picked_ours": false
+  },
+  {
+   "trial": 8,
+   "pick": "right",
+   "confidence": 0.9,
+   "why": "Right is a live late-game screen (Level 810, Sxd speed numbers, Admin Abuse event, multiplier stack); left is the same empty-baseplate mockup style with a bare settings panel.",
+   "ours": "E6",
+   "anchor": "P12",
+   "ours_side": "left",
+   "picked_ours": false
+  },
+  {
+   "trial": 2,
+   "pick": "left",
+   "confidence": 0.7,
+   "why": "Left looks like a premium kit demo: placeholder 'BLABLABLA' cards, dense boosts and rebirth HUD in a simulator style; right is cleaner, sparser and more uniform, which looks generated.",
+   "ours": "E1",
+   "anchor": "P04",
+   "ours_side": "right",
+   "picked_ours": false
+  },
+  {
+   "trial": 7,
+   "pick": "left",
+   "confidence": 0.8,
+   "why": "Left is a named commercial kit (CloudMesh studs-style UI) shown in Studio with 'Template' and 'Name' placeholders and dense, polished HUD art; right is a sparse, uniform layout on a bare baseplate.",
+   "ours": "E5",
+   "anchor": "P11",
+   "ours_side": "right",
+   "picked_ours": false
+  }
+ ]
+}

@@ -10,6 +10,7 @@ ten blind pairwise trials against same-type anchors. Pass: style 8+, no weak sig
 | 2 | 6 | 6 | 5 / 4 | 0 / 10 |
 | 3 | 6 | 6 | 4 / 3 | 0 / 10 |
 | 4 | 6 | 6 | 4 / 2 | 0 / 10 |
+| 5 | 6 | 6 | 4 / 3 | 0 / 10 |
 
 Not passed. What changed between rounds is in the kit-v2 commits (PR #115). Every round's critics name the same main
 limit: the icon art (one plain Kenney egg in tints, a coin that reads as a nut, matte low-poly renders mixed with flat
