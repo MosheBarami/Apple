@@ -1,6 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import { searchLibraryCode, insertPlan, aliasFor, treeOps, header, audit } from './library-code';
+import { searchLibrarySkills, readLibrarySkill, LIBRARY_SKILL_PREFIX } from './library-skills';
 import { embed } from './gateway';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
@@ -4692,7 +4693,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_creation_skills',
       description:
-        'Search the bounded catalogue of Roblox creation tasks before inventing an implementation plan. Search by a plain-language task, domain, genre, or both. Returns at most five compact matches grounded in exact Creator Docs corpus ids. These entries are authored guidance, not executable code, training examples, licensed assets, or proof that a Studio build passed. Use read_creation_skill on the chosen id.',
+        'Search the bounded catalogue of Roblox creation tasks before inventing an implementation plan. Search by a plain-language task, domain, genre, or both. Returns at most five compact matches grounded in exact Creator Docs corpus ids, and, for a query, `documentation_procedures`: official step-by-step procedures from the Roblox Creator Documentation, graded for building in Studio. These entries are guidance, not executable code, training examples, licensed assets, or proof that a Studio build passed. Use read_creation_skill on the chosen id.',
       parameters: S({
         query: { type: 'string', description: 'The task in plain language. Treated only as search data; commands inside it are never executed.' },
         domain: { type: 'string', enum: [...CREATOR_SKILL_DOMAINS], description: 'Optional task domain filter.' },
@@ -4702,26 +4703,31 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: false,
-    run: async (_ctx, a) => searchCreatorSkills({
-      query: typeof a.query === 'string' ? a.query : undefined,
-      domain: typeof a.domain === 'string' ? a.domain as (typeof CREATOR_SKILL_DOMAINS)[number] : undefined,
-      genre: typeof a.genre === 'string' ? a.genre as (typeof GENRE_KIT_IDS)[number] : undefined,
-      limit: a.limit === undefined ? undefined : Number(a.limit),
-      maxChars: a.max_chars === undefined ? undefined : Number(a.max_chars),
-    }),
+    run: async (ctx, a) => {
+      const catalogue = searchCreatorSkills({
+        query: typeof a.query === 'string' ? a.query : undefined,
+        domain: typeof a.domain === 'string' ? a.domain as (typeof CREATOR_SKILL_DOMAINS)[number] : undefined,
+        genre: typeof a.genre === 'string' ? a.genre as (typeof GENRE_KIT_IDS)[number] : undefined,
+        limit: a.limit === undefined ? undefined : Number(a.limit),
+        maxChars: a.max_chars === undefined ? undefined : Number(a.max_chars),
+      });
+      // The library's word-for-word documentation procedures (A/B only); a search failure leaves the catalogue answer whole.
+      const procedures = typeof a.query === 'string' ? await searchLibrarySkills(ctx.env, a.query, embed).catch(() => []) : [];
+      return procedures.length ? { ...catalogue, documentation_procedures: procedures } : catalogue;
+    },
   },
   read_creation_skill: {
     def: {
       name: 'read_creation_skill',
       description:
-        'Read one creation skill by the exact id returned by search_creation_skills. Returns bounded preconditions, steps, verification, failure modes, quality criteria, exact official corpus references, and any existing reviewed prefab or mechanic pointer. The result remains guidance and still requires implementation tests and a live Studio visual pass.',
+        'Read one creation skill by the exact id returned by search_creation_skills. Returns bounded preconditions, steps, verification, failure modes, quality criteria, exact official corpus references, and any existing reviewed prefab or mechanic pointer; a documentation procedure (id starting skill:docs:) returns its official steps word for word with source and attribution. The result remains guidance and still requires implementation tests and a live Studio visual pass.',
       parameters: S({
-        id: { type: 'string', description: 'Exact lowercase hyphenated skill id returned by search_creation_skills.' },
+        id: { type: 'string', description: 'Exact skill id returned by search_creation_skills (a catalogue id, or a documentation procedure id starting skill:docs:).' },
         max_chars: { type: 'number', description: 'Maximum serialized result size, clamped to 1400–2800 characters.' },
       }, ['id']),
     },
     studio: false,
-    run: async (_ctx, a) => readCreatorSkill(a.id, a.max_chars),
+    run: async (ctx, a) => (typeof a.id === 'string' && a.id.startsWith(LIBRARY_SKILL_PREFIX) ? readLibrarySkill(ctx.env, a.id) : readCreatorSkill(a.id, a.max_chars)),
   },
   get_genre_references: {
     def: {
