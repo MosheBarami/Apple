@@ -1,0 +1,1112 @@
+{
+ "Q280": {
+  "id": "Q280",
+  "exists": true,
+  "best": "Panel glass (UI Pack - Sci-Fi)",
+  "why": "Sci-fi UI pack glass panel is a usable frame for the request."
+ },
+ "Q303": {
+  "id": "Q303",
+  "exists": true,
+  "best": "trove (Sleitnick/RbxUtil)",
+  "why": "Cleanup tracker for connections and instances; Janitor and Maid also fit."
+ },
+ "Q314": {
+  "id": "Q314",
+  "exists": false,
+  "best": "",
+  "why": "Nothing for a damaging lava part; ZonePlus and touch utilities are not it."
+ },
+ "Q315": {
+  "id": "Q315",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q317": {
+  "id": "Q317",
+  "exists": false,
+  "best": "",
+  "why": "Only networking layers and signals; no rate limiter."
+ },
+ "Q319": {
+  "id": "Q319",
+  "exists": false,
+  "best": "",
+  "why": "No object pool; Janitor and shake are unrelated."
+ },
+ "Q320": {
+  "id": "Q320",
+  "exists": false,
+  "best": "",
+  "why": "No inventory or drag-drop module; only ECS and cleanup."
+ },
+ "Q322": {
+  "id": "Q322",
+  "exists": false,
+  "best": "",
+  "why": "No teleport and matchmaking queue; elo and queue are only fragments."
+ },
+ "Q323": {
+  "id": "Q323",
+  "exists": false,
+  "best": "",
+  "why": "Only saving wrappers; no shop UI or purchase flow."
+ },
+ "Q325": {
+  "id": "Q325",
+  "exists": false,
+  "best": "",
+  "why": "No dialogue system."
+ },
+ "Q326": {
+  "id": "Q326",
+  "exists": false,
+  "best": "",
+  "why": "No quest system."
+ },
+ "Q327": {
+  "id": "Q327",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q329": {
+  "id": "Q329",
+  "exists": false,
+  "best": "",
+  "why": "No noise or terrain generator."
+ },
+ "Q330": {
+  "id": "Q330",
+  "exists": false,
+  "best": "",
+  "why": "No maze generator; randomutils is not enough."
+ },
+ "Q334": {
+  "id": "Q334",
+  "exists": false,
+  "best": "",
+  "why": "No floating damage numbers."
+ },
+ "Q335": {
+  "id": "Q335",
+  "exists": false,
+  "best": "",
+  "why": "No ragdoll module."
+ },
+ "Q336": {
+  "id": "Q336",
+  "exists": false,
+  "best": "",
+  "why": "No checkpoint system; only unrelated frameworks."
+ },
+ "Q337": {
+  "id": "Q337",
+  "exists": false,
+  "best": "",
+  "why": "No proximity prompt door."
+ },
+ "Q338": {
+  "id": "Q338",
+  "exists": false,
+  "best": "",
+  "why": "No moving platform."
+ },
+ "Q339": {
+  "id": "Q339",
+  "exists": false,
+  "best": "",
+  "why": "No conveyor; only touching-part utilities."
+ },
+ "Q341": {
+  "id": "Q341",
+  "exists": false,
+  "best": "",
+  "why": "No first-person lock; only shake and transparency helpers."
+ },
+ "Q342": {
+  "id": "Q342",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q343": {
+  "id": "Q343",
+  "exists": false,
+  "best": "",
+  "why": "No movement set; only stat modifiers or double-click detection."
+ },
+ "Q344": {
+  "id": "Q344",
+  "exists": false,
+  "best": "",
+  "why": "Wallstick is a different mechanic."
+ },
+ "Q345": {
+  "id": "Q345",
+  "exists": false,
+  "best": "",
+  "why": "No fishing logic."
+ },
+ "Q346": {
+  "id": "Q346",
+  "exists": false,
+  "best": "",
+  "why": "No tycoon pieces."
+ },
+ "Q347": {
+  "id": "Q347",
+  "exists": false,
+  "best": "",
+  "why": "No pet system."
+ },
+ "Q348": {
+  "id": "Q348",
+  "exists": false,
+  "best": "",
+  "why": "No grid placement."
+ },
+ "Q352": {
+  "id": "Q352",
+  "exists": false,
+  "best": "",
+  "why": "No virtualized scrolling list."
+ },
+ "Q353": {
+  "id": "Q353",
+  "exists": false,
+  "best": "",
+  "why": "No number abbreviation formatter."
+ },
+ "Q358": {
+  "id": "Q358",
+  "exists": false,
+  "best": "",
+  "why": "No animation blending controller."
+ },
+ "Q359": {
+  "id": "Q359",
+  "exists": false,
+  "best": "",
+  "why": "PID controller is not a car driving script."
+ },
+ "Q361": {
+  "id": "Q361",
+  "exists": false,
+  "best": "",
+  "why": "No ban/kick module; Cmdr is not listed here."
+ },
+ "Q362": {
+  "id": "Q362",
+  "exists": false,
+  "best": "",
+  "why": "No unit test framework."
+ },
+ "Q363": {
+  "id": "Q363",
+  "exists": false,
+  "best": "",
+  "why": "No benchmark or profiler helper."
+ },
+ "Q364": {
+  "id": "Q364",
+  "exists": false,
+  "best": "",
+  "why": "No speed-hack check; humanoidspeed is a modifier stack."
+ },
+ "Q365": {
+  "id": "Q365",
+  "exists": false,
+  "best": "",
+  "why": "Input wrapper is not a touch joystick."
+ },
+ "Q366": {
+  "id": "Q366",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q367": {
+  "id": "Q367",
+  "exists": false,
+  "best": "",
+  "why": "No overhead name tag."
+ },
+ "Q368": {
+  "id": "Q368",
+  "exists": false,
+  "best": "",
+  "why": "No jump pad."
+ },
+ "Q369": {
+  "id": "Q369",
+  "exists": false,
+  "best": "",
+  "why": "No health regen."
+ },
+ "Q370": {
+  "id": "Q370",
+  "exists": false,
+  "best": "",
+  "why": "No click-to-move."
+ },
+ "Q372": {
+  "id": "Q372",
+  "exists": false,
+  "best": "",
+  "why": "No cutscene or camera path tool."
+ },
+ "Q373": {
+  "id": "Q373",
+  "exists": false,
+  "best": "",
+  "why": "No team balancing."
+ },
+ "Q387": {
+  "id": "Q387",
+  "exists": false,
+  "best": "",
+  "why": "No pirate or map-style font among candidates."
+ },
+ "Q392": {
+  "id": "Q392",
+  "exists": true,
+  "best": "Caesar Dressing",
+  "why": "Ancient-themed display font is the closest fit for an ancient mystical look, though not a true runic face."
+ },
+ "Q393": {
+  "id": "Q393",
+  "exists": false,
+  "best": "",
+  "why": "No stencil font listed."
+ },
+ "Q396": {
+  "id": "Q396",
+  "exists": true,
+  "best": "Grenze Gotisch",
+  "why": "Medieval blackletter for titles; Balthazar serif works as readable body."
+ },
+ "Q400": {
+  "id": "Q400",
+  "exists": false,
+  "best": "",
+  "why": "No proximity door; STT door and click-tween door are different mechanics."
+ },
+ "Q404": {
+  "id": "Q404",
+  "exists": false,
+  "best": "",
+  "why": "No checkpoint with saved progress."
+ },
+ "Q414": {
+  "id": "Q414",
+  "exists": false,
+  "best": "",
+  "why": "No badge awarding; medals only print and award by if statement."
+ },
+ "Q415": {
+  "id": "Q415",
+  "exists": false,
+  "best": "",
+  "why": "Merch Booth passes are not a gamepass prompt for a VIP room."
+ },
+ "Q416": {
+  "id": "Q416",
+  "exists": true,
+  "best": "Create constraints (Mechanical constraints) - Attachment0/Attachment1 version",
+  "why": "Adds a mechanical constraint by linking attachments, which covers a RopeConstraint hanging a lantern."
+ },
+ "Q417": {
+  "id": "Q417",
+  "exists": false,
+  "best": "",
+  "why": "Lamp ClockTime fragment is not a day-night cycle."
+ },
+ "Q419": {
+  "id": "Q419",
+  "exists": false,
+  "best": "",
+  "why": "No spawn forcefield."
+ },
+ "Q432": {
+  "id": "Q432",
+  "exists": false,
+  "best": "",
+  "why": "No double jump."
+ },
+ "Q434": {
+  "id": "Q434",
+  "exists": false,
+  "best": "",
+  "why": "No material-based footsteps."
+ },
+ "Q436": {
+  "id": "Q436",
+  "exists": false,
+  "best": "",
+  "why": "No screen fade to black."
+ },
+ "Q437": {
+  "id": "Q437",
+  "exists": false,
+  "best": "",
+  "why": "No loading screen."
+ },
+ "Q440": {
+  "id": "Q440",
+  "exists": false,
+  "best": "",
+  "why": "No quest tracker UI."
+ },
+ "Q444": {
+  "id": "Q444",
+  "exists": false,
+  "best": "",
+  "why": "No sword swing; only laser and trap damage fragments."
+ },
+ "Q446": {
+  "id": "Q446",
+  "exists": false,
+  "best": "",
+  "why": "No car build."
+ },
+ "Q447": {
+  "id": "Q447",
+  "exists": false,
+  "best": "",
+  "why": "No boat buoyancy."
+ },
+ "Q451": {
+  "id": "Q451",
+  "exists": false,
+  "best": "",
+  "why": "No chat commands."
+ },
+ "Q452": {
+  "id": "Q452",
+  "exists": false,
+  "best": "",
+  "why": "No admin panel."
+ },
+ "Q454": {
+  "id": "Q454",
+  "exists": false,
+  "best": "",
+  "why": "No wave spawner."
+ },
+ "Q455": {
+  "id": "Q455",
+  "exists": false,
+  "best": "",
+  "why": "No loot drops."
+ },
+ "Q456": {
+  "id": "Q456",
+  "exists": false,
+  "best": "",
+  "why": "No crate or rarity roll."
+ },
+ "Q457": {
+  "id": "Q457",
+  "exists": false,
+  "best": "",
+  "why": "No daily reward streak."
+ },
+ "Q458": {
+  "id": "Q458",
+  "exists": false,
+  "best": "",
+  "why": "No trading."
+ },
+ "Q459": {
+  "id": "Q459",
+  "exists": false,
+  "best": "",
+  "why": "No follower pet."
+ },
+ "Q460": {
+  "id": "Q460",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q461": {
+  "id": "Q461",
+  "exists": false,
+  "best": "",
+  "why": "No swimming."
+ },
+ "Q462": {
+  "id": "Q462",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q465": {
+  "id": "Q465",
+  "exists": false,
+  "best": "",
+  "why": "No skybox swap."
+ },
+ "Q467": {
+  "id": "Q467",
+  "exists": false,
+  "best": "",
+  "why": "Only partial audio and cloud pieces; no rain/thunder/darkening procedure."
+ },
+ "Q470": {
+  "id": "Q470",
+  "exists": false,
+  "best": "",
+  "why": "No snow effect; only generic emitter property fragments."
+ },
+ "Q472": {
+  "id": "Q472",
+  "exists": false,
+  "best": "",
+  "why": "No scrolling player list UI."
+ },
+ "Q474": {
+  "id": "Q474",
+  "exists": false,
+  "best": "",
+  "why": "No on-screen joystick."
+ },
+ "Q475": {
+  "id": "Q475",
+  "exists": false,
+  "best": "",
+  "why": "No platform detection."
+ },
+ "Q478": {
+  "id": "Q478",
+  "exists": false,
+  "best": "",
+  "why": "No camera path cutscene."
+ },
+ "Q480": {
+  "id": "Q480",
+  "exists": false,
+  "best": "",
+  "why": "No top-down camera."
+ },
+ "Q482": {
+  "id": "Q482",
+  "exists": false,
+  "best": "",
+  "why": "Weapon fire-rate check is not a remote rate limiter."
+ },
+ "Q483": {
+  "id": "Q483",
+  "exists": false,
+  "best": "",
+  "why": "No MemoryStore matchmaking."
+ },
+ "Q484": {
+  "id": "Q484",
+  "exists": false,
+  "best": "",
+  "why": "No cross-server announcement."
+ },
+ "Q486": {
+  "id": "Q486",
+  "exists": false,
+  "best": "",
+  "why": "No gamepass ownership check."
+ },
+ "Q487": {
+  "id": "Q487",
+  "exists": false,
+  "best": "",
+  "why": "No reserved server teleport."
+ },
+ "Q489": {
+  "id": "Q489",
+  "exists": false,
+  "best": "",
+  "why": "Generic constraint steps; no grappling hook mechanic."
+ },
+ "Q490": {
+  "id": "Q490",
+  "exists": false,
+  "best": "",
+  "why": "No wind push zone."
+ },
+ "Q491": {
+  "id": "Q491",
+  "exists": false,
+  "best": "",
+  "why": "No coin magnet."
+ },
+ "Q494": {
+  "id": "Q494",
+  "exists": false,
+  "best": "",
+  "why": "No key-locked door."
+ },
+ "Q495": {
+  "id": "Q495",
+  "exists": false,
+  "best": "",
+  "why": "No pressure plate."
+ },
+ "Q496": {
+  "id": "Q496",
+  "exists": false,
+  "best": "",
+  "why": "No destructible wall."
+ },
+ "Q282": {
+  "id": "Q282",
+  "exists": false,
+  "best": "Life Bar icon",
+  "why": "Only a single health-bar icon; no matched health/mana/stamina bar set in one style."
+ },
+ "Q283": {
+  "id": "Q283",
+  "exists": false,
+  "best": "",
+  "why": "Candidates are cursor resize arrows and brackets, not an XP bar track."
+ },
+ "Q284": {
+  "id": "Q284",
+  "exists": true,
+  "best": "Timer CCW 25 (Default (64px), Board Game Icons)",
+  "why": "Timer ring with a wedge reads as a cooldown ring, usable around an ability."
+ },
+ "Q287": {
+  "id": "Q287",
+  "exists": false,
+  "best": "",
+  "why": "No toggle switch on/off art; only circles, checks and controller prompts."
+ },
+ "Q289": {
+  "id": "Q289",
+  "exists": false,
+  "best": "",
+  "why": "Only round panels and glowing crosshairs; no square slot frame with rarity glow."
+ },
+ "Q291": {
+  "id": "Q291",
+  "exists": false,
+  "best": "",
+  "why": "Round panels and compass badges; no hotbar slot with a number label."
+ },
+ "Q293": {
+  "id": "Q293",
+  "exists": true,
+  "best": "Button rectangle depth gloss (Blue, UI Pack)",
+  "why": "Glossy depth buttons are the closest candy-style button frame, though play/settings/shop icons must come from elsewhere."
+ },
+ "Q294": {
+  "id": "Q294",
+  "exists": false,
+  "best": "",
+  "why": "Only cursors and arrows; no tooltip bubble with a pointer."
+ },
+ "Q295": {
+  "id": "Q295",
+  "exists": false,
+  "best": "",
+  "why": "Number tags and animal heads; no name plate."
+ },
+ "Q296": {
+  "id": "Q296",
+  "exists": false,
+  "best": "",
+  "why": "Keyboard key caps, not menu tab buttons."
+ },
+ "Q298": {
+  "id": "Q298",
+  "exists": false,
+  "best": "",
+  "why": "Input prompt tiles and a toast-glasses icon; no notification banner."
+ },
+ "Q161": {
+  "id": "Q161",
+  "exists": false,
+  "best": "",
+  "why": "Only Car Kit vehicles; no catapult."
+ },
+ "Q163": {
+  "id": "Q163",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q164": {
+  "id": "Q164",
+  "exists": false,
+  "best": "Motor Military (Vehicles Pack)",
+  "why": "Motorcycle only, no sidecar."
+ },
+ "Q166": {
+  "id": "Q166",
+  "exists": false,
+  "best": "",
+  "why": "Ordinary Car Kit road vehicles; no hover car."
+ },
+ "Q171": {
+  "id": "Q171",
+  "exists": false,
+  "best": "",
+  "why": "Faceless posed mannequins; no shopkeeper with apron."
+ },
+ "Q172": {
+  "id": "Q172",
+  "exists": false,
+  "best": "",
+  "why": "Old doctor and classy characters; no blacksmith."
+ },
+ "Q176": {
+  "id": "Q176",
+  "exists": false,
+  "best": "",
+  "why": "Untextured walker mechs and a grey prototype robot; no round-headed helper robot."
+ },
+ "Q184": {
+  "id": "Q184",
+  "exists": false,
+  "best": "",
+  "why": "Business Suit characters and white chibi heroes; no astronaut in this list."
+ },
+ "Q189": {
+  "id": "Q189",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q190": {
+  "id": "Q190",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q191": {
+  "id": "Q191",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q192": {
+  "id": "Q192",
+  "exists": false,
+  "best": "",
+  "why": "Plain white walker mechs with no laser arm; not an enemy robot."
+ },
+ "Q193": {
+  "id": "Q193",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q194": {
+  "id": "Q194",
+  "exists": false,
+  "best": "",
+  "why": "Only generic mannequins; no scarecrow."
+ },
+ "Q195": {
+  "id": "Q195",
+  "exists": false,
+  "best": "",
+  "why": "Generic casual characters; no banana costume."
+ },
+ "Q196": {
+  "id": "Q196",
+  "exists": false,
+  "best": "",
+  "why": "Cube pet animals; no tentacled alien."
+ },
+ "Q197": {
+  "id": "Q197",
+  "exists": false,
+  "best": "",
+  "why": "Single Warrior Sword hero only; no party of warrior, mage and archer."
+ },
+ "Q198": {
+  "id": "Q198",
+  "exists": false,
+  "best": "",
+  "why": "Only a muddled vampire duck; no mother duck with ducklings."
+ },
+ "Q202": {
+  "id": "Q202",
+  "exists": true,
+  "best": "Money Stack icon",
+  "why": "Money stack icon is the right object; colour may need tinting to green."
+ },
+ "Q203": {
+  "id": "Q203",
+  "exists": true,
+  "best": "Emerald icon",
+  "why": "Emerald gem icon matches."
+ },
+ "Q205": {
+  "id": "Q205",
+  "exists": false,
+  "best": "",
+  "why": "Only busy dragon/frozen orbs and unrelated effect glyphs; no plain glowing energy orb token."
+ },
+ "Q226": {
+  "id": "Q226",
+  "exists": true,
+  "best": "Present icon",
+  "why": "Clear gift icon suits a daily reward gift box."
+ },
+ "Q232": {
+  "id": "Q232",
+  "exists": false,
+  "best": "",
+  "why": "No plus icon; only signs, zodiac and money icons."
+ },
+ "Q234": {
+  "id": "Q234",
+  "exists": true,
+  "best": "Speaker Off icon",
+  "why": "Speaker off / Mute / Icon sound disabled are exactly the muted speaker."
+ },
+ "Q236": {
+  "id": "Q236",
+  "exists": false,
+  "best": "",
+  "why": "Only emote bubbles; no heart outline icon."
+ },
+ "Q003": {
+  "id": "Q003",
+  "exists": false,
+  "best": "bowl soup (Food Kit)",
+  "why": "Soup/broth bowls are not ramen noodles; only loosely related."
+ },
+ "Q006": {
+  "id": "Q006",
+  "exists": true,
+  "best": "apple (Food Kit)",
+  "why": "Chunky red apple pickup prop."
+ },
+ "Q018": {
+  "id": "Q018",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q024": {
+  "id": "Q024",
+  "exists": false,
+  "best": "",
+  "why": "Spike roller and swords only; no mace."
+ },
+ "Q027": {
+  "id": "Q027",
+  "exists": false,
+  "best": "",
+  "why": "Plain untextured staffs with no crystal confirmed."
+ },
+ "Q030": {
+  "id": "Q030",
+  "exists": true,
+  "best": "axeintunk (OpenEyes Medial Pack v1)",
+  "why": "Axe in stump prop is exactly this."
+ },
+ "Q032": {
+  "id": "Q032",
+  "exists": false,
+  "best": "",
+  "why": "Lab bottles and pipettes only; no fishing rod."
+ },
+ "Q036": {
+  "id": "Q036",
+  "exists": true,
+  "best": "Coin Pile 2 (Fantasy Props MegaKit)",
+  "why": "Pile of coins prop."
+ },
+ "Q038": {
+  "id": "Q038",
+  "exists": false,
+  "best": "",
+  "why": "Golden weapons and armor, no chest."
+ },
+ "Q039": {
+  "id": "Q039",
+  "exists": false,
+  "best": "",
+  "why": "Sandbags ambiguous and radio is a station building; no ammo crates and radio set."
+ },
+ "Q089": {
+  "id": "Q089",
+  "exists": false,
+  "best": "",
+  "why": "Generic rocks and desert props; no red canyon walls."
+ },
+ "Q093": {
+  "id": "Q093",
+  "exists": true,
+  "best": "platform (Mini Forest)",
+  "why": "Mini Forest pack description names a floating island that reads well; platform is the likely piece."
+ },
+ "Q094": {
+  "id": "Q094",
+  "exists": true,
+  "best": "cliff cave stone (Nature Kit)",
+  "why": "Cliff cave pieces are a cave opening in a cliff."
+ },
+ "Q095": {
+  "id": "Q095",
+  "exists": false,
+  "best": "",
+  "why": "Desert props only; no dunes."
+ },
+ "Q098": {
+  "id": "Q098",
+  "exists": false,
+  "best": "",
+  "why": "Only a dock module and boats separately; no assembled harbor with slips and crates."
+ },
+ "Q108": {
+  "id": "Q108",
+  "exists": true,
+  "best": "house modern (Suburb Asset pt1)",
+  "why": "Modern suburban house; drab but the right object."
+ },
+ "Q112": {
+  "id": "Q112",
+  "exists": false,
+  "best": "",
+  "why": "No glass skyscraper lobby."
+ },
+ "Q114": {
+  "id": "Q114",
+  "exists": false,
+  "best": "",
+  "why": "No cathedral."
+ },
+ "Q116": {
+  "id": "Q116",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q117": {
+  "id": "Q117",
+  "exists": false,
+  "best": "",
+  "why": "Only a hex dock tile and coaster pieces; no lake dock."
+ },
+ "Q124": {
+  "id": "Q124",
+  "exists": false,
+  "best": "",
+  "why": "Industrial chimneys only; no log cabin."
+ },
+ "Q130": {
+  "id": "Q130",
+  "exists": false,
+  "best": "",
+  "why": "Entrances to parks and mines; no bunker with hatch."
+ },
+ "Q132": {
+  "id": "Q132",
+  "exists": false,
+  "best": "",
+  "why": "Only a rocky water hex tile; no lighthouse."
+ },
+ "Q135": {
+  "id": "Q135",
+  "exists": false,
+  "best": "",
+  "why": "Castle kit pieces; no pagoda."
+ },
+ "Q136": {
+  "id": "Q136",
+  "exists": false,
+  "best": "",
+  "why": "Roof fronts only; no neon shop front."
+ },
+ "Q138": {
+  "id": "Q138",
+  "exists": true,
+  "best": "House 01 (Modular Houses)",
+  "why": "Complete cottage that reads on its own; KayKit blacksmith cottage is an alternate."
+ },
+ "Q143": {
+  "id": "Q143",
+  "exists": false,
+  "best": "",
+  "why": "Modular pieces only; no hangar, tower and pad base."
+ },
+ "Q144": {
+  "id": "Q144",
+  "exists": false,
+  "best": "",
+  "why": "Gates and castle pieces; no crypt or graveyard set in this list."
+ },
+ "Q147": {
+  "id": "Q147",
+  "exists": false,
+  "best": "",
+  "why": "Car Kit cars; no horse cart."
+ },
+ "Q151": {
+  "id": "Q151",
+  "exists": true,
+  "best": "kart oobi (Car Kit)",
+  "why": "Chunky toy kart; car kart variants also fit."
+ },
+ "Q160": {
+  "id": "Q160",
+  "exists": false,
+  "best": "",
+  "why": "No candidates."
+ },
+ "Q052": {
+  "id": "Q052",
+  "exists": false,
+  "best": "",
+  "why": "Sofas and rock; no cherry blossom tree."
+ },
+ "Q057": {
+  "id": "Q057",
+  "exists": false,
+  "best": "character skeleton (Graveyard Kit)",
+  "why": "Standing skeleton character, not lying on the floor."
+ },
+ "Q058": {
+  "id": "Q058",
+  "exists": false,
+  "best": "",
+  "why": "Wall corners only; no cobweb."
+ },
+ "Q059": {
+  "id": "Q059",
+  "exists": false,
+  "best": "",
+  "why": "Lids and altar stone; no sarcophagus."
+ },
+ "Q060": {
+  "id": "Q060",
+  "exists": false,
+  "best": "",
+  "why": "Lamps and chandelier; no chains or shackles."
+ },
+ "Q063": {
+  "id": "Q063",
+  "exists": false,
+  "best": "",
+  "why": "Factory frames only; no control panel."
+ },
+ "Q064": {
+  "id": "Q064",
+  "exists": false,
+  "best": "",
+  "why": "Pipes and drop pods; no cryo pod."
+ },
+ "Q066": {
+  "id": "Q066",
+  "exists": false,
+  "best": "Prop Health Pack Tube (Sci-Fi Essentials Kit)",
+  "why": "Health canister pickup is not an energy core in a glass tube."
+ },
+ "Q068": {
+  "id": "Q068",
+  "exists": false,
+  "best": "",
+  "why": "Drop pods and food eggs; no alien egg pod."
+ },
+ "Q070": {
+  "id": "Q070",
+  "exists": false,
+  "best": "",
+  "why": "Only cargo crafts and astronaut pieces; no airlock hatch or console set."
+ },
+ "Q071": {
+  "id": "Q071",
+  "exists": false,
+  "best": "",
+  "why": "Books, coins and logs; no colorful building blocks."
+ },
+ "Q073": {
+  "id": "Q073",
+  "exists": false,
+  "best": "",
+  "why": "Factory robot arms and enemy drones; no wind-up toy robot."
+ },
+ "Q076": {
+  "id": "Q076",
+  "exists": false,
+  "best": "",
+  "why": "Arcade machine and tube hoops; no basketball hoop with backboard."
+ },
+ "Q077": {
+  "id": "Q077",
+  "exists": false,
+  "best": "",
+  "why": "Beach balls and food; no soccer ball."
+ },
+ "Q078": {
+  "id": "Q078",
+  "exists": false,
+  "best": "",
+  "why": "No bat; only spoons and wood frames."
+ },
+ "Q079": {
+  "id": "Q079",
+  "exists": false,
+  "best": "",
+  "why": "Lab rubber gloves, not boxing gloves."
+ },
+ "Q243": {
+  "id": "Q243",
+  "exists": true,
+  "best": "Arrow Left (White, Game Icons)",
+  "why": "Game Icons white arrow set has the four directions in one style."
+ },
+ "Q247": {
+  "id": "Q247",
+  "exists": false,
+  "best": "",
+  "why": "Blank and letter pixel prompts; no confirmed A button gamepad prompt."
+ },
+ "Q250": {
+  "id": "Q250",
+  "exists": true,
+  "best": "Touch finger one (Touch, Input Prompts)",
+  "why": "Touch gesture finger icon for tap."
+ },
+ "Q254": {
+  "id": "Q254",
+  "exists": false,
+  "best": "",
+  "why": "Progress bars and scrollbars; no thumbs up."
+ },
+ "Q255": {
+  "id": "Q255",
+  "exists": false,
+  "best": "",
+  "why": "Bar fragments; no waving hand."
+ },
+ "Q257": {
+  "id": "Q257",
+  "exists": false,
+  "best": "",
+  "why": "Minimap tiles and flags; no red map pin."
+ },
+ "Q263": {
+  "id": "Q263",
+  "exists": false,
+  "best": "",
+  "why": "Military rank chevrons; no diamond ladder emblem."
+ },
+ "Q266": {
+  "id": "Q266",
+  "exists": true,
+  "best": "Flag (White, Game Icons (Expansion))",
+  "why": "White flag on a pole."
+ },
+ "Q278": {
+  "id": "Q278",
+  "exists": true,
+  "best": "Panel brown (UI Pack - Adventure)",
+  "why": "Brown medieval wooden-style menu panel."
+ }
+}
