@@ -12,7 +12,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 3 | Complete maps and environments | 300 | 0 | not started (terrain and scenery pieces are props, row 1) |
 | 4 | Characters, NPCs, creatures, pets | 1,500 | 439 (173 / 84 / 182) | Kenney, OpenGameArt and KayKit packs |
 | 5 | Vehicles and mechanisms | 400 | 691 (327 / 291 / 73) | Kenney, OpenGameArt and KayKit packs |
-| 6 | Textures, materials, terrain presets | 1,000 | 0 | ledger only (ambientCG, Poly Haven) |
+| 6 | Textures, materials, terrain presets | 1,000 | 2,009 (436 / 1,344 / 229) | ambientCG PBR materials (CC0), 95 families by material type; 1K-JPG sets hashed, colour maps kept; not uploaded yet (MaterialVariants need O-GROUP) |
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: icons A 5,421 / B 4,030 / C 2,201, frames A 649 / B 1,198 / C 9, plus 43 kit icons | 27 families; after the L4 overrides; not uploaded yet (O-GROUP) |
 | 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
@@ -67,6 +67,11 @@ KayKit (2026-10-08): the 10 free-tier repos of github.com/KayKit-Game-Assets (CC
 dates from its creation-date line), 1,005 models: A 380, B 509, C 116 (incl. 9 alcohol overrides). Models exported as
 both x.fbx and x.gltf.glb are one model (the GLB): the same fix removed 597 such duplicates from the OpenGameArt items
 (older KayKit uploads), which took their GLB copy's grades.
+
+Materials (2026-10-08): ambientCG's 2,013 materials through its official API (CC0); each 1K-JPG zip streamed once to
+hash it, its colour map kept for grading (2.1 GB; the full map set is fetched again at upload). 2,009 ingested (2 have no
+1K-JPG, 2 failed to download). Two critics per board of 100: A 436, B 1,344, C 229 (88 % agreement); C includes blank or
+near-black maps, decal strips and normal-map-like images.
 
 Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
 Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.
