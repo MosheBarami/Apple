@@ -10,6 +10,8 @@ test('kept: base-size PNGs in a folder; 2x copies, sheets and the root preview a
   assert.equal(kept('PNG/White/2x/coin.png'), false);
   assert.equal(kept('Tilesheet/sheet.png'), false);
   assert.equal(kept('Preview.png'), false);
+  assert.equal(kept('PNG (Black background)/fire_01.png'), false);
+  assert.equal(kept('PNG (Transparent)/fire_01.png'), true);
   assert.equal(kept('PNG/Blue/Default/button.svg'), false);
 });
 

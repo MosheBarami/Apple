@@ -16,7 +16,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 7 | Skies and lighting presets | 300 + 100 | 0 | ledger only |
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: icons A 5,421 / B 4,030 / C 2,201, frames A 649 / B 1,198 / C 9, plus 43 kit icons | 27 families; after the L4 overrides; not uploaded yet (O-GROUP) |
 | 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
-| 10 | VFX | 2,000 | 0 | ledger only |
+| 10 | VFX | 2,000 | 665 (153 / 310 / 202) | Kenney Particle Pack, Smoke Particles, Splat Pack and Light Masks (CC0) as textures for ParticleEmitters, Beams and Decals; Creator Store effects wait on O-KEY; not uploaded yet (O-GROUP) |
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
 | 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
 | 13 | Animations | 1,000 | 47 (0 / 2 / 45) | 3 OpenGameArt rigs graded as models; clips not yet split out |
