@@ -29,6 +29,11 @@ import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { TGALoader } from 'three/addons/loaders/TGALoader.js';
 THREE.DefaultLoadingManager.addHandler(/\\.tga$/i, new TGALoader()); // FBX and MTL often name .tga textures
+// Requests the loaders still have open (textures, MTL): a model is drawn once none is left, found or not.
+let pending = 0;
+const M = THREE.DefaultLoadingManager, start = M.itemStart.bind(M), end = M.itemEnd.bind(M);
+M.itemStart = (u) => { pending += 1; start(u); };
+M.itemEnd = (u) => { pending = Math.max(0, pending - 1); end(u); };
 const N = 256, LINE = 4, CONTOUR = '#0B1A33';
 const canvas = (n) => { const c = document.createElement('canvas'); c.width = c.height = n; return c; };
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -73,12 +78,11 @@ window.model = async (url) => {
     o.frustumCulled = false;
   });
   if (!meshes) throw new Error('no meshes');
-  // FBX, OBJ and Collada return before their textures arrive: wait (at most 10 s) until every map holds its image,
-  // or the thumbnail shows the 1-pixel placeholder. A texture that never arrives is counted as missing by the server.
+  // FBX, OBJ and Collada return before their textures arrive: wait (at most 10 s) until the loaders have no request
+  // open, or the thumbnail shows the 1-pixel placeholder. A texture that never arrives is counted missing by the server.
   const maps = [];
   m.traverse((o) => { if (o.isMesh) for (const mat of [].concat(o.material)) if (mat.map) maps.push(mat.map); });
-  const loaded = (t) => (t.image?.width ?? t.image?.naturalWidth ?? 0) > 1;
-  for (let i = 0; i < 200 && !maps.every(loaded); i++) await new Promise((r) => setTimeout(r, 50));
+  for (let i = 0; i < 200 && pending > 0; i++) await new Promise((r) => setTimeout(r, 50));
   for (const t of maps) t.needsUpdate = true;
   const box = new THREE.Box3().setFromObject(m);
   const size = box.getSize(new THREE.Vector3());
@@ -158,7 +162,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       const url = '/files/' + it.file.split('/').map(encodeURIComponent).join('/');
       missing = [];
       try {
-        const r = await Promise.race([tab.evaluate((u) => window.model(u), url), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 40 s')), 40_000))]);
+        const r = await Promise.race([tab.evaluate((u) => window.model(u), url), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 40 s')), 40_000).unref())]);
         writeFileSync(join(outDir, `${it.key}.png`), Buffer.from(r.png.split(',')[1], 'base64'));
         appendFileSync(statsFile, JSON.stringify({ key: it.key, ok: true, triangles: r.triangles, meshes: r.meshes, size: r.size, missing: missing.length, ...(missing.length ? { missing_files: [...new Set(missing)].slice(0, 5) } : {}) }) + '\n');
         ok += 1;
