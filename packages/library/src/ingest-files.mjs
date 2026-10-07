@@ -5,7 +5,7 @@
 //   node packages/library/tools/render-models.mjs <list.json> <packs> <thumbs>          (thumbnails + stats.jsonl)
 //   node packages/library/src/ingest-files.mjs ingest --ledger <jsonl> --dir <packs> --stats <thumbs>/stats.jsonl --out <items.jsonl>
 //
-// One file per model name: GLB, then glTF, FBX, OBJ, Collada. The licence comes from the ledger row (the page's own
+// One file per model name: GLB (including one blend-to-glb.mjs made from the pack's .blend), then glTF, FBX, OBJ, Collada. The licence comes from the ledger row (the page's own
 // licence line); CC-BY attribution names the pack, author, licence and page, plus the page's own notice; the author and the post date from its evidence. Only models the
 // renderer loaded become items. Authors with a pack posted before 2023 count as known humans for the 2024 rule.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
@@ -18,6 +18,12 @@ import { KNOWN_HUMAN } from './ingest-pack.mjs';
 
 const RANK = { '.glb': 0, '.gltf': 1, '.fbx': 2, '.obj': 3, '.dae': 4 };
 const SKIP = /(^|[\\/])(__MACOSX|textures?|materials?|previews?|screenshots?|source|blend)([\\/]|$)/i;
+// A GLB that blend-to-glb.mjs made from the pack's own .blend: where it came from (or undefined).
+const convertedFrom = (packDir, f) => {
+  if (basename(dirname(f)) !== 'blend-glb') return undefined;
+  const m = join(dirname(f), 'manifest.json');
+  return existsSync(m) ? JSON.parse(readFileSync(m, 'utf8'))[basename(f)] : undefined;
+};
 const KIND_OF_CATEGORY = { 1: 'prop', 2: 'building', 3: 'map', 4: 'character', 5: 'vehicle', 13: 'animation' };
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const words = (s) => s.replace(/[-_.]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
@@ -32,7 +38,7 @@ function files(dir, root = dir, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name);
     if (SKIP.test(relative(root, p))) continue;
-    if (e.isDirectory()) files(p, root, out); else if (RANK[extname(e.name).toLowerCase()] !== undefined) out.push(p);
+    if (e.isDirectory()) files(p, root, out); else if (RANK[extname(e.name).toLowerCase()] !== undefined && (basename(dir) !== 'blend-glb' || convertedFrom(root, p)?.ok)) out.push(p);
   }
   return out;
 }
@@ -78,6 +84,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         if (!st?.ok) { unloadable += 1; continue; }
         const name = words(basename(f, extname(f)));
         const title = `${name} (${row.pack})`;
+        const conv = convertedFrom(join(dir, ps), f);
         const tags = [...new Set(name.toLowerCase().split(' ').filter((w) => w.length > 1))];
         const item = {
           id: idOf(ps, f),
@@ -88,7 +95,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
           fetched_at: JSON.parse(readFileSync(join(dir, ps, 'fetch.json'), 'utf8')).at,
           uploader: 'none', file: relative(dir, f), file_sha256: createHash('sha256').update(readFileSync(f)).digest('hex'),
           categories: row.categories, tags,
-          checks: { triangles: st.triangles, meshes: st.meshes, size: st.size, format: extname(f).slice(1).toLowerCase() },
+          checks: { triangles: st.triangles, meshes: st.meshes, size: st.size, format: extname(f).slice(1).toLowerCase(), ...(conv ? { converted_from: conv.from, blender: conv.blender } : {}) },
           ai_check: aiCheck({ title, tags, created: posted, creator: author }, known, new Date().toISOString()),
         };
         const errs = validateItem(item);

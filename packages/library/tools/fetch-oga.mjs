@@ -1,7 +1,7 @@
 // Fetch OpenGameArt 3D packs from the ledger (master plan §4.4 step 3): for each allowed pack, its page's direct
 // file links (opengameart.org/sites/default/files/...), downloaded at most one request a second, archives unpacked with
-// bsdtar (zip, rar, 7z). Kenney uploads are skipped (ingested from kenney.nl), as are packs whose only model format is
-// .blend (no converter here). Resumable: a pack folder with a fetch.json is not fetched again.
+// bsdtar (zip, rar, 7z). Kenney uploads are skipped (ingested from kenney.nl); .blend files are fetched too and
+// converted by blend-to-glb.mjs. Resumable: a pack folder with a fetch.json is not fetched again.
 //
 //   node packages/library/tools/fetch-oga.mjs <ledger.jsonl> <out-dir> [--max-file-mb 300] [--max-total-gb 8]
 import { readFileSync, writeFileSync, mkdirSync, existsSync, createWriteStream, statSync } from 'node:fs';
@@ -17,15 +17,15 @@ const flag = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 
 const MAX_FILE = flag('max-file-mb', 300) * 1e6, MAX_TOTAL = flag('max-total-gb', 8) * 1e9;
 const UA = { 'user-agent': 'StudPilot-Library/1.0 (+https://studpilot.app; library ingestion of CC0/CC-BY packs)' };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const MODEL = /\.(glb|gltf|obj|fbx|dae|zip|rar|7z)$/i;
+const MODEL = /\.(glb|gltf|obj|fbx|dae|blend|zip|rar|7z)$/i;
 
-/** Whether a ledger row is fetched: an allowed licence, not a Kenney upload, a model format other than .blend. Pure. */
+/** Whether a ledger row is fetched: an allowed licence, not a Kenney upload, a model format three.js or Blender reads. Pure. */
 export function wanted(row) {
   const words = String(row.licence_words ?? '').replace(/^License\(s\):\s*/i, '').split('|')[0];
   if (!classifyLicence(words).ok) return false;
   if (/\bby kenney\b/i.test(row.human_made_evidence ?? '')) return false;
   const fm = (row.formats ?? []).map((f) => String(f).toLowerCase());
-  return fm.some((f) => ['glb', 'gltf', 'obj', 'fbx', 'dae'].includes(f));
+  return fm.some((f) => ['glb', 'gltf', 'obj', 'fbx', 'dae', 'blend'].includes(f));
 }
 
 /** The direct file links of an OGA page (archives and model files only). Pure. */
