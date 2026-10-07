@@ -1,7 +1,7 @@
 // Master plan §4.4 steps 2, 3 and 6 for packs fetched as loose files (OpenGameArt): one item per model in a pack, in
 // any format three.js reads. Two steps, so the renderer can measure what a GLB header cannot:
 //
-//   node packages/library/src/ingest-files.mjs list   --ledger <jsonl> --dir <packs> --out <list.json>
+//   node packages/library/src/ingest-files.mjs list   --ledger <jsonl> --dir <packs> --out <list.json> [--prefix oga]
 //   node packages/library/tools/render-models.mjs <list.json> <packs> <thumbs>          (thumbnails + stats.jsonl)
 //   node packages/library/src/ingest-files.mjs ingest --ledger <jsonl> --dir <packs> --stats <thumbs>/stats.jsonl --out <items.jsonl>
 //
@@ -56,7 +56,9 @@ export function packModels(packDir) {
   return [...best.values()].sort();
 }
 
-const idOf = (packSlug, file) => `oga:${packSlug}:${slug(basename(file, extname(file)))}`.slice(0, 120);
+// The source prefix of ids and families (--prefix; OpenGameArt by default).
+let PREFIX = 'oga';
+const idOf = (packSlug, file) => `${PREFIX}:${slug(packSlug)}:${slug(basename(file, extname(file)))}`.slice(0, 120);
 /** The thumbnail and stats key of an item: its id with ':' as '__' (as the grading boards read it). */
 const keyOf = (packSlug, file) => idOf(packSlug, file).replaceAll(':', '__');
 
@@ -64,6 +66,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const mode = process.argv[2];
   const arg = (n) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : undefined; };
   const ledger = arg('ledger'), dir = arg('dir'), out = arg('out');
+  PREFIX = arg('prefix') ?? 'oga';
   if (!['list', 'ingest'].includes(mode) || !ledger || !dir || !out) { console.error('usage: ingest-files.mjs list|ingest --ledger <jsonl> --dir <packs> [--stats <stats.jsonl>] --out <file>'); process.exit(2); }
   const rows = readFileSync(ledger, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
   const known = new Set([...KNOWN_HUMAN, ...rows.map((r) => authorOf(r.human_made_evidence)).filter(([d, a]) => d && a && d < '2023-01-01').map(([, a]) => a.toLowerCase())]);
@@ -91,7 +94,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const tags = [...new Set(name.toLowerCase().split(' ').filter((w) => w.length > 1))];
         const item = {
           id: idOf(ps, f),
-          title, kind: KIND_OF_CATEGORY[(row.categories ?? [])[0]] ?? 'prop', family: `oga:${ps}`,
+          title, kind: KIND_OF_CATEGORY[(row.categories ?? [])[0]] ?? 'prop', family: `${PREFIX}:${slug(ps)}`,
           source_url: row.url, author: author ?? 'unknown',
           licence_words: firstLicence(row.licence_words), licence_class: lic.class, licence_url: row.licence_url,
           ...(lic.class.startsWith('cc-by') ? { attribution: `${row.pack} by ${author} (${lic.class.toUpperCase()}, ${row.url})${notice ? `. ${notice}` : ''}` } : {}),
