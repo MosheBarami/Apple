@@ -35,8 +35,10 @@ export async function searchLibrary(
   if (!env.LIBRARY) return { error: 'the library index is not configured here' };
   const query = opts.query.trim();
   if (!query) return { error: 'a query is required' };
-  const filter: Record<string, string> = {};
-  if (opts.kind) filter.kind = opts.kind;
+  // kind may name several, comma-separated ("code,skill": a module or an official recipe with its code).
+  const kinds = (opts.kind ?? '').split(',').map((k) => k.trim()).filter(Boolean);
+  const filter: Record<string, string | { $in: string[] }> = {};
+  if (kinds.length) filter.kind = kinds.length === 1 ? kinds[0]! : { $in: kinds };
   if (opts.family) filter.family = opts.family;
   const [vector] = await embed(env, [query]);
   const res = await env.LIBRARY.query(vector!, { topK: 40, returnMetadata: 'all', ...(Object.keys(filter).length ? { filter } : {}) });

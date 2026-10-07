@@ -2,7 +2,8 @@
 // Documentation (Roblox/creator-docs, CC BY 4.0). Every numbered list of three or more steps under a heading becomes
 // one skill: the heading, the paragraph that introduces the list, and the steps with their code, sub-steps and notes,
 // word for word. Only media embeds (images, videos, image grids) are removed, and relative links keep their text.
-// Each skill cites its page and heading. A format change, no new content (L1).
+// Each skill cites its page and heading. A format change, no new content (L1). A section that teaches with prose and
+// Luau code instead of a list is a code recipe (its code samples are MIT, Copyright (c) 2023 Roblox Corporation).
 //
 //   node packages/library/src/ingest-skills.mjs --docs <creator-docs checkout> --out <items.jsonl>
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
@@ -76,6 +77,32 @@ export function procedures(md) {
   return out;
 }
 
+/**
+ * The code recipes of one page: a section (a level 2-4 heading to the next one) that teaches with prose and Luau code
+ * rather than a numbered list: [{ heading, anchor, intro: '', steps: 0, body, codeBlocks }], the body word for word
+ * (cleaned). Sections holding a numbered list are procedures() and are left to it. Pure.
+ */
+export function recipes(md) {
+  const lines = md.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n');
+  const sections = [];
+  let cur = null, fence = false;
+  for (const l of lines) {
+    if (/^\s*```/.test(l)) fence = !fence;
+    const h = !fence && l.match(/^#{2,4}\s+(.+?)\s*$/);
+    if (h) { cur = { heading: h[1], lines: [] }; sections.push(cur); continue; }
+    if (cur) cur.lines.push(l);
+  }
+  const out = [];
+  for (const sec of sections) {
+    const body = sec.lines.join('\n');
+    const outside = body.replace(/```[\s\S]*?```/g, '');
+    const codeBlocks = (body.match(/```lua(u)?\b/g) ?? []).length;
+    if (!codeBlocks || /^\d+\.\s/m.test(outside)) continue;
+    out.push({ heading: sec.heading.replace(/[`*]/g, ''), anchor: slug(sec.heading), intro: '', steps: 0, body: clean(body), codeBlocks, recipe: true });
+  }
+  return out;
+}
+
 const walk = (d, out = []) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p, out); else if (e.name.endsWith('.md')) out.push(p); } return out; };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -90,7 +117,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   let rejected = 0;
   for (const file of walk(root).filter((f) => !relative(root, f).startsWith('reference/'))) {
     const md = readFileSync(file, 'utf8');
-    const procs = procedures(md);
+    const procs = [...procedures(md), ...recipes(md)]; // procedures first, so their ids stay what they were
     if (!procs.length) continue;
     const rel = relative(root, file).replace(/\.md$/, '').replace(/\/index$/, '');
     const page = (md.match(/^title:\s*(.+)$/m) ?? [])[1]?.replace(/^['"]|['"]$/g, '') ?? rel;
@@ -107,9 +134,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         id, title, kind: 'skill', family: `skill:docs:${rel.split('/').slice(0, 2).join('/')}`,
         source_url: url, author: 'Roblox', licence_words: 'CC-BY-4.0', licence_class: lic.class,
         licence_url: 'https://creativecommons.org/licenses/by/4.0/',
-        attribution: `"${p.heading}", ${page}, Roblox Creator Documentation (${url}), CC BY 4.0`,
+        attribution: `"${p.heading}", ${page}, Roblox Creator Documentation (${url}), CC BY 4.0${p.recipe ? '; code samples MIT License, Copyright (c) 2023 Roblox Corporation' : ''}`,
         fetched_at: head, uploader: 'none', file_sha256: createHash('sha256').update(text).digest('hex'),
-        tags, checks: { steps: p.steps, chars: text.length, page: rel }, text,
+        tags: p.recipe ? [...tags, 'recipe', 'code'] : tags, checks: { steps: p.steps, chars: text.length, page: rel, ...(p.recipe ? { code_blocks: p.codeBlocks } : {}) }, text,
         ai_check: aiCheck({ title, tags, created, creator: 'roblox' }, new Set(['roblox']), head),
       };
       const errs = validateItem(item);
