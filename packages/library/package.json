@@ -22,7 +22,8 @@
     "boards:kenney-2d": "node tools/icon-boards.mjs ../../planning/library/items/kenney-2d.jsonl ../../private/library-src/kenney-2d ../../private/library-boards/kenney-2d",
     "acceptance": "node tools/acceptance.mjs --items ../../planning/library/items",
     "overrides": "node tools/apply-overrides.mjs ../../planning/library/maturity-overrides.jsonl ../../planning/library/items ../../private/library-overrides-touched.jsonl ../../private/library-overrides-demoted.txt",
-    "retrieval-test": "node tools/retrieval-test.mjs ../../planning/library/acceptance/L-A6-queries.jsonl ../../planning/library/items ../../private ../../private/library-acceptance/L-A6"
+    "retrieval-test": "node tools/retrieval-test.mjs ../../planning/library/acceptance/L-A6-queries.jsonl ../../planning/library/items ../../private ../../private/library-acceptance/L-A6",
+    "ingest:kaykit": "node src/ingest-files.mjs ingest --ledger ../../planning/library/ledger/kaykit-github.jsonl --dir ../../private/library-src/kaykit --stats ../../private/library-thumbs/kaykit/stats.jsonl --out ../../planning/library/items/kaykit.jsonl --prefix kaykit"
   },
   "devDependencies": {
     "playwright-core": "1.58.0",

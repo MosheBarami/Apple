@@ -24,6 +24,7 @@ test('L-A6 finds each visual item\'s preview where its pipeline left it', async 
   const { thumbOf } = await import('../tools/retrieval-test.mjs');
   assert.equal(thumbOf({ id: 'kenney:nature-kit:tree' }, '/p'), '/p/library-thumbs/kenney__nature-kit__tree.png');
   assert.equal(thumbOf({ id: 'oga:pack:rock' }, '/p'), '/p/library-thumbs/oga/oga__pack__rock.png');
+  assert.equal(thumbOf({ id: 'kaykit:kaykit-dungeon:chest' }, '/p'), '/p/library-thumbs/kaykit/kaykit__kaykit-dungeon__chest.png');
   assert.equal(thumbOf({ id: 'gi:lorc:sword', file: 'lorc/sword.svg' }, '/p'), '/p/library-src/game-icons/lorc/sword.svg');
   assert.equal(thumbOf({ id: 'kenney2d:ui-pack:x', file: 'ui-pack/PNG/x.png' }, '/p'), '/p/library-src/kenney-2d/ui-pack/PNG/x.png');
   assert.equal(thumbOf({ id: 'skill:docs:a:b' }, '/p'), undefined);
