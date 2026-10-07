@@ -3980,13 +3980,13 @@ app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
 /**
  * The library search the build model will use (master plan §3), behind ADMIN_KEY so the retrieval acceptance test
  * (§4.6 L-A6) runs against the deployed code and its real index: ?q= the need, &kind=, &family=, &limit= (1-12),
- * &mild=1 to include items rated Mild. Read-only; it returns text cards.
+ * &mild=1 to include items rated Mild, &set=1 for a set from one style family. Read-only; it returns text cards.
  */
 app.get('/api/admin/library/search', async (c) => {
   const q = c.req.query('q') ?? '';
   const res = await searchLibrary(c.env, embed, {
     query: q, kind: c.req.query('kind') || undefined, family: c.req.query('family') || undefined,
-    limit: c.req.query('limit') ? Number(c.req.query('limit')) : undefined, allowMild: c.req.query('mild') === '1',
+    limit: c.req.query('limit') ? Number(c.req.query('limit')) : undefined, allowMild: c.req.query('mild') === '1', oneFamily: c.req.query('set') === '1',
   });
   return c.json(res, 'error' in res ? 400 : 200);
 });

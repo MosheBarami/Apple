@@ -1,5 +1,5 @@
 // library_search (master plan §3, §4.6 L-A6): the library by meaning first, then filters. Only A and B items reach
-// the build model (L5), A before B with relevance kept inside each grade; an item rated Mild (horror styles) only
+// the build model (L5): the most relevant first, A before B among those; an item rated Mild (horror styles) only
 // when the caller allows it. Each result is the text card of §3.3: GLM never sees a picture. `uploaded` says whether
 // the item is on Roblox yet (an asset id), so a caller can tell what it may insert today.
 import type { Env } from './env';
@@ -24,8 +24,14 @@ export const offered = (r: Pick<Row, 'grade' | 'maturity'>, allowMild = false) =
 
 export async function searchLibrary(
   env: Env, embed: Embed,
-  opts: { query: string; kind?: string; family?: string; limit?: number; allowMild?: boolean },
+  opts: { query: string; kind?: string; family?: string; limit?: number; allowMild?: boolean; oneFamily?: boolean },
 ): Promise<{ cards: LibraryCard[] } | { error: string }> {
+  // A set (a village, a matching UI) comes from one style family: the family of the best match, searched again (§3).
+  if (opts.oneFamily && !opts.family) {
+    const first = await searchLibrary(env, embed, { ...opts, oneFamily: false, limit: 1 });
+    if ('error' in first || !first.cards[0]?.family) return first;
+    return searchLibrary(env, embed, { ...opts, oneFamily: false, family: first.cards[0].family });
+  }
   if (!env.LIBRARY) return { error: 'the library index is not configured here' };
   const query = opts.query.trim();
   if (!query) return { error: 'a query is required' };
@@ -38,11 +44,13 @@ export async function searchLibrary(
   if (!ids.length) return { cards: [] };
   const rows = (await env.CORPUS.prepare(`select id, title, kind, family, grade, licence_class, triangles, grade_notes, roblox_asset_id, maturity from library_items where id in (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>()).results ?? [];
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const top = ids.map((id) => byId.get(id)).filter((r): r is Row => !!r && offered(r, opts.allowMild));
-  top.sort((x, y) => (x.grade === y.grade ? 0 : x.grade === 'A' ? -1 : 1));
   const limit = Math.max(1, Math.min(opts.limit ?? 8, 12));
+  // The most relevant offered items first, then A before B among them (as library_code and the skills do): sorting
+  // all 40 candidates by grade first let the few A items of a kind push relevant B items out of every answer.
+  const top = ids.map((id) => byId.get(id)).filter((r): r is Row => !!r && offered(r, opts.allowMild)).slice(0, limit);
+  top.sort((x, y) => (x.grade === y.grade ? 0 : x.grade === 'A' ? -1 : 1));
   return {
-    cards: top.slice(0, limit).map((r) => ({
+    cards: top.map((r) => ({
       id: r.id, title: r.title, kind: r.kind, family: r.family, grade: r.grade!, licence: r.licence_class,
       triangles: r.triangles, line: line(r), uploaded: r.roblox_asset_id != null,
     })),

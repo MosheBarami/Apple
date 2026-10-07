@@ -29,8 +29,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const queries = readFileSync(qFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
   const results = [];
   for (const q of queries) {
-    const kind = q.kind === 'icon' || q.kind === 'frame' ? '' : q.kind; // icons and frames are one shelf to a builder
-    const url = `${base}/api/admin/library/search?q=${encodeURIComponent(q.query)}&limit=5${kind ? `&kind=${kind}` : ''}`;
+    // Icons and frames are one shelf to a builder; terrain and scenery pieces are props tagged environment.
+    const kind = q.kind === 'icon' || q.kind === 'frame' ? '' : q.kind === 'map' ? 'prop' : q.kind;
+    const url = `${base}/api/admin/library/search?q=${encodeURIComponent(q.query)}&limit=5${kind ? `&kind=${kind}` : ''}${q.multi ? '&set=1' : ''}`;
     const res = await (await fetch(url, { headers: { 'X-Admin-Key': key } })).json();
     results.push({ ...q, cards: res.cards ?? [], error: res.error });
   }
