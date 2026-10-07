@@ -20,7 +20,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 11 | SFX | 30,000 indexed | 0 | ledger only |
 | 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
 | 13 | Animations | 1,000 | 0 | ledger only |
-| 14 | Code modules | 300 | 0 | ledger: 70 MIT/Apache repos |
+| 14 | Code modules | 300 | 404 (29 / 296 / 79) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4: 315 clean static scans; the 89 flagged reviewed by two reviewers each: 65 safe, 18 restricted (purchases, web, teleport: only when the game asks), 6 unsafe and kept out |
 | 15 | Knowledge | 100 % of the docs | 2,195 docs | live corpus: 9,376 chunks, 9,527 vectors; creator-docs upstream has 2,168 pages; fetched 2026-08-30, refresh due |
 | 16 | Skills | 500 | 23 | live corpus |
 | 17 | Game templates and starters | 50 | 0 | not started |
@@ -33,3 +33,8 @@ agreed on 3,975 (90 %). Each item keeps both critics' grade and reason in `grade
 
 Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
 Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.
+
+Code (2026-10-07): usefulness graded by two critics per repo from its README and module list (the lower grade counts;
+an unsafe module is always C); A includes ProfileStore, Promise, GoodSignal, Trove, Janitor, ZonePlus, Fusion, spr,
+SimplePath, ByteNet and Warp. Loaded into D1 with the scan and both audits in `sanitize`; the 325 A/B modules are in
+`studpilot-library`.

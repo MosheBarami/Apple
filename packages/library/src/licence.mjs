@@ -8,7 +8,7 @@ const CLASSES = [
   ['cc0', /\bcc0\b|public domain|creative commons zero/i],
   ['cc-by-4.0', /\bcc[- ]?by[- ]?4(\.0)?\b|attribution 4\.0/i],
   ['cc-by-3.0', /\bcc[- ]?by[- ]?3(\.0)?\b|attribution 3\.0/i],
-  ['apache-2.0', /apache[- ]?(license[- ]?)?2(\.0)?/i],
+  ['apache-2.0', /apache[- ]?(license,?[- ]?)?(version[- ]?)?2(\.0)?/i], // also the standard header 'Apache License Version 2.0'
   ['bsd-3-clause', /bsd[- ]?3/i],
   ['bsd-2-clause', /bsd[- ]?2/i],
   ['mit', /^\s*mit(\s+licen[cs]e)?\s*$|\bmit licen[cs]e\b/i],
