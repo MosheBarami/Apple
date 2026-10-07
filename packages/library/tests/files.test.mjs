@@ -54,3 +54,9 @@ test('a converted GLB wins over the FBX of the same name only when its conversio
   writeFileSync(join(d, 'blend-glb/manifest.json'), JSON.stringify({ 'Chair.glb': { ok: true, from: 'x/Chair.blend' }, 'Lamp.glb': { ok: false } }));
   assert.deepEqual(packModels(d).map((p) => p.slice(d.length + 1)), ['blend-glb/Chair.glb', 'x/FBX/Lamp.fbx']);
 });
+
+test('names that differ only by punctuation are one model (they would share an id and a thumbnail)', () => {
+  const d = mkdtempSync(join(tmpdir(), 'oga-'));
+  for (const f of ['x/rock_05..fbx', 'x/rock_05.obj', 'x/flask_large.glb', 'x/flask_large_.glb']) { mkdirSync(join(d, f, '..'), { recursive: true }); writeFileSync(join(d, f), 'x'); }
+  assert.deepEqual(packModels(d).map((p) => basename(p)).sort(), ['flask_large.glb', 'rock_05..fbx']);
+});

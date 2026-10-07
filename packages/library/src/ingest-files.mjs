@@ -43,11 +43,11 @@ function files(dir, root = dir, out = []) {
   return out;
 }
 
-/** One model file per model name in a pack folder, the best format first. Pure apart from reading the folder. */
+/** One model file per model name (as its id spells it) in a pack folder, the best format first. Pure apart from reading the folder. */
 export function packModels(packDir) {
   const best = new Map();
   for (const f of files(packDir)) {
-    const name = basename(f, extname(f)).toLowerCase();
+    const name = slug(basename(f, extname(f))); // the id and thumbnail key are made from it: one file per slug
     const cur = best.get(name);
     if (!cur || RANK[extname(f).toLowerCase()] < RANK[extname(cur).toLowerCase()]) best.set(name, f);
   }
