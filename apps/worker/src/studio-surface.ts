@@ -24,6 +24,7 @@ export const STUDIO_WRITE_TOOLS = [
   'delete_instances',
   'clone_instances',
   'transform_instances',
+  'apply_surface',
   'edit_script',
   'run_luau',
   'edit_terrain',

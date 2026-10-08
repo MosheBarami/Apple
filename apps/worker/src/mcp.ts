@@ -263,6 +263,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   edit_terrain: 'Changes Terrain voxels and materials in the open place. Terrain authoring belongs to a consented agent run with its normal safety and review fences.',
   delete_instances: 'Deletes instances. The single most destructive tool in the registry; the checkpoint an agent run takes first is exactly what makes it survivable.',
   move_instances: 'Reparents existing objects in the place. Direct hierarchy writes stay behind the watched agent-run consent and checkpoint path.',
+  apply_surface: 'Changes the surface of every part under the given paths: a visible, whole-object edit that belongs to a checkpointed agent run.',
   transform_instances: 'Moves, rotates, or scales existing objects. Direct spatial edits stay behind the watched agent-run consent and verification path.',
   clone_instances: 'Duplicates project objects. Creation belongs to an agent run where the user has edit consent and the resulting hierarchy can be verified.',
   group_instances: 'Creates a Model and reparents existing objects into it. That is a project write and is intentionally unavailable to direct MCP calls.',

@@ -5,16 +5,15 @@
 	making each one a MaterialVariant on Plastic (a stud colour map and normal map, one stud per tile) and giving a part
 	that variant, so studs cover every face of a brick, a ball, a wedge, a mesh or a union alike.
 
-	THE STUDPILOT RULE (owner, 2026-10-01): every part StudPilot makes is studded unless the user asked for another surface.
-	So besides the two ops below, `watch` is called by Commands around every StudPilot write: the parts that write adds to
-	the place get studs before the write's undo recording closes (one Ctrl+Z takes back both).
+	Nothing is studded by default (owner, 2026-10-08, reversing the rule of 2026-10-01): surfaces are applied only when the
+	person asks for that look, through apply_surface. `watch` still runs around every StudPilot write and studs new parts
+	only after a set_surface_default { surface = "studs" } for this connection.
 
 	apply_surface { paths = { string }, surface = "studs"|"inlet"|"universal"|"weld"|"glue"|"smooth"|"smooth_no_outlines",
 	                maps? = { colorMap, normalMap, studsPerTile } }  -- maps for every surface but the two smooth ones
 	  Gives every BasePart at or under each path that surface on all faces (meshes and unions included).
 	set_surface_default { surface = "studs"|"keep", maps? = { colorMap, normalMap, studsPerTile } }
-	  "keep" stops studding new parts for this Studio connection (the user asked for their own textures); "studs" is
-	  the default and turns it back on.
+	  "keep" (the default) leaves new parts as they are made; "studs" studs every new part for this Studio connection.
 ]]
 local Surface = {}
 
@@ -64,7 +63,7 @@ end
 
 function Surface.build(api)
 	local MaterialService = game:GetService("MaterialService")
-	local defaultSurface = "studs"
+	local defaultSurface = "keep"
 	local studMaps: Variant? = nil -- given by the worker (set_surface_default / apply_surface); nothing is studded before
 
 	-- The MaterialVariant for a surface: one already in the place with the same maps (made by Resurface or by an

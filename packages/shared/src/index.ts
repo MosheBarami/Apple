@@ -957,6 +957,7 @@ export function phaseForTool(tool: string): AgentPhase {
     // they are distinct tools so Agent can express the edit without arbitrary Luau.
     case 'move_instances':
     case 'transform_instances':
+    case 'apply_surface':
     case 'clone_instances':
     case 'group_instances':
     case 'ungroup_instances':
@@ -2870,6 +2871,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'move_instances',
     label: 'Reparent objects',
     why: 'Moves existing objects to different parents in the project hierarchy.',
+    group: 'changes',
+  },
+  {
+    name: 'apply_surface',
+    label: 'Change part surfaces',
+    why: 'Gives parts a classic Roblox surface such as studs, when you ask for that look.',
     group: 'changes',
   },
   {

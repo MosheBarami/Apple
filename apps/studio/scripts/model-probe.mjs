@@ -10,13 +10,14 @@ const models = process.argv.slice(3).length ? process.argv.slice(3) : ['@cf/deep
 const workersai = createWorkersAI({ accountId: process.env.CLOUDFLARE_ACCOUNT_ID, apiKey: process.env.CLOUDFLARE_API_TOKEN_MASTER });
 const canned = { get_project_tree: 'game\n  Workspace (Baseplate, SpawnLocation)\n  StarterGui (empty)\n  ServerScriptService (empty)\n  ReplicatedStorage (empty)', list_scripts: '[]' };
 const tools = Object.fromEntries(STUDIO_TOOL_SPECS.map((s) => [s.name, tool({ description: s.description, inputSchema: jsonSchema(s.parameters), execute: async () => canned[s.name] ?? '{"ok":true}' })]));
-tools.load_skill = tool({ description: 'Load a skill', inputSchema: jsonSchema({ type: 'object', properties: { name: { type: 'string' } }, required: ['name'] }), execute: async () => 'skill body' });
+const { SKILLS } = await import('../src/skills.generated.ts');
+tools.load_skill = tool({ description: 'Load one of your skills before specialised work', inputSchema: jsonSchema({ type: 'object', properties: { name: { type: 'string' }, file: { type: 'string' } }, required: ['name'] }), execute: async ({ name }) => SKILLS.find((s) => s.name === name)?.body ?? 'no such skill' });
 for (const id of models) {
   const t0 = Date.now();
   let first = null, firstTool = null, text = '', reasoning = 0;
   const calls = [];
   try {
-    const r = streamText({ model: workersai(id, { reasoning_effort: 'low' }), system: systemPrompt({ projectName: 'My Game', studio: { connected: true, placeName: 'Place1', placeId: 1 } }), prompt: request, tools, stopWhen: isStepCount(3), maxOutputTokens: 4000 });
+    const r = streamText({ model: workersai(id, { reasoning_effort: 'low' }), system: systemPrompt({ projectName: 'My Game', studio: { connected: true, placeName: 'Place1', placeId: 1 } }), prompt: request, tools, stopWhen: isStepCount(Number(process.env.STEPS ?? 3)), maxOutputTokens: 4000 });
     for await (const p of r.fullStream) {
       if (!first && (p.type === 'text-delta' || p.type === 'reasoning-delta')) first = Date.now() - t0;
       if (p.type === 'reasoning-delta') reasoning += p.text.length;

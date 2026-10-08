@@ -82,6 +82,12 @@ export const STUDIO_TOOL_SPECS: readonly StudioToolSpec[] = [
     parameters: {"type":"object","properties":{"paths":{"type":"array","minItems":1,"maxItems":120,"items":{"type":"string","maxLength":320}},"move":{"type":"array","minItems":3,"maxItems":3,"items":{"type":"number"}},"rotate":{"type":"array","minItems":3,"maxItems":3,"items":{"type":"number"}},"scale":{"type":"number","minimum":0.001,"maximum":1000}},"required":["paths"]},
   },
   {
+    name: "apply_surface",
+    writes: true,
+    description: "Give parts a classic Roblox surface on every face (meshes and unions included): studs, inlet, universal, weld, glue, or smooth / smooth_no_outlines to take one off. Applies to every BasePart at or under each path. Use it only when the person asks for a studded or classic look.",
+    parameters: {"type":"object","properties":{"paths":{"type":"array","minItems":1,"maxItems":200,"items":{"type":"string"}},"surface":{"type":"string","enum":["studs","inlet","universal","weld","glue","smooth","smooth_no_outlines"]}},"required":["paths","surface"]},
+  },
+  {
     name: "edit_script",
     writes: true,
     description: "Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). One exact edit: edits:[{find:\"exact old text\",replace:\"new text\"}]; top-level find + replace is the same shorthand, never combined with another input. A new script: set `create_class` + `create_parent`. The result is parsed BEFORE it is written: a body that does not compile is refused, nothing changed. A script that newly assembles a Model from Parts waits until the library was tried (find_library_model). `base_hash` from read_script also refuses a write over a concurrent Studio edit.",

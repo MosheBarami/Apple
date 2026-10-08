@@ -119,6 +119,7 @@ import {
 } from './creator-skills';
 import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
+import { applySurfaceOp, type SurfaceKind } from './surfaces';
 // The self-check's ledger, which runTool writes to (evidence-ledger.ts).
 import { recordToolCall, type EvidenceLedger, type ToolRecord } from './evidence-ledger';
 import {
@@ -3144,6 +3145,26 @@ export const TOOLS: Record<string, ToolImpl> = {
       return op(ctx, { op: 'move_instances', moves });
     },
   },
+  // RESURFACE, embedded (apps/studpilot-plugin/src/ops/Surface.luau, credited in THIRD_PARTY_NOTICES.md): classic Roblox
+  // surfaces on any part, mesh or union. Only when the person asks for that look; nothing is studded by default.
+  apply_surface: {
+    def: {
+      name: 'apply_surface',
+      description:
+        'Give parts a classic Roblox surface on every face (meshes and unions included): studs, inlet, universal, weld, glue, or smooth / smooth_no_outlines to take one off. Applies to every BasePart at or under each path. Use it only when the person asks for a studded or classic look.',
+      parameters: S(
+        {
+          paths: { type: 'array', minItems: 1, maxItems: 200, items: { type: 'string' } },
+          surface: { type: 'string', enum: ['studs', 'inlet', 'universal', 'weld', 'glue', 'smooth', 'smooth_no_outlines'] },
+        },
+        ['paths', 'surface'],
+      ),
+    },
+    studio: true,
+    studioOps: ['apply_surface'],
+    mutatesProject: true,
+    run: (ctx, a) => op(ctx, applySurfaceOp((Array.isArray(a.paths) ? a.paths : []).map(String), String(a.surface) as SurfaceKind)),
+  },
   transform_instances: {
     def: {
       name: 'transform_instances',
@@ -6025,6 +6046,7 @@ const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list'
   delete_instances: { key: 'paths', kind: 'list' },
   move_instances: { key: 'moves', kind: 'moves' },
   transform_instances: { key: 'paths', kind: 'list' },
+  apply_surface: { key: 'paths', kind: 'list' },
   clone_instances: { key: 'paths', kind: 'list' },
   group_instances: { key: 'paths', kind: 'list' },
   ungroup_instances: { key: 'paths', kind: 'list' },

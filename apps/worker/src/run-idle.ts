@@ -259,7 +259,7 @@ const MADE: Record<string, string | [string, string]> = {
   set_properties: 'how things look', set_properties_bulk: 'how things look', set_locked: 'how things look', set_visible: 'how things look',
   edit_terrain: 'the terrain', shape_terrain: 'the terrain',
   delete_instances: 'removed objects',
-  move_instances: 'moved or resized objects', transform_instances: 'moved or resized objects',
+  move_instances: 'moved or resized objects', transform_instances: 'moved or resized objects', apply_surface: 'the surfaces',
   group_instances: 'tidied objects', ungroup_instances: 'tidied objects', rename_instance: 'tidied objects',
   clone_instances: 'copies of objects', scatter_instances: 'copies of objects',
   set_mood: 'the lighting',
