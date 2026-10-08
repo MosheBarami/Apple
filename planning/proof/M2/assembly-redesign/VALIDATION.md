@@ -18,3 +18,9 @@ Public screenshots contain no customer content. Authenticated screenshots remain
 Production build: Next compilation, TypeScript, static generation and OpenNext bundle completed. First attempt exhausted disk space; only this task's generated .next and .next-release directories were removed before retrying. OpenNext emitted three dependency-copy warnings, but produced its Worker. A local wrangler production Worker returned HTTP 200; the browser loaded both fonts, selected an illustration layer and opened the interactive demo successfully. Final deployed routes remain the release acceptance check.
 
 Changed-file credential scan using the repository scanner's patterns: 32 paths, zero findings.
+
+Release-marker correction: the first live upload served the new design but runtime
+metadata fell back to `development`. The verifier correctly rejected it. Explicitly
+inline the public commit marker with Next's build-time env configuration (official
+reference: https://nextjs.org/docs/app/api-reference/config/next-config-js/env).
+The release is not accepted until public HTML reports the exact main commit.

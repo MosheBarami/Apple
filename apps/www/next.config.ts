@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Inline the public release marker; the Worker does not inherit the build shell's env.
+  env: {
+    STUDPILOT_WEB_BUILD_SHA: process.env.STUDPILOT_WEB_BUILD_SHA ?? "development",
+  },
   // Keep production-preview verification separate from the running development server.
   distDir: process.env.STUDPILOT_PREVIEW_DIST_DIR || ".next",
   devIndicators: false,
