@@ -590,7 +590,7 @@ app.all('/studio/*', async (c) => {
   const url = new URL(c.req.url);
   // The agent API keeps its full path: Flue writes that path into the stream URLs it hands back, so a
   // stripped one would point the browser at a path that is not this proxy. Static files lose the prefix.
-  if (!url.pathname.startsWith('/studio/api/')) url.pathname = url.pathname.slice('/studio'.length) || '/';
+  if (!url.pathname.startsWith('/studio/api/') && !url.pathname.startsWith('/studio/agent/')) url.pathname = url.pathname.slice('/studio'.length) || '/';
   return c.env.STUDIO.fetch(new Request(url, c.req.raw));
 });
 app.get('/studio', (c) => c.redirect('/studio/', 308));
@@ -1073,6 +1073,23 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     });
     const out = (await res.json().catch(() => ({}))) as { ok?: boolean };
     return { ok: out.ok === true, credits };
+  }
+
+  /**
+   * What the agent knows at the start of each turn, and what the chat's credit meter shows as it spends: whether Studio is
+   * connected and which place it has open, and the owner's Credits.
+   */
+  async projectStatus(projectId: string): Promise<{ studio: { connected: boolean; placeName: string | null; placeId: number | null }; credits: { remaining: number; unmetered: boolean } | null }> {
+    const stub = await studioGrantedStub(this.env, projectId);
+    let studio = { connected: false, placeName: null as string | null, placeId: null as number | null };
+    if (stub) {
+      const link = (await (await stub.fetch('https://do/studio/link')).json().catch(() => null)) as { connected?: boolean; place?: { placeName?: string; placeId?: number } | null } | null;
+      studio = { connected: link?.connected === true, placeName: link?.place?.placeName ?? null, placeId: link?.place?.placeId ?? null };
+    }
+    const owner = await studioGrantOwner(this.env, projectId);
+    if (!owner) return { studio, credits: null };
+    const state = (await (await this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(owner)).fetch('https://do/state')).json()) as QuotaState;
+    return { studio, credits: { remaining: state.creditsRemaining, unmetered: state.unmetered === true } };
   }
 
   async releaseModel(model: string, reserved: number): Promise<void> {

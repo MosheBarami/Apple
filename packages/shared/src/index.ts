@@ -964,6 +964,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_locked':
     case 'set_visible':
     case 'insert_asset':
+    case 'insert_from_store':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
     case 'insert_library_model':
     case 'generate_model':
@@ -2929,6 +2930,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'remove_effect',
     label: 'Remove StudPilot effects',
     why: 'Deletes presentation effects that StudPilot previously attached to project objects.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_from_store',
+    label: 'Bring in Creator Store assets',
+    why: 'Inserts a model, mesh, image or sound from the Creator Store into your place, with any scripts in it removed.',
     group: 'changes',
   },
   {

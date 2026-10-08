@@ -2753,6 +2753,8 @@ export class SessionDO extends DurableObject<Env> {
         return json({ ok: false, error: `${typeof tool === 'string' ? tool : 'that tool'} is not a Studio tool.` }, 403);
       }
       const ctx = this.agentCtx();
+      // The Studio agent is offered exactly STUDIO_TOOLS: no library tool, so no library-order gate holds its builds back.
+      ctx.offeredTools = new Set(STUDIO_TOOLS);
       if (isStudioWriteTool(tool)) {
         const bind = await this.bind();
         if (!bind || !buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);

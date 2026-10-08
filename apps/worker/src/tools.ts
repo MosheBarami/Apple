@@ -5101,6 +5101,27 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
+  // THE CREATOR STORE PATH (rebuild 2026-10-08). The agent searches the store itself (apps/studio search_creator_store),
+  // picks an asset, and brings it in here: inserted into a holder folder, every script removed and the place re-listed to
+  // prove it, then measured so the agent can scale, place and adapt it. Unlike insert_asset there is no popularity gate:
+  // the agent judges fit from the store's details and from what it sees after insertion.
+  insert_from_store: {
+    def: {
+      name: 'insert_from_store',
+      description:
+        'Insert a Creator Store asset (model, mesh, decal, audio) you found with search_creator_store into the place. It lands in a holder folder under `parent`; any scripts inside are removed and reported. Returns the inserted paths and their bounding size, so you can inspect (get_instance, model_anatomy), then scale and position it (transform_instances) and rename or re-parent it to fit the request. Delete it if it does not fit.',
+      parameters: S({ assetId: { type: 'number' }, parent: { type: 'string', description: 'Where to put it. Default game.Workspace.' } }, ['assetId']),
+    },
+    studio: true,
+    studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'create_instances'],
+    mutatesProject: true,
+    run: async (ctx, a) => {
+      const assetId = Number(a.assetId);
+      if (!Number.isInteger(assetId) || assetId <= 0) return { error: `${String(a.assetId)} is not a valid asset id` };
+      ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      return insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace'));
+    },
+  },
   generate_model: {
     def: {
       name: 'generate_model',
