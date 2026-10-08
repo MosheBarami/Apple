@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { listProjects, type Project } from "@/lib/api";
+import { type AppProject as Project, listAppProjects as listProjects } from "@/lib/app-api";
 
 interface ProjectsValue {
   error: string | null;

@@ -1,0 +1,44 @@
+/* App-only styles. Colours come from the shared tokens in app/globals.css; --brand is the one accent. */
+
+/* Fallback accent until the shared tokens define --brand (zero specificity, so theirs always wins). */
+:where(:root) {
+  --brand: #e2580e;
+}
+:where(.dark) {
+  --brand: #f0712c;
+}
+
+/* The credit meter while the agent spends: a slow, faint wash across the control. */
+.credit-meter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--brand) 10%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+.credit-meter.is-spending::before {
+  opacity: 1;
+  animation: credit-wash 2.6s linear infinite;
+}
+@keyframes credit-wash {
+  from {
+    background-position: 110% 0;
+  }
+  to {
+    background-position: -110% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .credit-meter.is-spending::before {
+    animation: none;
+  }
+}
