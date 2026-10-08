@@ -1772,6 +1772,8 @@ export interface PairingCodeDto {
   existingLink?: StudioLinkSummary | null;
 }
 
+export * from './inference.ts';
+export * from './ai-providers.ts';
 // Model gateway internals (worker-side only, exported for evals)
 /**
  * Message content. A plain string stays a plain string on the wire. The array form is text parts only: no picture is ever

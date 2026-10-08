@@ -326,11 +326,11 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
 });
 
 test('every StudPilot product route still uses the Workers AI adapter', () => {
-  for (const modelId of [P.STUDPILOT_MODEL_ID, P.STUDPILOT_MAX_MODEL_ID, P.VISION_MODEL_ID]) {
+  for (const modelId of [P.STUDPILOT_MODEL_ID, P.VISION_MODEL_ID]) {
     assert.equal(P.adapterForModelId(modelId).id, 'workers-ai', `${modelId} must use Workers AI`);
   }
-  // and so does anything unrecognised — the AI binding is the only transport this worker has
-  assert.equal(P.adapterForModelId('@cf/some/future-model').id, 'workers-ai');
+  // Explicit provider identity is now required for newly introduced models (owner, 2026-10-08).
+  assert.throws(() => P.adapterForModelId('@cf/some/future-model'), /Unknown platform model/);
 });
 
 test('gateway defaults: one engine for every run key, memory stays independent, and there is no vision lane', () => {

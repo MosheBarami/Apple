@@ -26,15 +26,14 @@ export function allModels(): ProviderModel[] {
 }
 
 /**
- * Which adapter owns a provider model id. Unknown ids fall back to Workers AI, because the AI
- * binding is the only transport this worker is configured with: a model key pointed at an
- * unrecognised id (e.g. via the KV `config:models` override) is still a Workers AI model id.
+ * Resolve only registered platform identities. A typo or a new external id must never spend
+ * against another provider's credentials. External routes resolve provider + connection explicitly.
  */
 export function adapterForModelId(modelId: string): ProviderAdapter {
   for (const id of PROVIDER_ORDER) {
     if (ADAPTERS[id].models.some((m) => m.id === modelId)) return ADAPTERS[id];
   }
-  return workersAiAdapter;
+  throw new Error(`Unknown platform model: ${modelId}. Select a registered model or an explicit connection.`);
 }
 
 export function modelById(modelId: string): ProviderModel | undefined {

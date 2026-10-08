@@ -15,6 +15,7 @@
 import { collectStream } from './stream-collect';
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@studpilot/shared';
+import { ENGINE_RELEASE } from '@studpilot/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';
@@ -84,8 +85,8 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // Both keys exist because callers name the product mode directly. GLM 5.3 Flash spends output
   // budget on reasoning_content before it writes `content`, so these ceilings must not be lowered:
   // a small max_tokens can come back with an empty answer.
-  plan: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
-  agent: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
+  plan: { id: ENGINE_RELEASE.modelId, ...ENGINE_RELEASE.configuration },
+  agent: { id: ENGINE_RELEASE.modelId, ...ENGINE_RELEASE.configuration },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
   // There is no `vision` key (M4): the product sends no picture to a model, and a test fails if one comes back.
@@ -295,10 +296,8 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const cfg = models[req.model];
   if (!cfg) throw new Error(`unknown model key: ${req.model}`);
 
-  // Which provider owns this model id. Every DEFAULT_MODELS entry is a Workers AI id, so in
-  // production this is always the Workers AI adapter and the call below is the same env.AI.run it
-  // has always been. An unrecognised id also resolves to Workers AI — the AI binding is the only
-  // transport this worker has.
+  // Unknown platform identities fail before reservation or inference. External connections
+  // have an explicit provider identity and never enter this legacy model-key resolver.
   const adapter = adapterForModelId(cfg.id);
   const priced = modelById(cfg.id);
 

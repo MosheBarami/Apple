@@ -58,6 +58,7 @@ import {
 } from './erasure';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
+import { aiConnectionRoutes } from './ai-connection-routes';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
@@ -739,6 +740,7 @@ app.use('/api/*', async (c, next) => {
  * PKCE, an IP limit) in roblox-oauth.ts. `ipLimited` is handed in because it lives here.
  */
 app.route('/auth/roblox', robloxOAuthRoutes(ipLimited, ipSpent));
+app.route('/api/me/ai', aiConnectionRoutes);
 
 /**
  * Compare two secrets without leaking their contents through timing.

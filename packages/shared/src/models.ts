@@ -13,6 +13,8 @@
 // Everything below is data. Nothing here imports a value from ./index.ts: index.ts re-exports this
 // file and evaluates it first, so a value import back into index.ts would be read before it exists.
 
+import { ENGINE_RELEASE } from './inference.ts';
+
 export type ModelId = 'apple';
 
 export interface RegistryModel {
@@ -46,7 +48,7 @@ export const MODEL_REGISTRY: readonly RegistryModel[] = [
     displayName: 'StudPilot',
     blurb: 'Builds complete Roblox games from a short prompt.',
     vendor: 'StudPilot',
-    providerModelId: '@cf/zai-org/glm-5.3-flash',
+    providerModelId: ENGINE_RELEASE.modelId,
     nativeTools: true,
     vision: true,
     ctx: 1_310_720,

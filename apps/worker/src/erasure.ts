@@ -49,6 +49,7 @@ import { eraseProjectMedia } from './media-store';
 import { ensureAutomationTables } from './automation-store';
 import { ensureCredentialTable } from './user-credentials';
 import { deleteSignInIdentity, ensureRobloxOAuthTables, readRobloxLink, restoreRobloxLink, revokeStoredRobloxGrant, type RobloxLinkSnapshot } from './roblox-oauth';
+import { ensureAiConnectionTable } from './ai-connections';
 import { ensureMemoryTables } from './memory-store';
 import { ensureNotificationTables } from './notification-store';
 import { ensureProvenanceTables } from './provenance';
@@ -421,6 +422,7 @@ export async function eraseAccountData(
     ensureAutomationTables(env).catch(() => {}),
     ensureApiKeyTables(env).catch(() => {}),
     ensureCredentialTable(env).catch(() => {}),
+    ensureAiConnectionTable(env).catch(() => {}),
     ensureWriteTable(env).catch(() => {}),
     ensureRobloxOAuthTables(env).catch(() => {}),
   ]);
@@ -435,6 +437,7 @@ export async function eraseAccountData(
   // outliving the account is a credential to a thing that is supposed to be gone.
   steps.push(await d1Sweep(env, 'api_keys', `delete from api_keys where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'user_credentials', `delete from user_credentials where user_id = ?`, user.userId));
+  steps.push(await d1Sweep(env, 'ai_connections', `delete from ai_connections where owner_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'creator_write_log', `delete from creator_write_log where user_id = ?`, user.userId));
   //[[ THE ROBLOX SIGN-IN, and the grant is revoked at Roblox BEFORE our copy of the token is deleted: the
   //   sealed refresh token is the only handle there is to revoke it with. A failed revoke does not stop
