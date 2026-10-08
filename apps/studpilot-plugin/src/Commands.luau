@@ -5,7 +5,10 @@
 -- This module deliberately has no dependency on the first-generation plugin.  It is a small,
 -- receive-side boundary: the transport may deliver untrusted JSON-shaped tables, but the only
 -- things that can reach the DataModel are operations, paths, classes, properties and values that
--- this file accepts explicitly.  Reads are the default.  A write needs BOTH a live
+-- this file accepts.  Since 2.0 (owner decision 2026-10-08, "i accept the reduced safety") classes
+-- and properties are ALLOWED BY DEFAULT from Roblox's API dump with a short deny list
+-- (Permissions.luau); paths, services, value types and the edit/connection gates are unchanged.
+-- Reads are the default.  A write needs BOTH a live
 -- connection (`allowEdits == true`: the host passes whether this Studio is still connected) and Studio edit mode.
 --
 -- The module returns the shared wire shape used by packages/shared:
@@ -24,10 +27,10 @@ local MAX_DUMP_CHARS = 1000000
 local MAX_SCRIPTS = 240
 local MAX_TREE_DEPTH = 12
 local MAX_TREE_NODES = 1200
-local MAX_SNAPSHOT_NODES = 800
+local MAX_SNAPSHOT_NODES = 4000
 local MAX_SNAPSHOT_DEPTH = 12
-local MAX_SNAPSHOT_SOURCE = 600000
-local MAX_SNAPSHOT_CHILDREN = 400
+local MAX_SNAPSHOT_SOURCE = 2400000
+local MAX_SNAPSHOT_CHILDREN = 1000
 local MAX_PROTECTED_NODES = 64
 local MAX_LOG_ENTRIES = 240
 local MAX_TEXT = 120000
@@ -66,6 +69,8 @@ local READ_SERVICES = {
 	Teams = true,
 	TextChatService = true,
 	MaterialService = true,
+	-- 2.0: the legacy chat service, for places that still configure it.
+	Chat = true,
 }
 
 -- A stable order matters for checkpoints: the same unchanged place should produce the same tree
@@ -101,150 +106,22 @@ local SCRIPT_SERVICES = {
 	"ReplicatedFirst",
 }
 
--- Classes that contain no code-loading or external-content capability by themselves.  Content
--- properties are not in PROPERTY_ALLOW, so even a harmless-looking class cannot be used as an
--- indirect asset loader.  Script classes are created only by edit_script/restore, never by the
--- general instance builder.
-local CREATE_CLASSES = {
-	Folder = true,
-	Model = true,
-	Part = true,
-	WedgePart = true,
-	CornerWedgePart = true,
-	TrussPart = true,
-	SpawnLocation = true,
-	Seat = true,
-	VehicleSeat = true,
-	Attachment = true,
-	WeldConstraint = true,
-	RopeConstraint = true,
-	RodConstraint = true,
-	SpringConstraint = true,
-	BallSocketConstraint = true,
-	HingeConstraint = true,
-	AlignPosition = true,
-	AlignOrientation = true,
-	NoCollisionConstraint = true,
-	PrismaticConstraint = true,
-	CylindricalConstraint = true,
-	RigidConstraint = true,
-	UniversalConstraint = true,
-	TorsionSpringConstraint = true,
-	LineForce = true,
-	VectorForce = true,
-	Torque = true,
-	AngularVelocity = true,
-	LinearVelocity = true,
-	PlaneConstraint = true,
-	ScreenGui = true,
-	SurfaceGui = true,
-	BillboardGui = true,
-	Frame = true,
-	TextLabel = true,
-	TextButton = true,
-	TextBox = true,
-	ImageLabel = true,
-	ImageButton = true,
-	ScrollingFrame = true,
-	UICorner = true,
-	UIStroke = true,
-	UIGradient = true,
-	UIListLayout = true,
-	UIGridLayout = true,
-	UIPageLayout = true,
-	UIAspectRatioConstraint = true,
-	UISizeConstraint = true,
-	UITextSizeConstraint = true,
-	UIPadding = true,
-	UIScale = true,
-	PointLight = true,
-	SpotLight = true,
-	SurfaceLight = true,
-	Highlight = true,
-	ProximityPrompt = true,
-	ClickDetector = true,
-	Sound = true,
-	SoundGroup = true,
-	ChorusSoundEffect = true,
-	CompressorSoundEffect = true,
-	DistortionSoundEffect = true,
-	EchoSoundEffect = true,
-	EqualizerSoundEffect = true,
-	FlangeSoundEffect = true,
-	PitchShiftSoundEffect = true,
-	ReverbSoundEffect = true,
-	-- The audio-object API (Audio* classes plus Wire) and animation plumbing, added in 1.5.0 (research note
-	-- 07, property names checked against the Roblox creator-docs class pages). They load nothing by
-	-- themselves: the content properties among them, AudioPlayer.Asset and Animation.AnimationId, take
-	-- only an rbxassetid id (CONTENT_PROPERTY), and a Wire reaches its ends by a path under an
-	-- allowlisted service (INSTANCE_REF_PROPERTY). Explosion is here but kills Humanoids by default, so
-	-- buildSpec creates it with BlastPressure and DestroyJointRadiusPercent at 0 unless the op sets them.
-	AudioPlayer = true,
-	AudioEmitter = true,
-	AudioListener = true,
-	AudioDeviceOutput = true,
-	Wire = true,
-	AudioFader = true,
-	AudioCompressor = true,
-	AudioReverb = true,
-	AudioEqualizer = true,
-	AudioFilter = true,
-	AudioLimiter = true,
-	Animator = true,
-	AnimationController = true,
-	Animation = true,
-	IKControl = true,
-	Explosion = true,
-	ParticleEmitter = true,
-	Beam = true,
-	Trail = true,
-	Fire = true,
-	Smoke = true,
-	Sparkles = true,
-	StringValue = true,
-	BoolValue = true,
-	IntValue = true,
-	NumberValue = true,
-	Vector3Value = true,
-	Color3Value = true,
-	CFrameValue = true,
-	BrickColorValue = true,
-	ObjectValue = true,
-	-- Ordinary in-place networking primitives. These do not load code or external content; their
-	-- behavior lives in the Script/LocalScript source StudPilot writes through edit_script. Refusing
-	-- them made a normal server-authoritative shop impossible to build and also made an existing
-	-- RemoteEvent poison whole-place checkpoints.
-	RemoteEvent = true,
-	RemoteFunction = true,
-	UnreliableRemoteEvent = true,
-	BindableEvent = true,
-	BindableFunction = true,
-	-- Scriptable presentation objects whose state is completely covered by PROPERTY_ALLOW below.
-	Atmosphere = true,
-	BloomEffect = true,
-	BlurEffect = true,
-	ColorCorrectionEffect = true,
-	-- Studio's Voxel Lighting migration adds one to every place it converts (measured 2026-09-23 on a
-	-- fresh baseplate): without it here, the very first checkpoint of a new place was refused.
-	ColorGradingEffect = true,
-	DepthOfFieldEffect = true,
-	SunRaysEffect = true,
-	SurfaceAppearance = true,
-	-- Existing face textures must round-trip through a checkpoint. Their external content reference
-	-- is still refused on ordinary model writes below; only snapshot/restore passes allowContent.
-	Decal = true,
-	Texture = true,
-}
+-- 2.0 (owner decision 2026-10-08, "i accept the reduced safety"): NO CLASS ALLOWLIST. Any class Roblox's
+-- API dump (ApiDump.luau) marks creatable may be created, except what Permissions.luau denies; script
+-- classes are made by edit_script, which writes their source in the same step. PERMS.mod is that module,
+-- built over the dump when the engine starts (Commands.new). Without it every write is refused, because
+-- a plugin that cannot tell a class from a typo must not guess.
+local PERMS = { mod = nil, missing = "this plugin build is missing its Roblox API dump (ApiDump.luau), so it cannot check a write; reinstall the plugin" }
+local CREATE_CLASSES = setmetatable({}, { __index = function(_, className)
+	local perms = PERMS.mod
+	return if perms ~= nil and perms.creatable(className) == true then true else nil
+end })
 
--- Snapshot restore may re-materialise source that was already in this place.  It still cannot
--- accept an arbitrary class supplied by the transport.
+-- What a snapshot recreates from its captured properties: any instantiable class (scripts included,
+-- restored through ScriptEditorService), except the classes a checkpoint HOLDS as a detached copy
+-- (HELD_CLASSES: their content cannot be written back) and the engine-owned ones it preserves.
+-- Defined as a lookup below, once every table it consults exists.
 local RESTORE_CLASSES = {}
-for className in CREATE_CLASSES do
-	RESTORE_CLASSES[className] = true
-end
-RESTORE_CLASSES.Script = true
-RESTORE_CLASSES.LocalScript = true
-RESTORE_CLASSES.ModuleScript = true
 
 -- MeshPart content cannot be reconstructed by assigning MeshId/MeshContent, so it is deliberately
 -- absent from RESTORE_CLASSES. A checkpoint HOLDS one instead (F-053): the snapshot keeps a detached
@@ -317,377 +194,45 @@ local PROTECTED_CONTAINER_CLASSES = {
 	StarterCharacterScripts = true,
 }
 
--- Property names are the public write surface.  In particular, Parent, Source, ClassName and
--- every Content/asset property are absent on purpose.  Keep this table explicit: accepting any
--- property that happens to exist on an Instance turns a typo into a new capability.
-local PROPERTY_ALLOW = {
-	-- M5a UI blocks (clean-stud look, packages/blocks/ui): bevelled text strokes, inner strokes, padding, text-size
-	-- limits and the ScreenGui settings a menu needs. Presentation only; no content, no references.
-	AspectType = true,
-	PlaceholderColor3 = true,
-	AutoButtonColor = true,
-	AutomaticSize = true,
-	ScrollBarImageColor3 = true,
-	ScrollingDirection = true,
-	DisplayOrder = true,
-	LineJoinMode = true,
-	BorderStrokePosition = true,
-	ApplyStrokeMode = true,
-	ClipsDescendants = true,
-	PaddingTop = true,
-	PaddingBottom = true,
-	PaddingLeft = true,
-	PaddingRight = true,
-	MaxTextSize = true,
-	MinTextSize = true,
-	MaxSize = true,
-	MinSize = true,
-	ResetOnSpawn = true,
-	ZIndexBehavior = true,
-	IgnoreGuiInset = true,
-	ScreenInsets = true,
-	Anchored = true,
-	CanCollide = true,
-	CanQuery = true,
-	CanTouch = true,
-	CastShadow = true,
-	Massless = true,
-	Locked = true,
-	Transparency = true,
-	Reflectance = true,
-	Size = true,
-	CFrame = true,
-	Position = true,
-	Orientation = true,
-	Color = true,
-	Material = true,
-	Shape = true,
-	TopSurface = true,
-	BottomSurface = true,
-	Elasticity = true,
-	Friction = true,
-	CustomPhysicalProperties = true,
+-- 2.0: solid-modelling results carry geometry no property describes, so they come back from a held copy too.
+HELD_CLASSES.UnionOperation = true
+HELD_CLASSES.NegateOperation = true
+HELD_CLASSES.IntersectOperation = true
+HELD_CLASSES.PartOperation = true
+HELD_CLASSES.SurfaceAppearance = true
 
-	Brightness = true,
-	Range = true,
-	Angle = true,
-	Shadows = true,
-	Enabled = true,
-	ClockTime = true,
-	GeographicLatitude = true,
-	Ambient = true,
-	OutdoorAmbient = true,
-		ExposureCompensation = true,
-		ShadowSoftness = true,
-		GlobalShadows = true,
-		ColorShift_Top = true,
-		ColorShift_Bottom = true,
-		EnvironmentDiffuseScale = true,
-		EnvironmentSpecularScale = true,
-		FogStart = true,
-		FogEnd = true,
-		FogColor = true,
-		Intensity = true,
-	Threshold = true,
-	FocusDistance = true,
-	InFocusRadius = true,
-	NearIntensity = true,
-	FarIntensity = true,
-	Contrast = true,
-	Saturation = true,
-	TintColor = true,
-	Spread = true,
-	Density = true,
-	Offset = true,
-	Haze = true,
-	Glare = true,
-	Decay = true,
-	TonemapperPreset = true,
+-- 2.0: A CHECKPOINT NEVER FAILS ON A CLASS IT DOES NOT KNOW. Measured 2026-10-08: a place holding a
+-- ~200-script third-party package refused every checkpoint ("could not capture X"), and the Studio write
+-- route refused every write behind it. Now a class is recreated from the API dump's properties when it
+-- can be (RESTORE_CLASSES), held as a detached copy when it cannot (HELD_CLASSES: no Instance.new for it,
+-- a class newer than the dump, or content no property carries), and only what can be neither (not
+-- Archivable, or no checkpoint to hold it) is skipped and reported by name.
+setmetatable(RESTORE_CLASSES, { __index = function(_, className)
+	local perms = PERMS.mod
+	if perms == nil or type(className) ~= "string" then return nil end
+	if rawget(HELD_CLASSES, className) or SNAPSHOT_PRESERVE_CLASSES[className] or PROTECTED_CONTAINER_CLASSES[className] or SNAPSHOT_EPHEMERAL_CLASSES[className] then return nil end
+	return if perms.instantiable(className) == true then true else nil
+end })
+setmetatable(HELD_CLASSES, { __index = function(_, className)
+	if type(className) ~= "string" or className == "DataModel" or READ_SERVICES[className] or SNAPSHOT_PRESERVE_CLASSES[className]
+		or PROTECTED_CONTAINER_CLASSES[className] or SNAPSHOT_EPHEMERAL_CLASSES[className] or RESTORE_CLASSES[className] then return nil end
+	return true
+end })
+-- Restore puts the checkpoint back, so anything current that is not recreated from properties may be
+-- removed (held classes come back from their copies; everything else was added after the checkpoint).
+setmetatable(DELETE_ONLY_CLASSES, { __index = function(_, className)
+	if type(className) ~= "string" or SNAPSHOT_PRESERVE_CLASSES[className] or PROTECTED_CONTAINER_CLASSES[className] or READ_SERVICES[className] then return nil end
+	return if RESTORE_CLASSES[className] then nil else true
+end })
 
-	Visible = true,
-	Active = true,
-	Selectable = true,
-	Interactable = true,
-	BackgroundColor3 = true,
-	BackgroundTransparency = true,
-	BorderColor3 = true,
-	BorderMode = true,
-	BorderSizePixel = true,
-	AnchorPoint = true,
-	Rotation = true,
-	LayoutOrder = true,
-	ZIndex = true,
-	Text = true,
-	TextColor3 = true,
-	TextSize = true,
-	TextWrapped = true,
-	TextScaled = true,
-	TextXAlignment = true,
-	TextYAlignment = true,
-	Font = true,
-	LineHeight = true,
-	MaxVisibleGraphemes = true,
-	RichText = true,
-	ClearTextOnFocus = true,
-	MultiLine = true,
-	PlaceholderText = true,
-	ScrollBarThickness = true,
-	CanvasSize = true,
-	CanvasPosition = true,
-	AutomaticCanvasSize = true,
-	FillDirection = true,
-	HorizontalAlignment = true,
-	VerticalAlignment = true,
-	Padding = true,
-	SortOrder = true,
-	CellSize = true,
-	CellPadding = true,
-	AspectRatio = true,
-	DominantAxis = true,
-	CornerRadius = true,
-	Thickness = true,
-	Color3 = true,
-	Face = true,
-	DepthMode = true,
-	SizingMode = true,
-	PixelsPerStud = true,
-	AlwaysOnTop = true,
-	MaxDistance = true,
-	StudsOffset = true,
-	StudsOffsetWorldSpace = true,
-	ExtentsOffset = true,
-	ShapeInOut = true,
-	ShapeStyle = true,
-	OutlineColor = true,
-	OutlineTransparency = true,
-	FillColor = true,
-	FillTransparency = true,
-	-- Writable ONLY as "" (CONTENT_PROPERTY): the worker strips an inserted mesh's texture this way.
-	TextureID = true,
-	Image = true,
-	HoverImage = true,
-	PressedImage = true,
-	ImageColor3 = true,
-	ImageTransparency = true,
-	ImageRectOffset = true,
-	ImageRectSize = true,
-	ResampleMode = true,
-	ScaleType = true,
-	SliceCenter = true,
-	SliceScale = true,
-	TileSize = true,
-	GroupColor3 = true,
-	GroupTransparency = true,
-	ActionText = true,
-	ObjectText = true,
-	AutoLocalize = true,
-	ClickablePrompt = true,
-	HoldDuration = true,
-	KeyboardKeyCode = true,
-	GamepadKeyCode = true,
-	MaxActivationDistance = true,
-	MaxIndicatorDistance = true,
-	RequiresLineOfSight = true,
-	Exclusivity = true,
-	Style = true,
-	UIOffset = true,
-	SoundId = true,
-	Looped = true,
-	LoopRegion = true,
-	PlaybackRegion = true,
-	PlaybackRegionsEnabled = true,
-	PlaybackSpeed = true,
-	RollOffMaxDistance = true,
-	RollOffMinDistance = true,
-	RollOffMode = true,
-	Volume = true,
-		SoundGroup = true,
-		AmbientReverb = true,
-		RolloffScale = true,
-		DistanceFactor = true,
-		DopplerScale = true,
-	Attack = true,
-	GainMakeup = true,
-	Ratio = true,
-	Release = true,
-	Level = true,
-	Delay = true,
-	DryLevel = true,
-	Feedback = true,
-	WetLevel = true,
-	HighGain = true,
-	LowGain = true,
-	MidGain = true,
-	Mix = true,
-	Rate = true,
-	Octave = true,
-	DecayTime = true,
-	Diffusion = true,
-	Lifetime = true,
-	LightEmission = true,
-	LightInfluence = true,
-	LockedToPart = true,
-	EmissionDirection = true,
-	Speed = true,
-	SpreadAngle = true,
-	Drag = true,
-	Acceleration = true,
-	RotSpeed = true,
-	TimeScale = true,
-	VelocityInheritance = true,
-	WindAffectsDrag = true,
-	ZOffset = true,
-	FaceCamera = true,
-	CurveSize0 = true,
-	CurveSize1 = true,
-	Segments = true,
-	TextureLength = true,
-	TextureMode = true,
-	TextureSpeed = true,
-	Width0 = true,
-	Width1 = true,
-	MaxLength = true,
-	MinLength = true,
-	WidthScale = true,
-	Heat = true,
-	Opacity = true,
-	RiseVelocity = true,
-	SecondaryColor = true,
-	Adornee = true,
-	PrimaryPart = true,
-	Part0 = true,
-	Part1 = true,
-	Attachment0 = true,
-	Attachment1 = true,
-	LimitsEnabled = true,
-	TwistLimitsEnabled = true,
-	TwistLowerAngle = true,
-	TwistUpperAngle = true,
-	UpperAngle = true,
-	LowerAngle = true,
-	MaxFrictionTorque = true,
-	Radius = true,
-	Restitution = true,
-	ActuatorType = true,
-	AngularActuatorType = true,
-	AngularResponsiveness = true,
-	AngularSpeed = true,
-	AngularVelocity = true,
-	MotorMaxAcceleration = true,
-	MotorMaxAngularAcceleration = true,
-	MotorMaxTorque = true,
-	ServoMaxTorque = true,
-	TargetAngle = true,
-	Length = true,
-	LimitAngle0 = true,
-	LimitAngle1 = true,
-	WinchEnabled = true,
-	WinchForce = true,
-	WinchResponsiveness = true,
-	WinchSpeed = true,
-	WinchTarget = true,
-	Coils = true,
-	Damping = true,
-	FreeLength = true,
-	MaxForce = true,
-	Stiffness = true,
-	ApplyAtCenterOfMass = true,
-	ForceLimitMode = true,
-	ForceRelativeTo = true,
-	MaxAxesForce = true,
-	MaxVelocity = true,
-	Mode = true,
-	ReactionForceEnabled = true,
-	Responsiveness = true,
-	RigidityEnabled = true,
-	AlignType = true,
-	LookAtPosition = true,
-	MaxAngularVelocity = true,
-	MaxTorque = true,
-	PrimaryAxis = true,
-	ReactionTorqueEnabled = true,
-	SecondaryAxis = true,
-	AngularLimitsEnabled = true,
-	AngularRestitution = true,
-	InclinationAngle = true,
-	RotationAxisVisible = true,
-	LimitEnabled = true,
-	MaxAngle = true,
-	InverseSquareLaw = true,
-	Magnitude = true,
-	Force = true,
-	RelativeTo = true,
-	Torque = true,
-	ForceLimitsEnabled = true,
-	LineDirection = true,
-	LineVelocity = true,
-	MaxPlanarAxesForce = true,
-	PlaneVelocity = true,
-	PrimaryTangentAxis = true,
-	SecondaryTangentAxis = true,
-	VectorVelocity = true,
-	VelocityConstraintMode = true,
-	AlphaMode = true,
-	ColorMap = true,
-	MetalnessMap = true,
-	NormalMap = true,
-	RoughnessMap = true,
-	Texture = true,
-	StudsPerTileU = true,
-	StudsPerTileV = true,
-	OffsetStudsU = true,
-	OffsetStudsV = true,
-
-	-- 1.5.0: audio objects, Animator/Animation/IKControl, Explosion, and the SoundService listener setting.
-	Asset = true,
-	AutoLoad = true,
-	AutoPlay = true,
-	Looping = true,
-	TimePosition = true,
-	AcousticSimulationEnabled = true,
-	AudioInteractionGroup = true,
-	DistanceAttenuationBounds = true,
-	DistanceAttenuationMode = true,
-	PositionInstance = true,
-	PositionType = true,
-	SourceInstance = true,
-	SourceName = true,
-	TargetInstance = true,
-	TargetName = true,
-	Bypass = true,
-	MakeupGain = true,
-	DecayRatio = true,
-	EarlyDelayTime = true,
-	HighCutFrequency = true,
-	LateDelayTime = true,
-	LowShelfFrequency = true,
-	LowShelfGain = true,
-	ReferenceFrequency = true,
-	MidRange = true,
-	FilterType = true,
-	Frequency = true,
-	Gain = true,
-	Q = true,
-	MaxLevel = true,
-	AnimationId = true,
-	PreferLodEnabled = true,
-	ChainRoot = true,
-	EndEffector = true,
-	EndEffectorOffset = true,
-	Pole = true,
-	Priority = true,
-	SmoothTime = true,
-	Target = true,
-	Type = true,
-	Weight = true,
-	BlastPressure = true,
-	BlastRadius = true,
-	DestroyJointRadiusPercent = true,
-	ExplosionType = true,
-	DefaultListenerLocation = true,
-
-	Value = true,
-}
+-- 2.0: there is no property allowlist. A write may set any property Roblox's API dump marks scriptable
+-- and plugin-writable on the class written, minus Permissions.luau's deny list (validatePropertyName).
+-- Op families still list the names they write (spec.propertyAllow); those become entries here and change
+-- nothing, because the lookup below already answers true for every non-denied name.
+local PROPERTY_ALLOW = setmetatable({}, { __index = function(_, property)
+	local perms = PERMS.mod
+	return if perms ~= nil and perms.property(nil, property) ~= nil then true else nil
+end })
 
 -- Reading uses the same safe names plus no secret/internal fields.  This bounded list keeps a
 -- tree useful without turning it into a dump of every engine property.
@@ -1047,144 +592,20 @@ local READ_PROPERTIES = {
 	Value = true,
 }
 
--- A table instead of `true` names the ONE content a model may write there: an image id, exactly
--- the rbxassetid scheme followed by digits, on the classes listed (validateProps). Measured 2026-09-23 (gauntlet
--- rounds 4/5): upload_ui_asset handed the model an rbxassetid for ImageLabel.Image and this table
--- refused every Image by name, so every generated UI was icon-less. A table is still truthy, so the
--- capture filter and the op-family refusal (a family can never add one of these) are unchanged; any
--- other content (a URL, rbxasset://, rbxthumb://, a mesh, a sound, an animation) stays refused, and
--- clearing any content property to "" is allowed because it removes content rather than loading it.
-local CONTENT_PROPERTY = {
-	MeshId = true,
-	MeshContent = true,
-	TextureID = true,
-	TextureId = true,
-	TextureContent = true,
-	Texture = { Decal = true, Texture = true },
-	Image = { ImageLabel = true, ImageButton = true },
-	HoverImage = { ImageButton = true },
-	PressedImage = { ImageButton = true },
-	SoundId = { Sound = true },
-	-- An animation id only on an Animation, and an audio id only on an AudioPlayer (the rbxassetid scheme and digits).
-	AnimationId = { Animation = true },
-	Asset = { AudioPlayer = true },
-	Video = true,
-	SkyboxBk = true,
-	SkyboxDn = true,
-	SkyboxFt = true,
-	SkyboxLf = true,
-	SkyboxRt = true,
-	SkyboxUp = true,
-	ColorMap = true,
-	MetalnessMap = true,
-	NormalMap = true,
-	RoughnessMap = true,
-	ShirtTemplate = true,
-	PantsTemplate = true,
-	Graphic = true,
-}
--- D-FXLIB-1 (2026-09-23): the sound and effect library. A Sound may carry a library audio id (the
--- same rbxassetid-and-digits rule), and an effect's Texture may also name one of the particle
--- textures that ship inside every Roblox client, listed here by path under the engine's textures
--- folder (packages/asset-library/vfx/presets.mjs ENGINE_TEXTURES uses a subset of it). Assigned
--- into the existing table, not declared as a new local: this file is at Luau's 200-local limit.
-CONTENT_PROPERTY.Texture.ParticleEmitter = {
-	["particles/sparkles_main.dds"] = true,
-	["particles/explosion01_implosion_main.dds"] = true,
-	["particles/explosion01_shockwave_main.dds"] = true,
-	["particles/explosion01_core_main.dds"] = true,
-	["particles/explosion01_smoke_main.dds"] = true,
-	["particles/fire_main.dds"] = true,
-	["particles/fire_sparks_main.dds"] = true,
-	["particles/smoke_main.dds"] = true,
-	["particles/forcefield_vortex_main.dds"] = true,
-	["particles/forcefield_glow_main.dds"] = true,
-	["particles/SquareParticle.png"] = true,
-}
-CONTENT_PROPERTY.Texture.Beam = CONTENT_PROPERTY.Texture.ParticleEmitter
-CONTENT_PROPERTY.Texture.Trail = CONTENT_PROPERTY.Texture.ParticleEmitter
-
-local ENUM_ALLOW = {
-	-- M5a UI blocks: the enums of the properties above.
-	LineJoinMode = true,
-	BorderStrokePosition = true,
-	ApplyStrokeMode = true,
-	ZIndexBehavior = true,
-	ScreenInsets = true,
-	Material = true,
-	PartType = true,
-	SurfaceType = true,
-	Font = true,
-	FontWeight = true,
-	FontStyle = true,
-	NormalId = true,
-	FillDirection = true,
-	HorizontalAlignment = true,
-	VerticalAlignment = true,
-	SortOrder = true,
-	AutomaticSize = true,
-	ScrollingDirection = true,
-	AspectType = true,
-	DominantAxis = true,
-	UICorner = true,
-	HighlightDepthMode = true,
-	HighlightAdornee = true,
-	SurfaceGuiSizingMode = true,
-	SurfaceGuiShape = true,
-	BorderMode = true,
-	AlphaMode = true,
-	KeyCode = true,
-	ProximityPromptExclusivity = true,
-	ProximityPromptStyle = true,
-	ResamplerMode = true,
-		ScaleType = true,
-		RollOffMode = true,
-		ReverbType = true,
-		TextureMode = true,
-	ParticleOrientation = true,
-	ParticleEmitterShape = true,
-	ParticleEmitterShapeInOut = true,
-	ParticleEmitterShapeStyle = true,
-	ActuatorType = true,
-	ForceLimitMode = true,
-	ActuatorRelativeTo = true,
-	PositionAlignmentMode = true,
-	AlignType = true,
-	OrientationAlignmentMode = true,
-	VelocityConstraintMode = true,
-	DistanceAttenuationMode = true,
-	EmitterPositionType = true,
-	ListenerPositionType = true,
-	AudioFilterType = true,
-	IKControlType = true,
-	ExplosionType = true,
-	ListenerLocation = true,
-	-- Read by every checkpoint of a place with UI (Candy Garden v2's labels and buttons), so a
-	-- restore refused them until they were allowed here too.
-	TextXAlignment = true,
-	TextYAlignment = true,
-	ButtonStyle = true,
-	FrameStyle = true,
-}
-
-local INSTANCE_REF_PROPERTY = {
-	Attachment0 = true,
-	Attachment1 = true,
-	Part0 = true,
-	Part1 = true,
-	Adornee = true,
-	PrimaryPart = true,
-	SoundGroup = true,
-	-- Wire ends, an emitter or listener position, and the IKControl chain (each a path under an allowlisted service).
-	SourceInstance = true,
-	TargetInstance = true,
-	PositionInstance = true,
-	EndEffector = true,
-	ChainRoot = true,
-	Target = true,
-	Pole = true,
-	Value = true,
-}
+-- 2.0: names the dump (Permissions.luau) answers, kept as tables so every reader indexes them as before.
+-- Each is a lookup with no list behind it: there is nothing left to iterate and nothing to keep in step.
+-- A content property is any property whose value type is Content or ContentId on some class.
+local CONTENT_PROPERTY = setmetatable({}, { __index = function(_, property)
+	local perms = PERMS.mod
+	return if perms ~= nil and perms.isContentProperty(property) then true else nil
+end })
+-- Any enum Studio has. enumValue still resolves the item through Studio's own Enum global.
+local ENUM_ALLOW = setmetatable({}, { __index = function(_, enumName) return if type(enumName) == "string" then true else nil end })
+-- Any property that holds an instance reference on some class (a path under a place service).
+local INSTANCE_REF_PROPERTY = setmetatable({}, { __index = function(_, property)
+	local perms = PERMS.mod
+	return if perms ~= nil and perms.isRefProperty(property) then true else nil
+end })
 
 local function nowSeconds(): number
 	local ok, value = pcall(os.clock)
@@ -1585,10 +1006,21 @@ local function arrayShape(value: any, count: number, label: string): (boolean, s
 	return true
 end
 
-local function enumValue(enumText: string): (any?, string?)
+-- "Enum.Material.Plastic"; or, when the property's enum is known (`enumType` = "Enum.Material"), just
+-- the item name ("Plastic") or its number (256).
+local function enumValue(enumText: any, enumType: string?): (any?, string?)
+	if type(enumText) == "number" or (type(enumText) == "string" and string.sub(enumText, 1, 5) ~= "Enum.") then
+		local typeName = if type(enumType) == "string" then string.match(enumType, "^Enum%.([A-Za-z][A-Za-z0-9_]*)$") else nil
+		if not typeName then return nil, "enum must look like Enum.Name.Item" end
+		if type(enumText) == "string" then return enumValue(("Enum.%s.%s"):format(typeName, enumText)) end
+		local okItems, items = pcall(function() return Enum[typeName]:GetEnumItems() end)
+		if okItems then for _, item in items do if item.Value == enumText then return item end end end
+		return nil, ("Enum.%s has no item numbered %s"):format(typeName, tostring(enumText))
+	end
+	if type(enumText) ~= "string" then return nil, "enum must look like Enum.Name.Item" end
 	local enumName, itemName = string.match(enumText, "^Enum%.([A-Za-z][A-Za-z0-9_]*)%.([A-Za-z][A-Za-z0-9_]*)$")
 	if not enumName or not itemName then return nil, "enum must look like Enum.Name.Item" end
-	if not ENUM_ALLOW[enumName] then return nil, ("Enum.%s is outside StudPilot's allowlist"):format(enumName) end
+	if not ENUM_ALLOW[enumName] then return nil, ("Enum.%s is not an enum"):format(enumName) end
 	local ok, enum = pcall(function() return Enum[enumName] end)
 	if not ok or not enum then return nil, "the requested enum is unavailable in this Studio build" end
 	local okItem, item = pcall(function() return enum[itemName] end)
@@ -1603,9 +1035,13 @@ local function enumValue(enumText: string): (any?, string?)
 	return item
 end
 
-local function decodeValue(value: any, label: string, allowInstance: boolean?, gameRef: any?, services: any?): (any?, string?)
+local function decodeValue(value: any, label: string, allowInstance: boolean?, gameRef: any?, services: any?, hint: string?): (any?, string?)
 	if type(value) ~= "table" or type(value.t) ~= "string" then return nil, ("%s must be a typed property value"):format(label) end
 	local t = value.t
+	-- 2.0: an enum property may be written by item name or number when the dump names its enum.
+	if type(hint) == "string" and string.sub(hint, 1, 5) == "Enum." and (t == "string" or t == "number" or t == "EnumItem") then
+		return enumValue(value.v, hint)
+	end
 	if t == "nil" then
 		return nil
 	elseif t == "string" then
@@ -1644,6 +1080,12 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 		if not ok then return nil, ("%s could not be constructed"):format(label) end
 		return result
 	elseif t == "CFrame" then
+		-- 2.0: a bare position [x, y, z] is an unrotated CFrame there.
+		if type(value.v) == "table" and #value.v == 3 then
+			local validPosition, positionErr = arrayShape(value.v, 3, label)
+			if not validPosition then return nil, positionErr end
+			return CFrame.new(value.v[1], value.v[2], value.v[3])
+		end
 		local valid, err = arrayShape(value.v, 12, label)
 		if not valid then return nil, err end
 		local ok, result = pcall(function() return CFrame.new(table.unpack(value.v)) end)
@@ -1715,16 +1157,45 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 		if not ok then return nil, label .. " could not be constructed" end
 		return result
 	elseif t == "EnumItem" then
+		if type(value.v) == "number" then return enumValue(value.v, hint) end
 		local text, err = safeText(value.v, 100, label)
 		if not text then return nil, err end
-		return enumValue(text)
+		return enumValue(text, hint)
+	elseif t == "PhysicalProperties" then
+		-- [density, friction, elasticity] or with [frictionWeight, elasticityWeight]; false clears to the material's own.
+		if value.v == false then return nil end
+		local n = if type(value.v) == "table" then #value.v else 0
+		if n ~= 3 and n ~= 5 then return nil, ("%s must be [density, friction, elasticity] or with two weights"):format(label) end
+		local valid, err = arrayShape(value.v, n, label)
+		if not valid then return nil, err end
+		local ok, result = pcall(function() return PhysicalProperties.new(table.unpack(value.v, 1, n)) end)
+		if not ok then return nil, ("%s could not be constructed"):format(label) end
+		return result
+	elseif t == "Faces" or t == "Axes" then
+		-- A list of NormalId names (Top, Bottom, Left, Right, Back, Front), or for Axes also X, Y, Z.
+		if type(value.v) ~= "table" or #value.v > 6 then return nil, ("%s must be a list of face names"):format(label) end
+		local items = {}
+		for index, name in value.v do
+			if type(name) ~= "string" then return nil, ("%s[%s] must be a face name"):format(label, tostring(index)) end
+			local ok, item = pcall(function() return if t == "Axes" and (name == "X" or name == "Y" or name == "Z") then Enum.Axis[name] else Enum.NormalId[name] end)
+			if not ok or item == nil then return nil, ("%s[%s] is not a face name"):format(label, tostring(index)) end
+			table.insert(items, item)
+		end
+		local ok, result = pcall(function() return if t == "Axes" then Axes.new(table.unpack(items)) else Faces.new(table.unpack(items)) end)
+		if not ok then return nil, ("%s could not be constructed"):format(label) end
+		return result
 	elseif t == "Font" then
 		-- { family, weight, style }: a built-in family by name (Font.fromName), e.g. { "Montserrat", "Bold", "Normal" }.
-		if type(value.v) ~= "table" or type(value.v[1]) ~= "string" or not string.match(value.v[1], "^%a[%w]*$") or #value.v[1] > 40 then
-			return nil, ("%s must be {family, weight, style} with a built-in family name"):format(label)
+		-- 2.0: the family may also be a font asset (rbxasset://fonts/families/X.json, rbxassetid://<digits>).
+		local family = if type(value.v) == "table" then value.v[1] else nil
+		local byName = type(family) == "string" and string.match(family, "^%a[%w]*$") ~= nil and #family <= 40
+		local byUri = type(family) == "string" and not byName and PERMS.mod ~= nil and family ~= "" and PERMS.mod.contentAllowed(family)
+		if not byName and not byUri then
+			return nil, ("%s must be {family, weight, style} with a built-in family name or a font asset"):format(label)
 		end
 		local ok, result = pcall(function()
-			return Font.fromName(value.v[1], Enum.FontWeight[value.v[2] or "Regular"], Enum.FontStyle[value.v[3] or "Normal"])
+			local weight, style = Enum.FontWeight[value.v[2] or "Regular"], Enum.FontStyle[value.v[3] or "Normal"]
+			return if byName then Font.fromName(family, weight, style) else Font.new(family, weight, style)
 		end)
 		if not ok then return nil, ("%s could not be constructed (weight is Thin..Heavy, style Normal or Italic)"):format(label) end
 		return result
@@ -1740,7 +1211,7 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 		if not ref then return nil, resolveErr or (label .. " reference was not found") end
 		return ref
 	elseif t == "Content" then
-		return nil, ("%s is external content; StudPilot never loads or imports asset ids"):format(label)
+		return nil, ("%s is not a content property, so it cannot take content"):format(label)
 	end
 	return nil, ("%s has unsupported type %s"):format(label, tostring(t))
 end
@@ -1811,6 +1282,23 @@ local function encodeValue(value: any, gameRef: any, label: string): (any?, stri
 		return { t = "ColorSequence", v = out }
 	elseif kind == "EnumItem" then
 		return { t = "EnumItem", v = tostring(value) }
+	elseif kind == "PhysicalProperties" then
+		local v = { value.Density, value.Friction, value.Elasticity, value.FrictionWeight, value.ElasticityWeight }
+		for i = 1, 5 do if not finite(v[i]) then return nil, label .. " is non-finite" end end
+		return { t = "PhysicalProperties", v = v }
+	elseif kind == "Faces" or kind == "Axes" then
+		local out = {}
+		local names = if kind == "Axes" then { "X", "Y", "Z" } else { "Top", "Bottom", "Left", "Right", "Back", "Front" }
+		for _, name in names do if value[name] == true then table.insert(out, name) end end
+		return { t = kind, v = out }
+	elseif kind == "Font" then
+		local ok, family, weight, style = pcall(function() return value.Family, value.Weight.Name, value.Style.Name end)
+		if not ok or type(family) ~= "string" then return nil, label .. " is not a readable Font" end
+		return { t = "Font", v = { family, weight, style } }
+	elseif kind == "Content" then
+		local ok, uri = pcall(function() return value.Uri end)
+		if not ok or (uri ~= nil and type(uri) ~= "string") then return nil, label .. " is content this plugin cannot read" end
+		return { t = "Content", v = uri or "" }
 	elseif kind == "Instance" then
 		local path, err = fullPath(gameRef, value)
 		if not path then return nil, err end
@@ -1945,57 +1433,55 @@ local function childCount(inst: any): (number?, string?)
 	return #children
 end
 
-local function validatePropertyName(property: any, allowContent: boolean?): (string?, string?)
+-- 2.0: any property the API dump marks writable on `className` (or, with no class, any name not on the
+-- deny list: Studio itself refuses a name the instance does not have, inside the op's recording). The
+-- third return is the property's value type from the dump ("?" when the class is newer than the dump).
+local function validatePropertyName(property: any, className: string?): (string?, string?, string?)
 	local name, err = safeText(property, 80, "property name")
 	if not name then return nil, err end
-	if not identifier(name) or not PROPERTY_ALLOW[name] then
-		return nil, ("property %s is not in StudPilot's write allowlist"):format(name)
-	end
-	if CONTENT_PROPERTY[name] and allowContent ~= true then
-		if type(CONTENT_PROPERTY[name]) == "table" then
-			return nil, ("property %s takes only an uploaded image id, exactly as upload_ui_asset returned it (the rbxassetid scheme and digits, nothing else), on an object that displays it (Image: ImageLabel/ImageButton, HoverImage/PressedImage: ImageButton, Texture: Decal/Texture/ParticleEmitter/Beam/Trail, which may also name an engine particle texture from the effect library), or a library audio id on a Sound (SoundId) or an AudioPlayer (Asset), as find_sound returned it, or an animation id on an Animation (AnimationId); any other external content is refused"):format(name)
-		end
-		return nil, ("property %s carries external content and is refused"):format(name)
-	end
-	return name
+	if not identifier(name) then return nil, ("%s is not a property name"):format(name) end
+	local perms = PERMS.mod
+	if perms == nil then return nil, PERMS.missing end
+	local valueType, reason = perms.property(className, name)
+	if valueType == nil then return nil, reason end
+	return name, nil, valueType
 end
 
--- `className` is the class being written, when one class is: it scopes the image-id exception in
--- CONTENT_PROPERTY. Without it (a bulk write across classes) an image id is refused like any content.
+-- Content.fromUri for a property typed Content (ImageContent, MeshContent...); a ContentId takes the text.
+local function contentValue(valueType: string?, text: string): any
+	if valueType ~= "Content" then return text end
+	local ok, value = pcall(function() return Content.fromUri(text) end)
+	if ok and value ~= nil then return value end
+	return text
+end
+
+-- `className` is the class being written, when one class is: it types each property from the dump.
+-- `allowContent` (snapshot/restore only) re-applies content exactly as it was captured from this place.
 local function validateProps(props: any, label: string, allowInstance: boolean?, allowContent: boolean?, gameRef: any?, services: any?, className: string?): ({ [string]: any }?, { [string]: any }?, string?)
 	if props == nil then return {} end
 	if type(props) ~= "table" then return nil, nil, label .. " must be an object" end
+	local perms = PERMS.mod
+	if perms == nil then return nil, nil, PERMS.missing end
 	local decoded = {}
 	local encoded = {}
 	local count = 0
 	for property, typed in props do
 		count += 1
 		if count > MAX_PROPS then return nil, nil, label .. " exceeds the property limit" end
-		-- The only content a model write may carry: "" (clearing), or an image id on a class that
-		-- displays it. Either spelling of the tag is read, because the tool description offers Content.
-		local contentText = nil
-		local classes = type(property) == "string" and CONTENT_PROPERTY[property] or nil
-		if classes and allowContent ~= true and type(typed) == "table" and (typed.t == "string" or typed.t == "Content") and type(typed.v) == "string" then
-			-- The scheme is compared as a word rather than matched as one URL literal: the shipped
-			-- source carries no asset-URL literal at all (tests/worker-capability-contract.test.mjs).
-			local scheme, digits = string.match(typed.v, "^(%l+)://(%d+)$")
-			local allowed = if type(classes) == "table" and className ~= nil then classes[className] else nil
-			if typed.v == "" or (allowed ~= nil and scheme == "rbxassetid" and #digits <= 20) then
-				contentText = typed.v
-			elseif type(allowed) == "table" then
-				-- An engine particle texture: the rbxasset scheme and a path on the list above, exactly.
-				local engineScheme, file = string.match(typed.v, "^(%l+)://textures/([%w_/]+%.%l+)$")
-				if engineScheme == "rbxasset" and allowed[file] == true then contentText = typed.v end
-			end
-		end
-		local valid, nameErr = validatePropertyName(property, allowContent == true or contentText ~= nil)
+		local valid, nameErr, valueType = validatePropertyName(property, className)
 		if not valid then return nil, nil, nameErr end
-		if contentText ~= nil then
-			decoded[valid] = contentText
-			encoded[valid] = { t = "string", v = contentText }
+		local isContent = perms.isContentType(valueType) or (valueType == "?" and perms.isContentProperty(valid))
+		if isContent and type(typed) == "table" and (typed.t == "string" or typed.t == "Content") then
+			local text = typed.v
+			if type(text) ~= "string" or #text > 1024 then return nil, nil, ("%s.%s must be a content string"):format(label, valid) end
+			if allowContent ~= true and not perms.contentAllowed(text) then
+				return nil, nil, ("%s.%s takes a Roblox content id: the rbxassetid scheme and digits (any Creator Store, Toolbox or uploaded asset id), an rbxasset or rbxthumb path, or \"\" to clear it"):format(label, valid)
+			end
+			decoded[valid] = contentValue(valueType, text)
+			encoded[valid] = { t = "string", v = text }
 		else
-			local mayReferenceInstance = allowInstance == true and INSTANCE_REF_PROPERTY[valid] == true
-			local value, valueErr = decodeValue(typed, label .. "." .. valid, mayReferenceInstance, gameRef, services)
+			local mayReferenceInstance = allowInstance == true and (valueType == "Instance" or (valueType == "?" and INSTANCE_REF_PROPERTY[valid] == true))
+			local value, valueErr = decodeValue(typed, label .. "." .. valid, mayReferenceInstance, gameRef, services, valueType)
 			if valueErr then return nil, nil, valueErr end
 			decoded[valid] = value
 			encoded[valid] = typed
@@ -2347,7 +1833,7 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 	if depth > MAX_SNAPSHOT_DEPTH then return nil, "instance spec is too deeply nested" end
 	local className, classErr = safeText(spec.className, 64, "className")
 	if not className then return nil, classErr end
-	if not CREATE_CLASSES[className] then return nil, ("class %s is not in StudPilot's create allowlist"):format(className) end
+	if not CREATE_CLASSES[className] then return nil, if PERMS.mod ~= nil then select(2, PERMS.mod.creatable(className)) else PERMS.missing end
 	local name, nameErr = safeName(spec.name or className, "instance name")
 	if not name then return nil, nameErr end
 	local parent = parentOverride
@@ -2417,7 +1903,7 @@ local function validateCreateSpec(options: any, gameRef: any, spec: any, depth: 
 
 	local className, classErr = safeText(spec.className, 64, "className")
 	if not className then return classErr, "invalid" end
-	if not CREATE_CLASSES[className] then return ("class %s is not in StudPilot's create allowlist"):format(className), "refused" end
+	if not CREATE_CLASSES[className] then return (if PERMS.mod ~= nil then select(2, PERMS.mod.creatable(className)) else PERMS.missing), "refused" end
 	local name, nameErr = safeName(spec.name or className, "instance name")
 	if not name then return nameErr, "invalid" end
 	local _, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services, className)
@@ -2761,8 +2247,15 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	end
 	state.nodes += 1
 	if parent ~= self.game then state.instanceCount += 1 end
-	local props, propIssues = captureProperties(self.game, inst, READ_PROPERTIES, true)
-	if #propIssues > 0 then state.complete = false end
+	-- 2.0: every property the API dump says a plugin can write back, not a hand-kept list. A value this
+	-- plugin cannot encode is left out and named in coverageNotes; it does not fail the checkpoint.
+	local captureSet = (if PERMS.mod ~= nil then PERMS.mod.captureList(className) else nil) or (if held then {} else READ_PROPERTIES)
+	local props, propIssues = captureProperties(self.game, inst, captureSet, true)
+	for _, issue in propIssues do
+		local note = className .. ": " .. issue
+		if state.notes[note] == nil and state.noteCount < 40 then state.noteCount += 1; state.notes[note] = 0 end
+		if state.notes[note] ~= nil then state.notes[note] += 1 end
+	end
 	local attrs, attrIssues = captureAttributes(self.game, inst)
 	if #attrIssues > 0 then state.complete = false end
 	local node: any = { className = className, name = name, props = props, attributes = attrs, children = {} }
@@ -2891,7 +2384,7 @@ local function validateSnapshotNode(self: any, node: any, depth: number, parentC
 	if (serviceClass or protectedContainer) and name ~= className then return "protected snapshot identity has an unexpected name" end
 	local plainProps, _, refErr = splitSnapshotRefs(node.props)
 	if refErr then return refErr end
-	local _, _, propErr = validateProps(plainProps, "snapshot props", true, true, self.game, self.options.services)
+	local _, _, propErr = validateProps(plainProps, "snapshot props", true, true, self.game, self.options.services, className)
 	if propErr then return propErr end
 	local _, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
@@ -2952,7 +2445,7 @@ end
 local function applySnapshotState(self: any, inst: any, node: any, state: any, expectEmptySource: boolean?): string?
 	local plainProps, refs, refErr = splitSnapshotRefs(node.props)
 	if refErr then return refErr end
-	local props, _, propErr = validateProps(plainProps, "snapshot props", true, true, self.game, self.options.services)
+	local props, _, propErr = validateProps(plainProps, "snapshot props", true, true, self.game, self.options.services, node.className)
 	if propErr then return propErr end
 	local attrs, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
@@ -4337,6 +3830,8 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 		protected = {},
 		holds = if checkpointId ~= nil then {} else nil,
 		heldCount = 0,
+		notes = {},
+		noteCount = 0,
 	}
 	local node, nodeErr
 	if root == self.game then
@@ -4397,6 +3892,9 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 		protected = state.protected,
 		-- MeshParts this checkpoint holds in this Studio session (F-053); a plugin reload loses them.
 		heldMeshParts = if restorable then state.heldCount else 0,
+		-- 2.0: properties left out of an otherwise captured object (a value the wire cannot carry), by
+		-- "Class: reason" with a count. The checkpoint still stands; these come back at their defaults.
+		coverageNotes = state.notes,
 	}, nil
 end
 
@@ -5448,6 +4946,14 @@ function Commands.new(options: any?): any
 		heldCopies = {},
 		heldOrder = {},
 	}
+	-- 2.0: the permission model (Permissions.luau over the generated ApiDump.luau). Tests pass it in.
+	if opts.permissions ~= nil then
+		PERMS.mod = opts.permissions
+	elseif PERMS.mod == nil then
+		local loaded, value = pcall(function() return require(script.Parent.Permissions).build(require(script.Parent.ApiDump)) end)
+		if loaded then PERMS.mod = value end
+	end
+	self.permissions = PERMS.mod
 	-- Once per plugin load: the tables are module-level, so a second engine sees the same merge.
 	if not OP_FAMILIES.installed or (opts.opFamilies ~= nil and OP_FAMILIES.source == nil) then
 		local families = opts.opFamilies

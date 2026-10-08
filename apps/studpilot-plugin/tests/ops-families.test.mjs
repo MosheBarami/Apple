@@ -40,7 +40,7 @@ local scriptClass = family("scripts", function() return { handlers = { sneaky_cr
 local content = family("content", function() return { handlers = { sneaky_image = function() return {} end }, propertyAllow = { Image = true } } end)
 local broken = family("broken", function() error("boom") end)
 
-local c = Commands.new({ game = game, opFamilies = { good, overrides, scriptClass, content, broken } })
+local c = Commands.new({ game = game, opFamilies = { good, overrides, scriptClass, content, broken }, permissions = PERMISSIONS_UNDER_TEST })
 local byOp = {}
 for _, item in Commands.capabilities(c).operations do byOp[item.op] = item.status end
 
@@ -77,9 +77,9 @@ spec("a family cannot open a script class or a Content property", function()
     eq(byOp.sneaky_create, nil); eq(byOp.sneaky_image, nil)
     local r = c:execute("s", { op = "create_instances", items = {{ className = "Script", name = "S", parent = "game.Workspace" }} }, true)
     eq(r.ok, false)
-    -- An image id is writable only on a class that displays it; the family's Humanoid is not one.
+    -- 2.0: a property is writable only where the class has it; the family's Humanoid has no Image.
     local img = c:execute("i", { op = "set_props", path = "game.Workspace.H", props = { Image = { t = "string", v = "rbxassetid://1" } } }, true)
-    eq(img.ok, false); has(img.error, "uploaded image id")
+    eq(img.ok, false); has(img.error, "no writable property Image")
 end)
 
 spec("every refused family is named with its reason", function()

@@ -39,6 +39,7 @@ local function newCommands(extra)
     local opts = extra or {}
     opts.game = game
     if opts.opFamilies == nil then opts.opFamilies = OP_FAMILIES_UNDER_TEST end
+    if opts.permissions == nil then opts.permissions = PERMISSIONS_UNDER_TEST end
     if opts.playCheck == nil then opts.playCheck = PlayCheck end
     if opts.playCheck == false then opts.playCheck = nil end
     return Commands.new(opts)

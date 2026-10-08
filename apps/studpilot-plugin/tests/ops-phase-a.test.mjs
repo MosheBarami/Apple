@@ -165,6 +165,7 @@ local function newCommands(extra)
     local opts = extra or {}
     opts.game = game
     opts.opFamilies = OP_FAMILIES_UNDER_TEST
+    opts.permissions = PERMISSIONS_UNDER_TEST
     if opts.playCheck == nil then opts.playCheck = PlayCheck end
     if opts.playCheck == false then opts.playCheck = nil end
     return Commands.new(opts)

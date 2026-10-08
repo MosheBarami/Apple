@@ -95,7 +95,7 @@ end
 const SPEC = JSON_ENCODER + String.raw`
 local function emit(label, r) print("<<<" .. label .. ">>>" .. encode({ ok = r.ok, failure = r.failure, error = r.error, data = r.data })) end
 local function snapshot(label, id)
-    local c = Commands.new({ game = game, services = services })
+    local c = Commands.new({ game = game, services = services, permissions = PERMISSIONS_UNDER_TEST })
     emit(label, c:execute(label, { op = "snapshot", root = "game", includeScripts = true, checkpointId = id }, false))
     c:destroy()
 end

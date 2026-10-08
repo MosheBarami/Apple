@@ -27,6 +27,7 @@ local function newCommands(options)
     local opts = options or {}
     opts.game = game
     if opts.opFamilies == nil then opts.opFamilies = OP_FAMILIES_UNDER_TEST end
+    if opts.permissions == nil then opts.permissions = PERMISSIONS_UNDER_TEST end
     return Commands.new(opts)
 end
 local function run(c, id, op, allow, stillCurrent) return c:execute(id, op, allow == true, stillCurrent) end
@@ -62,19 +63,48 @@ spec("unknown operations are explicit refusals", function()
     c:destroy()
 end)
 
-spec("classes outside the create allowlist are refused by name, and nothing is created", function()
-    -- Measured 2026-10-02 by reading CREATE_CLASSES: Clouds is not creatable, yet the worker's prompts told
-    -- the agent to put a Clouds object under Terrain. A class the plugin cannot create must be refused
-    -- here with a reason the agent can act on, whatever the prompts say.
+spec("2.0: a class the API dump cannot create, or the deny list names, is refused by reason, and nothing is created", function()
+    -- 2.0 (owner, 2026-10-08, "i accept the reduced safety"): no create allowlist. What is still refused,
+    -- each with the reason the agent can act on: a deny-listed class, a service, a NotCreatable class, a
+    -- name that is no class at all, and a script class (edit_script makes scripts with their source).
     local c = newCommands()
     local before = #services.Workspace:GetChildren()
-    for _, className in { "Clouds", "MeshPart", "SpecialMesh", "UnionOperation" } do
+    local refusals = { CoreGui = "deny list", HttpService = "deny list", Lighting = "service", BasePart = "NotCreatable",
+        Partt = "not a Roblox class", Script = "edit_script", ModuleScript = "edit_script" }
+    for className, reason in refusals do
         local r = run(c, "outside-" .. className, { op = "create_instances", items = {{ className = className, name = "Nope", parent = "game.Workspace" }} }, true)
         eq(r.ok, false, className .. " ok"); eq(r.failure, "refused", className .. " failure")
-        has(r.error, "allowlist", className .. " reason")
+        has(r.error, reason, className .. " reason")
     end
     eq(#services.Workspace:GetChildren(), before, "nothing was created")
+    -- Anything else creatable works: classes 1.x refused (Clouds, MeshPart, SpecialMesh, Tool, RemoteEvent...).
+    for _, className in { "Clouds", "MeshPart", "SpecialMesh", "Tool", "RemoteEvent", "BindableEvent", "StringValue", "Configuration", "BodyVelocity" } do
+        local r = run(c, "inside-" .. className, { op = "create_instances", items = {{ className = className, name = "Yes" .. className, parent = "game.Workspace" }} }, true)
+        eq(r.ok, true, className .. ": " .. tostring(r.error))
+        eq(services.Workspace:FindFirstChild("Yes" .. className).ClassName, className, className .. " class")
+        services.Workspace:FindFirstChild("Yes" .. className):Destroy()
+    end
     c:destroy()
+end)
+
+spec("2.0: any writable property of the class is settable; read-only, unknown and deny-listed ones are refused by reason", function()
+    local c = newCommands()
+    local made = run(c, "any-prop", { op = "create_instances", items = {{ className = "Part", name = "AnyProp", parent = "game.Workspace", props = {
+        RootPriority = { t = "number", v = 3 }, EnableFluidForces = { t = "bool", v = false }, AudioCanCollide = { t = "bool", v = false },
+        Material = { t = "string", v = "Grass" },
+    } }} }, true)
+    eq(made.ok, true, tostring(made.error))
+    local part = services.Workspace:FindFirstChild("AnyProp")
+    eq(part.RootPriority, 3); eq(part.EnableFluidForces, false)
+    eq(part.Material, "Enum.Material.Grass", "an enum by item name, typed from the dump")
+    local cases = { Mass = "read-only", Sourc = "no writable property", Parent = "deny list", Source = "deny list" }
+    for property, reason in cases do
+        local r = run(c, "bad-prop-" .. property, { op = "set_props", path = "game.Workspace.AnyProp", props = { [property] = { t = "number", v = 1 } } }, true)
+        eq(r.ok, false, property .. " ok"); has(r.error, reason, property .. " reason")
+    end
+    local secret = run(c, "loadstring-enabled", { op = "set_props", path = "game.ServerScriptService", props = { LoadStringEnabled = { t = "bool", v = true } } }, true)
+    eq(secret.ok, false); has(secret.error, "deny list")
+    part:Destroy(); c:destroy()
 end)
 
 spec("ping and all read operations use data and no recording", function()
@@ -438,7 +468,7 @@ spec("ordinary remotes and scriptable post effects are first-class checkpoint-sa
     c:destroy()
 end)
 
-spec("checkpoint round-trips existing SurfaceAppearance content without granting content writes", function()
+spec("checkpoint round-trips existing SurfaceAppearance content; 2.0 writes take any Roblox content id and nothing else", function()
     local part = Instance.new("Part"); part.Name = "AppearanceHost"; part.Parent = workspace
     local surface = Instance.new("SurfaceAppearance"); surface.Name = "Surface"; surface.ColorMap = "rbxassetid://123456"; surface.Parent = part
     local c = newCommands()
@@ -446,10 +476,13 @@ spec("checkpoint round-trips existing SurfaceAppearance content without granting
     local refused = run(c, "content-write-refused", {
         op = "set_props",
         path = "game.Workspace.AppearanceHost.Surface",
-        props = { ColorMap = { t = "string", v = "rbxassetid://999999" } },
+        props = { ColorMap = { t = "string", v = "https://example.com/map.png" } },
     }, true)
-    eq(refused.ok, false); has(refused.error, "external content")
-    eq(surface.ColorMap, "rbxassetid://123456", "a model write must not change the existing asset reference")
+    eq(refused.ok, false); has(refused.error, "content id")
+    eq(surface.ColorMap, "rbxassetid://123456", "a refused write must not change the existing asset reference")
+    local accepted = run(c, "content-write-accepted", { op = "set_props", path = "game.Workspace.AppearanceHost.Surface",
+        props = { ColorMap = { t = "string", v = "rbxassetid://123456" } } }, true)
+    eq(accepted.ok, true, tostring(accepted.error))
 
     local snap = run(c, "appearance-snapshot", {
         op = "snapshot", root = "game.Workspace.AppearanceHost", includeScripts = true, checkpointId = "cp-appearance",
@@ -480,7 +513,7 @@ spec("checkpoint round-trips Decal and Texture content; only an image id may be 
         path = "game.Workspace.TextureHost.Tiles",
         props = { Texture = { t = "string", v = "http://example.com/tiles.png" } },
     }, true)
-    eq(refused.ok, false); has(refused.error, "external content")
+    eq(refused.ok, false); has(refused.error, "content id")
     eq(tiled.Texture, "rbxassetid://222222", "a refused write must not change an existing texture asset reference")
 
     local snap = run(c, "decal-texture-snapshot", {
@@ -546,7 +579,7 @@ spec("1.5.0: every audio, animation and Explosion class is creatable through cre
     host:Destroy(); c:destroy()
 end)
 
-spec("1.5.0: audio and animation properties are typed, and the ids are the only content they take", function()
+spec("1.5.0/2.0: audio and animation properties are typed, and Roblox content ids are the only content they take", function()
     local host = Instance.new("Part"); host.Name = "AudioProps"; host.Parent = workspace
     local c = newCommands()
     local made = run(c, "audio-props", { op = "create_instances", items = {
@@ -560,10 +593,13 @@ spec("1.5.0: audio and animation properties are typed, and the ids are the only 
     eq(made.ok, true, tostring(made.error))
     eq(host.Music.Asset, "rbxassetid://123456"); eq(host.Music.Volume, 0.4); eq(host.Music.Looping, true)
     eq(host.Room.DecayTime, 1.2); eq(host.Wave.AnimationId, "rbxassetid://987654")
-    -- anything but an rbxassetid id is refused, and the id belongs to its own class only
+    -- 2.0: an engine sound (rbxasset) is content too; a web URL or a malformed id is refused, and a
+    -- property belongs to its own class only
+    local engine = run(c, "audio-engine-sound", { op = "set_props", path = "game.Workspace.AudioProps.Music", props = { Asset = { t = "string", v = "rbxasset://sounds/impact_water.mp3" } } }, true)
+    eq(engine.ok, true, tostring(engine.error))
     local before = #host:GetChildren()
     local bad = {
-        { "AudioPlayer", "Asset", "rbxasset://sounds/impact_water.mp3" },
+        { "AudioPlayer", "Asset", "rbxassetid://12ab" },
         { "AudioPlayer", "Asset", "https://example.com/a.mp3" },
         { "AudioPlayer", "AnimationId", "rbxassetid://5" },
         { "Animation", "Asset", "rbxassetid://5" },
@@ -658,16 +694,23 @@ spec("1.5.0: SoundService takes the listener settings through set_props", functi
     c:destroy()
 end)
 
-spec("a class StudPilot cannot hold or recreate still makes checkpoints incomplete", function()
+spec("2.0: a union is held by a checkpoint; an object that can be neither held nor recreated is named, not hidden", function()
     local root = Instance.new("Folder"); root.Name = "UnsupportedOrdinaryCheckpoint"; root.Parent = workspace
     local union = Instance.new("UnionOperation"); union.Name = "Carved"; union.Parent = root
     local c = newCommands()
+    local held = run(c, "ordinary-held-snapshot", {
+        op = "snapshot", root = "game.Workspace.UnsupportedOrdinaryCheckpoint", includeScripts = true, checkpointId = "cp-ordinary-held",
+    }, false)
+    eq(held.ok, true, tostring(held.error)); eq(held.data.restorable, true, "a union no longer costs the checkpoint")
+    eq(type(held.data.node.children[1].held), "string", "the union comes back from its held copy")
+    -- Studio will not copy an object whose Archivable is off, and no property recreates a union.
+    union.Archivable = false
     local snap = run(c, "ordinary-unsupported-snapshot", {
         op = "snapshot", root = "game.Workspace.UnsupportedOrdinaryCheckpoint", includeScripts = true, checkpointId = "cp-ordinary-unsupported",
     }, false)
     eq(snap.ok, true, tostring(snap.error))
     eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
-    eq(snap.data.skipped.UnionOperation, 1, "an unsupported class must be named rather than silently omitted")
+    eq(snap.data.skipped["UnionOperation (Archivable is off, so Studio will not copy it)"], 1, "an unsupported object must be named rather than silently omitted")
     root:Destroy()
     c:destroy()
 end)
@@ -888,7 +931,7 @@ spec("typed terrain edits are bounded, recorded and never use run_code", functio
     c:destroy()
 end)
 
-spec("ordinary prompts, UI images, sounds and particles are creatable while new external content stays refused", function()
+spec("ordinary prompts, UI images, sounds and particles are creatable; 2.0 content is any Roblox content id and nothing else", function()
     local host = Instance.new("Part"); host.Name = "OrdinaryHost"; host.Parent = workspace
     local gui = Instance.new("ScreenGui"); gui.Name = "OrdinaryGui"; gui.Parent = services.StarterGui
     local c = newCommands()
@@ -923,13 +966,20 @@ spec("ordinary prompts, UI images, sounds and particles are creatable while new 
         { className = "ImageLabel", name = "Coin", parent = "game.StarterGui.OrdinaryGui", props = { Image = { t = "string", v = "rbxassetid://4455" } } },
     } }, true)
     eq(labelMade.ok, true, tostring(labelMade.error)); eq(gui:FindFirstChild("Coin").Image, "rbxassetid://4455")
-    for _, bad in { "http://example.com/x.png", "https://www.roblox.com/asset/?id=1", "rbxasset://textures/face.png", "rbxthumb://type=Asset&id=1&w=150&h=150", "rbxassetid://1 ", "rbxassetid://abc", "rbxassetid://1?x=2", "1" } do
+    -- 2.0: any Roblox content id is accepted (Creator Store, Toolbox, engine textures, thumbnails); a web URL or
+    -- a malformed id is refused, on every content property of every class.
+    for _, good in { "rbxasset://textures/face.png", "rbxthumb://type=Asset&id=1&w=150&h=150", "rbxassetid://987654321" } do
+        local accepted = run(c, "image-any-id", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { Image = { t = "string", v = good } } }, true)
+        eq(accepted.ok, true, good .. ": " .. tostring(accepted.error)); eq(icon.Image, good)
+    end
+    icon.Image = "rbxassetid://1"
+    for _, bad in { "http://example.com/x.png", "https://www.roblox.com/asset/?id=1", "rbxassetid://1 ", "rbxassetid://abc", "rbxassetid://1?x=2", "rbxasset://textures/../face.png", "1" } do
         local refused = run(c, "image-not-an-id", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { Image = { t = "string", v = bad } } }, true)
-        eq(refused.ok, false, "refused " .. bad); has(refused.error, "uploaded image id")
+        eq(refused.ok, false, "refused " .. bad); has(refused.error, "content id")
     end
     eq(icon.Image, "rbxassetid://1", "a refused image must leave the existing one")
     local wrongClass = run(c, "image-on-a-part", { op = "set_props", path = "game.Workspace.OrdinaryHost", props = { Image = { t = "string", v = "rbxassetid://1" } } }, true)
-    eq(wrongClass.ok, false); has(wrongClass.error, "uploaded image id")
+    eq(wrongClass.ok, false); has(wrongClass.error, "no writable property Image")
     local labelHover = run(c, "hover-on-a-label", { op = "create_instances", items = {
         { className = "ImageLabel", name = "NoHover", parent = "game.StarterGui.OrdinaryGui", props = { HoverImage = { t = "string", v = "rbxassetid://9" } } },
     } }, true)
@@ -937,41 +987,39 @@ spec("ordinary prompts, UI images, sounds and particles are creatable while new 
     local cleared = run(c, "image-cleared", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { HoverImage = { t = "Content", v = "" } } }, true)
     eq(cleared.ok, true, tostring(cleared.error)); eq(icon.HoverImage, "")
     local mesh = Instance.new("MeshPart"); mesh.Name = "Statue"; mesh.TextureID = "rbxassetid://77"; mesh.Parent = host
+    -- A MeshPart's mesh is not writable by any plugin (Roblox marks MeshId NotAccessibleSecurity).
     local meshRefused = run(c, "mesh-content-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { MeshId = { t = "string", v = "rbxassetid://5" } } }, true)
-    eq(meshRefused.ok, false); has(meshRefused.error, "allowlist")
-    local textureRefused = run(c, "mesh-texture-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { TextureID = { t = "string", v = "rbxassetid://5" } } }, true)
-    eq(textureRefused.ok, false); has(textureRefused.error, "external content"); eq(mesh.TextureID, "rbxassetid://77")
+    eq(meshRefused.ok, false); has(meshRefused.error, "cannot be written by a plugin")
+    local textureSet = run(c, "mesh-texture-set", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { TextureID = { t = "string", v = "rbxassetid://5" } } }, true)
+    eq(textureSet.ok, true, tostring(textureSet.error)); eq(mesh.TextureID, "rbxassetid://5")
     local textureCleared = run(c, "mesh-texture-cleared", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { TextureID = { t = "Content", v = "" } } }, true)
     eq(textureCleared.ok, true, tostring(textureCleared.error)); eq(mesh.TextureID, "")
-    -- D-FXLIB-1: a Sound may carry a library audio id (the same id-and-digits rule as an image);
-    -- any other SoundId, and a SoundId on anything that is not a Sound, stays refused.
-    local soundSet = run(c, "sound-library-id", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxassetid://2" } } }, true)
+    -- Any audio id, and engine sounds; web URLs and malformed ids stay refused.
+    local soundSet = run(c, "sound-any-id", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxasset://sounds/electronicpingshort.wav" } } }, true)
+    eq(soundSet.ok, true, tostring(soundSet.error))
+    soundSet = run(c, "sound-library-id", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxassetid://2" } } }, true)
     eq(soundSet.ok, true, tostring(soundSet.error)); eq(host:FindFirstChild("Click").SoundId, "rbxassetid://2")
-    for _, bad in { "http://example.com/x.mp3", "rbxasset://sounds/electronicpingshort.wav", "rbxassetid://2 ", "rbxassetid://abc", "2" } do
+    for _, bad in { "http://example.com/x.mp3", "rbxassetid://2 ", "rbxassetid://abc", "2" } do
         local refused = run(c, "sound-not-an-id", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = bad } } }, true)
-        eq(refused.ok, false, "refused " .. bad); has(refused.error, "external content")
+        eq(refused.ok, false, "refused " .. bad); has(refused.error, "content id")
     end
     eq(host:FindFirstChild("Click").SoundId, "rbxassetid://2", "a refused sound must leave the existing one")
     local soundMade = run(c, "sound-created-with-id", { op = "create_instances", items = {
         { className = "Sound", name = "Coin", parent = "game.Workspace.OrdinaryHost", props = { SoundId = { t = "string", v = "rbxassetid://9001" } } },
     } }, true)
     eq(soundMade.ok, true, tostring(soundMade.error)); eq(host:FindFirstChild("Coin").SoundId, "rbxassetid://9001")
-    -- An effect's Texture: an uploaded id, or exactly one of the engine particle textures on the list.
     local fxMade = run(c, "effect-textures", { op = "create_instances", items = {
         { className = "ParticleEmitter", name = "Spark", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/particles/sparkles_main.dds" } } },
         { className = "ParticleEmitter", name = "Uploaded", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxassetid://123" } } },
         { className = "Beam", name = "Ray", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/particles/SquareParticle.png" } } },
-        { className = "Trail", name = "Streak", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/particles/fire_sparks_main.dds" } } },
+        { className = "Trail", name = "Streak", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/face.png" } } },
     } }, true)
     eq(fxMade.ok, true, tostring(fxMade.error))
     eq(host:FindFirstChild("Spark").Texture, "rbxasset://textures/particles/sparkles_main.dds"); eq(host:FindFirstChild("Uploaded").Texture, "rbxassetid://123")
-    for _, bad in { "rbxasset://textures/face.png", "rbxasset://textures/particles/../face.png", "rbxasset://textures/particles/sparkles_main.dds ", "http://example.com/p.png", "rbxasset://sounds/particles/sparkles_main.dds" } do
+    for _, bad in { "rbxasset://textures/particles/../face.png", "rbxasset://textures/particles/sparkles_main.dds ", "http://example.com/p.png" } do
         local refused = run(c, "effect-texture-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Spark", props = { Texture = { t = "string", v = bad } } }, true)
-        eq(refused.ok, false, "refused " .. bad); has(refused.error, "engine particle texture")
+        eq(refused.ok, false, "refused " .. bad); has(refused.error, "content id")
     end
-    local decalEngine = Instance.new("Decal"); decalEngine.Name = "Sticker"; decalEngine.Parent = host
-    local decalRefused = run(c, "engine-texture-on-decal", { op = "set_props", path = "game.Workspace.OrdinaryHost.Sticker", props = { Texture = { t = "string", v = "rbxasset://textures/particles/sparkles_main.dds" } } }, true)
-    eq(decalRefused.ok, false, "an engine texture is for effects only")
     host:Destroy(); gui:Destroy(); services.SoundService:FindFirstChild("SFX"):Destroy(); c:destroy()
 end)
 
@@ -1343,11 +1391,11 @@ end)
 spec("incomplete snapshot is never checkpoint-eligible or mutated from", function()
     local root = Instance.new("Folder"); root.Name = "IncompleteSnapshot"; root.Parent = workspace
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = root
-    local unsupported = Instance.new("UnionOperation"); unsupported.Name = "Unsupported"; unsupported.Parent = root
+    local unsupported = Instance.new("UnionOperation"); unsupported.Name = "Unsupported"; unsupported.Archivable = false; unsupported.Parent = root
     local c = newCommands()
     local snap = run(c, "incomplete-snapshot", { op = "snapshot", root = "game.Workspace.IncompleteSnapshot", includeScripts = true, checkpointId = "cp-incomplete-1" }, false)
     eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
-    eq(snap.data.skipped.UnionOperation, 1)
+    eq(snap.data.skipped["UnionOperation (Archivable is off, so Studio will not copy it)"], 1)
     local beforeHistory = #history.log
     local refused = run(c, "incomplete-restore", { op = "restore", root = "game.Workspace.IncompleteSnapshot", checkpointId = "cp-incomplete-1", snapshot = snap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "invalid"); has(refused.error, "incomplete or unbound")
@@ -1375,12 +1423,12 @@ spec("restore rejects stale protected or unsupported current content before muta
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = subtree
     local supportedSnap = run(c, "unsupported-snapshot", { op = "snapshot", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", includeScripts = true }, false)
     eq(supportedSnap.ok, true)
-    -- Any class StudPilot can neither recreate nor delete. (It was Humanoid until the rig op family made
-    -- Humanoid recreatable; Tool is in no allowlist and no op family.)
-    local unknown = Instance.new("Tool"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
-    local refused = run(c, "unsupported-restore", { op = "restore", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", snapshot = supportedSnap.data }, true, function() return true end)
-    eq(refused.ok, false); eq(refused.failure, "conflict"); has(refused.error, "unsupported current content")
-    eq(subtree:FindFirstChild("DoNotDelete"), unknown); eq(subtree:FindFirstChild("Supported"), supported); eq(#history.log, beforeHistory)
+    -- 2.0: content added after the checkpoint, of any class (a Tool was refused in 1.x), is taken away by
+    -- the restore, inside one undo recording, because restoring means putting the checkpoint back.
+    local added = Instance.new("Tool"); added.Name = "AddedLater"; added.Parent = subtree
+    local restored = run(c, "unsupported-restore", { op = "restore", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", snapshot = supportedSnap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(subtree:FindFirstChild("AddedLater"), nil); eq(subtree:FindFirstChild("Supported") ~= nil, true); eq(#history.log, beforeHistory + 2)
     marker:Destroy(); subtree:Destroy()
     c:destroy()
 end)
