@@ -2753,6 +2753,7 @@ export class SessionDO extends DurableObject<Env> {
         return json({ ok: false, error: `${typeof tool === 'string' ? tool : 'that tool'} is not a Studio tool.` }, 403);
       }
       const ctx = this.agentCtx();
+      let checkpointNote: string | null = null;
       // The Studio agent is offered exactly STUDIO_TOOLS: no library tool, so no library-order gate holds its builds back.
       ctx.offeredTools = new Set(STUDIO_TOOLS);
       if (isStudioWriteTool(tool)) {
@@ -2765,11 +2766,18 @@ export class SessionDO extends DurableObject<Env> {
           const checkpoint = await this.createCheckpoint('before StudPilot Studio changes', 'pre_agent', {
             description: 'StudPilot Studio was about to change the place.',
           });
-          if ('error' in checkpoint) return json({ ok: false, error: "Couldn't save a copy of the place first, so nothing was changed." }, 409);
+          // A place that cannot be copied (too large, a snapshot that times out) must not stop the work: every plugin edit is
+          // still recorded in Studio's own undo history. The agent is told once, and the copy is not retried before each edit.
+          if ('error' in checkpoint) {
+            checkpointNote = `Note for this turn: StudPilot could not save its own undo checkpoint (${checkpoint.error}). The change was made; it can be undone with Studio's Undo (Ctrl+Z). Mention this once in your reply.`;
+          }
           await this.ctx.storage.put('studioCheckpointAt', Date.now());
         }
       }
       const out = await runTool(ctx, tool, JSON.stringify(args ?? {}));
+      if (checkpointNote && out && typeof out === 'object' && typeof (out as { resultForLlm?: unknown }).resultForLlm === 'string') {
+        (out as { resultForLlm: string }).resultForLlm = `${checkpointNote}\n${(out as { resultForLlm: string }).resultForLlm}`;
+      }
       return json(out);
     }
 

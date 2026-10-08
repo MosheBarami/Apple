@@ -102,7 +102,8 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
       execute: async ({ name, file }) => {
         const skill = SKILLS.find((s) => s.name === name);
         if (!skill) throw new Error(`No skill named ${name}. Skills: ${SKILLS.map((s) => s.name).join(', ')}`);
-        if (!file) return { name, body: skill.body, files: Object.keys(skill.files) };
+        // The body itself, also when the model names the skill's own file (SKILL.md, <name>.md) instead of leaving `file` out.
+        if (!file || file === 'SKILL.md' || file === `${name}.md` || file === name) return { name, body: skill.body, files: Object.keys(skill.files) };
         const text = skill.files[file];
         if (text === undefined) throw new Error(`${name} has no file ${file}. Files: ${Object.keys(skill.files).join(', ')}`);
         return { name, file, body: text };
