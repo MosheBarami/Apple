@@ -54,6 +54,7 @@ function Button({
   return (
     <Comp
       data-slot="button"
+      data-uiverse={variant === "default" ? "adamgiebl/fluffy-liger-17" : "Jedi-hongbin/modern-sloth-8"}
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}

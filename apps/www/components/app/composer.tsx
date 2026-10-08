@@ -1,8 +1,8 @@
 "use client";
+import { UiverseDots } from "@/components/uiverse/elements";
 import {
   ArrowUpIcon,
   CornerDownLeftIcon,
-  LoaderCircleIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
@@ -96,7 +96,7 @@ export function Composer({
               }
             >
               {busy || sending ? (
-                <LoaderCircleIcon className="size-4 animate-spin" />
+                <UiverseDots className="size-4" />
               ) : (
                 <ArrowUpIcon className="size-4" />
               )}

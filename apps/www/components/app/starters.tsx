@@ -74,10 +74,12 @@ export function StarterGrid({
         >
           <button
             className="prompt-tile group flex h-full w-full flex-col gap-5 rounded-md border border-border bg-card/70 p-4 text-left transition duration-200 hover:-translate-y-1 hover:border-signal/40 hover:shadow-md disabled:opacity-50"
+            data-uiverse="satyamchaudharydev/itchy-chipmunk-95"
             disabled={disabled}
             onClick={() => onPick(s.text)}
             type="button"
           >
+            <span className="uiverse-card-arrow" aria-hidden="true"><ArrowUpLeftIcon /></span>
             <div className="flex w-full items-center justify-between">
               <span className="prompt-object">
                 <s.icon className="size-6" strokeWidth={1.5} />

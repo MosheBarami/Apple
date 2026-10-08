@@ -78,7 +78,7 @@ export function HowItWorks() {
         <h2>A new way to work on your game.</h2>
         <div>
           {EXAMPLES.map((s) => (
-            <article key={s.title}>
+            <article data-uiverse="satyamchaudharydev/itchy-chipmunk-95" key={s.title}>
               <p>“{s.text}”</p>
               <span>
                 <s.icon />
@@ -112,7 +112,7 @@ export function HowItWorks() {
               href: "/docs#pair",
             },
           ].map((f) => (
-            <article key={f.title}>
+            <article data-uiverse="satyamchaudharydev/itchy-chipmunk-95" key={f.title}>
               <h3>{f.title}</h3>
               <p>{f.body}</p>
               <Link href={f.href}>{f.link}</Link>

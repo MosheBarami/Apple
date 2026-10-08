@@ -1,0 +1,168 @@
+{
+  "upstream": "https://github.com/uiverse-io/galaxy",
+  "revision": "adbd2adde0a299a3956ea288fb444ec01891ca41",
+  "elements": [
+    {
+      "author": "adamgiebl",
+      "element": "fluffy-liger-17",
+      "url": "https://uiverse.io/adamgiebl/fluffy-liger-17",
+      "sourcePath": "Buttons/adamgiebl_fluffy-liger-17.html",
+      "sourceSha256": "fcaf58684f1d5d93e51108a50908c061407d93af72eff429e28de8b71111e554",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "adamgiebl",
+      "element": "new-bird-34",
+      "url": "https://uiverse.io/adamgiebl/new-bird-34",
+      "sourcePath": "Buttons/adamgiebl_new-bird-34.html",
+      "sourceSha256": "5ac31d62cb99aa6b3c0902f5423abcb7493e46b923132d54feb8c33f95bb9db0",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "Jedi-hongbin",
+      "element": "modern-sloth-8",
+      "url": "https://uiverse.io/Jedi-hongbin/modern-sloth-8",
+      "sourcePath": "Buttons/Jedi-hongbin_modern-sloth-8.html",
+      "sourceSha256": "e9294436901a6b288fcc8c34486416599f2511ba754553b3cba6f4bc0efab722",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "adamgiebl",
+      "element": "silent-kangaroo-86",
+      "url": "https://uiverse.io/adamgiebl/silent-kangaroo-86",
+      "sourcePath": "Buttons/adamgiebl_silent-kangaroo-86.html",
+      "sourceSha256": "55000f8da0f24078cfc1750080c212e0391d49220044c03e3e6ecf78b7b66176",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "adamgiebl",
+      "element": "quiet-duck-78",
+      "url": "https://uiverse.io/adamgiebl/quiet-duck-78",
+      "sourcePath": "Buttons/adamgiebl_quiet-duck-78.html",
+      "sourceSha256": "7270525a9799c9214ecc413310da0ab396e56600957ec2de323092b4d48e62c7",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "alexruix",
+      "element": "slippery-frog-10",
+      "url": "https://uiverse.io/alexruix/slippery-frog-10",
+      "sourcePath": "Inputs/alexruix_slippery-frog-10.html",
+      "sourceSha256": "072c5492d74cd81cf966822621bc2ca24e569476822aa00c59c6a0439a2283b5",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "satyamchaudharydev",
+      "element": "fast-dodo-69",
+      "url": "https://uiverse.io/satyamchaudharydev/fast-dodo-69",
+      "sourcePath": "Inputs/satyamchaudharydev_fast-dodo-69.html",
+      "sourceSha256": "567ab68ab6ca1c91c341ee0df1255aa61756026960ebed3d2da745899ef1144f",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "alexruix",
+      "element": "splendid-liger-23",
+      "url": "https://uiverse.io/alexruix/splendid-liger-23",
+      "sourcePath": "Toggle-switches/alexruix_splendid-liger-23.html",
+      "sourceSha256": "2e3d73a06ec86a4253b168f38b2d0415feb4d4a0fd8067835eb2a2d3d8df64de",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "andrew-demchenk0",
+      "element": "hot-bird-10",
+      "url": "https://uiverse.io/andrew-demchenk0/hot-bird-10",
+      "sourcePath": "Radio-buttons/andrew-demchenk0_hot-bird-10.html",
+      "sourceSha256": "0a62148a3d5ac36a17377c494ecbf6d433e24572ccd0d50578f0d4abf049a4c9",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "satyamchaudharydev",
+      "element": "itchy-chipmunk-95",
+      "url": "https://uiverse.io/satyamchaudharydev/itchy-chipmunk-95",
+      "sourcePath": "Cards/satyamchaudharydev_itchy-chipmunk-95.html",
+      "sourceSha256": "0ebf0d7023396823235c6a9e7e6fccba829ec72681bdd29adcb507ec1e50f7ff",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "adamgiebl",
+      "element": "new-lionfish-4",
+      "url": "https://uiverse.io/adamgiebl/new-lionfish-4",
+      "sourcePath": "Cards/adamgiebl_new-lionfish-4.html",
+      "sourceSha256": "b62ed40c6a3cd2e144b801d16f7dc8e75b0b740a55c2ec2d7c7bf08dd79cf7a6",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "Smit-Prajapati",
+      "element": "tricky-lionfish-78",
+      "url": "https://uiverse.io/Smit-Prajapati/tricky-lionfish-78",
+      "sourcePath": "Cards/Smit-Prajapati_tricky-lionfish-78.html",
+      "sourceSha256": "75665cd9bc1c9a6bf7dec15329dc742319e318580d400db890b92df89d569677",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "Smit-Prajapati",
+      "element": "black-cheetah-92",
+      "url": "https://uiverse.io/Smit-Prajapati/black-cheetah-92",
+      "sourcePath": "Forms/Smit-Prajapati_black-cheetah-92.html",
+      "sourceSha256": "9c0a6a238fb70847bbbef0950e6e1fc5180aaf212a4a87ce284683f5768fe71b",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "vinodjangid07",
+      "element": "mighty-elephant-52",
+      "url": "https://uiverse.io/vinodjangid07/mighty-elephant-52",
+      "sourcePath": "Tooltips/vinodjangid07_mighty-elephant-52.html",
+      "sourceSha256": "cf4c8dcc57018a59fb51310d7f89c4cda57fbb4314f43445506dbea7953ee0c1",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "adamgiebl",
+      "element": "curvy-earwig-79",
+      "url": "https://uiverse.io/adamgiebl/curvy-earwig-79",
+      "sourcePath": "Patterns/adamgiebl_curvy-earwig-79.html",
+      "sourceSha256": "e6fe6b0d2cf12b99fcb4163f6a0526dc359949b302add4aa9c221d56f8d2b9a2",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "adamgiebl",
+      "element": "thin-lionfish-5",
+      "url": "https://uiverse.io/adamgiebl/thin-lionfish-5",
+      "sourcePath": "loaders/adamgiebl_thin-lionfish-5.html",
+      "sourceSha256": "fb4cca2ead1a73c813e2dc615529c881ddc0143b6d33a26512498b7dd03f1a66",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "satyamchaudharydev",
+      "element": "silent-owl-69",
+      "url": "https://uiverse.io/satyamchaudharydev/silent-owl-69",
+      "sourcePath": "loaders/satyamchaudharydev_silent-owl-69.html",
+      "sourceSha256": "8edf73000dc510b8d30d909f82021535792835532ef95fac527eb01550338170",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    },
+    {
+      "author": "Nawsome",
+      "element": "cold-liger-90",
+      "url": "https://uiverse.io/Nawsome/cold-liger-90",
+      "sourcePath": "loaders/Nawsome_cold-liger-90.html",
+      "sourceSha256": "35f4265d1b07790652762db91e8a01feaebf84c8b1f342bf6e0869488268ba1d",
+      "license": "MIT",
+      "adaptations": "Namespaced CSS, StudPilot content, accessible native/Radix behavior, responsive sizes and reduced motion; contrast-adjusted theme colors."
+    }
+  ]
+}

@@ -1683,12 +1683,9 @@ html {
   padding: 14px 16px !important;
 }
 .studio-composer button[type="submit"] {
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
-  background: var(--primary) !important;
-  color: var(--primary-foreground) !important;
-  transform: none !important;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
 }
 .studio-composer button[type="submit"] svg {
   width: 15px;

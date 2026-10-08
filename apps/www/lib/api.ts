@@ -17,7 +17,8 @@ export async function listProjects(): Promise<Project[]> {
     .select(PROJECT_COLUMNS)
     .is("archived_at", null)
     .order("updated_at", { ascending: false })
-    .limit(100);
+    .limit(100)
+    .abortSignal(AbortSignal.timeout(15_000));
   if (error) {
     throw new Error(error.message);
   }
@@ -29,6 +30,7 @@ export async function getProject(id: string): Promise<Project | null> {
     .from("projects")
     .select(PROJECT_COLUMNS)
     .eq("id", id)
+    .abortSignal(AbortSignal.timeout(15_000))
     .maybeSingle();
   return (data as Project | null) ?? null;
 }
@@ -44,6 +46,7 @@ export async function createProject(name: string): Promise<string> {
     .from("projects")
     .insert({ owner_id: ownerId, name: name.trim().slice(0, 80) || "New chat" })
     .select("id")
+    .abortSignal(AbortSignal.timeout(15_000))
     .single();
   if (error) {
     throw new Error(error.message);
@@ -63,7 +66,7 @@ export interface StudioLink {
 export async function studioLink(projectId: string): Promise<StudioLink | null> {
   const res = await fetch(
     `/api/projects/${projectId}/studio/diagnostics?limit=1`,
-    { headers: await authHeaders() }
+    { headers: await authHeaders(), signal: AbortSignal.timeout(15_000) }
   );
   if (!res.ok) {
     return null;
@@ -81,6 +84,7 @@ export async function pairingCode(projectId: string): Promise<PairingCode> {
   const res = await fetch(`/api/projects/${projectId}/pairing`, {
     method: "POST",
     headers: await authHeaders(),
+    signal: AbortSignal.timeout(15_000),
   });
   const body = (await res.json().catch(() => ({}))) as Partial<PairingCode> & {
     error?: string;
@@ -89,6 +93,17 @@ export async function pairingCode(projectId: string): Promise<PairingCode> {
     throw new Error(body.error ?? `could not make a code (${res.status})`);
   }
   return { code: body.code, expiresAtIso: body.expiresAtIso ?? "" };
+}
+
+/** Retire only the one unclaimed code this dialog was displaying. */
+export async function cancelPairingCode(projectId: string, code: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/pairing/cancel`, {
+    method: "POST",
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error("Could not replace the connection code. Please try again.");
 }
 
 export interface Checkpoint {

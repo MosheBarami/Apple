@@ -1,0 +1,46 @@
+[
+  {
+    "name": "Connection dialog opens immediately and reports pending code creation",
+    "pass": true
+  },
+  {
+    "name": "Six replacements cancel the previous credential before minting and avoid the five-code cap",
+    "pass": true
+  },
+  {
+    "name": "Copy code copies the displayed credential and closing cancels it",
+    "pass": true
+  },
+  {
+    "name": "A failed code request is visible and retry obtains a usable code",
+    "pass": true
+  },
+  {
+    "name": "Failed cancellation does not mint an extra credential and can be retried",
+    "pass": true
+  },
+  {
+    "name": "Expired codes are hidden and the user can replace them",
+    "pass": true
+  },
+  {
+    "name": "Connect from an empty workspace exposes creation failure and a real retry control",
+    "pass": true
+  },
+  {
+    "name": "Uiverse sun/moon switch changes the actual theme and keyboard focus is retained",
+    "pass": true
+  },
+  {
+    "name": "Uiverse primary control animates and reduced motion disables its animation",
+    "pass": true
+  },
+  {
+    "name": "Studio connection dialog fits a phone and is fully operable from the keyboard",
+    "pass": true
+  },
+  {
+    "name": "No browser exceptions in the connection lifecycle",
+    "pass": true
+  }
+]

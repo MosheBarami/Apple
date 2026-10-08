@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import Link from "next/link";
+import { UiverseAction } from "@/components/uiverse/elements";
 import Image from "next/image";
 import { StudioDemo } from "@/components/creative/studio-demo";
 import {
@@ -22,9 +22,7 @@ export function Hero() {
           building and refining your game.
         </h1>
         <div className="hero-actions">
-          <Link href="/app" className="studio-button">
-            Open StudPilot ↗
-          </Link>
+          <UiverseAction href="/app">Open StudPilot</UiverseAction>
           <button
             type="button"
             ref={trigger}

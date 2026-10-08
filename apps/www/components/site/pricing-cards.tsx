@@ -7,7 +7,7 @@ export function PricingCards() {
   const [compare, setCompare] = useState(false);
   return (
     <>
-      <div className="pricing-switch" role="group" aria-label="Pricing view">
+      <div className="pricing-switch" role="group" aria-label="Pricing view" data-uiverse="andrew-demchenk0/hot-bird-10">
         <button
           type="button"
           aria-pressed={!yearly}
@@ -31,7 +31,7 @@ export function PricingCards() {
               ? `$${(Number(p.price.slice(1)) * 12).toFixed(2)}`
               : p.price;
           return (
-            <article key={p.id} className="price-panel">
+            <article key={p.id} className="price-panel" data-uiverse="adamgiebl/new-lionfish-4">
               <h2>{p.name}</h2>
               <p className="plan-subtitle">{p.blurb}</p>
               <p className="price-value">

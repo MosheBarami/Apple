@@ -50,3 +50,7 @@ and apps/www/TEMPLATE.md lists what was changed.
 ## Cursor visual reference (apps/www, 2026-10-08)
 
 The owner supplied https://cursor.com/ as the visual reference. The site and agent workspace layouts were reconstructed for StudPilot; Cursor source code, branded product screenshots and font binaries are not distributed. The hero landscape file `apps/www/public/art/landscape-cursor.webp` is an optimized copy of the reference site's publicly served landscape at https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/misc/asset-cc24ca462279ca23250c.jpg. Its original artist and reuse licence have not been established independently; this notice is source attribution, not a licence grant. The visual study and source map are in `planning/proof/W-Cursor-2026-10-08/REFERENCE-MAP.md`.
+
+## Uiverse UI elements (2026-10-08)
+
+Community elements by adamgiebl, Jedi-hongbin, alexruix, satyamchaudharydev, andrew-demchenk0, Smit-Prajapati, vinodjangid07, Nawsome, supplied by https://uiverse.io/elements and https://github.com/uiverse-io/galaxy under MIT. Exact source URLs and hashes: `apps/www/components/uiverse/sources.json`. Full license and author notices: `apps/www/components/uiverse/LICENSE`. Adapted to StudPilot layout, color contrast, React handlers, keyboard controls and reduced-motion behavior.

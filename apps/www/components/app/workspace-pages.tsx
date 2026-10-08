@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { UiverseBuildLoader } from "@/components/uiverse/elements";
 import { useSession } from "@/lib/supabase";
 import { CreditsMeter } from "./credits-meter";
 import { NEW_DRAFT_KEY } from "./new-chat";
@@ -101,8 +102,8 @@ export function ProjectsPage() {
         </div>
       ) : null}
       {!projects && !error ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          Loading your projects…
+        <p className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
+          <UiverseBuildLoader /> Loading your projects…
         </p>
       ) : null}
       {projects && shown.length === 0 && !error ? (
@@ -176,7 +177,7 @@ export function LibraryPage() {
     >
       <div
         aria-label="Filter prompts"
-        className="mb-6 flex flex-wrap gap-2"
+        className="uiverse-filter-group mb-6" data-uiverse="andrew-demchenk0/hot-bird-10"
         role="group"
       >
         {["All", "Create", "Improve"].map((f) => (
@@ -202,7 +203,7 @@ export function LibraryPage() {
             (_, i) => filter === "All" || (filter === "Create" ? i < 3 : i >= 3)
           )
           .map((s) => (
-            <li className="prompt-library-card luminous-panel" key={s.title}>
+            <li className="prompt-library-card luminous-panel" data-uiverse="satyamchaudharydev/itchy-chipmunk-95" key={s.title}>
               <div className="flex items-center gap-3">
                 <s.icon className="size-5 text-signal" />
                 <span className="studio-eyebrow">{s.category}</span>
@@ -244,7 +245,8 @@ export function SettingsPage() {
           </p>
           <div
             aria-label="Appearance"
-            className="mt-5 grid grid-cols-3 gap-3"
+            className="mt-5 uiverse-appearance-group"
+            data-uiverse="andrew-demchenk0/hot-bird-10"
             role="group"
           >
             {[

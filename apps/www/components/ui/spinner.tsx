@@ -1,10 +1,8 @@
-import { cn } from "@/lib/utils"
-import { Loader2Icon } from "lucide-react"
+import type { ComponentProps } from "react";
+import { cn } from "@/lib/utils";
 
-function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
-  return (
-    <Loader2Icon role="status" aria-label="Loading" className={cn("size-4 animate-spin", className)} {...props} />
-  )
+// https://uiverse.io/satyamchaudharydev/silent-owl-69 — MIT.
+function Spinner({ className, ...props }: ComponentProps<"span">) {
+  return <span role="status" aria-label="Loading" data-uiverse="satyamchaudharydev/silent-owl-69" className={cn("uiverse-spinner", className)} {...props} />;
 }
-
-export { Spinner }
+export { Spinner };

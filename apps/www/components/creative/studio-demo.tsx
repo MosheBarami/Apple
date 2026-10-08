@@ -1,4 +1,5 @@
 "use client";
+import { UiverseDots } from "@/components/uiverse/elements";
 import {
   ArrowUpIcon,
   ArrowLeftIcon,
@@ -8,7 +9,6 @@ import {
   FileIcon,
   PanelRightIcon,
   RefreshCwIcon,
-  LoaderCircleIcon,
   PlugIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -184,7 +184,7 @@ export function StudioDemo({
               onClick={() => choose(i)}
             >
               {i === task && running ? (
-                <LoaderCircleIcon className="animate-spin" />
+                <UiverseDots  />
               ) : (
                 <CheckCircle2Icon />
               )}
@@ -208,7 +208,7 @@ export function StudioDemo({
               : steps.slice(0, step + 1).map((s, i) => (
                   <div key={s}>
                     {i === step && running ? (
-                      <LoaderCircleIcon className="animate-spin" />
+                      <UiverseDots  />
                     ) : (
                       <CheckCircle2Icon />
                     )}
@@ -267,7 +267,7 @@ export function StudioDemo({
                 disabled={!request.trim()}
               >
                 {running ? (
-                  <LoaderCircleIcon className="animate-spin" />
+                  <UiverseDots  />
                 ) : (
                   <ArrowUpIcon />
                 )}

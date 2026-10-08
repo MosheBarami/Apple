@@ -1,10 +1,10 @@
 "use client";
+import { UiverseDots } from "@/components/uiverse/elements";
 
 import type { FlueConversationMessage } from "@flue/sdk";
 import {
   CheckCircle2Icon,
   FileIcon,
-  LoaderCircleIcon,
   PlugIcon,
   XCircleIcon,
   PanelRightIcon,
@@ -176,7 +176,7 @@ export function ProjectWorkbench({
           <>
             <div className="workbench-title">
               {busy ? (
-                <LoaderCircleIcon className="animate-spin" />
+                <UiverseDots  />
               ) : (
                 <CheckCircle2Icon />
               )}
@@ -192,8 +192,8 @@ export function ProjectWorkbench({
                       ) : p.state === "output-available" ? (
                         <CheckCircle2Icon />
                       ) : (
-                        <LoaderCircleIcon
-                          className={busy ? "animate-spin" : ""}
+                        <UiverseDots
+                          className={busy ? "" : "uiverse-dots-idle"}
                         />
                       )}
                       <span>{p.toolName.replaceAll("_", " ")}</span>

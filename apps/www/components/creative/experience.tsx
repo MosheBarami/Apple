@@ -11,10 +11,12 @@ export function ThemeToggle() {
     <button
       type="button"
       className="theme-switch"
+      aria-pressed={dark}
+      data-uiverse="alexruix/splendid-liger-23"
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={() => setTheme(dark ? "light" : "dark")}
     >
-      {dark ? <MoonIcon /> : <SunIcon />}
+      <span className="uiverse-theme-slider" aria-hidden="true" />
     </button>
   );
 }
@@ -23,7 +25,7 @@ export function ThemeChoices() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   return (
-    <div className="theme-choices" role="group" aria-label="Appearance">
+    <div className="theme-choices" data-uiverse="andrew-demchenk0/hot-bird-10" role="group" aria-label="Appearance">
       {[
         { value: "system", label: "System", icon: MonitorIcon },
         { value: "light", label: "Light", icon: SunIcon },
