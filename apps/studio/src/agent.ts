@@ -101,7 +101,14 @@ export class StudPilotAgent extends AIChatAgent<Env> {
               await charge(usage);
             },
           });
-          writer.merge(result.toUIMessageStream({ sendReasoning: true, sendSources: true }));
+          writer.merge(
+            result.toUIMessageStream({
+              sendReasoning: true,
+              sendSources: true,
+              // The person sees why a turn stopped (a spending limit, a model failure), not a silent end.
+              onError: (e) => (e instanceof Error ? e.message : 'StudPilot hit an error and stopped.'),
+            }),
+          );
         },
       }),
     });
