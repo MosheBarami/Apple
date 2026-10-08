@@ -28,3 +28,9 @@ A reasoning-only child response ending with finish_reason=length was also reprod
 - Before live testing, /api/admin/spend reported month $7.21 / 655,559 billable neurons, today 9,721 neurons, kill switch false.
 
 Live verification and remaining connection limits are recorded in the private local result after deployment. No test claims that the original island was built.
+
+CI follow-up: every implementation/static/type/test job passed. The all-ref historical scanner flagged one synthetic API key in ai-connections.test.mjs (blob 05923b03a881, outside this implementation's ancestor chain). Inspection confirmed Node in-memory AES-GCM tests with no network calls (a localhost URL appears only as an input that validation rejects). Added only the exact path plus matched-value SHA256 to known-fixtures.json; no scanner rule, broad path exemption or exposure register changed.
+
+A live post-cancellation check exposed a second stall: the server settled its Ready response in 9.7 seconds, while the open browser still showed working after more than 90 seconds. Reload retrieved the completed reply. Changed the React client's documented update transport from the default persistent SSE to finite long-poll reads, resuming from the durable offset each batch. This addresses missing UI updates without changing agent outcomes or fabricating completion. Live verification is repeated after release.
+
+The secret scanner's own 17 regression tests passed after the narrow historical fixture declaration.

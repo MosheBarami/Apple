@@ -255,6 +255,12 @@
       "path": "tools/repo-chat/tests/safety.test.ts",
       "pattern": "OpenAI key",
       "value_sha256": "82be8a4d9cdebab78235e6d0618fdea34065fcb6f498073283ff4ec7376e551a"
+    },
+    {
+      "path": "apps/worker/tests/ai-connections.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "df8bad2b40d0a7432e4c67add348c5da11b37de8536224dcf3151f527c7f2883",
+      "note": "Synthetic API key used only by in-memory AES-GCM tests in historical blob 05923b03a881; no provider/network calls."
     }
   ]
 }

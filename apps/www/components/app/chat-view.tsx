@@ -97,7 +97,9 @@ export function ChatView({
           }),
     [projectId]
   );
-  const agent = useFlueAgent({ client });
+  // A stalled persistent SSE connection hid completed submissions in production.
+  // Finite update reads reconnect from the durable offset after every batch.
+  const agent = useFlueAgent({ client, live: "long-poll" });
   const busy = agent.status === "submitted" || agent.status === "streaming";
   const visible = agent.messages.filter((m) => m.display === "visible");
 
