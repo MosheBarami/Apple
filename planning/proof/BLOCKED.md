@@ -73,6 +73,11 @@ which the master plan's L9 does not allow, so it is re-checked through the offic
 If library research is slowed by the workflow size limit: in a `claude` terminal run `/config` → **Dynamic workflow
 size** → raise it. (Not a blocker today: research runs in smaller batches.)
 
+### O-EYE-LIB. Look at the 10 library boards and answer yes or no per category (§4.7)
+Sent in chat on 2026-10-08 (planning/proof/LIB/L-A7/README.md): props, building parts, characters, vehicles, materials,
+UI icons, UI frames, VFX, code, skills; 48 random A items each (29 for code). Code and skills already reach the build
+model through their tools, so those two answers matter first.
+
 ### O-ARTIST. A human icon artist for the art no free family has (money: needs your decision) (§6.1)
 The kit's icon family is now Kenney's CC0 3D models, rendered by one fixed camera, light and navy contour
 (`packages/library/tools/render-icons.mjs`, 43 icons, 16 of them Cube Pets). Deep research found no free, human-made,
