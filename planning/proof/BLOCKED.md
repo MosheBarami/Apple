@@ -78,6 +78,18 @@ Sent in chat on 2026-10-08 (planning/proof/LIB/L-A7/README.md): props, building 
 UI icons, UI frames, VFX, code, skills; 48 random A items each (29 for code). Code and skills already reach the build
 model through their tools, so those two answers matter first.
 
+### O-MAPS. Maps (300) and templates (50) cannot be reached from open sources: pick a route (§4.3)
+Deep research (planning/library/research/maps-templates-2.md, 2026-10-08): at most 45-50 places carry a licence that
+allows reuse in other people's games: Roblox/resources (MIT, 12 experiences, only Baseplate and Obby among the Studio
+templates) and Roblox/Old-Open-Source-Levels (MIT, about 28-31 levels from 2007-2013, authorship murky). Roblox's 23
+Studio templates state no reuse licence, and its sample games are under the Limited Use License (non-sublicensable).
+Many places also depend on asset IDs other people own. Options, any mix:
+- (a) After O-KEY: index free Creator Store maps and kits marked Open Use, by asset ID (scripts stripped, L4).
+- (b) Count a map or template only when StudPilot builds it from A/B library pieces in a test place, two critics grade
+  its screenshots and you approve its board (assembled from human-made parts; nothing generated).
+- (c) Take the ~40 MIT places after a load test and lower the targets to what exists.
+Recommended: (a) + (b). Answer with the letters.
+
 ### O-QUAT. Optional: download 36 Quaternius packs by hand (characters are the largest 3D gap, 257 of 1,500 A/B)
 Quaternius (CC0) packs not on OpenGameArt are only behind Google Drive folders or itch.io's $0 checkout, both of which
 need a person's clicks (no official API without an account). Together about 1,400 models, about 300 of them characters
