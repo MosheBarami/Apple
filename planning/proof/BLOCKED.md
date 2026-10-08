@@ -78,6 +78,15 @@ Sent in chat on 2026-10-08 (planning/proof/LIB/L-A7/README.md): props, building 
 UI icons, UI frames, VFX, code, skills; 48 random A items each (29 for code). Code and skills already reach the build
 model through their tools, so those two answers matter first.
 
+### O-QUAT. Optional: download 36 Quaternius packs by hand (characters are the largest 3D gap, 257 of 1,500 A/B)
+Quaternius (CC0) packs not on OpenGameArt are only behind Google Drive folders or itch.io's $0 checkout, both of which
+need a person's clicks (no official API without an account). Together about 1,400 models, about 300 of them characters
+(Ultimate Monsters, Animated Men/Women, Zombie, Dinosaur, Cute Monsters, Universal Base Characters) plus the Cube World,
+Cyberpunk, Pirate, Platformer, Toon Shooter, Zombie Apocalypse, Space and Sushi kits. If you want them: open each page
+in `planning/library/ledger/quaternius.jsonl` that is not yet in `planning/library/STATUS.md`'s OpenGameArt list, press
+**Download**, in Drive press **Download all** (itch: "No thanks, just take me to the downloads"), and put the zips in
+`private/library-src/quaternius-drop/`. Claude Code ingests, renders and grades them from there. Answer "done" or "skip".
+
 ### O-ARTIST. A human icon artist for the art no free family has (money: needs your decision) (§6.1)
 The kit's icon family is now Kenney's CC0 3D models, rendered by one fixed camera, light and navy contour
 (`packages/library/tools/render-icons.mjs`, 43 icons, 16 of them Cube Pets). Deep research found no free, human-made,
