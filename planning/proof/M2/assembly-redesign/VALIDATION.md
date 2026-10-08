@@ -24,3 +24,7 @@ metadata fell back to `development`. The verifier correctly rejected it. Explici
 inline the public commit marker with Next's build-time env configuration (official
 reference: https://nextjs.org/docs/app/api-reference/config/next-config-js/env).
 The release is not accepted until public HTML reports the exact main commit.
+
+Live review caught the new-creation drawer trigger overlapping its project link near the lower edge. Both actions now share a wrapping footer in document flow. Targeted browser check passed at 390, 768 and 1440 pixels: no overlap and the drawer opens/closes by keyboard.
+
+Release 21f4c432 proved all five public page markers and both font files. Authenticated app metadata also matched. Live pairing produced a code, copied the exact six characters, replaced it and canceled it with HTTP 200 responses. A real ten-minute expiration check is in progress while the footer correction is released.

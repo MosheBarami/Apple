@@ -155,15 +155,17 @@ export function NewChat() {
                 <ScanEyeIcon /> Review the changes
               </span>
             </div>
-            <p className="agent-keyboard-note">
-              Enter to send · Shift+Enter for a new line
-            </p>
-            <Link href="/app/projects" className="new-agent-project-link">
-              Open an existing project →
-            </Link>
+            <div className="creation-footer">
+              <p className="agent-keyboard-note">
+                Enter to send · Shift+Enter for a new line
+              </p>
+              <Link href="/app/projects" className="new-agent-project-link">
+                Open an existing project →
+              </Link>
+              <ProjectWorkbench projectId={null} compactOnly />
+            </div>
           </div>
         </main>
-        <ProjectWorkbench projectId={null} compactOnly />
       </div>
     </div>
   );

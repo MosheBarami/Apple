@@ -1465,3 +1465,37 @@ html[data-page-visibility="hidden"]
     linear-gradient(var(--card), var(--card)) padding-box,
     linear-gradient(135deg, var(--input), var(--border)) border-box;
 }
+
+/* Keep secondary actions in normal flow so the drawer cannot cover the project link. */
+.creation-footer {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.creation-footer .agent-keyboard-note {
+  margin: 0;
+  margin-right: auto;
+}
+.creation-footer .new-agent-project-link {
+  float: none;
+  margin: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+.creation-footer .workbench-always-trigger {
+  position: static;
+  min-height: 40px;
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.creation-footer .workbench-always-trigger svg {
+  width: 14px;
+  height: 14px;
+}
