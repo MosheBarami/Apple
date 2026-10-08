@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Wordmark } from "./logo";
+import { MotionControl } from "@/components/creative/atmosphere";
 const MENUS = [
   {
     label: "Create",
@@ -87,6 +88,7 @@ export function SiteNav() {
           </DropdownMenu>
         </div>
         <div className="reference-nav-actions">
+          <MotionControl />
           <Link href="/login" className="nav-signin">
             Sign in
           </Link>

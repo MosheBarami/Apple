@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { UiverseAction } from "@/components/uiverse/elements";
-import Image from "next/image";
+import { BuildConstellation } from "@/components/creative/atmosphere";
 import { StudioDemo } from "@/components/creative/studio-demo";
 import {
   Dialog,
@@ -16,11 +16,13 @@ export function Hero() {
   return (
     <section className="reference-hero">
       <div className="site-container">
+        <div className="hero-overline"><span /> YOUR IMAGINATION. INSIDE ROBLOX STUDIO.</div>
         <h1>
-          StudPilot is your Roblox agent for
+          From <span className="luminous-text">what if</span>
           <br />
-          building and refining your game.
+          to what’s next.
         </h1>
+        <p className="hero-description">Build the interface. Shape the world. Make the mechanic work.<br className="hidden sm:block" /> Your creative partner, connected to your Roblox Studio.</p>
         <div className="hero-actions">
           <UiverseAction href="/app">Open StudPilot</UiverseAction>
           <button
@@ -33,15 +35,8 @@ export function Hero() {
           </button>
         </div>
         <div className="hero-stage">
-          <Image
-            src="/art/landscape-cursor.webp"
-            width={1800}
-            height={1200}
-            alt="Painterly mountain landscape behind the StudPilot example workspace"
-            className="stage-landscape"
-            priority
-            sizes="(max-width:700px) 100vw,1300px"
-          />
+          <div className="stage-aurora" aria-hidden="true"><i /><i /><i /></div>
+          <div className="stage-constellation"><BuildConstellation compact /></div>
           <div className="hero-product">
             <StudioDemo large autoPlay />
           </div>

@@ -11,6 +11,7 @@ import { useProjects } from "./projects-provider";
 import { StarterGrid } from "./starters";
 import { TopBar } from "./top-bar";
 import { ProjectWorkbench } from "./project-workbench";
+import { SparklesIcon } from "lucide-react";
 export const NEW_DRAFT_KEY = "studpilot:new-draft";
 export function NewChat() {
   const router = useRouter();
@@ -58,15 +59,16 @@ export function NewChat() {
     }
   };
   return (
-    <div className="workspace-canvas flex h-dvh flex-col">
+    <div className="workspace-canvas creation-canvas flex h-dvh flex-col">
       <TopBar projectId={null} title="New conversation" />
       <div className="agent-page-layout">
         <main className="new-agent-main" id="workspace-main">
           <div className="new-agent-content">
-            <h2>What do you want to build?</h2>
+            <div className="creation-eyebrow"><SparklesIcon size={14} /> YOUR NEXT IDEA STARTS HERE</div>
+            <h2>Think it.<br /><span className="luminous-text">Let’s build it.</span></h2>
             <p>
-              Describe your next change. StudPilot works in your Roblox Studio
-              project.
+              A new mechanic. A better interface. A world of your own.
+              Create with an agent connected to Roblox Studio.
             </p>
             <div
               className="creation-tabs"

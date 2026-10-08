@@ -14,6 +14,8 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { UiverseBuildLoader } from "@/components/uiverse/elements";
+import { PromptArtwork } from "@/components/creative/atmosphere";
+import { StyleTile } from "@/components/creative/style-tile";
 import { useSession } from "@/lib/supabase";
 import { CreditsMeter } from "./credits-meter";
 import { NEW_DRAFT_KEY } from "./new-chat";
@@ -202,8 +204,9 @@ export function LibraryPage() {
           .filter(
             (_, i) => filter === "All" || (filter === "Create" ? i < 3 : i >= 3)
           )
-          .map((s) => (
+          .map((s, i) => (
             <li className="prompt-library-card luminous-panel" data-uiverse="satyamchaudharydev/itchy-chipmunk-95" key={s.title}>
+              <PromptArtwork kind={i} />
               <div className="flex items-center gap-3">
                 <s.icon className="size-5 text-signal" />
                 <span className="studio-eyebrow">{s.category}</span>
@@ -269,7 +272,7 @@ export function SettingsPage() {
           <p className="mt-4 text-xs text-muted-foreground">
             Motion follows your device’s reduced-motion preference.
           </p>
-          <div className="mt-4"></div>
+          <StyleTile />
         </section>
         <section className="p-6">
           <h3 className="font-medium">Account</h3>

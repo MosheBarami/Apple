@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AtmosphereProvider } from "@/components/creative/atmosphere";
 
 import "./globals.css";
 import "./uiverse.css";
+import "./luminous.css";
 
 export const metadata: Metadata = {
   description:
@@ -18,8 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
-const LIGHT_THEME_COLOR = "#f7f7f4";
-const DARK_THEME_COLOR = "#14120b";
+const LIGHT_THEME_COLOR = "#f1f3fb";
+const DARK_THEME_COLOR = "#080b14";
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;
@@ -54,8 +56,8 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased" data-ui-library="uiverse">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <AtmosphereProvider>{children}</AtmosphereProvider>
         </ThemeProvider>
       </body>
     </html>

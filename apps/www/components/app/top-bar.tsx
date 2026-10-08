@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/creative/experience";
+import { MotionControl } from "@/components/creative/atmosphere";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StudioLight } from "./studio-light";
 
@@ -31,6 +32,7 @@ export function TopBar({
         </span>
       ) : null}
 
+      <MotionControl />
       <ThemeToggle />
       <StudioLight openOnMount={openStudioOnMount} projectId={projectId} />
     </header>

@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     inlineCss: true,
+    // Opt out on constrained local review machines; production builds are unchanged.
+    turbopackFileSystemCacheForDev: process.env.STUDPILOT_LOW_DISK !== "1",
   },
   logging: {
     fetches: {

@@ -1,4 +1,5 @@
 "use client";
+import { PromptArtwork } from "@/components/creative/atmosphere";
 import {
   ArrowUpLeftIcon,
   CoinsIcon,
@@ -79,6 +80,7 @@ export function StarterGrid({
             onClick={() => onPick(s.text)}
             type="button"
           >
+            <PromptArtwork kind={i} />
             <span className="uiverse-card-arrow" aria-hidden="true"><ArrowUpLeftIcon /></span>
             <div className="flex w-full items-center justify-between">
               <span className="prompt-object">

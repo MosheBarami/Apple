@@ -1,5 +1,6 @@
 "use client";
 import { UiverseDots } from "@/components/uiverse/elements";
+import { BuildConstellation } from "@/components/creative/atmosphere";
 
 import type { FlueConversationMessage } from "@flue/sdk";
 import {
@@ -157,7 +158,9 @@ export function ProjectWorkbench({
               </>
             ) : (
               <>
-                <h3>Start with your own place.</h3>
+                <BuildConstellation />
+                <span className="workbench-eyebrow">IDEA → STUDIO</span>
+                <h3>Your next creation<br />starts with a connection.</h3>
                 <p>
                   Create a conversation, then use Connect Studio to pair the
                   project with your place.

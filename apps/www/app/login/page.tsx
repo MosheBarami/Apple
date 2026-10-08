@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LoginForm } from "@/components/app/login-form";
 import { Wordmark } from "@/components/site/logo";
 import { ThemeToggle } from "@/components/creative/experience";
+import { BuildConstellation, MotionControl } from "@/components/creative/atmosphere";
 export const metadata: Metadata = { title: "Sign in" };
 export default function LoginPage() {
   return (
@@ -11,10 +12,16 @@ export default function LoginPage() {
         <Link href="/">
           <Wordmark />
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-3"><MotionControl /><ThemeToggle /></div>
       </div>
-      <div className="login-form-frame">
-        <LoginForm />
+      <div className="login-layout">
+        <div className="login-scene">
+          <BuildConstellation />
+          <p className="workbench-eyebrow">AN IDEA IS ALL IT TAKES</p>
+          <h2>Your next world.<br /><span className="luminous-text">Start here.</span></h2>
+          <p>One creative workspace for the interfaces, mechanics and worlds you imagine.</p>
+        </div>
+        <div className="login-form-frame"><LoginForm /></div>
       </div>
       <Link href="/" className="login-back">
         ← Back to StudPilot
