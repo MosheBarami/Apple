@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useId } from 'react';
 import { Link } from 'react-router-dom';
 import { INFERENCE_ROUTES, type AiConnectionView, type AiModelRecord, type InferenceSelection } from '@studpilot/shared';
 import { fetchAiConnections, fetchAiModels, fetchAiProviders, fetchOpenCodeModels, refreshAiModels, ApiError } from '../../lib/api';
@@ -15,6 +15,8 @@ export function InferencePicker({ value, onChange, onReady, running }: {
   const [models, setModels] = useState<AiModelRecord[]>([]), [search, setSearch] = useState('');
   const [freeModels, setFreeModels] = useState<{ id: string; name: string; available: boolean }[]>([]);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(false), detailsId = useId();
+  const optionsButton = useRef<HTMLButtonElement>(null);
   const connection = connections.find((entry) => entry.id === connectionId);
   const selectedModel = value?.route === 'byok' ? models.find((model) => model.id === value.modelId) : null;
   useEffect(() => {
@@ -30,6 +32,7 @@ export function InferencePicker({ value, onChange, onReady, running }: {
     && 'message' in error.body && typeof error.body.message === 'string' ? error.body.message
     : error instanceof Error ? error.message : 'The inference route could not be loaded.';
   useEffect(() => { if (value) setRoute(value.route); }, [value?.route]);
+  useEffect(() => { if (value?.route === 'byok') setConnectionId(value.connectionId); }, [value?.route, value?.route === 'byok' ? value.connectionId : null]);
   useEffect(() => {
     let live = true;
     if (route === 'byok') void Promise.all([fetchAiConnections(), fetchAiProviders()]).then(([list, vendors]) => {
@@ -65,13 +68,15 @@ export function InferencePicker({ value, onChange, onReady, running }: {
     <div className="ai-route-main">
       {route === 'opencode-free' ? <BrandMark brand="opencode" /> : route === 'byok' && connection ? <BrandMark brand={connection.provider} /> : null}
       <select aria-label="AI route" value={route} disabled={busy} onChange={(event) => {
-        const next = event.target.value as InferenceSelection['route']; setRoute(next); setModels([]); setError('');
+        const next = event.target.value as InferenceSelection['route']; setRoute(next); setModels([]); setError(''); setDetailsOpen(next === 'byok');
         void choose(next === 'studpilot' ? { route: 'studpilot' } : next === 'opencode-free' ? { route: 'opencode-free' } : null);
       }}>{INFERENCE_ROUTES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select>
+      {route === 'byok' && <button ref={optionsButton} type="button" aria-expanded={detailsOpen} aria-controls={detailsId} onClick={() => setDetailsOpen(!detailsOpen)}>{selectedModel ? 'Model options' : 'Choose a model'}</button>}
       {route === 'byok' && <Link to="/app/settings#settings-connections">Connections</Link>}
     </div>
     {running && <p className="ai-muted">Changes apply to your next build. The current run keeps its selected route.</p>}
-    {route === 'byok' && <div className="ai-route-details">
+    {route === 'byok' && !detailsOpen && selectedModel && <div className="ai-provider-identity"><BrandMark brand={selectedModel.producer ?? ''} /><span>{selectedModel.name} · {connection?.name} · via {selectedModel.hostedBy ?? connection?.provider}</span></div>}
+    {route === 'byok' && detailsOpen && <div className="ai-route-details" id={detailsId}>
       <label>Provider and connection<select aria-label="Provider and connection" value={connectionId} disabled={busy} onChange={(event) => {
         setConnectionId(event.target.value); setModels([]); void choose(null);
       }}><option value="">Choose a private connection</option>
@@ -99,6 +104,7 @@ export function InferencePicker({ value, onChange, onReady, running }: {
             if (ids.length) void choose({ ...value, autoRouting: { enabled: true, allowedConnectionIds: ids } });
           }} />{connection.name}</label>)}
       </fieldset>}
+      <div className="ai-actions"><button type="button" disabled={!selectedModel || busy} onClick={() => { setDetailsOpen(false); optionsButton.current?.focus(); }}>Use this model</button></div>
       {!connections.length && <p className="ai-muted">Add an API connection in <Link to="/app/settings#settings-connections">Settings</Link> to use your own key.</p>}
     </div>}
     {route === 'opencode-free' && <div className="ai-route-details">

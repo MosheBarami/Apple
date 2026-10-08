@@ -1027,6 +1027,46 @@ async function studioGrantedStub(env: Env, projectId: string): Promise<DurableOb
  * spends credits) for a project holding a live grant, and the session checkpoints before the first write.
  */
 export class StudioGate extends WorkerEntrypoint<Env> {
+  /** Authenticated admission freezes a private choice before Flue accepts the creator's delivery. */
+  async prepareInference(jwt: string, projectId: string, selection: unknown,
+    identity?: { conversation: string; requestKey: string; inputHash: string }): Promise<Record<string, unknown>> {
+    const user = await verifyJwt(this.env, jwt);
+    const ctx = user ? await withOwnedProject({ env: this.env, get: () => user }, projectId) : null;
+    if (!ctx || !buildApproved(this.env, ctx.project.owner_id)) throw new Error('This account cannot start Studio inference.');
+    await grantStudio(this.env, ctx.project.id, ctx.project.owner_id);
+    const allowance = await this.canSpend(projectId);
+    if (!allowance.ok) throw new Error(allowance.message);
+    const response = await ctx.stub.fetch('https://do/studio-inference/prepare', { method: 'POST',
+      body: JSON.stringify({ ownerId: user!.userId, selection, identity }) });
+    if (!response.ok) throw new Error('The selected AI route was not admitted. Test its connection or choose a supported model.');
+    return response.json() as Promise<Record<string, unknown>>;
+  }
+
+  /** Only the bound Studio service reaches this entrypoint; browser routes cannot supply an actor. */
+  async fetch(request: Request): Promise<Response> {
+    const match = /^\/inference\/([0-9a-f-]{36})\/([0-9a-f-]{36})$/.exec(new URL(request.url).pathname);
+    if (request.method !== 'POST' || !match) return new Response('Not found', { status: 404 });
+    const projectId = match[1]!, runRef = match[2]!;
+    const owner = await studioGrantOwner(this.env, projectId);
+    const stub = owner ? await studioGrantedStub(this.env, projectId) : null;
+    if (!stub) return new Response('This Studio project is not authorized.', { status: 401 });
+    const input = await request.text();
+    if (input.length > 450000) return new Response('Input limit exceeded', { status: 413 });
+    let payload;
+    try { payload = JSON.parse(input); } catch { return new Response('Invalid inference input', { status: 400 }); }
+    return stub.fetch(new Request('https://do/studio-inference/invoke', { method: 'POST',
+      body: JSON.stringify({ ownerId: owner, runRef, input: payload.input, task: payload.task }), signal: request.signal }));
+  }
+
+  async inferenceEvidence(projectId: string, runRef: string): Promise<Record<string, unknown>> {
+    const owner = await studioGrantOwner(this.env, projectId);
+    const stub = owner ? await studioGrantedStub(this.env, projectId) : null;
+    if (!stub) throw new Error('This Studio project is not authorized.');
+    const response = await stub.fetch('https://do/studio-inference/evidence', { method: 'POST', body: JSON.stringify({ ownerId: owner, runRef }) });
+    if (!response.ok) throw new Error('The inference evidence is no longer available.');
+    return response.json() as Promise<Record<string, unknown>>;
+  }
+
   async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string; canBuild: boolean } | { ok: false }> {
     const user = await verifyJwt(this.env, jwt);
     if (!user) return { ok: false };

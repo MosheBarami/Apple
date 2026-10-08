@@ -8,6 +8,7 @@ export interface RoutingRequirements {
   maxCostUsd?: number; allowTraining?: boolean;
 }
 export interface RoutingCandidate {
+  connectionName?: string;
   connectionRevision?: number;
   route: InferenceRouteId; model: AiModelRecord; connectionId: string | null; catalogVersion: string;
   available: boolean; rateLimitedUntil?: number; circuitOpenUntil?: number;

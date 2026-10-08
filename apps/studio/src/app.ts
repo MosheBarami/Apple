@@ -11,6 +11,7 @@ import { Hono } from 'hono';
 import { StudPilot } from './agents/studpilot.ts';
 import { projectOf } from './conversation-id.ts';
 import { guardModelStream } from './model-stream.ts';
+import { parseInferenceSelection } from '../../../packages/shared/src/inference.ts';
 
 const bound = env as unknown as Env;
 
@@ -43,6 +44,22 @@ export function withAgentDefaults(model: string, inputs: Record<string, unknown>
 }
 
 async function meteredRun(model: string, raw: Record<string, unknown>, options?: unknown) {
+  const routed = /^@cf\/studpilot\/([0-9a-f-]{36})\/([0-9a-f-]{36})(?:\/(planner|builder|reviewer|tester))?$/.exec(model);
+  if (routed) {
+    const system = Array.isArray(raw.messages) ? (raw.messages as { role?: string; content?: unknown }[])
+      .filter((message) => message.role === 'system' && typeof message.content === 'string')
+      .map((message) => message.content).join('\n') : '';
+    // These tags are authored by the registered roles, not inferred from the creator's words.
+    const role = /<studpilot-role name="(planner|builder|reviewer|tester)">/.exec(system)?.[1];
+    const task = role === 'planner' ? 'planning' : role === 'reviewer' || role === 'tester' ? 'evidence' : 'tools';
+    const signal = (options as { signal?: AbortSignal } | undefined)?.signal;
+    // The reference identifies an owner-checked immutable run; no user key or ambient
+    // authentication state is inherited by this isolate or by a delegated agent.
+    return bound.GATE.fetch(new Request(`https://studio-gate/inference/${routed[1]}/${routed[2]}`, {
+      method: 'POST', body: JSON.stringify({ input: raw, task }), signal,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+  }
   const inputs = withAgentDefaults(model, raw ?? {});
   const asked = inputs?.max_completion_tokens ?? inputs?.max_tokens;
   const maxOut = typeof asked === 'number' ? asked : 4096;
@@ -109,5 +126,44 @@ app.use(`${MOUNT}/*`, async (c, next) => {
 });
 
 app.route(MOUNT, createAgentRouter(StudPilot));
+
+// Rewrite before Hono/Flue read and cache the delivery body. Older clients and the
+// managed default keep their existing request. Private choices use Flue's documented
+// structured delivery, with a server-created reference pinned before admission.
+const originalFetch = app.fetch;
+app.fetch = async (request, environment, executionCtx) => {
+  const path = new URL(request.url).pathname;
+  const conversation = path.startsWith(`${MOUNT}/`) ? path.slice(MOUNT.length + 1) : '';
+  const projectId = projectOf(conversation);
+  const rawSelection = request.headers.get('X-StudPilot-Inference');
+  if (request.method === 'POST' && projectId && rawSelection !== null) {
+    let selection;
+    try { selection = parseInferenceSelection(JSON.parse(rawSelection)); } catch { selection = null; }
+    if (!selection) return Response.json({ error: 'Invalid AI route selection.' }, { status: 400 });
+    if (selection.route !== 'studpilot') {
+      const auth = request.headers.get('Authorization') ?? '', jwt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+      if (!jwt) return Response.json({ error: 'unauthorized' }, { status: 401 });
+      const raw = await request.clone().text();
+      if (raw.length > 40000) return Response.json({ error: 'This request is too large.' }, { status: 413 });
+      let delivery;
+      try { delivery = JSON.parse(raw); } catch { return Response.json({ error: 'Invalid delivery.' }, { status: 400 }); }
+      if (delivery?.kind !== 'user' || typeof delivery.body !== 'string' || !delivery.body.trim()
+        || delivery.attachments?.length) return Response.json({ error: 'This route accepts text requests only.' }, { status: 400 });
+      try {
+        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ delivery, selection })));
+        const inputHash = [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        const pin = await (environment as Env).GATE.prepareInference(jwt, projectId, selection, {
+          conversation, requestKey: typeof delivery.idempotencyKey === 'string' ? delivery.idempotencyKey : crypto.randomUUID(), inputHash,
+        });
+        const headers = new Headers(request.headers); headers.delete('Content-Length');
+        request = new Request(request, { headers, body: JSON.stringify({
+          ...delivery, kind: 'signal', type: 'studpilot-creator-request', tagName: 'studpilot-creator-request',
+          attributes: { runRef: pin.runRef, requestText: delivery.body },
+        }) });
+      } catch { return Response.json({ error: 'The selected AI route is unavailable. Test its connection or choose a supported route. No fallback was used.' }, { status: 422 }); }
+    }
+  }
+  return originalFetch(request, environment, executionCtx);
+};
 
 export default app;

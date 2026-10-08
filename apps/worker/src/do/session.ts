@@ -39,6 +39,7 @@ import type {
 } from '@studpilot/shared';
 import { creditsText, isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, quotaLimit, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
 import { pinRunInference, type PinnedInference } from '../inference-runs';
+import { prepareStudioInference, executeStudioInference, studioInferenceEvidence, type StudioInferenceStore } from '../studio-inference';
 import type { RoutingDecision } from '@studpilot/shared';
 import { parseInferenceSelection } from '@studpilot/shared';
 import { ApiInvocationError } from '../providers/api-transport';
@@ -2070,6 +2071,55 @@ export class SessionDO extends DurableObject<Env> {
     const bind = await this.bind();
     if (!bind) return json({ error: 'session not initialized' }, 400);
 
+    // Private service boundary: StudioGate supplies this actor only after verifying the
+    // account JWT/project ownership or reading that project's live authenticated grant.
+    if (path.startsWith('/studio-inference/') && req.method === 'POST') {
+      const text = await req.text();
+      if (text.length > 500000) return json({ error: 'input_limit' }, 413);
+      let payload: Record<string, any>;
+      try { payload = JSON.parse(text); } catch { return json({ error: 'invalid_json' }, 400); }
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return json({ error: 'invalid_input' }, 400);
+      if (payload.ownerId !== bind.ownerId) return json({ error: 'inference_owner_mismatch' }, 403);
+      const store: StudioInferenceStore = {
+        get: async (key) => (await this.ctx.storage.get<string>(key)) ?? null,
+        put: async (key, value) => { await this.ctx.storage.put(key, value); },
+        create: async (key, value) => this.ctx.storage.transaction(async (tx) => {
+          const existing = await tx.get<string>(key);
+          if (existing !== undefined) return existing;
+          await tx.put(key, value); return value;
+        }),
+        update: async (key, transform) => {
+          await this.ctx.storage.transaction(async (tx) => {
+            const value = await tx.get<string>(key);
+            if (!value) throw new Error('The inference run is no longer available.');
+            await tx.put(key, transform(value));
+          });
+        },
+      };
+      try {
+        if (path === '/studio-inference/prepare') {
+          const prefix = `ai:studio-run:${bind.ownerId}:${bind.projectId}:`;
+          const previous = await this.ctx.storage.list<string>({ prefix });
+          for (const [key, value] of previous) {
+            const createdAt = JSON.parse(value).createdAt;
+            if (typeof createdAt === 'number' && Date.now() - createdAt > 3600000) await this.ctx.storage.delete(key);
+          }
+          if (previous.size > 100) return json({ error: 'Too many outstanding inference runs. Wait for existing runs to expire.' }, 429);
+          const result = await prepareStudioInference(this.env, store, bind.ownerId, bind.projectId, payload.selection, payload.identity);
+          const at = Date.now() + 3600000;
+          const cleanupAt = await this.ctx.storage.get<number>('studioInferenceCleanupAt');
+          await this.ctx.storage.put('studioInferenceCleanupAt', Math.min(cleanupAt ?? at, at));
+          const existingAlarm = await this.ctx.storage.getAlarm();
+          if (existingAlarm === null || existingAlarm > at) await this.ctx.storage.setAlarm(at);
+          return json(result);
+        }
+        if (path === '/studio-inference/invoke') return executeStudioInference(this.env, store, bind.ownerId,
+          bind.projectId, payload.runRef, payload.input, { signal: req.signal, task: payload.task });
+        if (path === '/studio-inference/evidence') return json(await studioInferenceEvidence(store, bind.ownerId, bind.projectId, payload.runRef));
+        return json({ error: 'unknown_inference_operation' }, 404);
+      } catch { return json({ error: 'The selected AI route could not complete this Studio inference. No route was changed.' }, 422); }
+    }
+
     if (path === '/ws') {
       // A MEMBER MAY WATCH; WHAT THEY MAY DO IS DECIDED PER MESSAGE.
       //
@@ -3860,6 +3910,24 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   async alarm() {
+    const cleanupAt = await this.ctx.storage.get<number>('studioInferenceCleanupAt');
+    if (cleanupAt !== undefined) {
+      let next = Infinity;
+      if (Date.now() >= cleanupAt) {
+        const rows = await this.ctx.storage.list<string>({ prefix: 'ai:studio-run:' });
+        for (const [key, value] of rows) {
+          if (!key.startsWith('ai:studio-run:') || typeof value !== 'string') continue;
+          const createdAt = JSON.parse(value).createdAt;
+          if (typeof createdAt !== 'number') continue;
+          if (Date.now() - createdAt >= 3600000) await this.ctx.storage.delete(key);
+          else next = Math.min(next, createdAt + 3600000);
+        }
+        if (Number.isFinite(next)) await this.ctx.storage.put('studioInferenceCleanupAt', next);
+        else await this.ctx.storage.delete('studioInferenceCleanupAt');
+      } else next = cleanupAt;
+      const existingAlarm = await this.ctx.storage.getAlarm();
+      if (Number.isFinite(next) && (existingAlarm === null || existingAlarm > next)) await this.ctx.storage.setAlarm(next);
+    }
     // Socket grants expire even when no run is active. The deadline is represented by an alarm so
     // hibernation cannot turn "expires at 14:00" into "expires when the tab next sends a frame".
     await this.enforceSocketExpiries();

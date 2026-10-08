@@ -9,6 +9,8 @@ import { AppShell } from "./app-shell";
 import { ChatScreen } from "./chat-view";
 import { NewChat } from "./new-chat";
 import { LibraryPage, ProjectsPage, SettingsPage } from "./workspace-pages";
+import { InferencePicker } from '../ai/inference-picker';
+import type { InferenceSelection } from '../../../../packages/shared/src/inference';
 
 const NOW = Date.now();
 const PROJECTS = [
@@ -34,6 +36,14 @@ function installMock(studio: "on" | "off", failHistory: boolean) {
   }
   installed = true;
   const real = window.fetch.bind(window);
+  const connection = { id: '12345678-1234-1234-1234-123456789abc', provider: 'cloudflare', name: 'Preview API account',
+    hint: 'demo', status: 'verified', revision: 1, catalogVersion: 'preview-v1', checkedAt: null };
+  const model = { provider: 'cloudflare', producer: 'OpenAI', id: '@cf/openai/gpt-oss-20b', name: 'GPT-OSS-20B',
+    protocol: 'workers-http', lifecycle: 'active', contextWindow: 131072, maxOutput: null,
+    inputCostPer1M: 0.07, outputCostPer1M: 0.6, capabilities: { tools: true, structuredOutput: null, text: true },
+    source: 'https://developers.cloudflare.com/workers-ai/models/', checkedAt: '2026-10-08', access: 'inference-verified', runtimeCheckedAt: '2026-10-08' };
+  const catalog = { provider: 'cloudflare', version: 'preview-v1', checkedAt: '2026-10-08', models: [model] };
+  let selection: InferenceSelection = { route: 'studpilot' };
   let historyAttempts = 0;
   const json = (body: unknown) =>
     Promise.resolve(
@@ -48,6 +58,14 @@ function installMock(studio: "on" | "off", failHistory: boolean) {
         : input instanceof URL
           ? input.href
           : input.url;
+    if (url.includes('/api/me/ai/providers')) return json({ providers: [{ id: 'cloudflare', name: 'Cloudflare Workers AI', accountIdRequired: true }] });
+    if (url.includes('/api/me/ai/opencode/models')) return Promise.resolve(new Response(JSON.stringify({ models: [], message: 'OpenCode Free is awaiting a permitted service runner.' }), { status: 503, headers: { 'Content-Type': 'application/json' } }));
+    if (url.endsWith('/api/me/ai/connections')) return json(init?.method === 'POST' ? { connection } : { connections: [connection] });
+    if (/\/api\/me\/ai\/connections\/[^/]+\/models(?:\/refresh)?$/.test(url)) return json({ catalog, connection });
+    if (url.endsWith('/api/me/ai/selection') || url.endsWith('/ai-selection')) {
+      if (init?.method === 'PUT') selection = JSON.parse(String(init.body)).selection;
+      return json({ selection });
+    }
     if (url.includes("/rest/v1/projects")) {
       if (failHistory && historyAttempts++ === 0) {
         return Promise.resolve(
@@ -158,6 +176,7 @@ export function DevPreview({
   // Installed in render, before any child effect runs, so the first requests are already answered.
   useState(() => installMock(studio, view === "history-error"));
   const [stopped, setStopped] = useState(false);
+  const [selection, setSelection] = useState<InferenceSelection | null>({ route: 'studpilot' });
   return (
     <AppShell>
       {view === "projects" ? (
@@ -189,6 +208,7 @@ export function DevPreview({
           pair={view === "pair"}
           projectId="demo-0"
           ready
+          inferenceControls={<InferencePicker value={selection} onChange={async (value) => setSelection(value)} onReady={() => {}} running={view === 'chat'} />}
           title="Egg shop screen"
         />
       ) : (

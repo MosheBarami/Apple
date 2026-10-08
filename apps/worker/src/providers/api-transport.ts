@@ -40,10 +40,16 @@ export async function checkedApiFetch(provider: AiProviderId, url: string, crede
   const expected = apiProvider(provider).origin;
   if (new URL(url).origin !== expected || new URL(url).username || new URL(url).password) throw new Error('Provider origin mismatch.');
   let response;
-  try { response = await fetcher(url, { ...init, headers: apiHeaders(provider, credentials), redirect: 'error' }); }
+  // The pinned local workerd rejects redirect:error. Manual plus
+  // explicit rejection below keeps credentials on their reviewed origin in both runtimes.
+  try { response = await fetcher(url, { ...init, headers: apiHeaders(provider, credentials), redirect: 'manual' }); }
   catch {
     throw new ApiInvocationError(init.signal?.aborted ? 'interrupted' : 'unavailable', provider,
       init.signal?.aborted ? 'Inference was cancelled or timed out.' : 'The provider could not be reached.');
+  }
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel().catch(() => {});
+    throw new ApiInvocationError('blocked', provider, 'Provider redirects are not allowed for API credentials.', response.status);
   }
   if (!response.ok) {
     const seconds = Number(response.headers.get('Retry-After'));
@@ -78,7 +84,7 @@ export async function invokeApi(provider: AiProviderId, credentials: AiCredentia
   try {
     if (streaming) {
       if (!response.body) throw new Error('Missing provider stream.');
-      raw = await collectApiStream(response.body, definition.protocol, options.onText);
+      raw = await collectApiStream(response.body, definition.protocol);
     } else {
       if (!response.body) throw new Error('Missing provider response.');
       const reader = response.body.getReader(), decoder = new TextDecoder();
@@ -95,7 +101,12 @@ export async function invokeApi(provider: AiProviderId, credentials: AiCredentia
       raw = JSON.parse(text);
     }
   } catch { throw new ApiInvocationError('interrupted', provider, 'The provider returned an incomplete or unreadable response.'); }
+  if (credentials.apiKey.length >= 8 && JSON.stringify(raw).includes(credentials.apiKey)) {
+    throw new ApiInvocationError('invalid_response', provider, 'The provider echoed credential material. Its response was discarded.');
+  }
   const result = decodeApiResponse(provider, request.modelId, raw);
+  if (result.finishReason === 'error') throw new ApiInvocationError('invalid_response', provider, 'The provider did not confirm a complete response.');
+  if (result.text && !result.truncated) options.onText?.(result.text);
   if (result.finishReason === 'error') throw new ApiInvocationError('invalid_response', provider, 'The provider did not complete inference.');
   return result;
 }

@@ -33,6 +33,10 @@ No production deployment is claimed. The shared local main and its unrelated edi
 - Real Cloudflare discovery returned 69 models. The existing authorized key completed an actual
   GPT-OSS-20B inference and all five fixed JSON/schema/Luau-compiler/syntax-repair/native-tool probes.
   This is local API proof, not website/Studio/deployment proof. Published-rate token estimate is below $0.001.
+- Real local HTTPS Worker proof also passed: actual Supabase JWT, encrypted user-owned connection save,
+  69-model discovery, selected GPT-OSS-20B inference and native tool verification, then connection deletion.
+  Published token estimate for these two calls: $0.0000664. See `local-authenticated-byok.json`.
+  A real workerd redirect-mode incompatibility was found and fixed; Node fixtures alone had missed it.
 - Real isolated OpenCode inference returned 403 FreeTierError. Official hosted terms prohibit public third-party
   service use without further permission. No bypass, identity spoofing or service credential deployment occurred.
 - Integrated local worker suite: 5,384 pass, 5 skip, 0 fail; web: 2,747 pass, 0 fail.
@@ -44,6 +48,10 @@ No production deployment is claimed. The shared local main and its unrelated edi
   and one undeclared fabricated credential test value. Repairs use executed engine configuration,
   exact-count third-party provenance allowance and an exact path/value hash declaration. Local guards pass;
   fresh GitHub checks are required for the repair commit.
+- GitHub checks subsequently all passed at `ad417fcc`. New current-frontend/Flue changes are later
+  work and need their own complete checks. The current Studio contracts measured 23 pass; latest
+  private provider/bridge contracts measured 51 pass. Worker/current frontend and pinned Flue source
+  type checks passed in their recorded runs.
 - Disk reached 116 MB free during editing. Removed only 71 generated temporary test directories containing
   this task's exclusive code (875 MB); free space then measured 1.5 GiB. No unrelated cache/source/data was removed.
 
@@ -62,6 +70,27 @@ publisher set remains unresolved. Keep unavailable models/routes honest, not sil
 Final required live acceptance still needs: approved OpenCode
 service access, integrated deployment from clean main with AI_CREDENTIAL_KEY provisioned, real website requests
 and a paired evaluation Studio place. A valid existing Cloudflare account completed local runtime proof.
-Studio MCP currently lists no connected instances; launching the installed app returned OS timeout,
-and the alternate registered installation path no longer exists. No Play or place mutation was attempted.
+The installed Studio eventually started after the OS timeout. `EvalBaseplate.rbxlx` is now connected
+in Edit mode, with placeId/gameId zero and Baseplate/SpawnLocation/Terrain/Camera observed. An unrelated
+owner build was visible in the live website; it was not stopped or modified. No Play or place mutation
+was performed for this task.
 Do not mark the Codex goal complete or claim the integration is deployed.
+
+## Current frontend discovery and adaptation
+
+Parallel main work replaced the active SPA with `apps/www` and a Flue `apps/studio` agent. Live
+inspection exposed this: the legacy SPA/gateway changes alone do not satisfy website acceptance.
+The current frontend now has its own widgets/assets/API helpers, preference loading, frozen send
+headers and idempotent delivery ids. The Studio service pins through authenticated `StudioGate`
+before admitting a structured creator delivery; model calls use the main gateway while the existing
+Flue executor/ledger still handles Studio actions. Delegates inherit the submission's pinned model.
+Private provider usage is not charged as the managed GLM provider. Root data parts report operational
+route/model/connection evidence without native replay or hidden provider thinking.
+
+These adaptations are not deployed or accepted live. Development UI fixtures and actual Flue
+runtime/restart/cancellation proof remain required. Native replay is bounded and expires after one
+hour; complete current-turn Google signatures are preserved, without fake validator signatures.
+Current-frontend type checking/build are now included in required CI. Production requires all three
+existing Worker releases and the independent rollout switches/secrets.
+
+Current frontend UI review: five new JPEG captures in current-ui-fixture. Desktop and390x844 mobile inspected; a truncated mobile route label was fixed, model options collapse with keyboard focus returned to their trigger, official host/maker logos loaded, fake key field cleared, and unavailable Free state displayed. These are development fixtures. The current website connection form and selectors are now mounted; actual current Flue runtime and authenticated website acceptance still remain.

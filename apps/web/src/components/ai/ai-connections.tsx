@@ -32,8 +32,8 @@ export function AiConnectionsPanel() {
     const result = refresh ? await refreshAiModels(connection.id) : await fetchAiModels(connection.id);
     if (result.catalog) {
       setCatalogs((previous) => ({ ...previous, [connection.id]: result.catalog! }));
-    const available = result.catalog.models.filter((model) => model.lifecycle !== 'retired');
-      setModels((previous) => ({ ...previous, [connection.id]: previous[connection.id] ?? available[0]?.id ?? '' }));
+    const available = result.catalog.models.filter((model) => model.lifecycle !== 'retired' && model.producer && hasBrandAsset(model.producer));
+      setModels((previous) => ({ ...previous, [connection.id]: available.some((model) => model.id === previous[connection.id]) ? previous[connection.id] : available[0]?.id ?? '' }));
     }
     await reload();
   });
@@ -85,7 +85,7 @@ export function AiConnectionsPanel() {
           })}>Remove</button>
         </div>
         {catalog && <div className="ai-model-test"><label>Test a model<select aria-label={`Test model for ${connection.name}`} value={models[connection.id] ?? ''} onChange={(event) => setModels((previous) => ({ ...previous, [connection.id]: event.target.value }))}>
-          {catalog.models.filter((model) => model.lifecycle !== 'retired').map((model) => <option key={model.id} value={model.id}>{model.name}{model.hostedBy ? ` · ${model.hostedBy}` : ''}</option>)}
+          {catalog.models.filter((model) => model.lifecycle !== 'retired' && model.producer && hasBrandAsset(model.producer)).map((model) => <option key={model.id} value={model.id}>{model.name}{model.hostedBy ? ` · ${model.hostedBy}` : ''}</option>)}
         </select></label><button type="button" disabled={!models[connection.id] || busy !== null} onClick={() => void action(connection.id, async () => {
           await testAiConnection(connection.id, models[connection.id]!); await reload(); setNotice('This model completed a real inference test. Building quality has not been benchmarked yet.');
         })}>Test inference</button><button type="button" disabled={!models[connection.id] || busy !== null} onClick={() => void action(connection.id, async () => {
@@ -93,7 +93,7 @@ export function AiConnectionsPanel() {
           const refreshed = await fetchAiModels(connection.id);
           if (refreshed.catalog) setCatalogs((previous) => ({ ...previous, [connection.id]: refreshed.catalog! }));
           await reload(); setNotice(result.message);
-        })}>Verify tool support</button><p className="ai-muted">These checks may use provider credits. A model list or a chat reply alone does not prove building tool support.</p></div>}
+        })}>Verify tool support</button>{catalog.models.find((model) => model.id === models[connection.id])?.producer && <div className="ai-provider-identity"><BrandMark brand={catalog.models.find((model) => model.id === models[connection.id])!.producer!} /><span>{catalog.models.find((model) => model.id === models[connection.id])!.name}</span></div>}<p className="ai-muted">These checks may use provider credits. A model list or a chat reply alone does not prove building tool support.</p></div>}
       </article>;
     })}</div>
   </div>;

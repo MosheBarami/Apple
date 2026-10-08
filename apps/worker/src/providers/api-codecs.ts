@@ -80,20 +80,27 @@ export function encodeApiRequest(providerId: AiProviderId, request: NormalizedRe
         ...(request.jsonSchema ? { output_config: { format: { type: 'json_schema', schema: request.jsonSchema } } } : {}) };
     }
     case 'gemini': {
-      const calls = new Map(request.messages.flatMap((message) => (message.toolCalls ?? []).map((call) => [call.id, call.name] as const)));
-      const contents = request.messages.filter((message) => message.role !== 'system').map((message) => {
+      const calls = new Map<string, { name: string; nativeId?: string }>();
+      const lastUser = request.messages.findLastIndex((message) => message.role === 'user');
+      const contents = request.messages.flatMap((message, index): Json[] => {
+        if (message.role === 'system') return [];
         const replay = replayFor(message);
-        if (replay && typeof replay === 'object' && Array.isArray(object(replay).parts)) return replay;
-        if (message.role === 'assistant' && message.toolCalls?.length) {
-          throw new Error('Gemini tool history requires its original signed replay state. Start a new run on this model.');
+        const nativeCalls = list(object(replay).parts).filter((part) => part.functionCall).map((part) => part.functionCall);
+        for (const [callIndex, call] of (message.toolCalls ?? []).entries()) calls.set(call.id, { name: call.name,
+          ...(typeof nativeCalls[callIndex]?.id === 'string' ? { nativeId: nativeCalls[callIndex].id } : {}) });
+        if (replay && typeof replay === 'object' && Array.isArray(object(replay).parts)) return [replay as Json];
+        if (message.role === 'assistant' && message.toolCalls?.length && index >= lastUser) {
+          throw new Error('Gemini current-turn tools require their original signed replay state. Start a new turn on this model.');
         }
-        return {
+        const call = message.toolCallId ? calls.get(message.toolCallId) : undefined;
+        if (message.role === 'tool' && !message.name && !call) throw new Error('Gemini tool result has no corresponding function call.');
+        return [{
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: message.role === 'tool' ? [{ functionResponse: { id: message.toolCallId,
-          name: message.name ?? calls.get(message.toolCallId ?? ''), response: { result: textContent(message) } } }]
+        parts: message.role === 'tool' ? [{ functionResponse: { ...(call?.nativeId ? { id: call.nativeId } : {}),
+          name: message.name ?? call?.name, response: { result: textContent(message) } } }]
           : [...(textContent(message) ? [{ text: textContent(message) }] : []),
-            ...(message.toolCalls ?? []).map((call) => ({ functionCall: { id: call.id, name: call.name, args: args(call) } }))],
-      }; });
+            ...(message.toolCalls ?? []).map((call) => ({ functionCall: { name: call.name, args: args(call) } }))],
+      }]; });
       return { contents, systemInstruction: { parts: [{ text: request.messages.filter((m) => m.role === 'system').map(textContent).join('\n') }] },
         generationConfig: { maxOutputTokens: request.maxTokens, temperature: request.temperature,
           ...(request.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: request.jsonSchema } : {}) },

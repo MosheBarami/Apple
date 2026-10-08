@@ -37,7 +37,7 @@ export async function runnerRequest(env: Env, path: string, method = 'GET', inpu
   const body = input === undefined ? '' : JSON.stringify(input);
   const headers = await signRunnerRequest(env.OPENCODE_RUNNER_SIGNING_KEY, method, path, body);
   return fetch(new URL(path, url), { method, headers: { ...headers, 'Content-Type': 'application/json' },
-    ...(body ? { body } : {}), redirect: 'error',
+    ...(body ? { body } : {}), redirect: 'manual',
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(125_000)]) : AbortSignal.timeout(125_000) });
 }
 const managedModel = (): AiModelRecord => ({ provider: 'cloudflare', producer: 'Z.AI', id: ENGINE_RELEASE.modelId,
@@ -76,6 +76,7 @@ export async function pinRunInference(env: Env, actorId: string, rawSelection: u
         if (!selection.autoRouting && model.id !== selection.modelId) continue;
         if (model.provider !== connection.view.provider) continue;
         pinned.candidates.push({ route: 'byok', model: structuredClone(model), connectionId: id,
+          connectionName: connection.view.name,
           connectionRevision: connection.view.revision, catalogVersion: catalog.version,
           available: !['invalid', 'unavailable'].includes(connection.view.status), privacy: 'unknown',
           ...(model.quality ? { measurements: model.quality } : {}) });

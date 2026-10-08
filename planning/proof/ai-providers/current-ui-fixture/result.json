@@ -1,0 +1,29 @@
+{
+  "scope": "current apps/www development UI with explicit API fixtures; no live inference or Studio build acceptance",
+  "routes": [
+    "StudPilot V1.0",
+    "OpenCode Free",
+    "Bring Your Own Key"
+  ],
+  "observed": {
+    "selectedModel": "@cf/openai/gpt-oss-20b",
+    "provider": "cloudflare",
+    "manufacturer": "OpenAI",
+    "modelOptionsFocusAfterClose": true,
+    "mobileViewport": [
+      390,
+      844
+    ],
+    "mobileHorizontalOverflow": false,
+    "logosLoaded": true,
+    "fakeKeyFieldClearedAfterSubmission": true,
+    "freeUnavailableMessage": true
+  },
+  "captures": [
+    "byok-desktop.jpg",
+    "byok-mobile.jpg",
+    "free-unavailable-mobile.jpg",
+    "connections-desktop.jpg",
+    "connections-mobile.jpg"
+  ]
+}

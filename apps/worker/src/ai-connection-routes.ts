@@ -92,6 +92,7 @@ aiConnectionRoutes.post('/connections/:id/models/refresh', async (c) => {
     await updateAiConnectionCheck(c.env, owner, id, connection.view.revision,
       error instanceof ApiInvocationError && error.code === 'auth' ? 'invalid' : 'unavailable');
     return c.json({ error: error instanceof ApiInvocationError ? error.code : 'catalog_unavailable',
+      ...(error instanceof ApiInvocationError ? { providerStatus: error.status ?? null } : {}),
       message: error instanceof ApiInvocationError ? error.message : 'The provider model catalog could not be loaded.' }, 422);
   }
 });

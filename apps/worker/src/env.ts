@@ -128,6 +128,7 @@ export interface Env {
   /** Independent rollout/rollback switches; missing values keep new inference disabled. */
   AI_BYOK_ENABLED?: string;
   AI_OPENCODE_ENABLED?: string;
+  AI_STUDIO_ROUTES_ENABLED?: string;
   /** Authenticated service origin and independent signing key for the OpenCode CLI runner. */
   OPENCODE_RUNNER_URL?: string;
   OPENCODE_RUNNER_SIGNING_KEY?: string;

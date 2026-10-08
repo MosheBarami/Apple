@@ -168,6 +168,39 @@ test('catalog pagination pins complete results and refuses repeated cursors', as
     Response.json({ data: [{ id: 'first' }], has_more: true, last_id: 'same-cursor' }) }), /pagination repeated/);
 });
 
+test('Gemini validates current-turn replay without inventing signatures or function ids for past turns', () => {
+  const call = { id: 'synthetic-one', name: 'set_properties', arguments: '{"name":"Door"}' };
+  const replay = { role: 'model', parts: [{ functionCall: { name: call.name, args: { name: 'Door' } }, thoughtSignature: 'fixture-signature' }] };
+  const assistant = { role: 'assistant', content: '', toolCalls: [call], providerReplay: { provider: 'google', modelId: 'fixture-model', content: replay } };
+  const tool = { role: 'tool', content: 'OK', toolCallId: call.id };
+  const current = A.encodeApiRequest('google', { ...request, messages: [...request.messages, assistant, tool] });
+  assert.deepEqual(current.contents[1], replay);
+  assert.equal('id' in current.contents[2].parts[0].functionResponse, false, 'a synthetic internal id never becomes a native Gemini id');
+  const { providerReplay: _, ...withoutReplay } = assistant;
+  assert.throws(() => A.encodeApiRequest('google', { ...request, messages: [...request.messages, withoutReplay, tool] }), /current-turn/);
+  const next = A.encodeApiRequest('google', { ...request, messages: [...request.messages, withoutReplay, tool,
+    { role: 'user', content: 'Make another change.' }] });
+  assert.equal(next.contents[1].parts[0].functionCall.name, call.name);
+  assert.equal(JSON.stringify(next).includes('skip_thought_signature_validator'), false);
+});
+
+test('a successful provider response cannot echo a stored key into a stream callback or return value', async () => {
+  let published = '';
+  await assert.rejects(A.invokeApi('groq', { apiKey: 'echo-only' }, request, { onText: (text) => { published += text; }, stream: false,
+    fetcher: async () => Response.json({ choices: [{ finish_reason: 'stop', message: { content: 'echo-only' } }], usage: chat.usage }) }),
+    (error) => error.code === 'invalid_response' && !error.message.includes('echo-only'));
+  assert.equal(published, '');
+});
+
+test('a 200 response with tool-shaped content and no completion marker cannot execute or publish it', async () => {
+  let published = '';
+  await assert.rejects(A.invokeApi('groq', { apiKey: 'fixture-only' }, request, { onText: (text) => { published += text; }, stream: false,
+    fetcher: async () => Response.json({ choices: [{ message: { content: 'Plausible reply', tool_calls: [{ id: 'c1', type: 'function',
+      function: { name: 'set_properties', arguments: '{"name":"Door"}' } }] } }], usage: chat.usage }) }),
+    (error) => error.code === 'invalid_response');
+  assert.equal(published, '');
+});
+
 test('Cloudflare API names are distinct from its internal UUID; HF host capabilities stay explicitly pinned', () => {
   const [cf] = A.normalizeApiModels('cloudflare', [{ id: 'internal-uuid', name: '@cf/openai/gpt-oss-20b',
     task: { name: 'Text Generation' }, properties: [{ property_id: 'context_window', value: '131072' },
@@ -190,9 +223,11 @@ test('credentials never go into URLs; wrong origins and redirects fail closed', 
   await assert.rejects(A.checkedApiFetch('openai', 'http://127.0.0.1', credentials, {}, async () => { calls++; }), /origin mismatch/);
   assert.equal(calls, 0);
   await assert.rejects(A.checkedApiFetch('openai', 'https://api.openai.com/v1/models', credentials, {}, async (_, options) => {
-    assert.equal(options.redirect, 'error'); assert.equal(options.headers.Authorization, 'Bearer private-api-key');
+    assert.equal(options.redirect, 'manual'); assert.equal(options.headers.Authorization, 'Bearer private-api-key');
     throw new Error('redirect to http://127.0.0.1 with private-api-key');
   }), (error) => error.code === 'unavailable' && !error.message.includes('private-api-key'));
+  await assert.rejects(A.checkedApiFetch('openai', 'https://api.openai.com/v1/models', credentials, {}, async () =>
+    new Response(null, { status: 302, headers: { Location: 'https://unreviewed.example/' } })), (error) => error.code === 'blocked');
 });
 
 test('auth, rate limit and quota errors have bounded Retry-After and never trigger a paid retry', async () => {

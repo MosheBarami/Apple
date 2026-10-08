@@ -120,11 +120,28 @@ jobs:
   typecheck-and-test:
     # The one name the branch ruleset requires (.github/rulesets/main.json): green only when every shard is.
     name: Typecheck and tests
-    needs: tests
+    needs: [tests, current-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: test "${{ needs.tests.result }}" = success
+      - run: test "${{ needs.tests.result }}" = success && test "${{ needs.current-frontend.result }}" = success
+
+  current-frontend:
+    name: Current frontend AI integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.32.1'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install the isolated frontend lockfile
+        run: pnpm --dir apps/www install --frozen-lockfile --ignore-workspace
+      - name: Verify and build the current frontend
+        run: pnpm --dir apps/www typecheck && pnpm --dir apps/www build
 
   plugin:
     name: Build and verify the Studio plugin (apps/studpilot-plugin)

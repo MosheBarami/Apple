@@ -122,8 +122,7 @@ test('Credits: a message is admitted only with Credits left, and each settled re
   const check = app.indexOf('GATE.canSpend(projectId)');
   assert.ok(check > 0 && check < app.indexOf('createAgentRouter(StudPilot)'), 'the Credit check runs at the route, before Flue');
   assert.match(app, /if \(!spend\.ok\) return c\.json\(\{ error: spend\.message \}, 402\);/);
-  const agent = read('../src/agents/studpilot.ts');
-  assert.match(agent, /useResponseFinish\(\(\{ response \}\) => \{[^]*GATE\.chargeUsage\(projectId, MODEL,/);
+  // The managed/private response charging behavior is executed by inference-bridge.test.mjs.
   const index = read('../../worker/src/index.ts');
   const charge = index.slice(index.indexOf('async chargeUsage('), index.indexOf('async releaseModel('));
   assert.match(charge, /const owner = await studioGrantOwner\(this\.env, projectId\);/, 'the owner charged is the one the grant names');

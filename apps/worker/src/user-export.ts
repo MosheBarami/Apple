@@ -383,6 +383,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'do', binding: 'SESSION_DO', name: 'messages', personal: true, holds: 'THE CONVERSATION — every message, in full, with its tool trace' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_models', personal: true, holds: 'which model each conversation message ran on: a StudPilot product model, or the catalogue id of a run on the customer\u2019s own key' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_inference', personal: true, holds: 'the selected AI route and operational routing decisions for each build; no raw credentials' },
+  { store: 'do', binding: 'SESSION_DO', name: 'studio_inference', personal: true, holds: 'pinned model routes, measured usage and private native replay for current Studio agent runs; expires after one hour; erased with the project' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_revisions', personal: true, holds: 'earlier versions of a message the person edited and re-sent' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoints', personal: true, holds: 'snapshots of the place, with who took them' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoint_chunks', personal: true, holds: 'the bytes of those snapshots' },
