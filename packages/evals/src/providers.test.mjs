@@ -325,10 +325,11 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
   }
 });
 
-test('every StudPilot product route still uses the Workers AI adapter', () => {
-  for (const modelId of [P.STUDPILOT_MODEL_ID, P.VISION_MODEL_ID]) {
+test('every registered legacy and managed model still uses the Workers AI adapter', () => {
+  for (const modelId of [P.STUDPILOT_MODEL_ID, MEMORY_MODEL_ID]) {
     assert.equal(P.adapterForModelId(modelId).id, 'workers-ai', `${modelId} must use Workers AI`);
   }
+  assert.equal(P.VISION_MODEL_ID, undefined, 'the removed vision lane must not reappear');
   // Explicit provider identity is now required for newly introduced models (owner, 2026-10-08).
   assert.throws(() => P.adapterForModelId('@cf/some/future-model'), /Unknown platform model/);
 });
