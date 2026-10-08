@@ -2,8 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const surfaceSrc = read('../../worker/src/studio-surface.ts');
@@ -147,7 +149,7 @@ test('the studio app wears the owner\'s violet, not Kumo\'s azure or Cloudflare\
   assert.match(read('../src/ui/main.tsx'), /setAttribute\('data-mode'/);
 });
 
-test('GLM runs at the product loop\'s settings (low reasoning effort, temperature 0.25, 6,500 tokens) unless the caller sets them', () => {
+test('GLM runs at the product loop\'s settings (low reasoning effort, temperature 0.25, 6,500 tokens) unless the caller sets them', async () => {
   const app = read('../src/app.ts');
   const run = app.slice(app.indexOf('async function meteredRun('), app.indexOf('const metered = new Proxy('));
   assert.ok(run.indexOf('withAgentDefaults(') >= 0 && run.indexOf('withAgentDefaults(') < run.indexOf('GATE.reserveModel('), 'the defaults are applied before the reservation is sized');
@@ -156,8 +158,17 @@ test('GLM runs at the product loop\'s settings (low reasoning effort, temperatur
   assert.match(fn, /temperature: inputs\.temperature \?\? 0\.25/);
   assert.match(fn, /max_tokens: 6500/);
   assert.match(fn, /Math\.min\(n, 6500\)/, "Flue's own max_completion_tokens is capped too, so a step fits the step cap");
-  const gateway = read('../../worker/src/gateway.ts');
-  assert.match(gateway, /agent: \{ id: '@cf\/zai-org\/glm-5\.3-flash'[^}]*maxTokens: 6500[^}]*temperature: 0\.25, reasoningEffort: 'low'/, 'the same settings as the product loop');
+  const directory = mkdtempSync(join(tmpdir(), 'ai-studio-engine-contract-'));
+  try {
+    const worker = fileURLToPath(new URL('../../worker/', import.meta.url));
+    const output = join(directory, 'gateway.mjs');
+    execFileSync(join(worker, 'node_modules/.bin/esbuild'), [join(worker, 'src/gateway.ts'),
+      '--bundle', '--format=esm', `--outfile=${output}`], { stdio: 'pipe' });
+    const { getModels } = await import(pathToFileURL(output).href);
+    const { agent } = await getModels({ KV: { get: async () => null } });
+    assert.equal(agent.id, '@cf/zai-org/glm-5.3-flash');
+    assert.equal(agent.maxTokens, 6500); assert.equal(agent.temperature, 0.25); assert.equal(agent.reasoningEffort, 'low');
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test('the builder builds only with blocks: no raw instance, property or hand-drawn object tool; the planner plans in block ids', () => {

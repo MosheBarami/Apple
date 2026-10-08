@@ -2,8 +2,8 @@
 
 Branch: `codex/ai-provider-integration`; worktree:
 `/Users/moshe/.codex/worktrees/ai-provider-integration/StudPilot`.
-Groundwork commit `ae4cca51` is based on GitHub main `209650f4`; newer integration/UI changes
-are in the worktree and are not deployed. The shared local main and its unrelated edits remain intact.
+Integration is rebased onto GitHub main `8969fc07` and saved in draft PR #138.
+No production deployment is claimed. The shared local main and its unrelated edits remain intact.
 
 ## Implemented so far
 
@@ -35,18 +35,24 @@ are in the worktree and are not deployed. The shared local main and its unrelate
   This is local API proof, not website/Studio/deployment proof. Published-rate token estimate is below $0.001.
 - Real isolated OpenCode inference returned 403 FreeTierError. Official hosted terms prohibit public third-party
   service use without further permission. No bypass, identity spoofing or service credential deployment occurred.
-- Full local worker suite: 5,378 pass, 5 skip, 0 fail; web: 2,747 pass, 0 fail; root: 716 pass, 0 fail.
-  These preceded the latest rollout/security changes. Fresh 88 focused security/protocol/session tests
-  and 32 runner/matrix tests passed after those changes; worker type checking passed.
+- Integrated local worker suite: 5,384 pass, 5 skip, 0 fail; web: 2,747 pass, 0 fail.
+  Worker/shared/web type checking and web production build passed. Latest protocol suite: 24 pass,
+  including pagination, signed thinking replay and three native stream protocols. Runner/matrix: 32 pass.
+  Root suite previously measured 716 pass; current root rename-guard regression passed separately.
+- First GitHub run passed all four worker shards, web integration, runner contracts and plugin artifact.
+  It found a legacy Studio source-expression pin, eight official third-party icon URL name hits,
+  and one undeclared fabricated credential test value. Repairs use executed engine configuration,
+  exact-count third-party provenance allowance and an exact path/value hash declaration. Local guards pass;
+  fresh GitHub checks are required for the repair commit.
 - Disk reached 116 MB free during editing. Removed only 71 generated temporary test directories containing
   this task's exclusive code (875 MB); free space then measured 1.5 GiB. No unrelated cache/source/data was removed.
 
 ## Outstanding
 
-Rebase on current main, run integrated checks/build, review the complete diff, prepare and attach a draft PR.
+Run repaired GitHub checks, finish authenticated website runtime and evaluate the Studio build path.
 HTTP connection actions, late key replacement, rollback, persisted Retry-After and private admin-run boundaries
-are now executed contract tests. The five UI screenshots were inspected. Pagination/replay coverage and
-actual process/container lifecycle proof still need broadening.
+are now executed contract tests. The five UI screenshots were inspected. Native replay and pagination
+are tested; actual process/container lifecycle proof remains outstanding.
 
 Further source gaps: task-quality samples are not yet populated by a live StudPilot matrix; public-use OpenCode
 permission and isolated runtime proof are absent; runner container lifecycle remains unverified;

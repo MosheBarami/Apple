@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const worker = fileURLToPath(new URL('..', import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), 'api-adapters-'));
 const entry = join(dir, 'entry.ts');
-writeFileSync(entry, ['api-registry', 'api-codecs', 'api-stream', 'api-transport'].map((name) =>
+writeFileSync(entry, ['api-registry', 'api-codecs', 'api-stream', 'api-transport', 'api-catalog'].map((name) =>
   `export * from ${JSON.stringify(join(worker, 'src/providers', name + '.ts'))};`).join('\n'));
 execFileSync(join(worker, 'node_modules/.bin/esbuild'), [entry, '--bundle', '--format=esm', `--outfile=${join(dir, 'adapters.mjs')}`], { stdio: 'pipe' });
 const A = await import(`file://${join(dir, 'adapters.mjs')}`);
@@ -115,6 +115,70 @@ test('Responses streaming needs a semantic terminal event and retains replay sta
   const events = [{ type: 'response.output_text.delta', delta: 'OK' }, { type: 'response.completed', response: result }];
   const raw = await A.collectApiStream(bytes(sse(events, false)), 'responses', (text) => { streamed += text; });
   assert.equal(streamed, 'OK'); assert.deepEqual(raw, result);
+});
+
+test('Anthropic SSE retains signed thinking and native tool input for the next turn without publishing thoughts', async () => {
+  const events = [
+    { type: 'message_start', message: { role: 'assistant', usage: { input_tokens: 12 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'private thought' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'fixture-signature' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'c1', name: 'set_properties', input: {} } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"name":"Door"}' } },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 8 } },
+    { type: 'message_stop' },
+  ];
+  let published = '';
+  const result = A.decodeApiResponse('anthropic', 'fixture-model', await A.collectApiStream(bytes(sse(events, false)), 'anthropic', (t) => { published += t; }));
+  assert.equal(result.finishReason, 'tool_calls'); assert.equal(result.toolCalls[0].arguments, '{"name":"Door"}'); assert.equal(published, '');
+  const replay = A.encodeApiRequest('anthropic', { ...request, messages: [...request.messages,
+    { role: 'assistant', content: '', toolCalls: result.toolCalls, providerReplay: { provider: 'anthropic', modelId: 'fixture-model', content: result.replay } }] });
+  assert.equal(replay.messages[1].content[0].signature, 'fixture-signature');
+  const switched = A.encodeApiRequest('groq', { ...request, messages: [{ role: 'assistant', content: 'OK',
+    providerReplay: { provider: 'anthropic', modelId: 'fixture-model', content: result.replay } }] });
+  assert.equal(JSON.stringify(switched).includes('private thought'), false);
+});
+
+test('Gemini and Cohere streams normalize tools, usage and completion by their own event semantics', async () => {
+  const gemini = [{ candidates: [{ content: { parts: [{ thought: true, text: 'private thought' }] } }] },
+    { candidates: [{ finishReason: 'STOP', content: { parts: [{ functionCall: { name: 'set_properties', args: { name: 'Door' } }, thoughtSignature: 'fixture-signature' }] } }],
+      usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8 } }];
+  const cohere = [{ type: 'message-start', id: 'fixture' },
+    { type: 'tool-call-start', index: 0, delta: { message: { tool_calls: { id: 'c1', type: 'function', function: { name: 'set_properties', arguments: '' } } } } },
+    { type: 'tool-call-delta', index: 0, delta: { message: { tool_calls: { function: { arguments: '{"name":"Door"}' } } } } },
+    { type: 'message-end', delta: { finish_reason: 'TOOL_CALL', usage: { tokens: { input_tokens: 12, output_tokens: 8 } } } }];
+  for (const [provider, protocol, events] of [['google', 'gemini', gemini], ['cohere', 'cohere', cohere]]) {
+    let published = '';
+    const result = A.decodeApiResponse(provider, 'fixture-model', await A.collectApiStream(bytes(sse(events, false)), protocol, (t) => { published += t; }));
+    assert.equal(result.finishReason, 'tool_calls'); assert.equal(result.toolCalls[0].arguments, '{"name":"Door"}');
+    assert.equal(result.usage.inputTokens, 12); assert.equal(result.usage.outputTokens, 8); assert.equal(published, '');
+    await assert.rejects(A.collectApiStream(bytes(sse(events.slice(0, -1), false)), protocol), /completion marker/);
+  }
+});
+
+test('catalog pagination pins complete results and refuses repeated cursors', async () => {
+  let calls = 0;
+  const catalog = await A.discoverApiModels('anthropic', { apiKey: 'fixture-only' }, { fetcher: async (url) => {
+    calls++; if (calls === 1) return Response.json({ data: [{ id: 'first', display_name: 'First' }], has_more: true, last_id: 'cursor-one' });
+    assert.equal(new URL(url).searchParams.get('after_id'), 'cursor-one');
+    return Response.json({ data: [{ id: 'second', display_name: 'Second' }], has_more: false });
+  } });
+  assert.deepEqual(catalog.models.map((m) => m.id), ['first', 'second']); assert.equal(catalog.models[0].contextWindow, null);
+  await assert.rejects(A.discoverApiModels('anthropic', { apiKey: 'fixture-only' }, { fetcher: async () =>
+    Response.json({ data: [{ id: 'first' }], has_more: true, last_id: 'same-cursor' }) }), /pagination repeated/);
+});
+
+test('Cloudflare API names are distinct from its internal UUID; HF host capabilities stay explicitly pinned', () => {
+  const [cf] = A.normalizeApiModels('cloudflare', [{ id: 'internal-uuid', name: '@cf/openai/gpt-oss-20b',
+    task: { name: 'Text Generation' }, properties: [{ property_id: 'context_window', value: '131072' },
+      { property_id: 'function_calling', value: 'true' }, { property_id: 'price', value: [{ unit: 'per M input tokens', currency: 'USD', price: 0.2 }] }] }], '2026-10-08');
+  assert.equal(cf.id, '@cf/openai/gpt-oss-20b'); assert.equal(cf.producer, 'OpenAI'); assert.equal(cf.contextWindow, 131072);
+  assert.equal(cf.inputCostPer1M, 0.2); assert.equal(cf.outputCostPer1M, null);
+  const [hf] = A.normalizeApiModels('huggingface', [{ id: 'exact/published-model', owned_by: 'published-maker',
+    architecture: { output_modalities: ['text'] }, providers: [{ provider: 'verified-host', status: 'live', context_length: 32000,
+      supports_tools: true, pricing: { input: 0.1, output: 0.2 } }] }], '2026-10-08');
+  assert.equal(hf.id, 'exact/published-model:verified-host'); assert.equal(hf.hostedBy, 'verified-host');
+  assert.equal(hf.producer, 'published-maker'); assert.equal(hf.capabilities.tools, true); assert.equal(hf.contextWindow, 32000);
 });
 
 test('credentials never go into URLs; wrong origins and redirects fail closed', async () => {
