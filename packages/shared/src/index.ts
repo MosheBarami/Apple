@@ -29,6 +29,7 @@ export type PropValue =
   | { t: 'BrickColor'; v: string }
   | { t: 'Content'; v: string } // rbxassetid://...
   | { t: 'Instance'; v: string } // path reference
+  | { t: 'Font'; v: [string, string?, string?] } // FontFace: built-in family, FontWeight name, FontStyle name
   | { t: 'nil' };
 
 export interface InstanceSpec {
@@ -42,6 +43,8 @@ export interface InstanceSpec {
 
 /** Device frames ui_layout_check lays a screen out in (phones and tablets also get the touch-target check). */
 export type UiLayoutDevice = 'phone_portrait' | 'phone_landscape' | 'tablet' | 'desktop' | 'console_tv';
+/** Screen sizes measure_ui lays a screen out at (build_ui's check); tablet and phones are touch screens. */
+export type UiViewport = 'desktop' | 'laptop' | 'tablet' | 'phone_landscape' | 'phone_portrait';
 /** How set_props_bulk adjusts a number or Vector3 property. Named, not inlined, because an inline `op: '…'` would read as a StudioOp. */
 export type BulkAdjustOp = 'add' | 'mul';
 
@@ -242,6 +245,8 @@ export type StudioOp =
       displayName?: string;
     }
   | { op: 'ui_layout_check'; screen: string; devices?: UiLayoutDevice[] }
+  /** build_ui's check: lays a ScreenGui out at each viewport (a temporary copy in CoreGui) and lists defects. Read-only. */
+  | { op: 'measure_ui'; screen: string; viewports?: UiViewport[] }
   /** play_check plus presses (F-050): each `press` path is a GuiButton inside a ScreenGui in StarterGui. */
   | { op: 'play_check_ui'; seconds?: number; touch?: string[]; press: string[] }
   | { op: 'preview_sound'; soundId: string; volume?: number } // D-FXLIB-1: plays a library sound in Studio only
@@ -936,6 +941,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'spatial_query':
     case 'read_terrain':
     case 'check_ui_layout':
+    case 'check_ui':
       return 'inspecting';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'

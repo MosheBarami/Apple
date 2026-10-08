@@ -124,8 +124,10 @@ import { applySurfaceOp, type SurfaceKind } from './surfaces';
 import { recordToolCall, type EvidenceLedger, type ToolRecord } from './evidence-ledger';
 import {
   searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
-  createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
+  createRig, checkUiLayout, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
 } from './phase-a-tools';
+// Rebuild 2026-10-08: the UI engine. The model designs the screen; the engine builds it correctly and measures it.
+import { buildUi, checkUi } from './ui-engine';
 
 // Every supplied gameplay genre is available, including horror.
 const AVAILABLE_KIT_IDS = GENRE_KIT_IDS;
@@ -5911,15 +5913,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['ui_layout_check'],
     run: (ctx, a) => checkUiLayout.run(studioCall(ctx), a),
   },
+  // Rebuild 2026-10-08 (ui-engine.ts): replaces the retired theme builder (D-UIONLY-1) under the same name.
   build_ui: {
     def: buildUi.def,
     studio: true,
-    studioOps: ['query_instances', 'create_instances', 'ui_layout_check'],
+    studioOps: ['query_instances', 'delete_instances', 'create_instances', 'measure_ui'],
     mutatesProject: (result) => !!result && typeof result === 'object' && typeof (result as Record<string, unknown>).built === 'string',
-    // Retired by D-UIONLY-1 (its screens were hand-styled Frames). Reverse: call buildUi.run again.
-    run: async () => ({
-      error: 'Refused (D-UIONLY-1): build_ui draws UI by hand and is retired. Insert each piece from the UI library with insert_ui_component({"component":"shop_window","genre":"<game genre>"}) (or currency_counter, main_menu, settings_window, ...). Nothing was sent to Studio.',
-    }),
+    run: (ctx, a) => buildUi.run(studioCall(ctx), a),
+  },
+  check_ui: {
+    def: checkUi.def,
+    studio: true,
+    studioOps: ['measure_ui'],
+    run: (ctx, a) => checkUi.run(studioCall(ctx), a),
   },
   // D-FXLIB-1: the sound and effect library (fx-library.ts). Registered one by one, like the rest.
   find_sound: {
