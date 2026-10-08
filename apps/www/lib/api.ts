@@ -103,6 +103,26 @@ export async function connectStudio(projectId: string, pickId?: string): Promise
   return body as ConnectResult;
 }
 
+/** Whether a Roblox account is linked to this StudPilot account (Connect matches the Studio signed into it). */
+export async function robloxLink(): Promise<{ linked: boolean; username: string | null } | null> {
+  const res = await fetch("/api/roblox/link", { headers: await authHeaders(), signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  if (!res?.ok) return null;
+  return (await res.json()) as { linked: boolean; username: string | null };
+}
+
+/** Where to send the browser to link a Roblox account; it comes back to `returnTo` with ?roblox=linked. */
+export async function robloxLinkUrl(returnTo: string): Promise<string> {
+  const res = await fetch("/api/roblox/link-ticket", {
+    method: "POST",
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+    body: JSON.stringify({ returnTo }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const body = (await res.json().catch(() => ({}))) as { url?: string };
+  if (!res.ok || !body.url) throw new Error("Could not start linking your Roblox account. Please try again.");
+  return body.url;
+}
+
 /** Disconnect Studio from this project; it will not reconnect by itself until Connect is pressed again. */
 export async function disconnectStudio(projectId: string): Promise<void> {
   const res = await fetch(`/api/projects/${projectId}/studio/disconnect`, {

@@ -5,7 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
-import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
+import { allowedReturn, checkRobloxGrants, ensureRobloxOAuthTables, describeGrantCheck, describeRobloxConnection, disconnectRoblox, LINK_TICKET_PREFIX, randomToken, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { STUDIO_TOOLS } from './studio-surface';
@@ -2338,6 +2338,30 @@ async function foreignRobloxIds(env: Env, userId: string, ids: string[]): Promis
  * address (a school, a family) never binds somebody else's Studio. One candidate binds at once; several come back for the
  * person to pick (`pickId`, re-checked against the same rule by the object); none answers `waiting`, and the web asks again.
  */
+/**
+ * LINK A ROBLOX ACCOUNT (for Connect). Studio and the browser often reach us from different addresses (a phone hotspot, a
+ * carrier's address pool), so matching by address alone fails. The Roblox account signed into Studio is what Connect matches
+ * on, once the person has told us which one is theirs: this mints a one-time ticket the browser carries to Roblox's sign-in
+ * (/auth/roblox/start?link=…), which links the account and comes back to `returnTo`.
+ */
+app.post('/api/roblox/link-ticket', async (c) => {
+  const user = await verifyJwt(c.env, (c.req.header('Authorization') ?? '').replace(/^Bearer /, ''));
+  if (!user) return c.json({ error: 'unauthorized' }, 401);
+  const body = await c.req.json<{ returnTo?: unknown }>().catch(() => null);
+  const ticket = randomToken(32);
+  await c.env.KV.put(LINK_TICKET_PREFIX + ticket, JSON.stringify({ userId: user.userId, returnTo: allowedReturn(body?.returnTo) }), { expirationTtl: 300 });
+  return c.json({ url: `/auth/roblox/start?link=${ticket}` });
+});
+
+/** Whether this account has a Roblox account linked, and which (for Connect and Settings). */
+app.get('/api/roblox/link', async (c) => {
+  const user = await verifyJwt(c.env, (c.req.header('Authorization') ?? '').replace(/^Bearer /, ''));
+  if (!user) return c.json({ error: 'unauthorized' }, 401);
+  await ensureRobloxOAuthTables(c.env).catch(() => undefined);
+  const row = await c.env.CORPUS.prepare('select username from roblox_identities where user_id = ? limit 1').bind(user.userId).first<{ username: string }>().catch(() => null);
+  return c.json({ linked: !!row, username: row?.username ?? null });
+});
+
 app.post('/api/projects/:id/connect', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);

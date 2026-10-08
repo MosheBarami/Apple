@@ -3657,3 +3657,44 @@ test('EVERY REFRESH THE CHECK MAKES IS GIVEN THE CLOCK OF THAT MOMENT: a grant r
   s.db.close();
   t.db.close();
 });
+
+// LINKING (Connect, 2026-10-08): a signed-in person links the Roblox account they use in Studio, through the same callback.
+async function linkFlow(env, userId, returnTo = '/app/projects/fe440692-b64a-4f1b-9f45-b12237ed4a91') {
+  const ticket = rand(24);
+  await env.KV.put(`roblox-link-ticket:${ticket}`, JSON.stringify({ userId, returnTo }));
+  const ip = freshIp();
+  const res = await hit(`${PROD}/auth/roblox/start?link=${ticket}`, { headers: { 'CF-Connecting-IP': ip } }, env);
+  const auth = new URL(res.headers.get('Location') ?? '', PROD);
+  const cookie = (res.headers.getSetCookie().find((c) => c.startsWith(`${STATE_C}=`)) ?? '').split(';')[0];
+  return { res, ticket, flow: { origin: PROD, ip, cookie, state: auth.searchParams.get('state'), challenge: auth.searchParams.get('code_challenge'), redirectUri: auth.searchParams.get('redirect_uri') } };
+}
+
+test('LINKING: a ticket links the Roblox account to the signed-in account, signs nobody in, and returns to the project with ?roblox=linked', async () => {
+  const t = scene();
+  const { flow, ticket } = await linkFlow(t.env, 'user-link-1');
+  assert.equal(await t.env.KV.get(`roblox-link-ticket:${ticket}`), null, 'the ticket is one-time');
+  const { res } = await finish(t.env, t.world, flow, { sub: '424242', username: 'builder' });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('Location'), '/app/projects/fe440692-b64a-4f1b-9f45-b12237ed4a91?roblox=linked');
+  assert.equal(userIdOf(t.db, '424242'), 'user-link-1');
+  assert.equal(kvHandles(t.env).length, 0, 'no sign-in handle is made');
+  t.db.close();
+});
+
+test('LINKING: a used or unknown ticket is refused, never treated as a sign-in', async () => {
+  const t = scene();
+  const res = await hit(`${PROD}/auth/roblox/start?link=${rand(24)}`, { headers: { 'CF-Connecting-IP': freshIp() } }, t.env);
+  assert.equal(res.status, 400);
+  t.db.close();
+});
+
+test('LINKING: a Roblox account already linked to someone else is refused and stays theirs', async () => {
+  const t = scene();
+  const first = await linkFlow(t.env, 'user-a');
+  await finish(t.env, t.world, first.flow, { sub: '777', username: 'owner' });
+  const second = await linkFlow(t.env, 'user-b');
+  const { res } = await finish(t.env, t.world, second.flow, { sub: '777', username: 'owner' });
+  assert.equal(res.status, 409);
+  assert.equal(userIdOf(t.db, '777'), 'user-a');
+  t.db.close();
+});
