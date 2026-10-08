@@ -288,7 +288,7 @@ showSources(false, nil)
 -- Footer: the version, and the credit the Resurface License §1 requires (THIRD_PARTY_NOTICES.md).
 local footer = label(11, true, false)
 footer.LayoutOrder = 100
-footer.Text = "StudPilot Studio · 1.5.0 · Classic studs by Resurface (cxmeel)"
+footer.Text = "StudPilot Studio · 2.0.0 · Classic studs by Resurface (cxmeel)"
 
 local function paint()
 	for _, apply in themed do pcall(apply) end
@@ -362,7 +362,7 @@ bridge = Bridge.new({
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.5.0",
+			selectionCount = #Selection:Get(), pluginVersion = "2.0.0",
 		}
 	end,
 	onStatus = function(_message: string)

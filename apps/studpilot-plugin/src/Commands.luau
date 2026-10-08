@@ -2251,6 +2251,32 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	-- plugin cannot encode is left out and named in coverageNotes; it does not fail the checkpoint.
 	local captureSet = (if PERMS.mod ~= nil then PERMS.mod.captureList(className) else nil) or (if held then {} else READ_PROPERTIES)
 	local props, propIssues = captureProperties(self.game, inst, captureSet, true)
+	-- A recreated object starts from Instance.new's defaults, so a value equal to the default carries
+	-- nothing and is left out (it keeps a large place's checkpoint inside one HTTP result). A protected
+	-- identity (a service, a StarterPlayer container) is written back in place, so it keeps every value.
+	if not (isService or isProtectedContainer) and PERMS.mod ~= nil then
+		local defaults = state.defaults[className]
+		if defaults == nil then
+			defaults = false
+			local fresh = makeInstance(self.options, className)
+			if fresh then
+				defaults = (captureProperties(self.game, fresh, captureSet, true))
+				pcall(function() fresh:Destroy() end)
+			end
+			state.defaults[className] = defaults
+		end
+		local function same(a: any, b: any): boolean
+			if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+			for key, value in a do if not same(value, b[key]) then return false end end
+			for key in b do if a[key] == nil then return false end end
+			return true
+		end
+		if defaults then
+			for property, typed in props do
+				if same(typed, defaults[property]) then props[property] = nil end
+			end
+		end
+	end
 	for _, issue in propIssues do
 		local note = className .. ": " .. issue
 		if state.notes[note] == nil and state.noteCount < 40 then state.noteCount += 1; state.notes[note] = 0 end
@@ -3832,6 +3858,7 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 		heldCount = 0,
 		notes = {},
 		noteCount = 0,
+		defaults = {},
 	}
 	local node, nodeErr
 	if root == self.game then
@@ -4915,6 +4942,10 @@ function OP_FAMILIES.api(): any
 		partsUnder = partsUnder, parentOf = parentOf, validateCreateItems = validateCreateItems, buildSpec = buildSpec,
 		handlers = HANDLERS, createClasses = CREATE_CLASSES, propertyAllow = PROPERTY_ALLOW, readProperties = READ_PROPERTIES,
 		contentProperty = CONTENT_PROPERTY, scriptClasses = SCRIPT_CLASSES, readServices = READ_SERVICES, writeServices = WRITE_SERVICES,
+		-- 2.0: the permission model, script source reads/writes and the written-source refusal (ops/Serialize, ops/Search).
+		permissions = function() return PERMS.mod end,
+		scriptSource = function(self: any, inst: any): string? return (scriptSourceWithin(self.editor, inst, "script source")) end,
+		sourceDanger = sourceDanger, sourceWrite = sourceWrite, hashSource = hashSource,
 		limits = {
 			items = MAX_ITEMS, createNodes = MAX_CREATE_NODES, terrainVoxels = MAX_TERRAIN_VOXELS, terrainResolution = TERRAIN_RESOLUTION,
 			translation = MAX_TRANSLATION, path = MAX_PATH, name = MAX_NAME, text = MAX_TEXT, props = MAX_PROPS, affectedParts = MAX_AFFECTED_PARTS,

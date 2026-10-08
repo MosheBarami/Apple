@@ -85,6 +85,19 @@ export type StudioOp =
       baseHash?: string;
     }
   | { op: 'search_scripts'; query: string; root?: string; maxResults?: number }
+  /**
+   * Plugin 2.0 (src/ops/Search.luau). `grep`: text (or a Lua pattern) over script sources with context
+   * lines and slash path globs ("ServerScriptService/**"). `glob`: instance paths matching a slash glob
+   * ("Workspace/**\/Door*"), optionally one class (IsA). `list`: one instance's children with counts.
+   */
+  | { op: 'grep'; query: string; pattern?: boolean; caseSensitive?: boolean; context?: number; include?: string | string[]; exclude?: string | string[]; maxResults?: number }
+  | { op: 'glob'; pattern: string; className?: string; caseSensitive?: boolean; maxResults?: number }
+  | { op: 'list'; path?: string; maxResults?: number }
+  /** Plugin 2.0 (src/ops/Serialize.luau): a subtree as JSON with every plugin-writable property, and back. */
+  | { op: 'serialize'; path: string; maxDepth?: number; maxNodes?: number; includeSource?: boolean }
+  | { op: 'deserialize'; parent: string; node?: unknown; nodes?: unknown[] }
+  /** Plugin 2.0 (src/ops/Tests.luau): the place's TestEZ *.spec modules, run in a solo Test session. */
+  | { op: 'run_tests'; roots?: string[]; timeoutSeconds?: number }
   | { op: 'create_instances'; items: InstanceSpec[] }
   | { op: 'set_props'; path: string; props?: Record<string, PropValue>; attributes?: Record<string, PropValue> }
   | {
