@@ -12,8 +12,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     <TooltipProvider>
       <ProjectsProvider>
         <SidebarProvider>
+          <a
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 z-50 bg-background p-3"
+            href="#workspace-main"
+          >
+            Skip to workspace
+          </a>
           <AppSidebar />
-          <SidebarInset className="border-sidebar-border border-l bg-background">
+          <SidebarInset className="workspace-shell border-sidebar-border border bg-background">
             <Toaster position="top-center" theme="system" />
             {children}
           </SidebarInset>

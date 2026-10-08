@@ -28,8 +28,13 @@ function useStudioLink(projectId: string | null) {
       setLink(null);
       return;
     }
+    setLink(null);
     let live = true;
-    const read = () => studioLink(projectId).then((l) => live && setLink(l));
+    const read = () =>
+      studioLink(projectId).then(
+        (l) => live && setLink(l),
+        () => live && setLink(null)
+      );
     read();
     const timer = setInterval(read, 10_000);
     return () => {
@@ -100,7 +105,7 @@ export function StudioLight({
           className={cn(
             "size-2.5 rounded-full border transition-colors duration-300",
             connected
-              ? "composer-glow border-signal bg-signal"
+              ? "border-emerald-500 bg-emerald-500"
               : "border-muted-foreground/50 bg-transparent"
           )}
         />
@@ -114,7 +119,7 @@ export function StudioLight({
             </DialogTitle>
             <DialogDescription>
               {connected
-                ? "StudPilot can read and change your place through the plugin."
+                ? "The plugin is connected to this project. Check the plugin’s edit permission before asking for changes."
                 : "In Roblox Studio, open the StudPilot plugin and enter this code."}
             </DialogDescription>
           </DialogHeader>

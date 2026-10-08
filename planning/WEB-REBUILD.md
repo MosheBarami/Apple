@@ -125,3 +125,7 @@ The planner wrote this from the owner's decisions. **This is a real rebuild, not
 - The owner said yes at step 5.
 - The step 6 gates passed.
 - The old front-ends are deleted.
+
+## Owner revision — 2026-10-08
+
+Website-only takeover and revised visual direction: the owner rejected the flat, square iteration and selected a **dark futuristic interface with lighting and rich motion**. See [the current review and validation limits](proof/W-2026-10-08/SUMMARY.md). Earlier website-only radius constraints are superseded by this decision. Public deployment still requires the visual review.

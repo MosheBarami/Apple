@@ -11,7 +11,8 @@
     "fix": "ultracite fix",
     "build:cf": "opennextjs-cloudflare build",
     "deploy:cf": "opennextjs-cloudflare deploy",
-    "check:clean": "node ../../scripts/check-www.mjs"
+    "check:clean": "node ../../scripts/check-www.mjs",
+    "test:browser": "node tests/website.browser.cjs"
   },
   "dependencies": {
     "@flue/react": "2.2.2",

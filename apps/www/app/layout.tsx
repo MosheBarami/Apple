@@ -8,13 +8,13 @@ export const metadata: Metadata = {
   description:
     "StudPilot is a co-pilot that builds parts of your game inside your Roblox Studio: screens, systems, props and areas.",
   metadataBase: new URL("https://studpilot.app"),
-  title: {
-    default: "StudPilot: a co-pilot that builds inside Roblox Studio",
-    template: "%s | StudPilot",
-  },
   openGraph: {
     siteName: "StudPilot",
     type: "website",
+  },
+  title: {
+    default: "StudPilot: a co-pilot that builds inside Roblox Studio",
+    template: "%s | StudPilot",
   },
 };
 
@@ -68,6 +68,7 @@ export default function RootLayout({
     <html
       className={`${geist.variable} ${geistMono.variable} ${fredoka.variable}`}
       lang="en"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
@@ -79,11 +80,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           {children}
         </ThemeProvider>
       </body>

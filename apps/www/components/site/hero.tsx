@@ -1,46 +1,37 @@
+import { ArrowUpRightIcon } from "lucide-react";
 import Link from "next/link";
+import { CreationOrbit } from "@/components/creative/creation-orbit";
 
-/**
- * The hero (owner's master plan §7, 2026-10-07): a headline, one line and "Start building". Nothing else: no renders,
- * tabs, galleries, chips or captions.
- */
 export function Hero() {
   return (
     <section
       aria-labelledby="hero-title"
-      className="relative isolate overflow-hidden bg-gradient-to-b from-[#52d0fb] via-[#27aef0] to-[#1788d6] text-ink"
+      className="studio-hero relative overflow-hidden border-b border-border"
     >
-      <div
-        aria-hidden
-        className="studs absolute -inset-y-[300px] right-0 left-0 -z-10 opacity-30"
-        data-parallax="0.1"
-      />
-      <div className="mx-auto flex w-full max-w-[1000px] flex-col items-center px-5 pt-24 pb-28 text-center sm:px-8 lg:pt-32 lg:pb-36">
+      <CreationOrbit className="hero-orbit" />
+      <div className="relative mx-auto max-w-5xl px-6 pt-52 pb-24 text-center sm:pt-64 sm:pb-28">
         <h1
-          className="outline-text rise text-[46px] leading-[1.04] sm:text-[64px] lg:text-[84px]"
+          className="rise text-balance text-[clamp(3rem,6.8vw,6rem)] font-semibold leading-[1.03] tracking-[-0.065em]"
           id="hero-title"
-          style={{ "--d": "0ms", "--sw": "10px", "--sh": "7px" } as React.CSSProperties}
         >
-          A co-pilot that{" "}
-          <span style={{ color: "var(--color-sun)" }}>builds</span> inside Roblox Studio
+          Your next idea.
+          <br />
+          <span className="creative-title">Built in Studio.</span>
         </h1>
         <p
-          className="rise mt-8 max-w-[40rem] font-medium text-[19px] leading-relaxed sm:text-[22px]"
-          style={{ "--d": "120ms" } as React.CSSProperties}
+          className="rise mx-auto mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl"
+          style={{ animationDelay: "80ms" }}
         >
-          Tell StudPilot what your game needs, and it builds it in your own place, step by step.
+          A creative co-pilot for your Roblox game. Describe what you want to
+          build or change, and work on it together.
         </p>
-        <div className="rise mt-10" style={{ "--d": "220ms" } as React.CSSProperties}>
-          <Link className="btn-candy text-[1.3rem]" href="/login" style={{ minHeight: "3.8rem", padding: "0 2.4rem" }}>
-            Start building
-          </Link>
-        </div>
-      </div>
-
-      {/* the ground: a lime plate with studs */}
-      <div aria-hidden className="relative h-5 border-lime-edge border-t-4 bg-lime">
-        <div className="studs-dark absolute inset-0 opacity-70" />
-        <div className="absolute inset-x-0 top-0 h-1 bg-lime-hi" />
+        <Link
+          className="studio-button rise mt-9 inline-flex gap-3"
+          href="/login"
+          style={{ animationDelay: "160ms" }}
+        >
+          Start building <ArrowUpRightIcon className="size-4" />
+        </Link>
       </div>
     </section>
   );

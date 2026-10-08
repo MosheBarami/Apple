@@ -8,5 +8,5 @@ export default async function Page({
   searchParams: Promise<{ pair?: string }>;
 }) {
   const [{ id }, { pair }] = await Promise.all([params, searchParams]);
-  return <ChatView pair={pair === "1"} projectId={id} />;
+  return <ChatView key={id} pair={pair === "1"} projectId={id} />;
 }

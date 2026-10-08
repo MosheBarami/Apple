@@ -1,45 +1,48 @@
+import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LoginForm } from "@/components/app/login-form";
+import { CreationOrbit } from "@/components/creative/creation-orbit";
 import { Wordmark } from "@/components/site/logo";
-
-export const metadata: Metadata = {
-  title: "Sign in",
-};
-
+export const metadata: Metadata = { title: "Sign in" };
 export default function LoginPage() {
   return (
-    <div className="surface-night grid min-h-dvh bg-background text-foreground lg:grid-cols-[1.05fr_1fr]">
-      <aside className="relative isolate hidden overflow-hidden border-lime-edge border-r-4 bg-gradient-to-b from-[#52d0fb] to-[#1788d6] text-ink lg:block">
-        <div aria-hidden className="studs absolute inset-0 -z-10 opacity-30" />
-        <div className="flex h-full flex-col justify-between p-10">
-          <Link className="w-fit rounded-md" href="/">
-            <Wordmark />
-          </Link>
-          <div className="space-y-8">
-            <h2
-              className="outline-text text-[52px] leading-[1.05]"
-              style={{ "--sw": "8px", "--sh": "5px" } as React.CSSProperties}
-            >
-              Welcome back, builder
-            </h2>
-          </div>
-          <p className="font-medium text-sm">Free to start. 5 credits a day, no card.</p>
-        </div>
-      </aside>
-
-      <main className="flex flex-col px-5 py-8 sm:px-10" id="main">
-        <Link className="mb-10 w-fit rounded-md text-foreground lg:hidden" href="/">
+    <div className="grid min-h-dvh bg-background text-foreground lg:grid-cols-2">
+      <aside className="relative hidden overflow-hidden login-scene border-r border-border bg-muted/40 lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <div aria-hidden className="drafting-grid absolute inset-0" />
+        <Link className="relative w-fit" href="/">
           <Wordmark />
         </Link>
-        <div className="rise flex flex-1 items-center justify-center py-6">
+        <div className="relative max-w-lg">
+          <CreationOrbit className="login-orbit" />
+          <p className="studio-eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
+          <h2 className="mt-5 text-5xl font-semibold leading-[1.1] tracking-[-0.045em]">
+            A space for your
+            <br />
+            <span className="text-signal">next big idea.</span>
+          </h2>
+          <p className="mt-6 max-w-sm text-base leading-7 text-muted-foreground">
+            Start something new. Make something better. Your Roblox Studio, with
+            a creative co-pilot beside you.
+          </p>
+        </div>
+        <p className="relative text-xs text-muted-foreground">
+          StudPilot · Made for creators
+        </p>
+      </aside>
+      <main className="flex flex-col px-6 py-8 sm:px-12" id="main">
+        <Link className="mb-8 w-fit lg:hidden" href="/">
+          <Wordmark />
+        </Link>
+        <div className="rise flex flex-1 items-center justify-center py-8">
           <LoginForm />
         </div>
         <Link
-          className="mx-auto text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+          className="mx-auto mt-8 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
           href="/"
         >
-          Back to studpilot.app
+          <ArrowLeftIcon className="size-3" />
+          Back to StudPilot
         </Link>
       </main>
     </div>
