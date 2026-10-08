@@ -1558,11 +1558,11 @@ export class SessionDO extends DurableObject<Env> {
   private async studioGate(): Promise<{ reason: StudioPauseReason; message: string } | null> {
     const paired = (await this.ctx.storage.get<string>('pluginTokenHash')) ?? this.activePluginTokenHash;
     if (!paired) {
-      return { reason: 'unpaired', message: 'Connect Roblox Studio first: open the StudPilot plugin in Studio and pair it with this project.' };
+      return { reason: 'unpaired', message: 'Connect Roblox Studio first: open Roblox Studio with the StudPilot plugin, then press Connect on this project.' };
     }
     const down = await this.studioLinkDown();
     if (down === 'disconnected') {
-      return { reason: down, message: 'Roblox Studio is not connected. Open the paired place in Studio with the StudPilot plugin running, then try again.' };
+      return { reason: down, message: 'Roblox Studio is not connected. Open the connected place in Studio with the StudPilot plugin running, then try again.' };
     }
     if (down === 'place_mismatch' && this.placeMismatch) return { reason: down, message: this.placeMismatch.message };
     return null;
@@ -2224,7 +2224,7 @@ export class SessionDO extends DurableObject<Env> {
           this.pluginCapabilityClient = null;
           await this.ctx.storage.delete([pluginCapabilitiesKey(staleHash), pluginCapabilitiesClientKey(staleHash)]);
         }
-        return json({ error: 'token expired', message: 'This pairing has expired. Pair again from the StudPilot web app.' }, 401);
+        return json({ error: 'token expired', message: 'This connection has expired. Press Connect on the project at studpilot.app to connect again.' }, 401);
       }
       const presented = await sha256hex(token);
       if (!(await timingSafeEqual(presented, expect))) {
@@ -2237,8 +2237,8 @@ export class SessionDO extends DurableObject<Env> {
             {
               error: 'superseded',
               message:
-                'This project was paired again from another Studio window, so this one was disconnected. ' +
-                'Pair again from the StudPilot web app to bring it back here.',
+                'This project was connected to another Studio window, so this one was disconnected. ' +
+                'Press Connect on the project at studpilot.app to bring it back here.',
             },
             401,
           );

@@ -85,7 +85,7 @@ REQUIRED = {
     # The remedy CODE is what the worker turns into the product's own instruction, so a build that
     # ships the refusal without it ships the silence that caused this. Checked in the bytes rather
     # than the source for the same reason as everything else here: the two have disagreed before.
-    "edit_consent": "the remedy code on the consent refusal; without it the model is left to invent a fix, and it does",
+    "reconnect_studio": "the remedy code on the connection refusal; without it the model is left to invent a fix, and it does",
 }
 
 # Patterns that must NOT be in the shipped bytes. These are call shapes, never mentions: Commands

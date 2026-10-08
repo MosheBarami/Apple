@@ -158,10 +158,11 @@ test("every failure the worker itself produces has a declared kind, and none of 
  * result gets filled; the only question is by whom.
  */
 
-test('the consent refusal now carries the remedy that exists, not a silence', () => {
-  const fix = remedyHint({ ok: false, failure: 'refused', remedy: 'edit_consent' });
-  assert.match(fix, /Enable edits/);
-  assert.match(fix, /Allow edits for this connection/);
+test('the connection refusal carries the remedy that exists (press Connect), not a silence and not the removed consent step', () => {
+  const fix = remedyHint({ ok: false, failure: 'refused', remedy: 'reconnect_studio' });
+  assert.match(fix, /press Connect/);
+  assert.match(fix, /studpilot\.app/);
+  assert.doesNotMatch(fix, /Enable edits|Allow edits/, 'the remedy still names the removed Allow edits step');
   // The invented one must not be reachable from the product's own vocabulary.
   assert.doesNotMatch(fix, /Project Settings|Allow Scripted Updates/i);
 });
@@ -206,7 +207,7 @@ test('every remedy in the vocabulary is an instruction, and none of them invents
     assert.doesNotMatch(text, /Project Settings|Allow Scripted Updates/i, `${code} repeats the invented setting`);
   }
   // Every code the plugin can send must be one the worker can answer.
-  for (const code of ['edit_consent', 'leave_test_mode', 'none']) {
+  for (const code of ['reconnect_studio', 'leave_test_mode', 'none']) {
     assert.ok(codes.includes(code), `the plugin sends ${code} and the vocabulary does not define it`);
   }
 });
@@ -244,12 +245,12 @@ test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothi
   // exactly the shape of a guard that cannot fail.
   // Matched as a SHAPE, not as the message's exact wording — the message deliberately changed once
   // already, to carry the remedy inside the sentence the model quotes verbatim.
-  assert.match(src, /writes require explicit edit consent[^\n]*?, started, "edit_consent"/,
+  assert.match(src, /writes require a live StudPilot connection[^\n]*?, started, "reconnect_studio"/,
     'the consent refusal no longer carries its remedy code');
   // And the sentence itself must name the button and deny the fiction, because the model repeats
   // `error` and demonstrably ignored a separate field.
   assert.match(src, /not a Roblox Studio setting/, 'the refusal no longer says whose gate it is');
-  assert.match(src, /Enable edits/, 'the refusal no longer names the control that lifts it');
+  assert.match(src, /press Connect/, 'the refusal no longer names the control that lifts it');
   assert.match(src, /writes require Studio edit mode", started, "leave_test_mode"/,
     'the edit-mode refusal no longer carries its remedy code');
   assert.match(src, /UNSUPPORTED\[name\], started, "none"/,
@@ -264,13 +265,13 @@ test('a run that hit a refusal ends with the PRODUCT saying whose limit it is', 
   // that assertion moved to the w35 block below. This case was always about whether the product's
   // sentence gets added at all, so the sample is now a truthful reply.
   const modelText = 'I could not create that part — the write was refused.';
-  const out = replyWithRemedy(modelText, 'edit_consent');
+  const out = replyWithRemedy(modelText, 'reconnect_studio');
   // The model's own account is kept — it usually contains something true about what it attempted,
   // and the user should see both and believe the signed one.
   assert.ok(out.startsWith(modelText), 'the model text was replaced rather than answered');
   assert.match(out, /StudPilot's own limit, not a Roblox Studio setting/);
-  assert.match(out, /Enable edits/);
-  assert.match(out, /Allow edits for this connection/);
+  assert.match(out, /press Connect/);
+  assert.match(out, /studpilot\.app/);
 });
 
 test('a run with no refusal is left exactly alone', () => {
@@ -287,7 +288,7 @@ test('the correction cannot be an empty flourish', () => {
   // Split on the heading's closing `**` rather than on one heading's wording: there are two
   // headings now, because one of the remedies is Roblox's rule and not StudPilot's, and pinning this
   // check to the StudPilot-voiced spelling would have quietly stopped covering the other one.
-  for (const code of ['edit_consent', 'leave_test_mode', 'take_asset_first', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
+  for (const code of ['reconnect_studio', 'leave_test_mode', 'take_asset_first', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
     const out = replyWithRemedy('x', code);
     const after = out.split('**').slice(2).join('**');
     assert.ok(after.trim().length > 30, `${code}: the correction adds a heading and no instruction`);
@@ -305,7 +306,7 @@ test('the heading does not blame StudPilot for a rule Roblox enforces', () => {
   assert.doesNotMatch(roblox, /StudPilot's own limit/, 'an ownership refusal is not StudPilot imposing a limit');
   assert.match(roblox, /Roblox's rule/);
   assert.match(roblox, /no Roblox Studio setting lifts it/, 'the fiction denial must survive the split');
-  for (const code of ['edit_consent', 'leave_test_mode', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
+  for (const code of ['reconnect_studio', 'leave_test_mode', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
     const out = replyWithRemedy('x', code);
     assert.match(out, /StudPilot's own limit, not a Roblox Studio setting/, `${code} is StudPilot's own gate and should still say so`);
   }
@@ -328,17 +329,17 @@ const FICTION = 'I cannot create RemedyProbe4 due to the "explicit edit consent"
 const HONEST = 'I could not create RemedyProbe4 — writes are refused right now.';
 
 test('a reply that invents a Studio settings page is REPLACED, not annotated', () => {
-  const out = replyWithRemedy(FICTION, 'edit_consent');
+  const out = replyWithRemedy(FICTION, 'reconnect_studio');
   assert.doesNotMatch(out, /Place Settings/i, 'the fabricated settings page survived into the reply');
   assert.doesNotMatch(out, /Require explicit edit consent for scripts/i);
   assert.match(out, /StudPilot's own limit/);
-  assert.match(out, /Enable edits/);
+  assert.match(out, /press Connect/);
   // The user still needs to know the state of their place.
   assert.match(out, /nothing to undo/i);
 });
 
 test('a reply with no fiction keeps the model\'s account and gains the correction', () => {
-  const out = replyWithRemedy(HONEST, 'edit_consent');
+  const out = replyWithRemedy(HONEST, 'reconnect_studio');
   assert.ok(out.startsWith(HONEST), 'a truthful reply was thrown away');
   assert.match(out, /StudPilot's own limit/);
 });
@@ -349,7 +350,7 @@ test('the replacement needs BOTH a refusal and a fiction — neither alone', () 
   assert.equal(replyWithRemedy(FICTION, undefined), FICTION);
   assert.equal(replyWithRemedy(FICTION, 'not_a_code'), FICTION);
   // And a refusal with no fiction appends, per the test above.
-  assert.notEqual(replyWithRemedy(HONEST, 'edit_consent'), HONEST);
+  assert.notEqual(replyWithRemedy(HONEST, 'reconnect_studio'), HONEST);
 });
 
 test('every fiction carries a real sample, and that sample triggers replacement', async () => {
@@ -363,17 +364,17 @@ test('every fiction carries a real sample, and that sample triggers replacement'
     assert.ok(entry.sample && entry.sample.length > 20, `${entry.pattern}: no observed sample`);
     assert.ok(entry.pattern.test(entry.sample), `${entry.pattern} does not match its own recorded sample`);
     assert.ok(studioFictionIn(entry.sample), `${entry.pattern}: studioFictionIn misses its own sample`);
-    const out = replyWithRemedy(entry.sample, 'edit_consent');
+    const out = replyWithRemedy(entry.sample, 'reconnect_studio');
     assert.doesNotMatch(out, entry.pattern, `${entry.pattern}: the fabrication survived into the reply`);
     assert.match(out, /StudPilot's own limit/, `${entry.pattern}: replaced with nothing useful`);
   }
 });
 
 test('replacedFiction names what was removed, for the record and not for the reply', () => {
-  assert.equal(replacedFiction(FICTION, 'edit_consent'), 'Place Settings');
-  assert.equal(replacedFiction(HONEST, 'edit_consent'), null);
+  assert.equal(replacedFiction(FICTION, 'reconnect_studio'), 'Place Settings');
+  assert.equal(replacedFiction(HONEST, 'reconnect_studio'), null);
   assert.equal(replacedFiction(FICTION, undefined), null);
   // It must NOT leak into the user-facing text: telling a user "your assistant made something up"
   // mid-answer is confusing, and the correction already says what is true.
-  assert.doesNotMatch(replyWithRemedy(FICTION, 'edit_consent'), /Place Settings/i);
+  assert.doesNotMatch(replyWithRemedy(FICTION, 'reconnect_studio'), /Place Settings/i);
 });

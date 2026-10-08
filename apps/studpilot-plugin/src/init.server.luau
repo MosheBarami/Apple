@@ -1,6 +1,6 @@
 --!strict
--- StudPilot Studio: an explicit, inspect-first connection to the StudPilot workspace.
--- No saved credentials, automatic pairing, asset loaders or remote code execution.
+-- StudPilot Studio: connects this Studio to a StudPilot project. Press Connect on studpilot.app; the
+-- project then edits this place directly. No saved session token, asset loaders or remote code execution.
 local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
 local StudioTestService: any = nil
@@ -40,16 +40,10 @@ local Commands = require(script.Commands)
 -- ONE DEFINITION OF EDIT MODE, HANDED DOWN — not two kept in step by care. Commands.luau falls
 -- back to RunService:IsEdit() alone when it is given nothing, and IsEdit() stays true in this
 -- DataModel while Studio runs a test (tests/entry-runtime.test.mjs asserts exactly that about the
--- Studio it models). So the engine's gate would have read "we are in edit mode" at the same moment
--- this file was force-clearing consent because we are not, and the user would be told to press a
--- button that refuses. editModeActive() is the definition the consent fence already uses; the
--- engine gets that one, so a refusal names the thing that is actually shut.
+-- Studio it models). editModeActive() is the definition the write fence below uses; the engine
+-- gets that one, so a refusal names the thing that is actually shut.
 local commands = Commands.new({ isEdit = editModeActive })
-local allowEdits = false
-local confirmingEdits = false
-local connecting = false
 local disposed = false
-local studpilotRunActive = false
 local connections: { RBXScriptConnection } = {}
 local bridge: any = nil
 
@@ -119,216 +113,251 @@ local function captureLog(message: any, messageType: any)
 	bridge:pushEvent({ kind = "log", message = string.sub(textValue, 1, 600), level = level, clock = os.clock() })
 end
 
-local toolbar = plugin:CreateToolbar("StudPilot Studio")
-local toggle = toolbar:CreateButton("AppleStudioOpen", "Open StudPilot Studio", "", "StudPilot")
+-- THE INSTALL IDENTITY. Generated once and kept in this plugin's settings: an address (installId) and
+-- the credential that goes with it (secret). It is not a session: the server hands a session token
+-- back only for a binding the project owner made by pressing Connect on studpilot.app, and that token
+-- lives in memory only. studioSessionId tells apart two Studio windows of the same install.
+local INSTALL_SETTING = "StudPilotInstallV1"
+local HttpService = game:GetService("HttpService")
+
+local function randomHex(): string
+	return string.lower((string.gsub(HttpService:GenerateGUID(false), "[^%x]", "")))
+end
+
+local function loadInstall(): any
+	local okRead, saved = pcall(function() return plugin:GetSetting(INSTALL_SETTING) end)
+	if okRead and type(saved) == "table" and type(saved.installId) == "string" and #saved.installId == 32
+		and type(saved.secret) == "string" and #saved.secret == 64 then
+		return { installId = saved.installId, secret = saved.secret }
+	end
+	local fresh = { installId = randomHex(), secret = randomHex() .. randomHex() }
+	pcall(function() plugin:SetSetting(INSTALL_SETTING, fresh) end)
+	return fresh
+end
+
+local install = loadInstall()
+local studioSessionId = randomHex()
+
+local function identity(): any
+	local userId = 0
+	pcall(function() userId = game:GetService("StudioService"):GetUserId() end)
+	return {
+		installId = install.installId,
+		secret = install.secret,
+		studioSessionId = studioSessionId,
+		robloxUserId = if type(userId) == "number" then userId else 0,
+	}
+end
+
+-- THE DOCK. Its one job is the connection, so it shows one of three states and nothing else:
+-- waiting (with the one hint that gets you connected), connected to <project> (with Disconnect),
+-- or a connection problem (one line and Retry). Everything else lives in the docs.
+local toolbar = plugin:CreateToolbar("StudPilot")
+local toggle = toolbar:CreateButton("AppleStudioOpen", "Open StudPilot", "", "StudPilot")
 toggle.ClickableWhenViewportHidden = true
 local widget = plugin:CreateDockWidgetPluginGuiAsync(
 	"AppleStudioWorkspaceV1",
-	DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right, false, false, 360, 560, 280, 340)
+	DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right, false, false, 300, 200, 240, 160)
 )
-widget.Title = "StudPilot Studio"
+widget.Title = "StudPilot"
 
-local colors = {
-	background = Color3.fromRGB(11, 11, 12),
-	panel = Color3.fromRGB(26, 26, 28),
-	line = Color3.fromRGB(54, 54, 58),
-	text = Color3.fromRGB(242, 242, 244),
-	muted = Color3.fromRGB(168, 168, 177),
-}
-local scroll = Instance.new("ScrollingFrame")
-scroll.Name = "ApplePanel"
-scroll.Size = UDim2.fromScale(1, 1)
-scroll.BackgroundColor3 = colors.background
-scroll.BorderSizePixel = 0
-scroll.ScrollBarThickness = 4
-scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scroll.CanvasSize = UDim2.new()
-scroll.Parent = widget
+local GREEN = Color3.fromRGB(52, 199, 89)
+local AMBER = Color3.fromRGB(255, 176, 32)
+local RED = Color3.fromRGB(255, 69, 58)
+
+-- Studio's own colours, so the dock reads as part of Studio in the light and the dark theme alike.
+local function themeColor(name: string, fallback: Color3): Color3
+	local ok, value = pcall(function()
+		return (settings() :: any).Studio.Theme:GetColor((Enum :: any).StudioStyleGuideColor[name])
+	end)
+	return if ok and typeof(value) == "Color3" then value else fallback
+end
+
+local root = Instance.new("Frame")
+root.Name = "StudPilotDock"
+root.Size = UDim2.fromScale(1, 1)
+root.BorderSizePixel = 0
+root.Parent = widget
 local padding = Instance.new("UIPadding")
-padding.PaddingLeft = UDim.new(0, 20)
-padding.PaddingRight = UDim.new(0, 20)
-padding.PaddingTop = UDim.new(0, 24)
-padding.PaddingBottom = UDim.new(0, 24)
-padding.Parent = scroll
+padding.PaddingLeft = UDim.new(0, 16)
+padding.PaddingRight = UDim.new(0, 16)
+padding.PaddingTop = UDim.new(0, 16)
+padding.PaddingBottom = UDim.new(0, 12)
+padding.Parent = root
 local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 14)
+layout.Padding = UDim.new(0, 8)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Parent = scroll
+layout.Parent = root
+
+local themed: { () -> () } = {}
 local order = 0
 
-local function text(value: string, size: number, muted: boolean): TextLabel
+local function label(size: number, muted: boolean, bold: boolean): TextLabel
 	order += 1
-	local label = Instance.new("TextLabel")
-	label.LayoutOrder = order
-	label.Size = UDim2.new(1, 0, 0, 0)
-	label.AutomaticSize = Enum.AutomaticSize.Y
-	label.BackgroundTransparency = 1
-	label.TextColor3 = if muted then colors.muted else colors.text
-	label.Font = Enum.Font.SourceSans
-	label.TextSize = size
-	label.TextWrapped = true
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextYAlignment = Enum.TextYAlignment.Top
-	label.Text = value
-	label.Parent = scroll
-	return label
+	local item = Instance.new("TextLabel")
+	item.LayoutOrder = order
+	item.Size = UDim2.new(1, 0, 0, 0)
+	item.AutomaticSize = Enum.AutomaticSize.Y
+	item.BackgroundTransparency = 1
+	item.Font = if bold then Enum.Font.SourceSansSemibold else Enum.Font.SourceSans
+	item.TextSize = size
+	item.TextWrapped = true
+	item.TextXAlignment = Enum.TextXAlignment.Left
+	item.Text = ""
+	item.Parent = root
+	table.insert(themed, function()
+		item.TextColor3 = if muted then themeColor("DimmedText", Color3.fromRGB(150, 150, 156)) else themeColor("MainText", Color3.fromRGB(235, 235, 238))
+	end)
+	return item
 end
 
-local function control(value: string): TextButton
+local function button(): TextButton
 	order += 1
-	local button = Instance.new("TextButton")
-	button.LayoutOrder = order
-	button.Size = UDim2.new(1, 0, 0, 42)
-	button.BackgroundColor3 = colors.panel
-	button.BorderSizePixel = 0
-	button.TextColor3 = colors.text
-	button.Font = Enum.Font.SourceSansSemibold
-	button.TextSize = 15
-	button.Text = value
-	button.Parent = scroll
+	local item = Instance.new("TextButton")
+	item.LayoutOrder = order
+	item.Size = UDim2.new(0, 112, 0, 28)
+	item.BorderSizePixel = 0
+	item.AutoButtonColor = true
+	item.Font = Enum.Font.SourceSansSemibold
+	item.TextSize = 14
+	item.Text = ""
+	item.Parent = root
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = button
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = item
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = colors.line
-	stroke.Parent = button
-	return button
+	stroke.Parent = item
+	table.insert(themed, function()
+		item.BackgroundColor3 = themeColor("Button", Color3.fromRGB(60, 60, 64))
+		item.TextColor3 = themeColor("ButtonText", Color3.fromRGB(235, 235, 238))
+		stroke.Color = themeColor("ButtonBorder", Color3.fromRGB(80, 80, 86))
+	end)
+	return item
 end
 
-local heading = text("StudPilot", 30, false)
-heading.Font = Enum.Font.SourceSansSemibold
-text("Your place. Your control.", 15, true)
--- F-026: the token is deliberately never saved (surface.test.mjs forbids GetSetting), so closing
--- Studio ends the pairing; say so before the customer finds out from a code that no longer works.
-local status = text("Not connected. A pairing lasts until Studio closes; after a restart, enter a new code from your StudPilot project.", 17, false)
-local place = text(game.Name, 13, true)
+-- Header: a status dot and one line saying what is true now.
+order += 1
+local header = Instance.new("Frame")
+header.LayoutOrder = order
+header.Size = UDim2.new(1, 0, 0, 22)
+header.BackgroundTransparency = 1
+header.Parent = root
+local dot = Instance.new("Frame")
+dot.Size = UDim2.new(0, 10, 0, 10)
+dot.Position = UDim2.new(0, 0, 0.5, -5)
+dot.BorderSizePixel = 0
+dot.Parent = header
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = dot
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -18, 1, 0)
+title.Position = UDim2.new(0, 18, 0, 0)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansSemibold
+title.TextSize = 17
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextTruncate = Enum.TextTruncate.AtEnd
+title.Text = ""
+title.Parent = header
+table.insert(themed, function()
+	title.TextColor3 = themeColor("MainText", Color3.fromRGB(235, 235, 238))
+	root.BackgroundColor3 = themeColor("MainBackground", Color3.fromRGB(46, 46, 46))
+end)
 
--- A build that needs another creator's free asset asks for consent here. The owner removed the
--- source selector from the customer experience: detailed props come from vetted Roblox assets,
--- and only simple structure may be made from parts. The wire answer remains an explicit,
--- authenticated creator_store policy; an unanswered question still permits no asset insertion.
-local sourcesHeading = text("May StudPilot add free Roblox assets to this game?", 20, false)
-sourcesHeading.Font = Enum.Font.SourceSansSemibold
-local sourceItems: { any } = { sourcesHeading, text("A build is waiting. Some free assets are made by other Roblox creators. No purchase or asset upload is needed; building still uses Credits. Roblox may block individual assets. Your answer is remembered for this project.", 14, true) }
-local sourcesSave = control("Allow assets and continue")
-table.insert(sourceItems, sourcesSave)
-local sourcesNote = text("", 13, false)
-sourcesNote.Visible = false
+local detail = label(14, true, false)
+local action = button()
+
+-- A build that needs another creator's free asset asks here, and only while one is waiting.
+local sourcesHeading = label(14, false, true)
+sourcesHeading.Text = "May StudPilot add free Roblox assets to this game?"
+local sourcesSave = button()
+sourcesSave.Size = UDim2.new(0, 180, 0, 28)
+sourcesSave.Text = "Allow assets and continue"
+local sourcesNote = label(13, true, false)
 local function showSources(owed: boolean, message: string?)
-	for _, item in sourceItems do item.Visible = owed end
+	sourcesHeading.Visible = owed
+	sourcesSave.Visible = owed
 	sourcesNote.Text = message or ""
 	sourcesNote.Visible = message ~= nil
 	if owed then widget.Enabled = true end
 end
 showSources(false, nil)
-		text("Pair with a project at studpilot.app. While connected, StudPilot may read this place’s objects and scripts, the current selection, Studio Output messages, and snapshots of the active 3D viewport over HTTPS.", 14, true)
 
-order += 1
-local code = Instance.new("TextBox")
-code.Name = "PairingCode"
-code.LayoutOrder = order
-code.Size = UDim2.new(1, 0, 0, 44)
-code.BackgroundColor3 = colors.panel
-code.BorderSizePixel = 0
-code.TextColor3 = colors.text
-code.PlaceholderColor3 = colors.muted
-code.Font = Enum.Font.SourceSans
-code.TextSize = 18
-code.Text = ""
-code.PlaceholderText = "Six-character pairing code"
-code.ClearTextOnFocus = false
-code.Parent = scroll
-local codeCorner = Instance.new("UICorner")
-codeCorner.CornerRadius = UDim.new(0, 10)
-codeCorner.Parent = code
-local connect = control("Connect to StudPilot")
+-- Footer: the version, and the credit the Resurface License §1 requires (THIRD_PARTY_NOTICES.md).
+local footer = label(11, true, false)
+footer.LayoutOrder = 100
+footer.Text = "StudPilot Studio · 1.5.0 · Classic studs by Resurface (cxmeel)"
 
-local permission = text("Access: inspect only", 15, false)
-local edits = control("Enable edits…")
-local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
-local activity = text("No actions yet", 13, true)
-local version = text("StudPilot Studio · 1.5.0 · independent preview", 12, true)
--- Resurface License §1: prominent credit and a link (THIRD_PARTY_NOTICES.md).
-text("Classic studs by Resurface (cxmeel) · github.com/cxmeel/resurface-plugin", 12, true)
-version.LayoutOrder = 100
+local function paint()
+	for _, apply in themed do pcall(apply) end
+end
+paint()
+pcall(function()
+	table.insert(connections, (settings() :: any).Studio.ThemeChanged:Connect(paint))
+end)
 
-local function refreshAccess()
-	local connected = bridge ~= nil and bridge:isConnected()
-	if not connected then
-		allowEdits = false
-		confirmingEdits = false
-		studpilotRunActive = false
-		showSources(false, nil)
+local view = "waiting"
+local problem: string? = nil
+local retryNow = false
+
+local function render()
+	if disposed then return end
+	local projectName = if bridge ~= nil then bridge:projectName() else nil
+	if projectName ~= nil then
+		view = "connected"
+		dot.BackgroundColor3 = GREEN
+		title.Text = "Connected to " .. projectName
+		detail.Text = game.Name
+		action.Text = "Disconnect"
+		action.Visible = true
+	elseif problem ~= nil then
+		view = "problem"
+		dot.BackgroundColor3 = RED
+		title.Text = "Can’t reach StudPilot"
+		detail.Text = problem
+		action.Text = "Retry"
+		action.Visible = true
+	else
+		view = "waiting"
+		dot.BackgroundColor3 = AMBER
+		title.Text = "Waiting for StudPilot"
+		detail.Text = "Open your project on studpilot.app and press Connect."
+		action.Visible = false
 	end
-	permission.Text = if allowEdits and not editModeActive() then "Access: edits paused while Studio is testing"
-		elseif allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
-	edits.Text = if allowEdits then "Turn edits off" elseif confirmingEdits then "Allow edits for this connection" else "Enable edits…"
-	edits.Active = connected and not connecting
-	edits.AutoButtonColor = edits.Active
-	edits.TextColor3 = if edits.Active then colors.text else colors.muted
-	disclosure.Text = if confirmingEdits
-			then "StudPilot may create or change supported objects and scripts in this place, control a Run-mode playtest, and start a short Test session with a player (its temporary check scripts are removed afterwards). Writes require edit mode and an undo recording. Disconnecting turns this permission off."
-			else "Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin."
-	connect.Text = if connecting then "Connecting…" elseif connected then "Disconnect" else "Connect to StudPilot"
-	code.Visible = not connected
+	if projectName == nil then showSources(false, nil) end
 end
 
-local function keepEditConsentOnlyInEditMode(): boolean
-	if editModeActive() then
-		studpilotRunActive = false
-		refreshAccess()
-		return true
-	end
-	-- Outside edit mode every write is refused (the gate above), so leaving it PAUSES StudPilot's edits rather
-	-- than revoking the person's consent. Decision D-PLUGIN-2 (2026-09-23): a kid presses Play to try the
-	-- game all the time, and revoking on every test made each next request fail until "Enable edits…" was
-	-- clicked twice again; after StudPilot's own playtest a test-state flicker did the same (F-044). The consent
-	-- was given for this connection, and it ends only when the connection does or the person turns it off.
-	-- A half-finished confirmation is still retired, so a stale first click cannot grant.
-	confirmingEdits = false
-	refreshAccess()
-	return false
+-- The connection fence every op is executed against: this exact connection is still live.
+local function connectionCurrent(sessionCurrent: (() -> boolean)?): boolean
+	if disposed or bridge == nil or not bridge:isConnected() then return false end
+	if sessionCurrent == nil then return true end
+	local ok, current = pcall(sessionCurrent)
+	return ok and current == true
 end
 
 bridge = Bridge.new({
 	plugin = plugin,
 	capabilities = function() return Commands.capabilities(commands) end,
+	-- Connecting IS the permission: once the project owner pressed Connect for this Studio, StudPilot
+	-- edits without a second step. Writes still need a live connection and Studio edit mode (the
+	-- engine refuses outside it), and an undo recording, exactly as before.
 	execute = function(id: string, op: any, sessionCurrent: (() -> boolean)?)
-			local function pairingStillCurrent(): boolean
-				if disposed or not bridge:isConnected() then return false end
-				if sessionCurrent == nil then return true end
-				local ok, current = pcall(sessionCurrent)
-				return ok and current == true
-			end
-			local function consentStillCurrent(): boolean
-				if not pairingStillCurrent() then return false end
-				if not keepEditConsentOnlyInEditMode() then return false end
-				return allowEdits
-			end
-			local runAction = if type(op) == "table" and op.op == "run_mode" then op.action else nil
-			local startsAppleRun = runAction == "start" or runAction == "run" or runAction == "restart"
-			local ownedBefore = studpilotRunActive
-			if startsAppleRun and allowEdits and editModeActive() then studpilotRunActive = true end
-			-- Run-mode stop/pause/resume happen while Studio is intentionally outside edit mode. The
-			-- retained per-connection consent authorizes those controls; ordinary writes still receive
-			-- consentStillCurrent() and remain blocked until Studio returns to edit mode.
-			local authorized = if runAction ~= nil then pairingStillCurrent() and allowEdits else consentStillCurrent()
-			-- Pairing already consents to active viewport snapshots. This operation reads
-			-- native pixels without camera/place writes; StudioCapture also fences edit mode.
-			local readFence = if type(op) == "table" and op.op == "capture_studio_viewport" then pairingStillCurrent else consentStillCurrent
-			local result = commands:execute(id, op, authorized, readFence)
-			if runAction ~= nil then
-				if result.ok ~= true then
-					studpilotRunActive = ownedBefore
-				elseif runAction == "stop" then
-					studpilotRunActive = false
-				elseif result.data and result.data.runMode == true then
-					studpilotRunActive = true
-				end
-			end
-			return result
-		end,
+		local function liveConnection(): boolean
+			return connectionCurrent(sessionCurrent)
+		end
+		local function writeFence(): boolean
+			return liveConnection() and editModeActive()
+		end
+		local isRunMode = type(op) == "table" and op.op == "run_mode"
+		-- Run-mode stop/pause/resume happen while Studio is intentionally outside edit mode, so they
+		-- are fenced by the connection alone; every other write also needs edit mode.
+		local authorized = if isRunMode then liveConnection() else writeFence()
+		-- A viewport snapshot reads pixels only; StudioCapture fences edit mode itself.
+		local readFence = if type(op) == "table" and op.op == "capture_studio_viewport" then liveConnection else writeFence
+		return commands:execute(id, op, authorized, readFence)
+	end,
 	state = function()
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
@@ -336,15 +365,11 @@ bridge = Bridge.new({
 			selectionCount = #Selection:Get(), pluginVersion = "1.5.0",
 		}
 	end,
-	onStatus = function(message: string)
+	onStatus = function(_message: string)
 		if disposed then return end
-		status.Text = message
-		place.Text = game.Name
-		refreshAccess()
+		render()
 	end,
-	onActivity = function(message: string)
-		if not disposed then activity.Text = string.sub(message, 1, 240) end
-	end,
+	onActivity = function(_message: string) end,
 	onAssetSources = function(value: any)
 		if disposed or type(value) ~= "table" then return end
 		showSources(value.owed == true, if type(value.message) == "string" then value.message else nil)
@@ -354,45 +379,65 @@ bridge = Bridge.new({
 table.insert(connections, sourcesSave.Activated:Connect(function()
 	if disposed then return end
 	local sent = bridge:answerAssetSources({ "creator_store" })
-	sourcesNote.Text = if sent then "Saving…" else "Connect to StudPilot first."
+	sourcesNote.Text = if sent then "Saving…" else "Connect StudPilot first."
 	sourcesNote.Visible = true
 end))
 
-table.insert(connections, connect.Activated:Connect(function()
-	if disposed or connecting then return end
-	allowEdits = false
-	confirmingEdits = false
-	if bridge:isConnected() then
-		bridge:disconnect()
-		refreshAccess()
-		return
+table.insert(connections, action.Activated:Connect(function()
+	if disposed then return end
+	if view == "connected" then
+		task.spawn(function() bridge:release(identity()) end)
+		render()
+	elseif view == "problem" then
+		problem = nil
+		retryNow = true
+		render()
 	end
-	if not editModeActive() then
-		status.Text = "Stop the Studio test before connecting."
-		return
-	end
-	local pairingCode = string.upper(string.gsub(code.Text, "%s", ""))
-	if not string.match(pairingCode, "^%w%w%w%w%w%w$") then
-		status.Text = "Enter the six-character code from your StudPilot project."
-		return
-	end
-	connecting = true
-	refreshAccess()
-	task.spawn(function()
-		local called, ok, message = pcall(function() return bridge:connect(pairingCode) end)
-		connecting = false
-		if disposed then return end
-			if called and ok then
-				code.Text = ""
-				captureSelection()
-		elseif not called then
-			status.Text = "Connection failed. Check Studio’s network permission and try again."
-		elseif type(message) == "string" then
-			status.Text = message
-		end
-		refreshAccess()
-	end)
 end))
+
+-- THE CONNECTION LOOP. While not connected, announce (the server holds each announce ~20 s and answers
+-- with a token once Connect is pressed for this Studio, or at once when this place was bound before).
+-- While connected, a heartbeat every 20 s keeps this Studio visible to Connect and follows it if the
+-- owner moves it to another project. A lost session (Disconnect on the web, an expired token) simply
+-- drops back to announcing.
+local function pause(seconds: number, wasConnected: boolean?)
+	local waited = 0
+	while waited < seconds and not disposed and not retryNow and (wasConnected ~= true or bridge:isConnected()) do
+		task.wait(0.5)
+		waited += 0.5
+	end
+	retryNow = false
+end
+
+task.spawn(function()
+	local failures = 0
+	while not disposed do
+		if bridge:isConnected() then
+			failures = 0
+			pause(20, true)
+			if not disposed and bridge:isConnected() then pcall(function() bridge:heartbeat(identity()) end) end
+		else
+			local called, connected, message, state = pcall(function() return bridge:connect(identity()) end)
+			if disposed then break end
+			if called and connected then
+				failures = 0
+				problem = nil
+				captureSelection()
+				render()
+			elseif called and state == "waiting" then
+				failures = 0
+				problem = nil
+				render()
+				pause(2)
+			else
+				failures += 1
+				problem = if called and type(message) == "string" then message else "Check Studio’s network permission for studpilot.app."
+				render()
+				pause(math.min(60, 5 * failures))
+			end
+		end
+	end
+end)
 
 local selectionSignalOk, selectionSignal = pcall(function() return Selection.SelectionChanged end)
 if selectionSignalOk and selectionSignal and type(selectionSignal.Connect) == "function" then
@@ -405,23 +450,6 @@ if LogService then
 	end
 end
 
-	table.insert(connections, edits.Activated:Connect(function()
-		if disposed or connecting or not bridge:isConnected() then return end
-		if not keepEditConsentOnlyInEditMode() then
-			status.Text = "Stop the Studio test before allowing edits."
-			return
-		end
-	if allowEdits then
-		allowEdits = false
-	elseif confirmingEdits then
-		allowEdits = true
-		confirmingEdits = false
-	else
-		confirmingEdits = true
-	end
-	refreshAccess()
-end))
-
 table.insert(connections, toggle.Click:Connect(function()
 	widget.Enabled = not widget.Enabled
 	toggle:SetActive(widget.Enabled)
@@ -429,26 +457,11 @@ end))
 table.insert(connections, widget:GetPropertyChangedSignal("Enabled"):Connect(function()
 	toggle:SetActive(widget.Enabled)
 end))
-table.insert(connections, RunService:GetPropertyChangedSignal("RunState"):Connect(function()
-	keepEditConsentOnlyInEditMode()
-end))
-if StudioTestService ~= nil then
-	local editModeSignalOk, editModeSignal = pcall(function()
-		return StudioTestService:GetPropertyChangedSignal("EditModeActive")
-	end)
-	if editModeSignalOk and editModeSignal and type(editModeSignal.Connect) == "function" then
-		table.insert(connections, editModeSignal:Connect(function()
-			keepEditConsentOnlyInEditMode()
-		end))
-	end
-end
 
 plugin.Unloading:Connect(function()
 	disposed = true
-	allowEdits = false
-	confirmingEdits = false
 	bridge:destroy()
 	commands:destroy()
 	for _, connection in connections do connection:Disconnect() end
 end)
-refreshAccess()
+render()

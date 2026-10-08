@@ -341,7 +341,7 @@ function Generation:generate(request: any, stillCurrent: any): any
 		return { ok = false, failure = "refused", error = capability.reason .. "; no substitute was created" }
 	end
 	if not current(stillCurrent) then
-		return { ok = false, failure = "refused", error = "the Studio connection or edit consent ended before generation started; no substitute was created" }
+		return { ok = false, failure = "refused", error = "the Studio connection ended before generation started; no substitute was created" }
 	end
 	if self.inflight ~= nil and self.inflight.done ~= true then
 		return { ok = false, failure = "conflict", error = "a previous GenerationService call is still finishing and its result will be discarded" }
@@ -408,7 +408,7 @@ function Generation:generate(request: any, stillCurrent: any): any
 			return {
 				ok = false,
 				failure = "refused",
-				error = "the Studio connection or edit consent ended while generation was running; any late result will be destroyed",
+				error = "the Studio connection ended while generation was running; any late result will be destroyed",
 			}
 		end
 		if self.now() >= deadline then
@@ -431,7 +431,7 @@ function Generation:generate(request: any, stillCurrent: any): any
 	end
 	if self.destroyed or self.epoch ~= token or not current(stillCurrent) then
 		destroyInstance(model)
-		return { ok = false, failure = "refused", error = "the Studio connection or edit consent ended before quality checks completed; generated result was destroyed" }
+		return { ok = false, failure = "refused", error = "the Studio connection ended before quality checks completed; generated result was destroyed" }
 	end
 
 	local qc, qcErr = inspectDetached(model, normalized.maxTriangles, self)
@@ -441,7 +441,7 @@ function Generation:generate(request: any, stillCurrent: any): any
 	end
 	if self.destroyed or self.epoch ~= token or not current(stillCurrent) then
 		destroyInstance(model)
-		return { ok = false, failure = "refused", error = "the Studio connection or edit consent ended after quality checks; generated result was destroyed" }
+		return { ok = false, failure = "refused", error = "the Studio connection ended after quality checks; generated result was destroyed" }
 	end
 
 	return {

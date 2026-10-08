@@ -72,7 +72,7 @@ spec("play_check asks edit mode first, then consent, and starts nothing when eit
     local c = newCommands()
     local sessions = studioTest.sessions
     local denied = c:execute("no-consent", { op = "play_check" }, false)
-    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    eq(denied.ok, false); eq(denied.remedy, "reconnect_studio")
     runService.edit = false
     local testing = c:execute("testing", { op = "play_check" }, true)
     eq(testing.ok, false); eq(testing.remedy, "leave_test_mode", "edit mode is asked about before consent")
