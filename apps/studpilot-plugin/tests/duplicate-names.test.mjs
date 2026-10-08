@@ -129,7 +129,7 @@ spec("writes through a reference still need the consent gate", function()
     local c = newCommands()
     local refs = refsOf(c, folder)
     local r = run(c, "ref-no-consent", { op = "delete_instances", paths = { refs[1] } }, false)
-    eq(r.ok, false); has(r.error, "explicit edit consent"); eq(parts[1].Parent, folder)
+    eq(r.ok, false); has(r.error, "live StudPilot connection"); eq(parts[1].Parent, folder)
     c:destroy(); folder:Destroy()
 end)
 

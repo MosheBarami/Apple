@@ -119,12 +119,15 @@ import {
 } from './creator-skills';
 import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
+import { applySurfaceOp, type SurfaceKind } from './surfaces';
 // The self-check's ledger, which runTool writes to (evidence-ledger.ts).
 import { recordToolCall, type EvidenceLedger, type ToolRecord } from './evidence-ledger';
 import {
   searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
-  createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
+  createRig, checkUiLayout, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
 } from './phase-a-tools';
+// Rebuild 2026-10-08: the UI engine. The model designs the screen; the engine builds it correctly and measures it.
+import { buildUi, checkUi } from './ui-engine';
 
 // Every supplied gameplay genre is available, including horror.
 const AVAILABLE_KIT_IDS = GENRE_KIT_IDS;
@@ -3054,7 +3057,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         'Actions: clear (no fields; empties ALL Terrain in one call — use it for "clear/remove the terrain", never Air fills), fill_block (center,size,material), fill_ball (center,radius,material), fill_region (min,max,material), ' +
         'replace_material (min,max,sourceMaterial,targetMaterial), write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]) or path. ' +
         'Materials are Enum.Material names (Enum.Material.Grass). At most 65,536 voxels per call. ' +
-        'Needs Studio edit consent; one undo-recorded change. Checkpoint restore does not keep voxels: roll terrain back with Studio Undo. ' +
+        'Needs a live Studio connection; one undo-recorded change. Checkpoint restore does not keep voxels: roll terrain back with Studio Undo. ' +
         'RECIPES FIRST for these landforms: "floating_island" (center, radius), a flat grassy top on a rock underside tapering to a point, returns surfaceY to stand things on; "waterfall" (top = the edge it pours over, height, width, endsIn) hangs a thin sheet of water. ' +
         'A CHANNEL OR LINE OF TERRAIN ALONG POINTS IS ONE CALL: action "path", points [[x,y,z],...] (2-32; y = the surface, or the ceiling of a covered cut), width, depth (studs down), fill "Air" (default), "Water" (waterLevel 0-1: share of the depth filled, default 0.75) or "material" (with `material`); run as blocks, at most ' + TERRAIN_PATH_OP_CAP + ' per call. ' +
         `BUILD A WHOLE FEATURE IN ONE CALL: pass operations (up to ${MAX_TERRAIN_BATCH} of the actions above, each with its own fields); they run in order: overlapping fill_balls of decreasing radius make a mound; Air then a smaller Water ball, a basin. One operation per call costs a step each.`,
@@ -3143,6 +3146,26 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
       return op(ctx, { op: 'move_instances', moves });
     },
+  },
+  // RESURFACE, embedded (apps/studpilot-plugin/src/ops/Surface.luau, credited in THIRD_PARTY_NOTICES.md): classic Roblox
+  // surfaces on any part, mesh or union. Only when the person asks for that look; nothing is studded by default.
+  apply_surface: {
+    def: {
+      name: 'apply_surface',
+      description:
+        'Give parts a classic Roblox surface on every face (meshes and unions included): studs, inlet, universal, weld, glue, or smooth / smooth_no_outlines to take one off. Applies to every BasePart at or under each path. Use it only when the person asks for a studded or classic look.',
+      parameters: S(
+        {
+          paths: { type: 'array', minItems: 1, maxItems: 200, items: { type: 'string' } },
+          surface: { type: 'string', enum: ['studs', 'inlet', 'universal', 'weld', 'glue', 'smooth', 'smooth_no_outlines'] },
+        },
+        ['paths', 'surface'],
+      ),
+    },
+    studio: true,
+    studioOps: ['apply_surface'],
+    mutatesProject: true,
+    run: (ctx, a) => op(ctx, applySurfaceOp((Array.isArray(a.paths) ? a.paths : []).map(String), String(a.surface) as SurfaceKind)),
   },
   transform_instances: {
     def: {
@@ -5101,6 +5124,27 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
+  // THE CREATOR STORE PATH (rebuild 2026-10-08). The agent searches the store itself (apps/studio search_creator_store),
+  // picks an asset, and brings it in here: inserted into a holder folder, every script removed and the place re-listed to
+  // prove it, then measured so the agent can scale, place and adapt it. Unlike insert_asset there is no popularity gate:
+  // the agent judges fit from the store's details and from what it sees after insertion.
+  insert_from_store: {
+    def: {
+      name: 'insert_from_store',
+      description:
+        'Insert a Creator Store asset (model, mesh, decal, audio) you found with search_creator_store into the place. It lands in a holder folder under `parent`; any scripts inside are removed and reported. Returns the inserted paths and their bounding size, so you can inspect (get_instance, model_anatomy), then scale and position it (transform_instances) and rename or re-parent it to fit the request. Delete it if it does not fit.',
+      parameters: S({ assetId: { type: 'number' }, parent: { type: 'string', description: 'Where to put it. Default game.Workspace.' } }, ['assetId']),
+    },
+    studio: true,
+    studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'create_instances'],
+    mutatesProject: true,
+    run: async (ctx, a) => {
+      const assetId = Number(a.assetId);
+      if (!Number.isInteger(assetId) || assetId <= 0) return { error: `${String(a.assetId)} is not a valid asset id` };
+      ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      return insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace'));
+    },
+  },
   generate_model: {
     def: {
       name: 'generate_model',
@@ -5869,15 +5913,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['ui_layout_check'],
     run: (ctx, a) => checkUiLayout.run(studioCall(ctx), a),
   },
+  // Rebuild 2026-10-08 (ui-engine.ts): replaces the retired theme builder (D-UIONLY-1) under the same name.
   build_ui: {
     def: buildUi.def,
     studio: true,
-    studioOps: ['query_instances', 'create_instances', 'ui_layout_check'],
+    studioOps: ['query_instances', 'delete_instances', 'create_instances', 'measure_ui'],
     mutatesProject: (result) => !!result && typeof result === 'object' && typeof (result as Record<string, unknown>).built === 'string',
-    // Retired by D-UIONLY-1 (its screens were hand-styled Frames). Reverse: call buildUi.run again.
-    run: async () => ({
-      error: 'Refused (D-UIONLY-1): build_ui draws UI by hand and is retired. Insert each piece from the UI library with insert_ui_component({"component":"shop_window","genre":"<game genre>"}) (or currency_counter, main_menu, settings_window, ...). Nothing was sent to Studio.',
-    }),
+    run: (ctx, a) => buildUi.run(studioCall(ctx), a),
+  },
+  check_ui: {
+    def: checkUi.def,
+    studio: true,
+    studioOps: ['measure_ui'],
+    run: (ctx, a) => checkUi.run(studioCall(ctx), a),
   },
   // D-FXLIB-1: the sound and effect library (fx-library.ts). Registered one by one, like the rest.
   find_sound: {
@@ -6004,6 +6052,7 @@ const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list'
   delete_instances: { key: 'paths', kind: 'list' },
   move_instances: { key: 'moves', kind: 'moves' },
   transform_instances: { key: 'paths', kind: 'list' },
+  apply_surface: { key: 'paths', kind: 'list' },
   clone_instances: { key: 'paths', kind: 'list' },
   group_instances: { key: 'paths', kind: 'list' },
   ungroup_instances: { key: 'paths', kind: 'list' },

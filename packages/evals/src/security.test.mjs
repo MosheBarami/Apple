@@ -907,6 +907,8 @@ const TOOL_ARGS = {
   ungroup_instances: { paths: ['game.Workspace.A'] },
   move_instances: { moves: [{ path: 'game.Workspace.A', newParent: 'game.Workspace' }] },
   transform_instances: { paths: ['game.Workspace.A'], move: [0, 1, 0] },
+  apply_surface: { paths: ['game.Workspace.A'], surface: 'studs' },
+  insert_from_store: { assetId: 18717544 },
   rename_instance: { path: 'game.Workspace.A', name: 'B' },
   set_locked: { paths: ['game.Workspace.A'], locked: true },
   set_visible: { paths: ['game.Workspace.A'], visible: false },
@@ -933,6 +935,7 @@ const TOOL_ARGS = {
   create_rig: { rigType: 'R15', name: 'Shopkeeper', position: [0, 5, 0], npc: true },
   check_ui_layout: { screen: 'game.StarterGui.ShopGui' },
   build_ui: { screen: 'ShopGui', theme: 'tycoon', tree: { kind: 'panel', id: 'Panel', anchor: 'center', size: [0.5, 0.6], children: [{ kind: 'button', id: 'Buy', text: 'Buy' }] } },
+  check_ui: { screen: 'game.StarterGui.ShopGui' },
   // D-UIONLY-1. Egress reviewed 2026-09-23: ui-components.ts gets an op-sender and an image resolver
   // (shared id table, then the user's KV cache, then uploadLibraryAsset with their stored key). The
   // result carries component, instance paths, asset -> rbxassetid pairs and missing file names; the
@@ -2018,12 +2021,23 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
   //                      from a request, and hands the stub back only after THAT session has said the named user owns it
   //                      (`/owner-check`: another owner is 403, no owner on record is 409). That is safe only because its
   //                      callers are admin-key routes, so the assertion under the list holds both halves to the code.
-  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub', 'studioGrantedStub', 'sessionOfNamedOwner']);
+  //   issuePluginToken   REVIEWED 2026-10-08 (Connect without a code). Mints a plugin token for a project id that came from
+  //                      PairingDO, never from the request: a single-use code minted inside withOwnedProject, or a lobby
+  //                      binding written only by `/api/projects/:id/connect`, which is itself inside withOwnedProject.
+  //   /api/projects/:id/connect  REVIEWED 2026-10-08. Ownership-checked for its own project; the one other session it
+  //                      reaches is the project the bound Studio LEFT (`previousProjectId`, read from PairingDO), and only
+  //                      to revoke its plugin token: the Studio has just moved, so that token no longer reaches anything.
+  //   /api/studio/announce, /api/studio/release  REVIEWED 2026-10-08. The plugin's lobby, authenticated by the install
+  //                      secret (PairingDO holds its hash). Announce reaches a session only through issuePluginToken for an
+  //                      owner-made binding; release only to revoke the project this install was bound to.
+  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub', 'studioGrantedStub', 'sessionOfNamedOwner', 'issuePluginToken', '/api/projects/:id/connect']);
   for (const s of sites) {
     const ok =
       reviewed.has(s.owner) ||
       s.owner.startsWith('/api/admin/') ||
       s.owner === '/api/studio/claim' ||
+      s.owner === '/api/studio/announce' ||
+      s.owner === '/api/studio/release' ||
       s.owner === '/api/studio/poll' ||
       s.owner === '/api/health';
     assert.equal(ok, true, `sessionStub is reached from ${s.owner} (index.ts:${s.at}), which is neither ownership-checked nor admin-gated`);
@@ -2116,6 +2130,9 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   // This list is reviewed, not merely observed: an entry here means "this route is not asked for a
   // user JWT", and every one must authenticate some OTHER way or it is simply open.
   //   /api/health       — no data, no side effect
+  //   /api/studio/announce, /api/studio/release — the plugin's install secret is the credential (2026-10-08): the
+  //     first announce records its hash in PairingDO, later ones must match, a token is handed out only for a
+  //     binding the project's owner made by pressing Connect, and both are rate-limited per address.
   //   /api/studio/claim — a short-lived pairing code IS the credential
   //   /api/studio/poll  — the plugin's X-Golem-Token is the credential
   //   /api/waitlist     — REMOVED 2026-09-20, and the line above is the reason it had to be. It read
@@ -2175,8 +2192,10 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
       '/api/health',
       '/api/library-preview/:assetId',
       '/api/recovery-request',
+      '/api/studio/announce',
       '/api/studio/claim',
       '/api/studio/poll',
+      '/api/studio/release',
     ],
     'the unauthenticated route list changed — every entry needs its own review',
   );

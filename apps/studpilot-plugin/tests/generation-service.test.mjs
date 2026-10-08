@@ -310,7 +310,7 @@ spec("disconnect retires an in-flight epoch and destroys its late result", funct
     state.onWait = function(count) if count == 1 then live = false end end
     local generation = adapter(service, state)
     local result = generation:generate({ op = "generate_model", prompt = "crate", parent = "game.Workspace" }, function() return live end)
-    eq(result.ok, false); eq(result.failure, "refused"); has(result.error, "connection or edit consent ended")
+    eq(result.ok, false); eq(result.failure, "refused"); has(result.error, "connection ended")
     state:resumeAll()
     eq(late.destroyed, true)
 end)

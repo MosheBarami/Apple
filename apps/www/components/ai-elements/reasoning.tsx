@@ -156,12 +156,12 @@ export type ReasoningTriggerProps = ComponentProps<
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer className="font-medium" duration={1}>Thinking...</Shimmer>;
+    return <Shimmer as="span" className="font-medium" duration={1.6}>Thinking</Shimmer>;
   }
   if (duration === undefined) {
-    return <p>Thought for a few seconds</p>;
+    return <span>Thought for a few seconds</span>;
   }
-  return <p>Thought for {duration} seconds</p>;
+  return <span>Thought for {duration}s</span>;
 };
 
 export const ReasoningTrigger = memo(
@@ -207,9 +207,19 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
     const { isStreaming, isOpen } = useReasoning();
     const scrollRef = useRef<HTMLDivElement>(null);
+    // Follow new lines only while the reader is already at the bottom of the panel; once they scroll up to read
+    // earlier lines, the panel stays where they put it until they scroll back down.
+    const following = useRef(true);
+    const onScroll = useCallback(() => {
+      const el = scrollRef.current;
+      if (el) {
+        following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 8;
+      }
+    }, []);
     useEffect(() => {
-      if (isStreaming && scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const el = scrollRef.current;
+      if (isStreaming && el && following.current) {
+        el.scrollTop = el.scrollHeight;
       }
     }, [children, isStreaming]);
 
@@ -221,13 +231,16 @@ export const ReasoningContent = memo(
           "mt-2 animate-in fade-in-0 duration-200 text-muted-foreground [overflow-anchor:none]",
           className
         )}
+        {...props}
       >
         <div
-          className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-muted/50 px-3 py-2 text-xs leading-relaxed"
+          className="max-h-[220px] overflow-y-auto overscroll-contain rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed"
+          data-testid="reasoning-scroll"
+          onScroll={onScroll}
           ref={scrollRef}
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          style={{ scrollbarWidth: "thin" }}
         >
-          <Streamdown plugins={streamdownPlugins} {...props}>
+          <Streamdown plugins={streamdownPlugins}>
             {children}
           </Streamdown>
         </div>

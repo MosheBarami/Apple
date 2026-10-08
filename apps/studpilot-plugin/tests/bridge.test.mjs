@@ -193,6 +193,11 @@ local function makeBridge()
         function(value) executeResult = value end
 end
 
+local ID = {
+    installId = string.rep("a", 32), secret = string.rep("b", 64),
+    studioSessionId = string.rep("c", 32), robloxUserId = 42,
+}
+
 local function pending(id, op)
     return { id = id, seq = 1, studioOp = { op = op or "ping" } }
 end
@@ -202,16 +207,18 @@ do
     local bridge, statuses, _, _, _, stateCalls, capabilityCalls = makeBridge()
     assert(not bridge:isConnected(), "a new bridge must not auto-resume a session")
     queueResponse({ token = "project.secret", projectId = "project-id", projectName = "Demo Project" })
-    local ok, message = bridge:connect(" ab-c123 ")
+    local ok, message = bridge:connect(ID)
     assert(ok and message == "Connected · Demo Project")
     assert(capabilityCalls() == 1, "capabilities are sampled once for this pairing")
-    assert(#requests == 1 and requests[1].url == "https://studpilot.app/api/studio/claim")
+    assert(#requests == 1 and requests[1].url == "https://studpilot.app/api/studio/announce")
     assert(requests[1].method == "POST")
     assert(requests[1].headers["Content-Type"] == "application/json")
     assert(requests[1].headers["X-StudPilot-Token"] == "")
     assert(requests[1].headers["X-StudPilot-Plugin-Version"] == "${DECLARED_VERSION}")
     assert(requests[1].headers["X-StudPilot-Plugin-Protocol"] == "1")
-    assert(requests[1].body.code == "ABC123")
+    assert(requests[1].body.installId == ID.installId and requests[1].body.secret == ID.secret)
+    assert(requests[1].body.studioSessionId == ID.studioSessionId and requests[1].body.robloxUserId == 42)
+    assert(requests[1].body.wait == true and requests[1].body.connectedProjectId == nil)
     assert(requests[1].body.place.placeId == 77 and requests[1].body.place.gameId == 88)
     assert(stateCalls() == 1, "claim observes the place once")
 
@@ -241,7 +248,7 @@ do
     assert(tick(), "retired poll generation should finish cooperatively")
 
     queueResponse({ token = "project.second", projectId = "project-id", projectName = "Demo Project" })
-    assert(bridge:connect("SECOND"))
+    assert(bridge:connect(ID))
     assert(capabilityCalls() == 2, "a reconnect samples a fresh per-pairing report")
     queueResponse({ ops = {}, waitMs = 20 })
     assert(tick())
@@ -255,7 +262,7 @@ end
 do
     local bridge = makeBridge()
     queueResponse({ token = "events.secret", projectId = "events-project", projectName = "Events" })
-    assert(bridge:connect("EVENT1"))
+    assert(bridge:connect(ID))
     assert(bridge:pushEvent({ kind = "log", message = "kept", level = "warn", clock = 10 }))
     assert(bridge:pushEvent({ kind = "selection", items = {{ path = "game.Workspace.Before", class = "Part" }}, count = 1, clock = 11 }))
     queueFailure("offline")
@@ -286,7 +293,7 @@ end
 do
     local bridge, statuses, _, executed = makeBridge()
     queueResponse({ token = "retry.secret", projectId = "retry-project", projectName = "Retry" })
-    assert(bridge:connect("RETRY1"))
+    assert(bridge:connect(ID))
     queueResponse({ ops = { pending("op-1", "create_instances") }, waitMs = 1 })
     assert(tick())
     assert(#executed == 1)
@@ -318,7 +325,7 @@ end
 do
     local bridge, statuses, _, executed, _, _, _, _, setExecuteResult = makeBridge()
     queueResponse({ token = "big.secret", projectId = "big-project", projectName = "Big" })
-    assert(bridge:connect("BIG001"))
+    assert(bridge:connect(ID))
     setExecuteResult({ ok = true, data = { poison = true } })
     queueResponse({ ops = { pending("op-big", "snapshot") }, waitMs = 1 })
     assert(tick())
@@ -346,7 +353,7 @@ end
 do
     local bridge, statuses, _, executed = makeBridge()
     queueResponse({ token = "long.secret", projectId = "long-project", projectName = "Long" })
-    assert(bridge:connect("LONG01"))
+    assert(bridge:connect(ID))
     for n = 1, 30 do
         local batch = {}
         for k = 1, 10 do table.insert(batch, pending(("long-%d-%d"):format(n, k), "get_tree")) end
@@ -373,7 +380,7 @@ for _, terminal in {
 } do
     local bridge, statuses, _, executed = makeBridge()
     queueResponse({ token = "terminal.secret", projectId = "terminal-project", projectName = "Terminal" })
-    assert(bridge:connect("TERM1"))
+    assert(bridge:connect(ID))
     queueResponse(terminal.body)
     assert(tick())
     assert(#executed == 0, "terminal response must never execute its attached ops")
@@ -385,7 +392,7 @@ end
 do
     local bridge, statuses, _, executed = makeBridge()
     queueResponse({ token = "unauth.secret", projectId = "unauth-project", projectName = "Auth" })
-    assert(bridge:connect("AUTH01"))
+    assert(bridge:connect(ID))
     queueResponse({ error = "token expired", message = "Pair again from StudPilot" }, 401, { success = false })
     assert(tick())
     assert(#executed == 0 and not bridge:isConnected())
@@ -399,7 +406,7 @@ end
 do
     local bridge, _, _, executed = makeBridge()
     queueResponse({ token = "generation.secret", projectId = "generation-project", projectName = "Generation" })
-    assert(bridge:connect("GEN001"))
+    assert(bridge:connect(ID))
     queueResponse({ ops = { pending("late-op") }, waitMs = 1 }, 200, { await = true })
     assert(tick() and httpAwaiting, "poll must be suspended in the network await")
     bridge:disconnect()
@@ -421,7 +428,7 @@ do
         onActivity = function() end,
     })
     queueResponse({ token = "between.secret", projectId = "between-project", projectName = "Between" })
-    assert(second:connect("BET001"))
+    assert(second:connect(ID))
     queueResponse({ ops = { pending("first-op"), pending("second-op") }, waitMs = 1 })
     assert(tick())
     assert(#executedAgain == 1, "generation must be checked between operations")
@@ -432,7 +439,7 @@ end
 do
     local bridge, statuses, _, executed = makeBridge()
     queueResponse({ token = "overflow.secret", projectId = "overflow-project", projectName = "Overflow" })
-    assert(bridge:connect("OVER01"))
+    assert(bridge:connect(ID))
     local tooMany = {}
     for i = 1, 11 do table.insert(tooMany, pending("overflow-" .. tostring(i))) end
     queueResponse({ ops = tooMany, waitMs = 1 })
@@ -457,7 +464,7 @@ do
     local bridge = Bridge.new(config)
     assert(not bridge:answerAssetSources({ "creator_store" }), "an answer with no pairing has nowhere to go")
     queueResponse({ token = "sources.secret", projectId = "sources-project", projectName = "Sources" })
-    assert(bridge:connect("SRC123"))
+    assert(bridge:connect(ID))
     queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true } })
     assert(tick())
     assert(#heard == 1 and heard[1].owed == true, "the dock is not told the answer is owed")
@@ -517,14 +524,14 @@ do
     local bridge, statuses, _, executed, setState = makeBridge()
     setState(nil)
     local beforeRequests = #requests
-    local ok = bridge:connect("NOSTATE")
+    local ok = bridge:connect(ID)
     assert(not ok and not bridge:isConnected())
     assert(#requests == beforeRequests, "a missing state must prevent the claim request")
     assert(string.find(statuses[#statuses], "state", 1, true) ~= nil)
 
     local live, liveStatuses, _, liveExecuted, liveSetState = makeBridge()
     queueResponse({ token = "state.secret", projectId = "state-project", projectName = "State" })
-    assert(live:connect("STATE1"))
+    assert(live:connect(ID))
     liveSetState(nil)
     queueResponse({ ops = { pending("unsafe-op") } })
     assert(tick())
@@ -550,13 +557,13 @@ do
     local bridge, statuses, _, executed, _, _, _, _, setExecuteResult = makeBridge()
     setExecuteResult({
         ok = false,
-        error = "writes require explicit edit consent",
+        error = "writes require a live StudPilot connection to this Studio",
         failure = "refused",
-        remedy = "edit_consent",
+        remedy = "reconnect_studio",
         secretToken = "must-not-cross",
     })
     queueResponse({ token = "remedy.secret", projectId = "remedy-project", projectName = "Remedy" })
-    assert(bridge:connect("REMED1"))
+    assert(bridge:connect(ID))
     queueResponse({ ops = { pending("remedy-op", "create_instances") }, waitMs = 1 })
     assert(tick())
     assert(#executed == 1, "the refused op never reached execute — this assertion would be vacuous")
@@ -577,7 +584,7 @@ do
     end
     assert(sent ~= nil, "the result was executed and never reported")
     assert(sent.failure == "refused", "the failure kind did not cross the wire")
-    assert(sent.remedy == "edit_consent", "the remedy did not cross the wire; the model is left to invent one")
+    assert(sent.remedy == "reconnect_studio", "the remedy did not cross the wire; the model is left to invent one")
     assert(sent.secretToken == nil, "the allowlist let an arbitrary field through")
 end
 
@@ -597,12 +604,12 @@ do
     local base = #requests
     queuePrimaryFailure("HttpError: ConnectFail")
     queueResponse({ token = "fallback.secret", projectId = "fb-project", projectName = "Fallback" })
-    local ok, message = bridge:connect("FALLB1")
+    local ok, message = bridge:connect(ID)
     assert(ok and message == "Connected · Fallback", tostring(message))
     assert(#requests == base + 2, "one raised request and one retry, no more")
-    assert(requests[base + 1].url == PRIMARY .. "/api/studio/claim", requests[base + 1].url)
-    assert(requests[base + 2].url == FALLBACK .. "/api/studio/claim", requests[base + 2].url)
-    assert(requests[base + 2].method == "POST" and requests[base + 2].body.code == "FALLB1")
+    assert(requests[base + 1].url == PRIMARY .. "/api/studio/announce", requests[base + 1].url)
+    assert(requests[base + 2].url == FALLBACK .. "/api/studio/announce", requests[base + 2].url)
+    assert(requests[base + 2].method == "POST" and requests[base + 2].body.installId == ID.installId)
     for _, field in { "Content-Type", "X-StudPilot-Token", "X-StudPilot-Plugin-Version", "X-StudPilot-Plugin-Protocol" } do
         assert(requests[base + 2].headers[field] == requests[base + 1].headers[field], field .. " differs on the retry")
     end
@@ -632,18 +639,18 @@ do
         before = #requests
         queueResponse({ message = "the primary answered" }, status, { success = false })
         queueResponse({ token = "must.not.be.asked", projectId = "x", projectName = "X" })
-        local claimed, text = b:connect("ANSWER")
+        local claimed, text = b:connect(ID)
         assert(not claimed and not b:isConnected(), "HTTP " .. status .. " paired")
-        assert(#requests == before + 1 and requests[before + 1].url == PRIMARY .. "/api/studio/claim",
+        assert(#requests == before + 1 and requests[before + 1].url == PRIMARY .. "/api/studio/announce",
             "HTTP " .. status .. " from the primary went on to the fallback")
         assert(#responses == 1, "the fallback's response was consumed after HTTP " .. status)
         table.remove(responses, 1)
-        if status == 404 then assert(text == "Invalid or expired pairing code.", tostring(text)) end
+        if status == 403 then assert(text == "StudPilot did not recognise this Studio.", tostring(text)) end
     end
     for _, status in { 401, 403, 500 } do
         local b = makeBridge()
         queueResponse({ token = "poll.answer", projectId = "pa-project", projectName = "PollAnswer" })
-        assert(b:connect("POLLAN"))
+        assert(b:connect(ID))
         before = #requests
         queueResponse({ message = "the primary answered" }, status, { success = false })
         queueResponse({ ops = {}, waitMs = 1 })
@@ -660,19 +667,59 @@ do
     local b = makeBridge()
     before = #requests
     queuePrimaryFailure("HttpError: ConnectFail")
-    queueResponse({ message = "expired" }, 404, { success = false })
-    local claimed, text = b:connect("EXPIRE")
-    assert(not claimed and text == "Invalid or expired pairing code.", tostring(text))
+    queueResponse({ message = "not recognised" }, 403, { success = false })
+    local claimed, text = b:connect(ID)
+    assert(not claimed and text == "StudPilot did not recognise this Studio.", tostring(text))
     assert(#requests == before + 2)
 
     -- Both hosts unreachable: two requests, then the network message, never a loop.
     before = #requests
     local callsBefore = httpCalls
     queueFailure("HttpError: ConnectFail")
-    claimed, text = b:connect("OFFLINE")
+    claimed, text = b:connect(ID)
     assert(not claimed and text == "Could not reach StudPilot — check Studio’s network permission.", tostring(text))
     assert(#requests == before + 2 and #responses == 0, "an unreachable network is two requests, not more")
     assert(httpCalls == callsBefore + 2, "an unreachable network made " .. tostring(httpCalls - callsBefore) .. " calls, not two")
+end
+
+-- Connect without a code: waiting, a malformed identity, the heartbeat that follows a moved Studio, and release.
+do
+    table.clear(jobs)
+    local bridge, statuses = makeBridge()
+    local before = #requests
+    queueResponse({ waiting = true })
+    local ok, message, state = bridge:connect(ID)
+    assert(not ok and state == "waiting" and message == "Waiting for StudPilot", tostring(message))
+    assert(not bridge:isConnected())
+    assert(#requests == before + 1 and requests[before + 1].headers["X-StudPilot-Token"] == "", "an announce carries no session token")
+
+    before = #requests
+    local bad = bridge:connect({ installId = "short", secret = ID.secret, studioSessionId = ID.studioSessionId, robloxUserId = 1 })
+    assert(not bad and #requests == before, "a malformed identity must not reach the network")
+
+    queueResponse({ token = "p1.secret", projectId = "p1", projectName = "One" })
+    assert(bridge:connect(ID))
+    assert(bridge:projectName() == "One")
+    before = #requests
+    queueResponse({ waiting = true })
+    bridge:heartbeat(ID)
+    assert(#requests == before + 1 and requests[before + 1].url == "https://studpilot.app/api/studio/announce")
+    assert(requests[before + 1].body.connectedProjectId == "p1" and requests[before + 1].body.wait == false)
+    assert(bridge:isConnected() and bridge:projectName() == "One", "a plain heartbeat changes nothing")
+
+    queueResponse({ token = "p2.secret", projectId = "p2", projectName = "Two" })
+    bridge:heartbeat(ID)
+    assert(bridge:isConnected() and bridge:projectName() == "Two", "a heartbeat carrying another project's token moves the session")
+    for _, text in statuses do assert(not string.find(text, "secret", 1, true), "a status leaked a credential") end
+
+    before = #requests
+    queueResponse({ ok = true })
+    bridge:release(ID)
+    assert(not bridge:isConnected() and statuses[#statuses] == "Disconnected")
+    assert(requests[before + 1].url == "https://studpilot.app/api/studio/release")
+    assert(requests[before + 1].body.secret == ID.secret and requests[before + 1].body.installId == ID.installId)
+    table.clear(jobs)
+    table.clear(responses)
 end
 
 print("bridge protocol assertions passed")
@@ -701,6 +748,8 @@ test('Bridge source is independent, memory-only, and fixed to the StudPilot HTTP
   assert.match(SOURCE, /X-StudPilot-Plugin-Version/);
   assert.ok(DECLARED_VERSION, 'Bridge.luau no longer declares PLUGIN_VERSION as a quoted literal');
   assert.match(SOURCE, /X-StudPilot-Plugin-Protocol/);
+  // The token stays memory-only: the transport never touches plugin settings (the host keeps only the install identity).
   assert.doesNotMatch(SOURCE, /GetSetting|SetSetting|apple_session|studpilot_session|LoadAsset|loadstring|HttpGet/);
+  assert.doesNotMatch(SOURCE, /studio\/claim|Enter the pairing code/, 'the transport still speaks the removed pairing-code flow');
   assert.doesNotMatch(SOURCE, /apiBase|baseUrl/i);
 });

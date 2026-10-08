@@ -162,10 +162,11 @@ test('set_properties moves and retexts inserted UI but refuses restyling it', as
   assert.equal(bulk.calls.length, 0);
 });
 
-test('the two old hand-made paths are refused with a pointer to insert_ui_component', async () => {
+test('the two old hand-made paths are refused: the old build_ui theme form, and ui_kit with a pointer to insert_ui_component', async () => {
   const s = studio();
+  // build_ui is now the UI engine (ui-engine.ts, rebuild 2026-10-08); the old theme-tree form is refused before Studio.
   const b = await T.TOOLS.build_ui.run(s.ctx, { screen: 'ShopGui', theme: 'simulator', tree: { kind: 'panel', children: [] } });
-  assert.ok(refused(b) && namesTool(b), JSON.stringify(b));
+  assert.ok(typeof b?.error === 'string' && /Nothing was sent/.test(b.error), JSON.stringify(b));
   const k = await T.TOOLS.install_module.run(s.ctx, { module: 'ui_kit' });
   assert.ok(refused(k) && namesTool(k), JSON.stringify(k));
   assert.equal(s.calls.length, 0);

@@ -1,22 +1,32 @@
 {
-  // StudPilot Studio: the rebuilt chat workspace (planning/REBUILD-PLAN.md, stage R1).
-  // Flue adds `main` and one Durable Object binding per agent; the migrations below are ours.
+  // The StudPilot agent (planning/REBUILD-2026-10-08.md): one AIChatAgent Durable Object per project.
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "studpilot-studio",
+  "main": "src/server.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Reached only through the `studpilot` worker, which proxies studpilot.app/studio/* here (static files with the prefix
-  // removed, /studio/api/* unchanged) (same origin,
-  // so the signed-in Supabase session carries over). No workers.dev route.
+  // Reached only through the `studpilot` worker, which proxies studpilot.app/studio/agent/* and /studio/api/* here
+  // unchanged (same origin, so the signed-in Supabase session carries over). No workers.dev route.
   "workers_dev": false,
   "ai": { "binding": "AI" },
-  // The one capability the agent has: the read-only Studio gate on the main worker.
+  // The agent's one door to the place: the Studio gate on the main worker.
   "services": [{ "binding": "GATE", "service": "studpilot", "entrypoint": "StudioGate" }],
   "vars": {
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
-    "AI_GATEWAY_ID": "studpilot"
+    "AI_GATEWAY_ID": "studpilot",
+    "AGENT_MODEL": "@cf/moonshotai/kimi-k2.7-code"
   },
-  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/studio/api/*"] },
+  // The docs index: Roblox Creator Docs + Luau docs, rebuilt weekly (scripts/docs-index, .github/workflows/docs-index.yml).
+  "d1_databases": [{ "binding": "DOCS", "database_name": "studpilot-docs", "database_id": "2384c651-1abd-4142-a6e1-9af0f2a7441b" }],
   "observability": { "enabled": true },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FlueStudPilotAgent"] }]
+  "durable_objects": {
+    "bindings": [
+      { "name": "StudPilotAgent", "class_name": "StudPilotAgent" },
+      { "name": "FLUE_STUDPILOT", "class_name": "FlueStudPilotAgent" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["FlueStudPilotAgent"] },
+    { "tag": "v2", "new_sqlite_classes": ["StudPilotAgent"] }
+  ]
 }

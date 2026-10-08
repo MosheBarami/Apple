@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (
     MARKETING_PATHS.has(pathname) ||
+    pathname.startsWith("/docs/") ||
     DEV_ONLY_PATHS.some((p) => pathname.startsWith(p))
   ) {
     return NextResponse.next({ request });

@@ -1,46 +1,41 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AtmosphereProvider } from "@/components/creative/atmosphere";
 
 import "./globals.css";
-import "./uiverse.css";
-import "./luminous.css";
-import "./assembly.css";
+
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   other: { "studpilot-build": process.env.STUDPILOT_WEB_BUILD_SHA ?? "development" },
   description:
-    "StudPilot is a co-pilot that builds parts of your game inside your Roblox Studio: screens, systems, props and areas.",
+    "StudPilot is an AI agent for Roblox. Describe what you want in plain words and it builds it inside your place in Roblox Studio, with every change undoable.",
   metadataBase: new URL("https://studpilot.app"),
   openGraph: {
     siteName: "StudPilot",
     type: "website",
   },
   title: {
-    default: "StudPilot: a co-pilot that builds inside Roblox Studio",
+    default: "StudPilot: AI for Roblox Studio",
     template: "%s | StudPilot",
   },
 };
 
-const LIGHT_THEME_COLOR = "#eef4f5";
-const DARK_THEME_COLOR = "#090e18";
-const THEME_COLOR_SCRIPT = `\
-(function() {
-  var html = document.documentElement;
-  var meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) {
-    meta = document.createElement('meta');
-    meta.setAttribute('name', 'theme-color');
-    document.head.appendChild(meta);
-  }
-  function updateThemeColor() {
-    var isDark = html.classList.contains('dark');
-    meta.setAttribute('content', isDark ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
-  }
-  var observer = new MutationObserver(updateThemeColor);
-  observer.observe(html, { attributes: true, attributeFilter: ['class'] });
-  updateThemeColor();
-})();`;
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F0F0E" },
+  ],
+};
 
 export default function RootLayout({
   children,
@@ -48,18 +43,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <head>
-        <script
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: "Required"
-          dangerouslySetInnerHTML={{
-            __html: THEME_COLOR_SCRIPT,
-          }}
-        />
-      </head>
-      <body className="antialiased" data-ui-library="uiverse">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <AtmosphereProvider>{children}</AtmosphereProvider>
+    <html
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      data-scroll-behavior="smooth"
+      lang="en"
+      suppressHydrationWarning
+    >
+      <body className="antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange enableSystem>
+          {children}
         </ThemeProvider>
       </body>
     </html>

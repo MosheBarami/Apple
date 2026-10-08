@@ -10,7 +10,6 @@
 //
 // Deploy studpilot-studio BEFORE `infra/deploy-worker.mjs` when both change: the main worker binds to it.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,27 +29,15 @@ const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding:
 if (dirty) throw new Error('deploy-studio: commit reviewed changes before deploying');
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
 
-rmSync(join(STUDIO, 'dist'), { recursive: true, force: true });
-run('pnpm', ['build']);
 run(join(STUDIO, 'node_modules', '.bin', 'wrangler'), ['deploy', '--var', `BUILD_SHA:${sha}`]);
 
-/** /studio/ and every asset it names, with the type each must have. Retried briefly while the new version propagates. */
+/** The agent worker answers with this commit, and its agent route refuses a request with no sign-in (owner check first). */
 async function verify() {
-  const health = await fetch(`${ORIGIN}/studio/api/health`).then((r) => r.json());
+  const health = await fetch(`${ORIGIN}/studio/api/health`).then((r) => r.json()).catch(() => null);
   if (health?.buildSha !== sha) return [`Studio health reports ${health?.buildSha ?? 'no build'}, expected ${sha}`];
-  const page = await fetch(`${ORIGIN}/studio/?deploy-check=${Date.now()}`);
-  const html = await page.text();
-  if (!page.ok || !/<div id="root">/.test(html)) return [`/studio/ answered ${page.status} without the app's root element`];
-  const assets = [...html.matchAll(/(?:src|href)="(\/studio\/assets\/[^"]+)"/g)].map((m) => m[1]);
-  if (!assets.length) return ['/studio/ names no assets'];
-  const problems = [];
-  for (const path of assets) {
-    const res = await fetch(`${ORIGIN}${path}`);
-    const type = res.headers.get('content-type') ?? '';
-    const want = path.endsWith('.css') ? 'text/css' : 'javascript';
-    if (!res.ok || !type.includes(want)) problems.push(`${path}: ${res.status} ${type || '(no type)'}`);
-  }
-  return problems;
+  const agent = await fetch(`${ORIGIN}/studio/agent/00000000-0000-4000-8000-000000000000`);
+  if (agent.status !== 401) return [`/studio/agent/ answered ${agent.status} without a token, expected 401`];
+  return [];
 }
 
 let problems = [];
@@ -60,9 +47,9 @@ for (let attempt = 0; attempt < 6; attempt += 1) {
   await new Promise((r) => setTimeout(r, 5_000));
 }
 if (problems.length) {
-  console.error(`deploy-studio: NOT VERIFIED — ${ORIGIN}/studio/ is broken:\n  ${problems.join('\n  ')}`);
+  console.error(`deploy-studio: NOT VERIFIED:\n  ${problems.join('\n  ')}`);
   process.exit(1);
 }
-console.log(`verified — ${ORIGIN}/studio/ and every asset it names are served with their own types`);
+console.log(`verified — ${ORIGIN}/studio/api/health reports ${sha} and the agent route checks sign-in first`);
 // fetch's kept-alive connections would hold the process open for minutes after the answer is known.
 process.exit(0);

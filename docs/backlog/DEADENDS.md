@@ -19,6 +19,27 @@ exist is DELETE with a dated owner statement, per §6.6.
 
 ---
 
+## apps/studio/src/server.ts — WIRE, 2026-10-08
+
+**Found:** the agent worker's entry point. Nothing imports it because Wrangler loads it: `main` in
+`apps/studio/wrangler.jsonc` names it.
+
+## apps/studio/scripts/ui-probe.mjs — WIRE, 2026-10-08
+
+## apps/studio/scripts/ui-render.mjs — WIRE, 2026-10-08
+
+**Found:** operator commands for design review without Studio: `ui-probe.mjs` runs the agent's model on a UI request with
+the real build_ui compiler and writes each compiled screen; `ui-render.mjs` renders one as HTML and screenshots it at
+desktop and phone sizes (`node apps/studio/scripts/ui-render.mjs <screen.json> <outPrefix>`). CI does not run them.
+
+## apps/studio/scripts/model-probe.mjs — WIRE, 2026-10-08
+
+**Found:** an operator command that times candidate models against the agent's real prompt and tools on
+Workers AI (`node apps/studio/scripts/model-probe.mjs "<request>" [model...]`); it chose the default model.
+CI does not run it: it spends model time.
+
+---
+
 ## packages/asset-library/sfx/upload-cc0-ui.mjs — WIRE, 2026-09-25
 
 **Found:** the operational uploader was committed without a declared entry point, so CI's

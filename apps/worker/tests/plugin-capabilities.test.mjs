@@ -68,12 +68,14 @@ function luauTableKeys(name) {
 const PHASE_A_OPS = [
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
   'terrain_shape', 'terrain_read', 'create_rig', 'ui_layout_check', 'play_check_ui',
+  'measure_ui', // rebuild 2026-10-08: build_ui / check_ui measure a screen at five viewport sizes (ops/Ui.luau)
   'preview_sound', // D-FXLIB-1 (ops/Fx.luau): a local audition, never written into the place
 ];
 const PHASE_A_TOOLS = [
   'play_check_ui', 'search_instances', 'set_properties_bulk', 'spatial_query', 'scatter_instances', 'collision_groups',
   'shape_terrain', 'read_terrain', 'create_rig', 'check_ui_layout', 'build_ui',
-  'insert_ui_component', // D-UIONLY-1: checks its layout with ui_layout_check, as build_ui did
+  'insert_ui_component', // D-UIONLY-1: checks its layout with ui_layout_check
+  'check_ui', // rebuild 2026-10-08: build_ui's measurement on its own (measure_ui)
   'play_library_sound', // D-FXLIB-1: reviewed 2026-09-23 — plays one library id through preview_sound, needs plugin 1.3.0
 ];
 const familySource = ['Query', 'Physics', 'Terrain', 'Rig', 'Ui', 'Fx']
@@ -149,7 +151,7 @@ test('composite tools declare the operations their safety behavior actually depe
   assert.deepEqual(T.TOOLS.check_composition.studioOps, ['render_view']);
   assert.deepEqual(T.TOOLS.design_sound.studioOps, ['get_tree', 'set_props', 'create_instances']);
   assert.deepEqual(T.TOOLS.assign_sounds.studioOps, ['get_tree', 'get_instance', 'set_props']);
-  assert.deepEqual(T.TOOLS.build_ui.studioOps, ['query_instances', 'create_instances', 'ui_layout_check']);
+  assert.deepEqual(T.TOOLS.build_ui.studioOps, ['query_instances', 'delete_instances', 'create_instances', 'measure_ui']);
   assert.deepEqual(T.TOOLS.collision_groups.studioOps, ['collision_groups', 'collision_groups_list']);
 });
 

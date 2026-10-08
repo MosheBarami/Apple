@@ -263,8 +263,9 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   edit_terrain: 'Changes Terrain voxels and materials in the open place. Terrain authoring belongs to a consented agent run with its normal safety and review fences.',
   delete_instances: 'Deletes instances. The single most destructive tool in the registry; the checkpoint an agent run takes first is exactly what makes it survivable.',
   move_instances: 'Reparents existing objects in the place. Direct hierarchy writes stay behind the watched agent-run consent and checkpoint path.',
+  apply_surface: 'Changes the surface of every part under the given paths: a visible, whole-object edit that belongs to a checkpointed agent run.',
   transform_instances: 'Moves, rotates, or scales existing objects. Direct spatial edits stay behind the watched agent-run consent and verification path.',
-  clone_instances: 'Duplicates project objects. Creation belongs to an agent run where the user has edit consent and the resulting hierarchy can be verified.',
+  clone_instances: 'Duplicates project objects. Creation belongs to an agent run with a live Studio connection, where the resulting hierarchy can be verified.',
   group_instances: 'Creates a Model and reparents existing objects into it. That is a project write and is intentionally unavailable to direct MCP calls.',
   ungroup_instances: 'Reparents children and removes their former container. That write must pass through the normal agent-run edit and checkpoint fences.',
   rename_instance: 'Renames an existing project object and changes its path. Direct MCP credentials are read-only and cannot make that edit.',
@@ -275,6 +276,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   remove_effect: 'Strips emitters off instances in the place, destroying work an agent run or a person put there.',
   install_module: 'Writes a ModuleScript into the place and wires it up: a code change made by a program nobody was watching.',
   library_code: 'Installs third-party packages (and their dependencies) into the place: a code change made by a program nobody was watching, on the same rule as install_module.',
+  insert_from_store: 'Brings third-party content into the place; inside an agent run it is checkpointed and script-scanned, a direct caller would skip both.',
   insert_asset: 'Brings third-party content into the place. It passes an asset policy and a post-insertion script scan inside an agent run; a direct caller would be the one path around them.',
   generate_model: 'Creates geometry and parents it into the place, and spends on generation to do it.',
   remember: 'Writes a durable fact into project memory, which steers every later agent run. A program that can edit the agent\'s standing instructions is writing the place slowly.',
@@ -355,6 +357,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
   check_ui_layout: 'Changes nothing in the place, but it builds a temporary copy of a screen in Studio\'s own UI layer, and its plugin operation is opt-in, which MCP does not negotiate. Excluded for both reasons.',
+  check_ui: 'Excluded for the same reasons as check_ui_layout: a temporary copy of the screen in Studio\'s own UI layer, through the opt-in measure_ui operation that MCP does not negotiate.',
 };
 
 // ---------------------------------------------------------------------------

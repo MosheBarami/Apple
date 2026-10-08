@@ -7,36 +7,39 @@ const source = existsSync(sourceUrl) ? readFileSync(sourceUrl, 'utf8').replace(/
 
 test('StudPilot has an independent entry point and no legacy session restore', () => {
   assert.ok(source.length > 100);
-  assert.doesNotMatch(source, /GetSetting|apple_session|studpilot_session|apps\/plugin|loadstring|LoadAsset|require\s*\(\s*\d/);
+  assert.doesNotMatch(source, /apple_session|studpilot_session|apps\/plugin|loadstring|LoadAsset|require\s*\(\s*\d/);
   assert.match(source, /require\(script\.Bridge\)/);
   assert.match(source, /require\(script\.Commands\)/);
 });
 
-test('edit permission defaults off and is bound to this live connection', () => {
-  assert.match(source, /local allowEdits = false/);
-  assert.match(source, /local function consentStillCurrent\(\)/);
-  assert.match(source, /local function pairingStillCurrent\(\)/);
-  assert.match(source, /sessionCurrent/);
-  assert.match(source, /local authorized = if runAction ~= nil then pairingStillCurrent\(\) and allowEdits else consentStillCurrent\(\)/,
-    'Run-mode controls keep the connection consent while ordinary writes still require edit mode');
-  // The viewport capture is fenced by the pairing alone; every other op still carries the edit consent.
-  assert.match(source, /local readFence = if [^\n]* then pairingStillCurrent else consentStillCurrent\n/);
+test('the only thing saved in plugin settings is the install identity, never a session token', () => {
+  // Every settings call names the one identity key; the session token is never written anywhere.
+  const calls = [...source.matchAll(/plugin:(GetSetting|SetSetting)\(([^,)]*)/g)];
+  assert.ok(calls.length >= 2, 'the install identity is no longer persisted');
+  for (const [, , key] of calls) assert.equal(key.trim(), 'INSTALL_SETTING');
+  assert.match(source, /local INSTALL_SETTING = "StudPilotInstallV1"/);
+  assert.doesNotMatch(source, /SetSetting\([^)]*token/i);
+});
+
+test('connecting is the permission: there is no separate edit-consent step', () => {
+  assert.doesNotMatch(source, /allowEdits|confirmingEdits|Enable edits|Allow edits/);
+  assert.match(source, /local authorized = if isRunMode then liveConnection\(\) else writeFence\(\)/,
+    'Run-mode controls are fenced by the connection alone; every other write also by edit mode');
+  assert.match(source, /return liveConnection\(\) and editModeActive\(\)/, 'writes still require Studio edit mode');
   assert.match(source, /commands:execute\(id, op, authorized, readFence\)/);
-  assert.match(source, /allowEdits = false[\s\S]*bridge:connect/);
-  assert.match(source, /not bridge:isConnected\(\)[\s\S]*allowEdits = false/);
-  assert.match(source, /Allow edits for this connection/);
 });
 
-test('the pairing copy names the product host, and not a former one', () => {
-  assert.match(source, /Pair with a project at studpilot\.app\./);
+test('the dock is the three connection states and nothing else, in Studio colours', () => {
+  assert.match(source, /"Waiting for StudPilot"/);
+  assert.match(source, /"Open your project on studpilot\.app and press Connect\."/);
+  assert.match(source, /"Connected to " \.\. projectName/);
+  assert.match(source, /"Can’t reach StudPilot"/);
+  assert.match(source, /"Retry"/);
+  assert.match(source, /"Disconnect"/);
+  assert.match(source, /Studio\.Theme:GetColor/);
+  assert.match(source, /ThemeChanged/);
+  assert.doesNotMatch(source, /PairingCode|pairing code|Six-character/i, 'the pairing-code flow is gone');
   assert.doesNotMatch(source, /workers\.dev/, 'the dock names a workers.dev host to a person');
-});
-
-test('inspection disclosure names every pushed Studio data source', () => {
-  assert.match(source, /objects and scripts/);
-  assert.match(source, /current selection/);
-  assert.match(source, /Studio Output messages/);
-  assert.match(source, /While connected/);
 });
 
 test('unloading retires the bridge and disconnects event handlers', () => {

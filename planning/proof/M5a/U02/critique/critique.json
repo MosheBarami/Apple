@@ -288,8 +288,8 @@
    "change": "windows the menu opens start closed so the menu buttons are what the player sees"
   },
   {
-   "file": "apps/studio/src/agents/studpilot.ts",
-   "change": "forbid placeholder rows like Coming soon and any visual claim such as verified in the reply"
+   "file": "apps/studio/src/prompt.ts",
+   "change": "forbid placeholder content (Coming soon, Label, empty windows) and any claim of verification the tools did not make; what was asked for is what the player sees first"
   },
   {
    "file": "apps/worker/src/studkit.ts",

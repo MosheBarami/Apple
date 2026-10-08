@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import {
-  PRIVACY_UPDATED,
-  PrivacyBody,
-} from "@/components/site/legal/privacy-body";
-import { PageHeader } from "@/components/site/page-header";
+import { PRIVACY_UPDATED, PrivacyBody } from "@/components/site/legal/privacy-body";
+import { LegalPage } from "@/components/site/legal-page";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
@@ -14,16 +11,8 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <>
-      <PageHeader
-        kicker={`Updated ${PRIVACY_UPDATED}`}
-        title="Privacy Policy"
-      />
-      <div className="bg-background py-14 lg:py-20">
-        <article className="longform mx-auto w-full max-w-[760px] px-5 sm:px-8">
-          <PrivacyBody />
-        </article>
-      </div>
-    </>
+    <LegalPage title="Privacy Policy" updated={PRIVACY_UPDATED}>
+      <PrivacyBody />
+    </LegalPage>
   );
 }

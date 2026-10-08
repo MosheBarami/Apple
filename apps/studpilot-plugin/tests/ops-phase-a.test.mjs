@@ -179,7 +179,7 @@ local c = newCommands()
 spec("every Phase A operation installs and is reported supported", function()
     eq(#c.opFamilyErrors, 0, "family errors: " .. table.concat(c.opFamilyErrors, " | "))
     local report = Commands.capabilities(c)
-    for _, name in ipairs({ "query_instances", "set_props_bulk", "spatial_query", "scatter", "collision_groups", "collision_groups_list", "terrain_shape", "terrain_read", "create_rig", "ui_layout_check", "play_check_ui" }) do
+    for _, name in ipairs({ "query_instances", "set_props_bulk", "spatial_query", "scatter", "collision_groups", "collision_groups_list", "terrain_shape", "terrain_read", "create_rig", "ui_layout_check", "measure_ui", "play_check_ui" }) do
         local entry = byOp(report, name)
         eq(entry ~= nil and entry.status, "supported", name)
     end
@@ -223,7 +223,7 @@ end)
 
 spec("set_props_bulk takes the write gates and refuses properties outside the allowlist", function()
     local denied = c:execute("b2", { op = "set_props_bulk", targets = { "game.Workspace.Lamps.Post" }, props = { Anchored = { t = "bool", v = true } } }, false)
-    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    eq(denied.ok, false); eq(denied.remedy, "reconnect_studio")
     local content = c:execute("b3", { op = "set_props_bulk", targets = { "game.Workspace.Lamps.Post" }, adjust = { { property = "MeshId", op = "add", value = 1 } } }, true)
     eq(content.ok, false); has(content.error, "write allowlist")
 end)
@@ -334,7 +334,7 @@ end)
 services.PhysicsService = physics
 
 spec("collision groups register, stop colliding, and are assigned to every part under a model", function()
-    eq(c:execute("cg0", { op = "collision_groups", action = "register", group = "Players" }, false).remedy, "edit_consent")
+    eq(c:execute("cg0", { op = "collision_groups", action = "register", group = "Players" }, false).remedy, "reconnect_studio")
     local reg = c:execute("cg1", { op = "collision_groups", action = "register", group = "Players" }, true)
     eq(reg.ok, true, tostring(reg.error)); eq(physics:IsCollisionGroupRegistered("Players"), true)
     eq(c:execute("cg2", { op = "collision_groups", action = "set_collidable", group = "Players", other = "Players", collidable = false }, true).ok, true)
@@ -479,6 +479,54 @@ spec("ui_layout_check cleans up when layout fails, and refuses bad input", funct
     services.CoreGui = nil
     local none = c:execute("u7", { op = "ui_layout_check", screen = "game.StarterGui.ShopGui" }, false)
     eq(none.ok, false); eq(none.failure, "refused")
+end)
+
+-- measure_ui (build_ui's check) ---------------------------------------------------------------
+local admin = Instance.new("ScreenGui"); admin.Name = "AdminGui"; admin.IgnoreGuiInset = true; admin.Parent = services.StarterGui
+local function solid(g) g.BackgroundColor3 = Color3.new(0.08, 0.09, 0.12); g.BackgroundTransparency = 0; return g end
+local shadow = solid(ui("Frame", "Shadow", admin, UDim2.new(0, 420, 0, 320), UDim2.new(0, 90, 0, 90)))
+local apanel = solid(ui("Frame", "Panel", admin, UDim2.new(0, 400, 0, 300), UDim2.new(0, 100, 0, 100)))
+local atitle = ui("TextLabel", "Title", apanel, UDim2.new(0, 0, 0, 0), UDim2.new(0, 0, 0, 0)); atitle.Text = "Players"; atitle.TextColor3 = Color3.new(1, 1, 1)
+local row = solid(ui("Frame", "Row", apanel, UDim2.new(0, 400, 0, 40), UDim2.new(0, 0, 0, 100)))
+local kick = solid(ui("TextButton", "Kick", row, UDim2.new(0, 60, 0, 30), UDim2.new(0, 310, 0, 5))); kick.Text = "Kick"; kick.TextColor3 = Color3.new(1, 1, 1)
+local send = solid(ui("TextButton", "Send", apanel, UDim2.new(0, 120, 0, 60), UDim2.new(0, 300, 0, 90))); send.Text = "Send"; send.TextColor3 = Color3.new(1, 1, 1)
+local hint = ui("TextLabel", "Hint", apanel, UDim2.new(0, 200, 0, 20), UDim2.new(0, 0, 0, 200)); hint.Text = "hint"; hint.TextSize = 10; hint.TextColor3 = Color3.new(1, 1, 1)
+local big = ui("TextLabel", "Big", apanel, UDim2.new(0, 200, 0, 40), UDim2.new(0, 0, 0, 240)); big.Text = "Big"; big.TextScaled = true; big.TextSize = 20; big.TextColor3 = Color3.new(1, 1, 1)
+solid(ui("Frame", "Dot", apanel, UDim2.new(0, 12, 0, 12), UDim2.new(0, 390, 0, -5)))
+
+spec("measure_ui names each defect once, with every viewport it happens at", function()
+    services.CoreGui = coreGui
+    local before = #history.log
+    local r = newCommands({ waitForLayout = waitForLayout }):execute("m1", { op = "measure_ui", screen = "game.StarterGui.AdminGui" }, false)
+    eq(r.ok, true, tostring(r.error)); eq(r.data.verdict, "defects"); eq(#r.data.viewports, 5)
+    local at = {}
+    for _, d in ipairs(r.data.defects) do at[d.kind .. "@" .. d.path] = table.concat(d.at, ",") end
+    local p = "game.StarterGui.AdminGui.Panel."
+    eq(at["collapsed@" .. p .. "Title"] ~= nil, true, "text laid out 0 px wide")
+    eq(at["overflows_parent@" .. p .. "Send"] ~= nil, true, "the Send button spills out of the panel")
+    eq(at["overlap@" .. p .. "Row"] ~= nil, true, "the Send button sits on the player row")
+    eq(at["covered@" .. p .. "Row.Kick"], "desktop,laptop,tablet,phone_landscape,phone_portrait", "Send is drawn over Kick everywhere")
+    eq(at["small_touch_target@" .. p .. "Row.Kick"], "tablet,phone_landscape,phone_portrait", "a mouse is not a finger")
+    eq(at["tiny_text@" .. p .. "Hint"], "tablet,phone_landscape,phone_portrait")
+    eq(at["unbounded_scaled_text@" .. p .. "Big"] ~= nil, true)
+    eq(at["overflows_parent@" .. p .. "Dot"], nil, "a small badge may hang over a corner")
+    for key in pairs(at) do
+        if string.sub(key, 1, 8) == "overlap@" then eq(string.find(key, "Shadow", 1, true), nil, "a backdrop under the panel is a layer, not a collision: " .. key) end
+    end
+    eq(at["past_screen_edge@game.StarterGui.AdminGui.Panel"], "phone_landscape,phone_portrait", "a 400x300 px panel at 100,100 fits neither phone")
+    eq(#coreGui:GetChildren(), 0, "the check leaves nothing behind"); eq(#history.log, before, "a read makes no undo entry")
+end)
+
+spec("measure_ui passes a clean screen and refuses bad input", function()
+    local fine = Instance.new("ScreenGui"); fine.Name = "FineGui"; fine.IgnoreGuiInset = true; fine.Parent = services.StarterGui
+    local box = solid(ui("Frame", "Box", fine, UDim2.new(0, 300, 0, 200), UDim2.new(0, 40, 0, 80)))
+    local ok = solid(ui("TextButton", "Ok", box, UDim2.new(0, 120, 0, 44), UDim2.new(0, 20, 0, 20))); ok.Text = "OK"; ok.TextColor3 = Color3.new(1, 1, 1); ok.TextSize = 18
+    local cmd = newCommands({ waitForLayout = waitForLayout })
+    local r = cmd:execute("m2", { op = "measure_ui", screen = "game.StarterGui.FineGui", viewports = { "phone_portrait", "desktop" } }, false)
+    eq(r.ok, true, tostring(r.error)); eq(r.data.verdict, "pass", #r.data.defects > 0 and (r.data.defects[1].kind .. " " .. r.data.defects[1].path) or nil)
+    eq(cmd:execute("m3", { op = "measure_ui", screen = "game.StarterGui.FineGui", viewports = { "watch" } }, false).ok, false)
+    eq(cmd:execute("m4", { op = "measure_ui", screen = "game.StarterGui.FineGui.Box" }, false).ok, false)
+    fine:Destroy()
 end)
 
 -- play_check presses (F-050) ------------------------------------------------------------------
@@ -628,7 +676,7 @@ end)
 spec("press targets must be buttons inside a StarterGui ScreenGui, at most five, behind consent", function()
     studioTest.onSession = pressSession({})
     local sessions = studioTest.sessions
-    eq(c:execute("p3", { op = "play_check_ui", press = { "game.StarterGui.StoreGui.Buy" } }, false).remedy, "edit_consent")
+    eq(c:execute("p3", { op = "play_check_ui", press = { "game.StarterGui.StoreGui.Buy" } }, false).remedy, "reconnect_studio")
     eq(c:execute("p4", { op = "play_check_ui", press = { "game.StarterGui.StoreGui.Banner" } }, true).ok, false)
     eq(c:execute("p5", { op = "play_check_ui", press = { "game.Workspace.Lamps.Post" } }, true).ok, false)
     local six = {}; for i = 1, 6 do six[i] = "game.StarterGui.StoreGui.Buy" end
@@ -665,7 +713,7 @@ const skip = available ? false : 'luau is not on PATH';
 
 test('Phase A op families pass the executable Studio-mock suite', { skip }, () => {
   const result = runSuite();
-  assert.match(result.output, /^commands: 31 passed$/m, 'suite did not report a clean run:\n' + result.output);
+  assert.match(result.output, /^commands: 33 passed$/m, 'suite did not report a clean run:\n' + result.output);
   assert.equal(result.status, 0, result.output);
 });
 

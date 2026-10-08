@@ -29,6 +29,7 @@ export type PropValue =
   | { t: 'BrickColor'; v: string }
   | { t: 'Content'; v: string } // rbxassetid://...
   | { t: 'Instance'; v: string } // path reference
+  | { t: 'Font'; v: [string, string?, string?] } // FontFace: built-in family, FontWeight name, FontStyle name
   | { t: 'nil' };
 
 export interface InstanceSpec {
@@ -42,6 +43,8 @@ export interface InstanceSpec {
 
 /** Device frames ui_layout_check lays a screen out in (phones and tablets also get the touch-target check). */
 export type UiLayoutDevice = 'phone_portrait' | 'phone_landscape' | 'tablet' | 'desktop' | 'console_tv';
+/** Screen sizes measure_ui lays a screen out at (build_ui's check); tablet and phones are touch screens. */
+export type UiViewport = 'desktop' | 'laptop' | 'tablet' | 'phone_landscape' | 'phone_portrait';
 /** How set_props_bulk adjusts a number or Vector3 property. Named, not inlined, because an inline `op: '…'` would read as a StudioOp. */
 export type BulkAdjustOp = 'add' | 'mul';
 
@@ -242,6 +245,8 @@ export type StudioOp =
       displayName?: string;
     }
   | { op: 'ui_layout_check'; screen: string; devices?: UiLayoutDevice[] }
+  /** build_ui's check: lays a ScreenGui out at each viewport (a temporary copy in CoreGui) and lists defects. Read-only. */
+  | { op: 'measure_ui'; screen: string; viewports?: UiViewport[] }
   /** play_check plus presses (F-050): each `press` path is a GuiButton inside a ScreenGui in StarterGui. */
   | { op: 'play_check_ui'; seconds?: number; touch?: string[]; press: string[] }
   | { op: 'preview_sound'; soundId: string; volume?: number } // D-FXLIB-1: plays a library sound in Studio only
@@ -460,8 +465,11 @@ export interface OpResult {
  * the compiler asks what the user is supposed to do about it.
  */
 export const REFUSAL_REMEDIES = {
-  /** The consent gate is off. This is the one the model invented a fix for. */
-  edit_consent: 'In Studio, open the StudPilot panel and press “Enable edits…”, then “Allow edits for this connection”. Consent is per connection and turns off when you disconnect.',
+  /**
+   * Studio is not connected to this project (the plugin refuses every write without a live connection). This replaced
+   * `edit_consent` on 2026-10-08, when the plugin's separate "Allow edits" step was removed: connecting is the consent.
+   */
+  reconnect_studio: 'Open Roblox Studio with the StudPilot plugin, then open this project on studpilot.app and press Connect. StudPilot edits as soon as Studio is connected.',
   /** Studio is running a test, so the plugin will not write. */
   leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — StudPilot only edits in edit mode.',
   /** The asset is not in the signed-in user's inventory. */
@@ -933,6 +941,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'spatial_query':
     case 'read_terrain':
     case 'check_ui_layout':
+    case 'check_ui':
       return 'inspecting';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'
@@ -957,6 +966,7 @@ export function phaseForTool(tool: string): AgentPhase {
     // they are distinct tools so Agent can express the edit without arbitrary Luau.
     case 'move_instances':
     case 'transform_instances':
+    case 'apply_surface':
     case 'clone_instances':
     case 'group_instances':
     case 'ungroup_instances':
@@ -964,6 +974,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_locked':
     case 'set_visible':
     case 'insert_asset':
+    case 'insert_from_store':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
     case 'insert_library_model':
     case 'generate_model':
@@ -2872,6 +2883,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
+    name: 'apply_surface',
+    label: 'Change part surfaces',
+    why: 'Gives parts a classic Roblox surface such as studs, when you ask for that look.',
+    group: 'changes',
+  },
+  {
     name: 'transform_instances',
     label: 'Transform objects',
     why: 'Moves, rotates, or scales existing spatial objects in the place.',
@@ -2929,6 +2946,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'remove_effect',
     label: 'Remove StudPilot effects',
     why: 'Deletes presentation effects that StudPilot previously attached to project objects.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_from_store',
+    label: 'Bring in Creator Store assets',
+    why: 'Inserts a model, mesh, image or sound from the Creator Store into your place, with any scripts in it removed.',
     group: 'changes',
   },
   {

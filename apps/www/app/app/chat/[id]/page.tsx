@@ -1,5 +1,6 @@
-import { ChatView } from "@/components/app/chat-view";
+import { redirect } from "next/navigation";
 
+// A chat was always one project (its conversation id is the project id); old links land on the project page.
 export default async function Page({
   params,
   searchParams,
@@ -8,5 +9,5 @@ export default async function Page({
   searchParams: Promise<{ pair?: string }>;
 }) {
   const [{ id }, { pair }] = await Promise.all([params, searchParams]);
-  return <ChatView key={id} pair={pair === "1"} projectId={id} />;
+  redirect(`/app/projects/${encodeURIComponent(id)}${pair === "1" ? "?pair=1" : ""}`);
 }

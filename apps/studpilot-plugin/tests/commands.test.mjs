@@ -154,7 +154,7 @@ spec("selection, camera and viewport use the companion consent boundary without 
     local c = newCommands()
     local before = #history.log
     local denied = run(c, "select-denied", { op = "select", paths = { "game.Workspace.Selected" } }, false)
-    eq(denied.ok, false); has(denied.error, "explicit edit consent")
+    eq(denied.ok, false); has(denied.error, "live StudPilot connection")
     local selected = run(c, "select-live", { op = "select", paths = { "game.Workspace.Selected" } }, true)
     eq(selected.ok, true); eq(selected.data.selected, 1); eq(selection.values[1], target)
     local viewport = run(c, "viewport", { op = "viewport_info" }, false)
@@ -192,7 +192,7 @@ end)
 spec("writes need explicit consent and edit mode", function()
     local c = newCommands()
     local denied = run(c, "denied", { op = "create_instances", items = {{ className = "Part", name = "Denied", parent = "game.Workspace" }} }, false)
-    eq(denied.ok, false); has(denied.error, "explicit edit consent")
+    eq(denied.ok, false); has(denied.error, "live StudPilot connection")
     runService.edit = false
     local modeDenied = run(c, "mode", { op = "create_instances", items = {{ className = "Part", name = "DeniedMode", parent = "game.Workspace" }} }, true)
     eq(modeDenied.ok, false); has(modeDenied.error, "Studio edit mode")
@@ -215,7 +215,7 @@ spec("both gates shut at once names the one the user can act on now", function()
     -- Consent is still the answer once the test is over, so the second instruction is not lost.
     local stopped = newCommands({ isEdit = function() return true end })
     local afterStop = run(stopped, "after-stop", write, false)
-    eq(afterStop.remedy, "edit_consent", "in edit mode without consent the remedy is still the panel")
+    eq(afterStop.remedy, "reconnect_studio", "in edit mode without consent the remedy is still the panel")
     playMode:destroy(); stopped:destroy()
 end)
 
@@ -884,7 +884,7 @@ spec("typed terrain edits are bounded, recorded and never use run_code", functio
     local cleared = run(c, "terrain-clear", { op = "terrain_edit", action = "clear" }, true)
     eq(cleared.ok, true, tostring(cleared.error)); eq(terrain.calls[#terrain.calls].action, "clear")
     local denied = run(c, "terrain-denied", { op = "terrain_edit", action = "fill_ball", center = {0,0,0}, radius = 8, material = "Enum.Material.Grass" }, false)
-    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    eq(denied.ok, false); eq(denied.remedy, "reconnect_studio")
     c:destroy()
 end)
 
@@ -1415,7 +1415,7 @@ spec("run_mode uses explicit consent, controls only Run mode, and creates no und
     local c = newCommands()
     local before = #history.log
     local denied = run(c, "run-denied", { op = "run_mode", action = "start" }, false)
-    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    eq(denied.ok, false); eq(denied.remedy, "reconnect_studio")
     local started = run(c, "run-start", { op = "run_mode", action = "start" }, true)
     eq(started.ok, true, tostring(started.error)); eq(started.data.running, true); eq(started.data.runMode, true); eq(runService.running, true)  -- IsEdit stays true under Run(); running is the fact
     local writeDuringRun = run(c, "run-write", { op = "set_props", path = "game.Workspace.Mover", props = { Transparency = { t = "number", v = 0.2 } } }, true)

@@ -1,132 +1,88 @@
 "use client";
-import { MenuIcon, XIcon } from "lucide-react";
+
+import { MenuIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState } from "react";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { NAV_LINKS } from "@/lib/site-data";
+import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
-import { MotionControl } from "@/components/creative/atmosphere";
-const MENUS = [
-  {
-    label: "Create",
-    links: [
-      ["Interfaces", "/app/library"],
-      ["Systems", "/app/library"],
-      ["Worlds", "/app/library"],
-      ["Edit a project", "/app/projects"],
-    ],
-  },
-  {
-    label: "Product",
-    links: [
-      ["The workspace", "/product"],
-      ["Studio connection", "/docs#pair"],
-      ["Projects", "/app/projects"],
-    ],
-  },
-  {
-    label: "Resources",
-    links: [
-      ["Documentation", "/docs"],
-      ["Getting started", "/docs#pair"],
-      ["Privacy", "/privacy"],
-      ["Terms", "/terms"],
-    ],
-  },
-];
+
 export function SiteNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => {
-    const close = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    addEventListener("keydown", close);
-    return () => removeEventListener("keydown", close);
-  }, []);
+  const isActive = (href: string) => !href.startsWith("/#") && (pathname === href || pathname.startsWith(`${href}/`));
   return (
-    <header className="reference-nav">
-      <nav className="site-container" aria-label="Main">
-        <Link href="/" aria-label="StudPilot, home">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
+      <nav aria-label="Main" className="site-container flex h-14 items-center gap-8">
+        <Link aria-label="StudPilot home" className="rounded-md" href="/">
           <Wordmark />
         </Link>
-        <div className="reference-nav-links">
-          {MENUS.slice(0, 2).map((menu) => (
-            <DropdownMenu key={menu.label}>
-              <DropdownMenuTrigger className="nav-menu-trigger">
-                {menu.label}
-                <span>↓</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="reference-menu" align="start">
-                {menu.links.map(([label, href]) => (
-                  <DropdownMenuItem key={label} asChild>
-                    <Link href={href}>{label}</Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <ul className="hidden items-center gap-1 md:flex">
+          {NAV_LINKS.map((link) => (
+            <li key={link.href}>
+              <Link
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground",
+                  isActive(link.href) && "text-foreground",
+                )}
+                href={link.href}
+              >
+                {link.label}
+              </Link>
+            </li>
           ))}
-          <Link href="/docs#pair">Studio</Link>
-          <Link href="/pricing">Pricing</Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger className="nav-menu-trigger">
-              Resources<span>↓</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="reference-menu">
-              {MENUS[2].links.map(([label, href]) => (
-                <DropdownMenuItem key={label} asChild>
-                  <Link href={href}>{label}</Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div className="reference-nav-actions">
-          <MotionControl />
-          <Link href="/login" className="nav-signin">
+        </ul>
+        <div className="ml-auto hidden items-center gap-2 md:flex">
+          <a className="rounded-md px-2.5 py-1.5 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground" href="/login">
             Sign in
-          </Link>
-          <Link href="/docs" className="nav-secondary">
-            Get started
-          </Link>
-          <Link href="/app" className="nav-primary">
-            Open app
-          </Link>
-          <button
-            type="button"
-            className="nav-menu-toggle"
-            aria-controls="mobile-menu"
-            aria-expanded={open}
-            aria-label={open ? "Close menu" : "Open menu"}
-            onClick={() => setOpen((v) => !v)}
+          </a>
+          <a
+            className="inline-flex h-8 items-center rounded-lg bg-primary px-3 font-medium text-[14px] text-primary-foreground transition-opacity duration-150 hover:opacity-85"
+            href="/app"
           >
-            {open ? <XIcon /> : <MenuIcon />}
-          </button>
+            Open app
+          </a>
         </div>
+        <Sheet onOpenChange={setOpen} open={open}>
+          <SheetTrigger asChild>
+            <button
+              aria-label="Open menu"
+              className="ml-auto inline-flex size-9 items-center justify-center rounded-lg border text-foreground md:hidden"
+              type="button"
+            >
+              <MenuIcon className="size-4" />
+            </button>
+          </SheetTrigger>
+          <SheetContent className="w-[86vw] max-w-sm bg-background p-0" id="mobile-menu" side="right">
+            <SheetTitle className="sr-only">Menu</SheetTitle>
+            <div className="flex h-14 items-center border-b px-4">
+              <Wordmark />
+            </div>
+            <ul className="flex flex-col p-2">
+              {NAV_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link className="block rounded-md px-3 py-3 text-[16px]" href={link.href} onClick={() => setOpen(false)}>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <a className="block rounded-md px-3 py-3 text-[16px]" href="/login">
+                  Sign in
+                </a>
+              </li>
+            </ul>
+            <div className="px-4">
+              <a className="flex h-10 items-center justify-center rounded-lg bg-primary font-medium text-[15px] text-primary-foreground" href="/app">
+                Open app
+              </a>
+            </div>
+          </SheetContent>
+        </Sheet>
       </nav>
-      <div
-        className={`nav-mobile ${open ? "is-open" : ""}`}
-        id="mobile-menu"
-        inert={!open}
-      >
-        {[
-          ["Product", "/product"],
-          ["Studio", "/docs#pair"],
-          ["Pricing", "/pricing"],
-          ["Docs", "/docs"],
-          ["Sign in", "/login"],
-        ].map(([label, href]) => (
-          <Link key={label} href={href} onClick={() => setOpen(false)}>
-            {label}
-          </Link>
-        ))}
-      </div>
     </header>
   );
 }

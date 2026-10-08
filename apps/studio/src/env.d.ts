@@ -1,6 +1,7 @@
-/** What the Studio worker is bound to (wrangler.jsonc). Flue adds its own FLUE_* bindings. */
+/** What the Studio worker is bound to (wrangler.jsonc). */
 interface StudioGate {
   openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string; canBuild: boolean } | { ok: false }>;
+  projectStatus(projectId: string): Promise<{ studio: { connected: boolean; placeName: string | null; placeId: number | null }; credits: { remaining: number; unmetered: boolean } | null }>;
   callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }>;
   reserveModel(model: string, inputChars: number, maxOutputTokens: number): Promise<{ ok: true; reserved: number } | { ok: false; message: string }>;
   settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number } | null): Promise<void>;
@@ -12,7 +13,11 @@ interface StudioGate {
 interface Env {
   AI: Ai;
   GATE: Fetcher & StudioGate;
+  DOCS: D1Database;
+  StudPilotAgent: DurableObjectNamespace<import('./agent.ts').StudPilotAgent>;
   SUPABASE_URL: string;
   AI_GATEWAY_ID: string;
+  /** The Workers AI model the agent runs on. */
+  AGENT_MODEL?: string;
   BUILD_SHA?: string;
 }
