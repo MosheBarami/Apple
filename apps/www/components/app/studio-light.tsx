@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { connectStudio, createProject, disconnectStudio, type StudioCandidate, type StudioLink, studioLink } from "@/lib/api";
+import { connectStudio, createProject, disconnectStudio, robloxLink, robloxLinkUrl, type StudioCandidate, type StudioLink, studioLink } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useProjects } from "./projects-provider";
 
@@ -76,6 +76,22 @@ export function StudioLight({ projectId, openOnMount = false }: { projectId: str
   const placeName = link?.place?.placeName;
   const attempt = useRef(0);
   const autoStarted = useRef(false);
+  // Studio and this browser can reach us from different addresses (a carrier's address pool), so the network alone does not
+  // always find it; a linked Roblox account always does. Null until known.
+  const [robloxLinked, setRobloxLinked] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void robloxLink().then(r => live && setRobloxLinked(r ? r.linked : null));
+    return () => { live = false; };
+  }, []);
+  const linkRoblox = async () => {
+    if (!projectId) return;
+    try {
+      window.location.assign(await robloxLinkUrl(`/app/projects/${projectId}`));
+    } catch (e) {
+      setPhase({ kind: "error", message: message(e, "Could not start linking your Roblox account. Please try again.") });
+    }
+  };
 
   useEffect(() => {
     attempt.current += 1;
@@ -132,6 +148,18 @@ export function StudioLight({ projectId, openOnMount = false }: { projectId: str
       setBusy(false);
     }
   }, [busy, look, projectId, refresh, router]);
+
+  // Back from linking a Roblox account: look for Studio straight away, and drop the marker from the address.
+  useEffect(() => {
+    if (!projectId || autoStarted.current || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("roblox") !== "linked") return;
+    autoStarted.current = true;
+    url.searchParams.delete("roblox");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    setRobloxLinked(true);
+    void look(projectId);
+  }, [projectId, look]);
 
   useEffect(() => {
     if (openOnMount && projectId && !autoStarted.current) {
@@ -201,7 +229,17 @@ export function StudioLight({ projectId, openOnMount = false }: { projectId: str
           <p className="text-muted-foreground" role="status">Open Roblox Studio with the StudPilot plugin. It connects as soon as Studio is found.</p>
         ) : null}
         {phase.kind === "notFound" ? (
-          <p className="text-muted-foreground" role="status">No Studio found. Open Roblox Studio with the StudPilot plugin on this computer, then retry.</p>
+          <p className="text-muted-foreground" role="status">No Studio found. Open Roblox Studio with the StudPilot plugin, then retry.</p>
+        ) : null}
+        {(phase.kind === "looking" || phase.kind === "notFound") && robloxLinked === false ? (
+          <div className="space-y-2 border-border border-t pt-2">
+            <p className="text-muted-foreground text-xs">
+              Studio not showing up? Link the Roblox account you use in Studio once, and StudPilot finds it on any network.
+            </p>
+            <Button className="w-full" onClick={() => void linkRoblox()} size="sm" variant="secondary">
+              Link Roblox account
+            </Button>
+          </div>
         ) : null}
         {phase.kind === "error" ? <p className="text-destructive" role="alert">{phase.message}</p> : null}
         {phase.kind === "choose" ? (

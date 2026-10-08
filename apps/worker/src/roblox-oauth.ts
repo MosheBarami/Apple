@@ -188,7 +188,7 @@ export function ensureRobloxOAuthTables(env: Pick<Env, 'CORPUS'>): Promise<void>
 
 const b64url = (bytes: Uint8Array): string =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const randomToken = (bytes: number): string => b64url(crypto.getRandomValues(new Uint8Array(bytes)));
+export const randomToken = (bytes: number): string => b64url(crypto.getRandomValues(new Uint8Array(bytes)));
 const s256 = async (verifier: string): Promise<string> =>
   b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
 
@@ -208,6 +208,8 @@ const RETURN_PATHS: readonly RegExp[] = [
   /^\/(?:usage|settings)$/,
   /^\/projects\/[A-Za-z0-9-]{1,64}(?:\/(?:roadmap|branding))?$/,
   /^\/join\?token=[A-Za-z0-9_-]{16,128}$/,
+  // The app (apps/www): a project page, where Connect sends the person to link their Roblox account and back.
+  /^\/app(?:\/settings|\/projects\/[0-9a-f-]{36})?$/,
 ];
 export function allowedReturn(raw: unknown): string {
   return typeof raw === 'string' && raw.length <= 200 && RETURN_PATHS.some((re) => re.test(raw)) ? raw : '/';
@@ -254,7 +256,11 @@ const MESSAGES = {
   unavailable: 'Sign in with Roblox is not available right now.',
   busy: 'Too many attempts. Wait a minute and try again.',
   failed: 'We could not sign you in with Roblox. Go back to StudPilot and try again.',
+  linkTaken: 'That Roblox account is already linked to a different StudPilot account. Sign in to that account, or use another Roblox account.',
 } as const;
+
+/** KV prefix of a one-time link ticket (POST /api/roblox/link-ticket): the signed-in StudPilot user a Roblox account is linked to. */
+export const LINK_TICKET_PREFIX = 'roblox-link-ticket:';
 
 const HARDENING: Record<string, string> = {
   'Cache-Control': 'no-store',
@@ -668,12 +674,14 @@ interface StateRecord {
   verifier: string;
   returnTo: string;
   redirectUri: string;
+  /** For `purpose: 'link'`: the signed-in StudPilot account the Roblox account is being linked to (from a one-time ticket). */
+  linkUserId?: string;
   /**
    * `reauth`: the person is confirming it is them (a Roblox-only account has no password), not signing in for the first time or
    * again. It asked Roblox for a fresh login, it never makes an account, and a success records the time on the server.
    * A record without the field (one stored before it existed) is an ordinary sign-in.
    */
-  purpose: 'signin' | 'reauth';
+  purpose: 'signin' | 'reauth' | 'link';
 }
 
 async function start(req: Request, env: Env): Promise<Response> {
@@ -690,11 +698,27 @@ async function start(req: Request, env: Env): Promise<Response> {
   const action = asked !== null && REAUTH_ACTION.test(asked) ? asked : null;
   const state = randomToken(32);
   const verifier = randomToken(48);
+  // `link=<ticket>`: a signed-in person linking their Roblox account (so Connect can find the Studio they are signed into on
+  // any network). The ticket is one-time and names the account; a missing or used ticket is refused, never a sign-in.
+  const ticket = url.searchParams.get('link');
+  let link: { userId: string; returnTo: string } | null = null;
+  if (ticket !== null) {
+    const raw = FLOW_TOKEN.test(ticket) ? await env.KV.get(LINK_TICKET_PREFIX + ticket) : null;
+    if (raw !== null) await env.KV.delete(LINK_TICKET_PREFIX + ticket);
+    try {
+      const t = raw ? (JSON.parse(raw) as { userId?: unknown; returnTo?: unknown }) : null;
+      if (t && typeof t.userId === 'string') link = { userId: t.userId, returnTo: allowedReturn(t.returnTo) };
+    } catch {
+      link = null;
+    }
+    if (!link) return page(400, MESSAGES.failed);
+  }
   const record: StateRecord = {
     verifier,
-    returnTo: action ? `/settings?resume=${action}` : allowedReturn(url.searchParams.get('return')),
+    returnTo: link ? link.returnTo : action ? `/settings?resume=${action}` : allowedReturn(url.searchParams.get('return')),
     redirectUri: `${origin}${CALLBACK_PATH}`,
-    purpose: action ? 'reauth' : 'signin',
+    purpose: link ? 'link' : action ? 'reauth' : 'signin',
+    ...(link ? { linkUserId: link.userId } : {}),
   };
   await env.KV.put(STATE_PREFIX + state, JSON.stringify(record), { expirationTtl: STATE_TTL_SECONDS });
   const authorize = `${OAUTH}/authorize?` + query({
@@ -719,7 +743,9 @@ function parseRecord(raw: string | null): StateRecord | null {
   try {
     const r = JSON.parse(raw) as Partial<StateRecord>;
     return r.verifier && r.redirectUri && typeof r.returnTo === 'string'
-      ? { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: r.purpose === 'reauth' ? 'reauth' : 'signin' }
+      ? r.purpose === 'link'
+        ? (typeof r.linkUserId === 'string' ? { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: 'link', linkUserId: r.linkUserId } : null)
+        : { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: r.purpose === 'reauth' ? 'reauth' : 'signin' }
       : null;
   } catch {
     return null;
@@ -801,6 +827,27 @@ async function callback(req: Request, env: Env, strays: Strays): Promise<Respons
   if (!tokens) return fail(502, 'code exchange');
   const who = await userinfo(tokens.accessToken);
   if (!who) return fail(502, 'userinfo');
+
+  // LINKING: the person is already signed in to StudPilot and only tells us which Roblox account is theirs. Nothing signs anyone in
+  // and no token is kept; the row is what lets Connect match the Studio this Roblox account is signed into.
+  if (record.purpose === 'link' && record.linkUserId) {
+    try {
+      await ensureRobloxOAuthTables(env);
+      const row = await env.CORPUS.prepare('select user_id from roblox_identities where roblox_sub = ?').bind(who.sub).first<{ user_id: string }>();
+      if (row && row.user_id !== record.linkUserId) {
+        note('link: Roblox account belongs to another account');
+        return page(409, MESSAGES.linkTaken, clear);
+      }
+      if (!row) {
+        await env.CORPUS.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at, created_username) values (?, ?, ?, ?, null) on conflict(roblox_sub) do nothing')
+          .bind(who.sub, record.linkUserId, who.username, new Date().toISOString()).run();
+      }
+      const back = record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=linked';
+      return redirect(back, clear);
+    } catch {
+      return fail(502, 'link storage');
+    }
+  }
 
   try {
     let known = await findLinked(env, cfg, who);
