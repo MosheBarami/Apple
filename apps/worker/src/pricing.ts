@@ -183,13 +183,13 @@ export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_
 export const MAX_NEURONS_PER_REQUEST = 1_200;
 
 /**
- * The StudPilot agent's model (apps/studio, AGENT_MODEL). One step is a large context (prompt, skills, the place it read)
- * plus up to 16,000 output tokens: a whole screen written by build_ui is one step. 20,000 neurons is about $0.22, which
- * admits about 160,000 characters of context and 16,000 output tokens at Kimi K2.7's price; the prompt cache makes the
- * real charge far smaller.
+ * The StudPilot agent's model (apps/studio, AGENT_MODEL). One step sends the whole conversation, the skills it loaded and
+ * the 25 tool definitions, plus up to 16,000 output tokens. The cap admits Kimi K2.7's full 262,144-token context at its
+ * uncached price plus a full output (about 28,700 neurons, ~$0.32): a long conversation must not be refused, and the cap
+ * only stops a runaway step. The person is charged the real usage, which the prompt cache makes far smaller.
  */
 export const AGENT_STEP_CAPS: Record<string, number> = {
-  '@cf/moonshotai/kimi-k2.7-code': 20_000,
+  '@cf/moonshotai/kimi-k2.7-code': 32_000,
 };
 
 /** The per-call reservation cap for a provider model id. */
