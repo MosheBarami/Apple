@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Stop releases composer and preserves draft at 390",
+    "pass": true
+  },
+  {
+    "name": "Stop releases composer and preserves draft at 1440",
+    "pass": true
+  },
+  {
+    "name": "Failed stop is visible and retryable without losing draft",
+    "pass": true
+  }
+]

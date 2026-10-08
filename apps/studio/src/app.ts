@@ -10,6 +10,7 @@ import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { StudPilot } from './agents/studpilot.ts';
 import { projectOf } from './conversation-id.ts';
+import { guardModelStream } from './model-stream.ts';
 
 const bound = env as unknown as Env;
 
@@ -57,7 +58,7 @@ async function meteredRun(model: string, raw: Record<string, unknown>, options?:
         ? { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens }
         : null,
     );
-    return result;
+    return result instanceof Response ? guardModelStream(result) : result;
   } catch (e) {
     await bound.GATE.releaseModel(model, hold.reserved);
     throw e;
@@ -74,14 +75,18 @@ const metered = new Proxy({} as Ai, {
     return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(ai) : value;
   },
 });
-setProvider(cloudflareBindingProvider({ binding: metered, gateway: { id: bound.AI_GATEWAY_ID } }));
+setProvider(cloudflareBindingProvider({
+  binding: metered,
+  gateway: { id: bound.AI_GATEWAY_ID, requestTimeoutMs: 60_000 },
+  streamIdleTimeoutMs: 60_000,
+}));
 
 const app = new Hono<{ Bindings: Env }>();
 
 // Full public paths: the main worker forwards /studio/api/* unchanged (see its /studio proxy).
 const MOUNT = '/studio/api/agents/studpilot';
 
-app.get('/studio/api/health', (c) => c.json({ ok: true }));
+app.get('/studio/api/health', (c) => c.json({ ok: true, buildSha: c.env.BUILD_SHA ?? 'development' }));
 
 app.use(`${MOUNT}/*`, async (c, next) => {
   const auth = c.req.header('Authorization') ?? '';

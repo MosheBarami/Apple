@@ -157,6 +157,7 @@ export function DevPreview({
 }) {
   // Installed in render, before any child effect runs, so the first requests are already answered.
   useState(() => installMock(studio, view === "history-error"));
+  const [stopped, setStopped] = useState(false);
   return (
     <AppShell>
       {view === "projects" ? (
@@ -168,9 +169,14 @@ export function DevPreview({
       ) : view === "chat" ||
         view === "pair" ||
         view === "chat-error" ||
+        view === "chat-stop-error" ||
         view === "chat-empty" ? (
         <ChatScreen
-          busy={view === "chat" || view === "pair"}
+          busy={!stopped && (view === "chat" || view === "pair" || view === "chat-stop-error")}
+          onStop={async () => {
+            if (view === "chat-stop-error") throw new Error("Fixture abort failure");
+            setStopped(true);
+          }}
           error={
             view === "chat-error"
               ? "The connection was interrupted. Your draft is still here."

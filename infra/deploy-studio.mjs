@@ -9,7 +9,7 @@
 // every asset it names come back with their own content type.
 //
 // Deploy studpilot-studio BEFORE `infra/deploy-worker.mjs` when both change: the main worker binds to it.
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,14 +27,17 @@ function run(cmd, args, opts = {}) {
 }
 
 const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' }).stdout.trim();
-if (dirty) console.warn('deploy-studio: the working tree has uncommitted changes; they are deployed too');
+if (dirty) throw new Error('deploy-studio: commit reviewed changes before deploying');
+const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
 
 rmSync(join(STUDIO, 'dist'), { recursive: true, force: true });
 run('pnpm', ['build']);
-run(join(STUDIO, 'node_modules', '.bin', 'wrangler'), ['deploy']);
+run(join(STUDIO, 'node_modules', '.bin', 'wrangler'), ['deploy', '--var', `BUILD_SHA:${sha}`]);
 
 /** /studio/ and every asset it names, with the type each must have. Retried briefly while the new version propagates. */
 async function verify() {
+  const health = await fetch(`${ORIGIN}/studio/api/health`).then((r) => r.json());
+  if (health?.buildSha !== sha) return [`Studio health reports ${health?.buildSha ?? 'no build'}, expected ${sha}`];
   const page = await fetch(`${ORIGIN}/studio/?deploy-check=${Date.now()}`);
   const html = await page.text();
   if (!page.ok || !/<div id="root">/.test(html)) return [`/studio/ answered ${page.status} without the app's root element`];

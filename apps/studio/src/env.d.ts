@@ -14,4 +14,5 @@ interface Env {
   GATE: Fetcher & StudioGate;
   SUPABASE_URL: string;
   AI_GATEWAY_ID: string;
+  BUILD_SHA?: string;
 }

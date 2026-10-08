@@ -102,7 +102,7 @@ test('only an owner who may build can send to the Studio agent (its model time i
 
 test('every model call of the Studio agent is reserved against the shared budget first, and settled or released after', () => {
   const app = read('../src/app.ts');
-  assert.match(app, /setProvider\(cloudflareBindingProvider\(\{ binding: metered,/, 'the provider must use the metered binding, not env.AI');
+  assert.match(app, /setProvider\(cloudflareBindingProvider\(\{\s*binding: metered,/, 'the provider must use the metered binding, not env.AI');
   const run = app.slice(app.indexOf('async function meteredRun('), app.indexOf('const metered = new Proxy('));
   assert.ok(run.length > 100, 'the metered run function is gone');
   assert.match(app, /if \(prop === 'run'\) return meteredRun;/);

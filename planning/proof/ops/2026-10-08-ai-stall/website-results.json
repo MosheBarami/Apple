@@ -1,0 +1,118 @@
+[
+  {
+    "name": "New request survives a failed project creation and page reload",
+    "pass": true
+  },
+  {
+    "name": "Create/edit choices populate an editable draft without sending",
+    "pass": true
+  },
+  {
+    "name": "Shift+Enter makes a newline rather than sending",
+    "pass": true
+  },
+  {
+    "name": "History failure is visible and retry restores projects",
+    "pass": true
+  },
+  {
+    "name": "Project list and both search controls return honest empty states",
+    "pass": true
+  },
+  {
+    "name": "Prompt library filters and transfers a draft to new creation",
+    "pass": true
+  },
+  {
+    "name": "Theme settings update and persist",
+    "pass": true
+  },
+  {
+    "name": "Chat shows tool details and disables send during active work",
+    "pass": true
+  },
+  {
+    "name": "Disconnected Studio offers a real pairing flow and fresh-code control",
+    "pass": true
+  },
+  {
+    "name": "Public routes, menu dropdowns and FAQ work",
+    "pass": true
+  },
+  {
+    "name": "Sign-in recovers from a rejected email request without losing input",
+    "pass": true
+  },
+  {
+    "name": "All protected workspace routes require sign-in",
+    "pass": true
+  },
+  {
+    "name": "Mobile navigation and workspace fit without horizontal overflow",
+    "pass": true
+  },
+  {
+    "name": "Reference demo runs, streams and displays source",
+    "pass": true
+  },
+  {
+    "name": "Example purchases prevent duplicate ownership and insufficient funds",
+    "pass": true
+  },
+  {
+    "name": "Demo dialog supports Inspect mode, source toggle, keyboard close and focus return",
+    "pass": true
+  },
+  {
+    "name": "Pricing totals preserve real figures and compare details",
+    "pass": true
+  },
+  {
+    "name": "Appearance persists with the assembly light and dark tokens",
+    "pass": true
+  },
+  {
+    "name": "Workspace panels display real conversation data and honest source empty state",
+    "pass": true
+  },
+  {
+    "name": "Mobile project panel opens, switches tabs and closes with Escape",
+    "pass": true
+  },
+  {
+    "name": "Hero hierarchy is prominent, bounded and leaves the interactive concept visible",
+    "pass": true
+  },
+  {
+    "name": "Ambient sculpture moves, pause persists, and resume restores movement",
+    "pass": true
+  },
+  {
+    "name": "Settings style tile uses the active tokens and its theme control works",
+    "pass": true
+  },
+  {
+    "name": "Reduced motion stops transient animation and controls remain operable",
+    "pass": true
+  },
+  {
+    "name": "Visible example starts automatically with stable controls",
+    "pass": true
+  },
+  {
+    "name": "Feature previews include activity, source and a labelled connection illustration",
+    "pass": true
+  },
+  {
+    "name": "Desktop, laptop, tablet and phone layouts fit their viewports",
+    "pass": true
+  },
+  {
+    "name": "Licensed fonts are publicly served and load without authentication",
+    "pass": true
+  },
+  {
+    "name": "No uncaught browser errors",
+    "pass": true
+  }
+]

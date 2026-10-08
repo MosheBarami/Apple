@@ -167,6 +167,14 @@ export function ChatView({
           : agent.refresh
       }
       onSend={(text) => agent.sendMessage(text)}
+      onStop={
+        client
+          ? async () => {
+              await client.abort({ signal: AbortSignal.timeout(15_000) });
+              agent.refresh();
+            }
+          : undefined
+      }
       pair={pair}
       projectId={projectId}
       ready={agent.historyReady}
@@ -186,6 +194,7 @@ export function ChatScreen({
   error,
   onSend,
   onRecover,
+  onStop,
 }: {
   title: string;
   projectId: string;
@@ -196,14 +205,19 @@ export function ChatScreen({
   error: string | null;
   onSend: (text: string) => unknown | Promise<unknown>;
   onRecover?: () => void;
+  onStop?: () => Promise<unknown>;
 }) {
   const [draft, setDraft] = useState({ projectId, text: "" });
+  const [stopping, setStopping] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
   useEffect(() => {
     let text = "";
     try {
       text = sessionStorage.getItem(`studpilot:draft:${projectId}`) ?? "";
     } catch {}
     setDraft({ projectId, text });
+    setStopError(null);
+    setStopping(false);
   }, [projectId]);
   const updateDraft = (text: string) => {
     setDraft({ projectId, text });
@@ -319,9 +333,38 @@ export function ChatScreen({
               value={draft.projectId === projectId ? draft.text : ""}
               onChange={updateDraft}
             />
-            <p className="mt-2 text-center text-muted-foreground text-xs">
-              StudPilot works in your place. Look at what it built in Studio.
-            </p>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="text-muted-foreground text-xs">
+                StudPilot works in your place. Look at what it built in Studio.
+              </p>
+              {busy && onStop ? (
+                <button
+                  type="button"
+                  className="min-h-9 shrink-0 rounded-md border border-border px-3 text-xs hover:bg-muted"
+                  disabled={stopping}
+                  onClick={async () => {
+                    setStopping(true);
+                    setStopError(null);
+                    try {
+                      await onStop();
+                    } catch {
+                      setStopError(
+                        "Could not stop the run. Try again. Your draft is still here."
+                      );
+                    } finally {
+                      setStopping(false);
+                    }
+                  }}
+                >
+                  {stopping ? "Stopping…" : "Stop working"}
+                </button>
+              ) : null}
+            </div>
+            {stopError ? (
+              <p className="mt-2 text-xs text-destructive" role="alert">
+                {stopError}
+              </p>
+            ) : null}
           </div>
         </div>
         <ProjectWorkbench
@@ -439,7 +482,10 @@ function TaskStep({ part }: { part: ToolPart }) {
   const brief = [input?.prompt, input?.description].find(
     (v): v is string => typeof v === "string"
   );
-  const status = {
+  const result = typeof part.output === "string" ? part.output.trim() : null;
+  const noReport = part.state === "output-available" &&
+    (part.output == null || result === "" || result === "(task completed with no text)");
+  const status = noReport ? "No result" : {
     "input-available": "Working",
     "output-available": "Done",
     "output-error": "Failed",
@@ -449,6 +495,7 @@ function TaskStep({ part }: { part: ToolPart }) {
       <TaskTrigger title={`${toolLabel(part)}: ${status}`} />
       <TaskContent>
         {brief ? <TaskItem>{brief}</TaskItem> : null}
+        {noReport ? <TaskItem>No completion report was returned.</TaskItem> : result ? <TaskItem>{result}</TaskItem> : null}
         {part.errorText ? <TaskItem>{part.errorText}</TaskItem> : null}
       </TaskContent>
     </Task>

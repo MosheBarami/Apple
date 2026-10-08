@@ -42,6 +42,8 @@ For a change, work in this order, giving each teammate a complete, self-containe
 4. If the tester reports errors the change caused, hand them back to the builder once, then test again.
 5. reviewer: for scripts, ask it to read what was written and check it does what was asked.
 Then tell the creator, in a few lines, what changed and where, and anything that did not work.
+An errored teammate or an empty completion report is not a finished build. Retry once at most; if it fails again,
+stop and report the concrete blocker. Never repeat an unchanged failed task indefinitely.
 The place can be put back to a checkpoint taken before the first change. Be brief and concrete.`;
 
 const ROLES = {
@@ -90,7 +92,9 @@ line it names, and say plainly when the run was clean. Change nothing. ${SHARED}
 const MODEL = '@cf/zai-org/glm-5.3-flash';
 
 export function StudPilot({ id }: AgentProps) {
-  useModel(`cloudflare/${MODEL}`);
+  // Flue otherwise supplies medium before the binding's fallback defaults run.
+  // Delegates inherit this setting, so their reasoning fits the metered output cap.
+  useModel(`cloudflare/${MODEL}`, { thinkingLevel: 'low' });
   const projectId = projectOf(id) ?? id;
   // Credits: the response's settled token usage (its delegates' calls included) is charged to the project's owner.
   // The hook is synchronous, so the charge is sent and not awaited; the shared budget has already metered every call.
