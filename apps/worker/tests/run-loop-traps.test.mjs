@@ -1116,7 +1116,7 @@ test('F-045: a read-stall that changed nothing ends on its own note — no gener
 test('F-045: a refusal the product can explain, on a run that changed nothing, IS the closing — no incomplete note beside it', async () => {
   const h = await makeSession({
     connected: true,
-    answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : { ok: false, error: 'writes require explicit edit consent', failure: 'refused', remedy: 'edit_consent' }),
+    answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : { ok: false, error: 'writes require a live StudPilot connection to this Studio', failure: 'refused', remedy: 'reconnect_studio' }),
     responses: [
       calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),

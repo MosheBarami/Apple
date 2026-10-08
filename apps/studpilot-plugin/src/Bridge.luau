@@ -3,8 +3,9 @@
 --
 -- This module is deliberately only a transport.  The entry point owns the dock and the command
 -- implementation; this file owns the small HTTPS channel between that dock and the StudPilot session.
--- There is no persisted session here: pairing is an action the person takes in Studio, and the
--- resulting credential lives only in the current Lua state.
+-- There is no persisted session here: the session token lives only in the current Lua state. The
+-- host keeps only the install identity it generated (an id and a secret) that each announce sends,
+-- and the server hands a token back only for a binding the project owner made by pressing Connect.
 
 local HttpService = game:GetService("HttpService")
 
@@ -14,7 +15,8 @@ local STUDPILOT_ORIGIN = "https://studpilot.app"
 -- 2027-01-02. Studio asks the person to allow a plugin's HTTP access host by host, so a person who
 -- has not yet allowed studpilot.app would otherwise lose a plugin that worked yesterday.
 local FALLBACK_ORIGIN = "https://apple.moshe-barami111.workers.dev"
-local CLAIM_PATH = "/api/studio/claim"
+local ANNOUNCE_PATH = "/api/studio/announce"
+local RELEASE_PATH = "/api/studio/release"
 local POLL_PATH = "/api/studio/poll"
 -- 1.1.0 because this source does more than the 1.0.0 build published to the Creator Store on
 -- 2026-09-19 (asset 107230158271368): native viewport capture, Run-mode control and model
@@ -49,7 +51,6 @@ local MAX_SELECTION_ITEMS = 100
 local MAX_EVENT_PATH = 512
 local MAX_EVENT_MESSAGE = 600
 local MAX_TOKEN_CHARS = 200
-local MAX_CODE_CHARS = 64
 local RETRY_WAIT_SECONDS = 2
 local MIN_WAIT_SECONDS = 0.05
 local MAX_WAIT_SECONDS = 10
@@ -67,6 +68,7 @@ type Config = {
 
 type Session = {
 	token: string,
+	projectId: string,
 	projectName: string,
 	generation: number,
 	pendingResults: { [number]: any },
@@ -91,7 +93,10 @@ type BridgeObject = {
 	generation: number,
 	session: Session?,
 	unloadingConnection: any,
-	connect: (BridgeObject, string) -> (boolean, string),
+	connect: (BridgeObject, any) -> (boolean, string, string),
+	heartbeat: (BridgeObject, any) -> (),
+	release: (BridgeObject, any) -> (),
+	projectName: (BridgeObject) -> string?,
 	disconnect: (BridgeObject) -> (),
 	destroy: (BridgeObject) -> (),
 	isConnected: (BridgeObject) -> boolean,
@@ -191,7 +196,7 @@ local function safeRemoteMessage(value: any, token: string?, fallback: string): 
 end
 
 local function statusFromAuth(body: any, token: string): string
-	local fallback = "Session ended — reconnect with a new code"
+	local fallback = "Disconnected"
 	if type(body) ~= "table" then
 		return fallback
 	end
@@ -200,11 +205,11 @@ local function statusFromAuth(body: any, token: string): string
 		return safeRemoteMessage(
 			body.message,
 			token,
-			"This project was paired again from another Studio window. Pair this Studio again to bring it back here."
+			"This project was connected to another Studio window, so this one was disconnected."
 		)
 	end
 	if errorKind == "token expired" then
-		return safeRemoteMessage(body.message, token, "This pairing has expired. Pair again from the StudPilot web app.")
+		return safeRemoteMessage(body.message, token, "This connection has expired.")
 	end
 	return fallback
 end
@@ -556,9 +561,10 @@ local function readCapabilities(config: Config): any?
 	return value
 end
 
-local function newSession(token: string, projectName: string, generation: number, capabilities: any?): Session
+local function newSession(token: string, projectId: string, projectName: string, generation: number, capabilities: any?): Session
 	return {
 		token = token,
+		projectId = projectId,
 		projectName = projectName,
 		generation = generation,
 		pendingResults = {},
@@ -770,69 +776,49 @@ function Bridge.new(config: Config): BridgeObject
 	return self
 end
 
-function Bridge:connect(code: string): (boolean, string)
-	if self.destroyed then
-		return false, "This Studio connection is no longer available."
+-- The install identity the host persists: an id, a secret and this Studio session's id, all hex the host
+-- generated, plus the Roblox user signed into Studio (0 when nobody is).
+local function validIdentity(identity: any): boolean
+	if type(identity) ~= "table" then return false end
+	local function hex(value: any, length: number): boolean
+		return type(value) == "string" and #value == length and string.match(value, "^[0-9a-f]+$") ~= nil
 	end
-	if type(code) ~= "string" then
-		return false, "Enter the pairing code from your StudPilot project."
-	end
-	local normalized = string.upper(string.gsub(code, "[^A-Za-z0-9]", ""))
-	if #normalized == 0 or #normalized > MAX_CODE_CHARS then
-		return false, "Enter the pairing code from your StudPilot project."
-	end
+	return hex(identity.installId, 32) and hex(identity.secret, 64) and hex(identity.studioSessionId, 32)
+		and finiteNumber(identity.robloxUserId)
+end
 
-	-- A replacement connection retires the old loop before the claim request yields.  The attempt
-	-- generation is checked again after the claim returns, so two clicks cannot resurrect an older
-	-- request after a later disconnect/destroy.
-	self.generation += 1
-	self.connected = false
-	self.session = nil
-	callStatus(self.config, "Connecting…")
-	local attemptGeneration = self.generation
-	local observedState, currentState = readState(self.config)
-	if not observedState then
-		local message = "Studio state is unavailable. Reopen the place and reconnect."
-		callStatus(self.config, message)
-		return false, message
-	end
-	if self.destroyed or self.generation ~= attemptGeneration then
-		return false, "Connection attempt was cancelled."
-	end
-	local place: any = nil
-	if type(currentState) == "table" then
-		place = {
-			placeId = currentState.placeId,
-			gameId = currentState.gameId,
-			placeName = currentState.placeName,
-		}
-	end
-	local claimBody: any = { code = normalized }
-	if place ~= nil then claimBody.place = place end
-	local ok, statusCode, body = post(CLAIM_PATH, claimBody, nil)
-	if self.destroyed or self.generation ~= attemptGeneration then
-		return false, "Connection attempt was cancelled."
-	end
-	if not ok or type(body) ~= "table" or type(body.token) ~= "string" or #body.token == 0 or #body.token > MAX_TOKEN_CHARS then
-		local message = if statusCode == 404
-			then "Invalid or expired pairing code."
-			else "Could not reach StudPilot — check Studio’s network permission."
-		callStatus(self.config, message)
-		return false, message
-	end
-	if type(body.projectId) ~= "string" or #body.projectId == 0 then
-		local message = "StudPilot returned an invalid pairing response."
-		callStatus(self.config, message)
-		return false, message
-	end
+local function placeOf(state: any): any
+	return { placeId = state.placeId, gameId = state.gameId, placeName = state.placeName }
+end
 
+local function announceBody(identity: any, place: any, wait: boolean, connectedProjectId: string?): any
+	local body: any = {
+		installId = identity.installId,
+		secret = identity.secret,
+		studioSessionId = identity.studioSessionId,
+		robloxUserId = identity.robloxUserId,
+		place = place,
+		wait = wait,
+	}
+	if connectedProjectId ~= nil then body.connectedProjectId = connectedProjectId end
+	return body
+end
+
+-- Start a session from a token the server handed back for a binding.  Retires any earlier session first.
+local function attach(self: BridgeObject, body: any, generation: number): (boolean, string)
+	if type(body.token) ~= "string" or #body.token == 0 or #body.token > MAX_TOKEN_CHARS
+		or type(body.projectId) ~= "string" or #body.projectId == 0 then
+		local message = "StudPilot returned an invalid connection response."
+		callStatus(self.config, message)
+		return false, message
+	end
 	local projectName = if type(body.projectName) == "string" and #body.projectName > 0
 		then string.sub(body.projectName, 1, 160)
 		else "StudPilot project"
-		-- Capabilities are sampled once for THIS pairing and retried on every failed poll until one
-		-- valid poll response acknowledges them.  They never live on Bridge itself, so reconnecting
-		-- cannot inherit a previous Studio session's report.
-		local session = newSession(body.token, projectName, attemptGeneration, readCapabilities(self.config))
+	-- Capabilities are sampled once for THIS connection and retried on every failed poll until one
+	-- valid poll response acknowledges them.  They never live on Bridge itself, so reconnecting
+	-- cannot inherit a previous Studio session's report.
+	local session = newSession(body.token, body.projectId, projectName, generation, readCapabilities(self.config))
 	self.session = session
 	self.connected = true
 	local connectedMessage = "Connected · " .. projectName
@@ -841,6 +827,85 @@ function Bridge:connect(code: string): (boolean, string)
 		pollLoop(self, session)
 	end)
 	return true, connectedMessage
+end
+
+-- One announce while not connected.  The server may hold it ~20 s; it answers with a token once the
+-- project owner has pressed Connect for this Studio (or this Studio's place was bound earlier).
+-- The third value is "connected", "waiting" or "failed".
+function Bridge:connect(identity: any): (boolean, string, string)
+	if self.destroyed then
+		return false, "This Studio connection is no longer available.", "failed"
+	end
+	if not validIdentity(identity) then
+		return false, "This Studio has no StudPilot identity yet.", "failed"
+	end
+
+	-- A replacement connection retires the old loop before the announce yields.  The attempt
+	-- generation is checked again after it returns, so a later disconnect/destroy cannot be
+	-- overtaken by an older request.
+	self.generation += 1
+	self.connected = false
+	self.session = nil
+	local attemptGeneration = self.generation
+	local observedState, currentState = readState(self.config)
+	if not observedState then
+		local message = "Studio state is unavailable. Reopen the place and reconnect."
+		callStatus(self.config, message)
+		return false, message, "failed"
+	end
+	if self.destroyed or self.generation ~= attemptGeneration then
+		return false, "Connection attempt was cancelled.", "failed"
+	end
+	local ok, statusCode, body = post(ANNOUNCE_PATH, announceBody(identity, placeOf(currentState), true, nil), nil)
+	if self.destroyed or self.generation ~= attemptGeneration then
+		return false, "Connection attempt was cancelled.", "failed"
+	end
+	if ok and type(body) == "table" and body.waiting == true then
+		return false, "Waiting for StudPilot", "waiting"
+	end
+	if not ok or type(body) ~= "table" then
+		local message = if statusCode == 403
+			then "StudPilot did not recognise this Studio."
+			elseif statusCode == 429 then "StudPilot is busy. Retrying shortly."
+			else "Could not reach StudPilot — check Studio’s network permission."
+		callStatus(self.config, message)
+		return false, message, "failed"
+	end
+	local attached, message = attach(self, body, attemptGeneration)
+	return attached, message, if attached then "connected" else "failed"
+end
+
+-- While connected: keep this Studio visible to Connect on the web, and follow it if the owner moved it
+-- to another project (the answer then carries that project's token).
+function Bridge:heartbeat(identity: any)
+	local session = self.session
+	if not session or not current(self, session) or not validIdentity(identity) then return end
+	local observed, state = readState(self.config)
+	if not observed or not current(self, session) then return end
+	local ok, _, body = post(ANNOUNCE_PATH, announceBody(identity, placeOf(state), false, session.projectId), nil)
+	if not current(self, session) or not ok or type(body) ~= "table" or type(body.token) ~= "string" then return end
+	if body.projectId == session.projectId then return end
+	self.generation += 1
+	attach(self, body, self.generation)
+end
+
+-- The person's Disconnect: forget this Studio's binding on the server (so it does not reconnect by
+-- itself) and end the session here.  The release is sent first, so a waiting announce cannot collect
+-- the binding again before the server has forgotten it; the session ends even when it is not answered.
+function Bridge:release(identity: any)
+	if self.destroyed then return end
+	local observed, state = readState(self.config)
+	if observed and validIdentity(identity) then
+		post(RELEASE_PATH, announceBody(identity, placeOf(state), false, nil), nil)
+	end
+	if self.destroyed then return end
+	self:_end("Disconnected")
+end
+
+function Bridge:projectName(): string?
+	local session = self.session
+	if session and current(self, session) then return session.projectName end
+	return nil
 end
 
 function Bridge:disconnect()

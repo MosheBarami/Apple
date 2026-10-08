@@ -121,9 +121,9 @@ test('a disabled ScreenGui is not what the player sees, and a harness left behin
 });
 
 test('a refused or failed op says nothing was observed and carries the refusal remedy', async () => {
-  const { ctx } = ctxReturning({ id: 'x', ok: false, error: 'writes require explicit edit consent', failure: 'refused', remedy: 'edit_consent' });
+  const { ctx } = ctxReturning({ id: 'x', ok: false, error: 'writes require a live StudPilot connection to this Studio', failure: 'refused', remedy: 'reconnect_studio' });
   const out = await T.TOOLS.play_check.run(ctx, {});
-  assert.match(out.error, /edit consent/);
+  assert.match(out.error, /live StudPilot connection/);
   assert.ok(out.fix, 'the product remedy travels with the refusal');
   assert.match(out.notVerified, /nothing on the player's screen was observed/);
 });

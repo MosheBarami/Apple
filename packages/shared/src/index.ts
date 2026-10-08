@@ -460,8 +460,11 @@ export interface OpResult {
  * the compiler asks what the user is supposed to do about it.
  */
 export const REFUSAL_REMEDIES = {
-  /** The consent gate is off. This is the one the model invented a fix for. */
-  edit_consent: 'In Studio, open the StudPilot panel and press “Enable edits…”, then “Allow edits for this connection”. Consent is per connection and turns off when you disconnect.',
+  /**
+   * Studio is not connected to this project (the plugin refuses every write without a live connection). This replaced
+   * `edit_consent` on 2026-10-08, when the plugin's separate "Allow edits" step was removed: connecting is the consent.
+   */
+  reconnect_studio: 'Open Roblox Studio with the StudPilot plugin, then open this project on studpilot.app and press Connect. StudPilot edits as soon as Studio is connected.',
   /** Studio is running a test, so the plugin will not write. */
   leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — StudPilot only edits in edit mode.',
   /** The asset is not in the signed-in user's inventory. */

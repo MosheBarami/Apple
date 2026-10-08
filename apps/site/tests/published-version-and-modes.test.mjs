@@ -33,7 +33,7 @@ test('THE PLUGIN VERSION THE DOCS NAME IS THE ONE THE PLUGIN PRINTS', () => {
   // Read it out of the plugin rather than out of another document. The panel's own string is the
   // thing a customer compares against, so that is the string this asserts on.
   const panel = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'init.server.luau'), 'utf8');
-  const shown = /text\("(StudPilot Studio · [^"]+)"/.exec(panel);
+  const shown = /"(StudPilot Studio · [^"]+)"/.exec(panel);
   assert.ok(shown, 'the plugin panel no longer prints a version line — re-aim this test');
   const version = /(\d+\.\d+\.\d+)/.exec(shown[1])[1];
 

@@ -32,11 +32,12 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     server” from apps/worker/src/plugin-version.ts — already matched and are unchanged. The remedies
     below were correct throughout; only the strings were stale.
   */}
-  <h3>“Invalid or expired pairing code”</h3>
+  <h3>“Waiting for StudPilot”</h3>
   <p>
-    Codes last 10 minutes and work once. Generate a fresh one in the web workspace
-    (<a href="/docs/connect">Connect a project</a>) and type it in promptly. Case and dashes do not
-    matter, so mistyping those is not the cause — a stale code almost always is.
+    The plugin is ready and nobody has connected it yet. Open your project on studpilot.app and press
+    <strong>Connect</strong>. StudPilot finds this Studio by the Roblox account you signed in with (or, if
+    that account is not linked, by your network), so the browser and Studio should be on the same
+    computer or network. If several Studio windows are waiting, the web asks which place to use.
   </p>
 
   <h3>“Could not reach StudPilot — check Studio’s network permission”</h3>
@@ -53,10 +54,11 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>StudPilot is actually down.</strong> The <a href="/status">status page</a> checks the live API from your own browser and answers that in a second.</li>
   </ul>
 
-  <h3>“Session ended — reconnect with a new code”</h3>
+  <h3>“This connection has expired”</h3>
   <p>
-    A Studio connection is good for 30 days, then it expires by design.
-    <a href="/docs/connect">Connect again</a>; nothing in the project is lost.
+    A Studio connection is good for 30 days, then it expires by design. While Studio stays connected to
+    the project it renews by itself; otherwise press <strong>Connect</strong> on the project again.
+    Nothing in the project is lost.
   </p>
 
   <h3>“This StudPilot build is too old for the server”</h3>

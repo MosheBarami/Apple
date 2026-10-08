@@ -69,8 +69,8 @@ for (const quote of headings) {
   });
 }
 
-test('the two corrected quotes are the shipped wording, character for character', () => {
-  for (const exact of ['Invalid or expired pairing code', 'Could not reach StudPilot — check Studio’s network permission']) {
+test('the quoted panel lines are the shipped wording, character for character', () => {
+  for (const exact of ['Waiting for StudPilot', 'Could not reach StudPilot — check Studio’s network permission']) {
     assert.ok(page.includes(exact), `the page no longer carries "${exact}"`);
     assert.ok(SHIPPED.includes(exact), `"${exact}" is not what the shipped plugin says any more`);
   }

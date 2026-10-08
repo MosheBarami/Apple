@@ -223,7 +223,7 @@ end)
 
 spec("set_props_bulk takes the write gates and refuses properties outside the allowlist", function()
     local denied = c:execute("b2", { op = "set_props_bulk", targets = { "game.Workspace.Lamps.Post" }, props = { Anchored = { t = "bool", v = true } } }, false)
-    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    eq(denied.ok, false); eq(denied.remedy, "reconnect_studio")
     local content = c:execute("b3", { op = "set_props_bulk", targets = { "game.Workspace.Lamps.Post" }, adjust = { { property = "MeshId", op = "add", value = 1 } } }, true)
     eq(content.ok, false); has(content.error, "write allowlist")
 end)
@@ -334,7 +334,7 @@ end)
 services.PhysicsService = physics
 
 spec("collision groups register, stop colliding, and are assigned to every part under a model", function()
-    eq(c:execute("cg0", { op = "collision_groups", action = "register", group = "Players" }, false).remedy, "edit_consent")
+    eq(c:execute("cg0", { op = "collision_groups", action = "register", group = "Players" }, false).remedy, "reconnect_studio")
     local reg = c:execute("cg1", { op = "collision_groups", action = "register", group = "Players" }, true)
     eq(reg.ok, true, tostring(reg.error)); eq(physics:IsCollisionGroupRegistered("Players"), true)
     eq(c:execute("cg2", { op = "collision_groups", action = "set_collidable", group = "Players", other = "Players", collidable = false }, true).ok, true)
@@ -628,7 +628,7 @@ end)
 spec("press targets must be buttons inside a StarterGui ScreenGui, at most five, behind consent", function()
     studioTest.onSession = pressSession({})
     local sessions = studioTest.sessions
-    eq(c:execute("p3", { op = "play_check_ui", press = { "game.StarterGui.StoreGui.Buy" } }, false).remedy, "edit_consent")
+    eq(c:execute("p3", { op = "play_check_ui", press = { "game.StarterGui.StoreGui.Buy" } }, false).remedy, "reconnect_studio")
     eq(c:execute("p4", { op = "play_check_ui", press = { "game.StarterGui.StoreGui.Banner" } }, true).ok, false)
     eq(c:execute("p5", { op = "play_check_ui", press = { "game.Workspace.Lamps.Post" } }, true).ok, false)
     local six = {}; for i = 1, 6 do six[i] = "game.StarterGui.StoreGui.Buy" end

@@ -5,8 +5,8 @@
 -- This module deliberately has no dependency on the first-generation plugin.  It is a small,
 -- receive-side boundary: the transport may deliver untrusted JSON-shaped tables, but the only
 -- things that can reach the DataModel are operations, paths, classes, properties and values that
--- this file accepts explicitly.  Reads are the default.  A write needs BOTH the caller's
--- per-session consent (`allowEdits == true`) and Studio edit mode.
+-- this file accepts explicitly.  Reads are the default.  A write needs BOTH a live
+-- connection (`allowEdits == true`: the host passes whether this Studio is still connected) and Studio edit mode.
 --
 -- The module returns the shared wire shape used by packages/shared:
 --   { id, ok, data?, error?, durationMs?, failure? }
@@ -4756,7 +4756,7 @@ function runGeneration(
 		return liveGenerationConsent(self, allowEdits, stillCurrent, editMode)
 	end
 	if not current() then
-		return failureResult(id, "refused", "generation requires the same live Studio connection and edit consent until placement", started)
+		return failureResult(id, "refused", "generation requires the same live Studio connection until placement", started)
 	end
 
 	self.activeGeneration = id
@@ -4792,7 +4792,7 @@ function runGeneration(
 	end
 	if not current() then
 		discardGenerated(self.generation, model)
-		return failureResult(id, "refused", "the Studio connection or edit consent ended before placement; generated result was destroyed", started)
+		return failureResult(id, "refused", "the Studio connection ended before placement; generated result was destroyed", started)
 	end
 
 	local currentParentPath = fullPath(self.game, parent)
@@ -4826,7 +4826,7 @@ function runGeneration(
 	if not placed or not current() then
 		local message = if not placed
 			then "could not place generated Model: " .. tostring(placementErr)
-			else "the Studio connection or edit consent ended during placement"
+			else "the Studio connection ended during placement"
 		local cancelOk = cancelOperation(self.history, self.enum, recording)
 		self.activeRecording = nil
 		discardGenerated(self.generation, model)
@@ -4846,7 +4846,7 @@ function runGeneration(
 		local cancelOk = cancelOperation(self.history, self.enum, recording)
 		self.activeRecording = nil
 		discardGenerated(self.generation, model)
-		local message = "the Studio connection or edit consent ended before generation commit"
+		local message = "the Studio connection ended before generation commit"
 		if not cancelOk then message ..= " (undo recording cancellation also failed)" end
 		return failureResult(id, "refused", message, started)
 	end
@@ -5498,7 +5498,7 @@ function Commands.new(options: any?): any
 			if UNSUPPORTED[name] then return failureResult(id, "refused", UNSUPPORTED[name], started, "none") end
 			local handler = HANDLERS[name]
 			if name == "run_mode" then
-				if allowEdits ~= true then return failureResult(id, "refused", "Run-mode controls require explicit edit consent for this Studio connection", started, "edit_consent") end
+				if allowEdits ~= true then return failureResult(id, "refused", "Run-mode controls require a live StudPilot connection to this Studio", started, "reconnect_studio") end
 				local before, stateErr = runModeState(self.runService)
 				if not before then return failureResult(id, "refused", stateErr or "RunService state is unavailable", started) end
 				-- Starting a test must originate in edit mode. Once StudPilot started Run mode, pause/resume/stop
@@ -5518,7 +5518,7 @@ function Commands.new(options: any?): any
 			end
 			if name == "undo_waypoint" then
 			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is StudPilot's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the StudPilot panel in Studio", started, "edit_consent") end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require a live StudPilot connection to this Studio — this is StudPilot's own gate, not a Roblox Studio setting: open the project on studpilot.app and press Connect", started, "reconnect_studio") end
 			return runUndoWaypoint(id, op, started)
 		end
 			if not handler and name ~= "restore" and not DEFERRED_MUTATING[name] then return failureResult(id, "refused", "unknown Studio operation: " .. name, started) end
@@ -5532,7 +5532,7 @@ function Commands.new(options: any?): any
 		-- a dozen lines above has always had this order; this is the same fence, said the same way.
 		if MUTATING[name] or DEFERRED_MUTATING[name] or CONSENT_ONLY[name] then
 			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is StudPilot's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the StudPilot panel in Studio", started, "edit_consent") end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require a live StudPilot connection to this Studio — this is StudPilot's own gate, not a Roblox Studio setting: open the project on studpilot.app and press Connect", started, "reconnect_studio") end
 		end
 		if MUTATING[name] or DEFERRED_MUTATING[name] then
 			if self.activeRecording ~= nil then return failureResult(id, "conflict", "another StudPilot write is already in progress", started) end
@@ -5549,7 +5549,7 @@ function Commands.new(options: any?): any
 				-- place have all passed prepareRestore.
 				if type(stillCurrent) ~= "function" then return failureResult(id, "refused", "restore requires a live Studio consent fence", started) end
 				local currentOk, current = pcall(stillCurrent)
-				if not currentOk or current ~= true then return failureResult(id, "refused", "the Studio connection or edit consent ended before restore", started) end
+				if not currentOk or current ~= true then return failureResult(id, "refused", "the Studio connection ended before restore", started) end
 				local plan, restoreKind, restoreMessage, restoreRemedy = prepareRestore(self, op)
 				if not plan then return failureResult(id, restoreKind or "invalid", restoreMessage or "restore preflight failed", started, restoreRemedy) end
 				restorePlan = plan
@@ -5583,7 +5583,7 @@ function Commands.new(options: any?): any
 					local result, resultKind, resultMessage = applyRestore(self, restorePlan)
 					if result ~= nil then
 						local currentOk, current = pcall(stillCurrent)
-						if not currentOk or current ~= true then return nil, "refused", "the Studio connection or edit consent ended during restore" end
+						if not currentOk or current ~= true then return nil, "refused", "the Studio connection ended during restore" end
 					end
 					return result, resultKind, resultMessage
 				end

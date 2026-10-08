@@ -385,7 +385,7 @@ test('A PAIRING IDLE PAST 30 DAYS IS REFUSED, in the words the plugin already ac
   assert.equal(r.status, 401);
   assert.equal(r.json.error, 'token expired');
   assert.ok(typeof r.json.message === 'string' && r.json.message.length > 0, 'a bare code leaves the user nothing to do');
-  assert.match(r.json.message, /pair again/i, 'it must name the remedy');
+  assert.match(r.json.message, /press Connect/i, 'it must name the remedy (Connect on the project; there is no pairing code any more)');
 });
 
 test('A PAIRING IN USE NEVER LAPSES — the clock runs from the last poll, not from the pairing', async () => {

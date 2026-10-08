@@ -52,7 +52,7 @@ end)
 
 spec("a family write takes both write gates and one undo recording", function()
     local refused = c:execute("w0", { op = "demo_write" }, false)
-    eq(refused.ok, false); eq(refused.remedy, "edit_consent")
+    eq(refused.ok, false); eq(refused.remedy, "reconnect_studio")
     local before = #history.log
     local r = c:execute("w1", { op = "demo_write" }, true)
     eq(r.ok, true); has(history.log[before + 1], "begin:StudPilot demo_write"); eq(history.log[before + 2], "Commit")

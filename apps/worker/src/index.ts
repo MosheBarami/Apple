@@ -715,7 +715,7 @@ app.use('/api/*', async (c, next) => {
 //   signed-off comment attached and no second look. Deleting it means that handler has to earn the
 //   line. The waitlist product itself is gone — see the notes in apps/web/src/routes/usage.tsx and
 //   apps/site/src/pages/pricing.astro — so there is nothing left for it to be the review OF. ]]
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config', '/api/library-preview/:assetId'];
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/announce', '/api/studio/release', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config', '/api/library-preview/:assetId'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   // A browser <img> cannot attach the account JWT. This one numeric, read-only route returns
@@ -2307,6 +2307,65 @@ app.post('/api/projects/:id/pairing', async (c) => {
   return c.json(minted.body, minted.status as 200);
 });
 
+/** The Roblox accounts linked to this StudPilot user (Sign in with Roblox). Empty when none, or when the table cannot be read. */
+async function linkedRobloxIds(env: Env, userId: string): Promise<string[]> {
+  try {
+    const rows = await env.CORPUS.prepare('select roblox_sub from roblox_identities where user_id = ?').bind(userId).all<{ roblox_sub: string }>();
+    return (rows.results ?? []).map((r) => String(r.roblox_sub)).filter((s) => /^\d{1,20}$/.test(s));
+  } catch {
+    return [];
+  }
+}
+
+/** Roblox ids among `ids` that are linked to a StudPilot account OTHER than `userId`. */
+async function foreignRobloxIds(env: Env, userId: string, ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  try {
+    const rows = await env.CORPUS.prepare(`select roblox_sub, user_id from roblox_identities where roblox_sub in (${ids.map(() => '?').join(',')})`)
+      .bind(...ids).all<{ roblox_sub: string; user_id: string }>();
+    return new Set((rows.results ?? []).filter((r) => r.user_id !== userId).map((r) => String(r.roblox_sub)));
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * CONNECT: bind this project to the Roblox Studio its owner has open. The web half of the Studio lobby (do/pairing.ts).
+ *
+ * The candidates are the waiting Studios signed in as a Roblox account linked to this user, or, when none is, the ones on the
+ * same public address as this browser — minus any whose Roblox account belongs to a DIFFERENT StudPilot user, so a shared
+ * address (a school, a family) never binds somebody else's Studio. One candidate binds at once; several come back for the
+ * person to pick (`pickId`, re-checked against the same rule by the object); none answers `waiting`, and the web asks again.
+ */
+app.post('/api/projects/:id/connect', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  const body = await c.req.json<{ pickId?: unknown }>().catch(() => null);
+  const robloxUserIds = await linkedRobloxIds(c.env, ctx.user.userId);
+  const lobby = pairingStub(c.env);
+  const listed = (await (await lobby.fetch('https://do/candidates', { method: 'POST', body: JSON.stringify({ robloxUserIds, ip, userId: ctx.user.userId }) })).json()) as {
+    candidates: Array<{ pickId: string; placeName: string; placeId: number; robloxUserId: string | null }>;
+  };
+  const foreign = await foreignRobloxIds(c.env, ctx.user.userId, [...new Set(listed.candidates.map((x) => x.robloxUserId).filter((x): x is string => !!x))]);
+  const mine = listed.candidates.filter((x) => !x.robloxUserId || !foreign.has(x.robloxUserId));
+  const picked = typeof body?.pickId === 'string' ? mine.find((x) => x.pickId === body.pickId) : mine.length === 1 ? mine[0] : undefined;
+  if (!picked) {
+    if (mine.length === 0) return c.json({ status: 'waiting' });
+    return c.json({ status: 'choose', candidates: mine.map(({ pickId, placeName, placeId }) => ({ pickId, placeName, placeId })) });
+  }
+  const res = await lobby.fetch('https://do/bind', {
+    method: 'POST',
+    body: JSON.stringify({ pickId: picked.pickId, robloxUserIds, ip, projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name }),
+  });
+  if (!res.ok) return c.json({ status: 'waiting' });
+  const bound = (await res.json()) as { placeName: string; previousProjectId: string | null };
+  // The Studio just left another project: that project's token goes now rather than on its next poll.
+  if (bound.previousProjectId) await sessionStub(c.env, bound.previousProjectId).fetch('https://do/studio/revoke', { method: 'POST' });
+  void count(c.env, 'studio_connect');
+  return c.json({ status: 'connected', placeName: bound.placeName });
+});
+
 /**
  * Abandon a code that was minted and not used.
  *
@@ -2358,6 +2417,8 @@ app.post('/api/projects/:id/studio/disconnect', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   void count(c.env, 'studio_revoked');
+  // Forget the Studio this project was bound to as well, or it would reconnect by itself on its next announce.
+  await pairingStub(c.env).fetch('https://do/unbind', { method: 'POST', body: JSON.stringify({ projectId: ctx.project.id }) });
   return ctx.stub.fetch('https://do/studio/revoke', { method: 'POST' });
 });
 
@@ -2603,9 +2664,25 @@ app.post('/api/studio/claim', async (c) => {
   const res = await pairingStub(c.env).fetch('https://do/claim', { method: 'POST', body: JSON.stringify({ code: body.code }) });
   if (!res.ok) return c.json({ error: 'invalid or expired code' }, 404);
   const pairing = (await res.json()) as { projectId: string; userId: string; projectName: string };
+  return c.json(await issuePluginToken(c.env, c.req.raw.headers, pairing, body.place ?? null));
+});
+
+/**
+ * Mint the plugin's session token for a project the PairingDO has vouched for, and register it with the session.
+ *
+ * Shared by the code claim (older plugins, one release) and the Studio lobby's announce, so the two cannot differ in what a
+ * connected plugin holds. The caller has already proven the binding: a single-use code, or an install secret matched to a
+ * binding the project's owner made by pressing Connect. The token itself is never stored, only its hash.
+ */
+async function issuePluginToken(
+  env: Env,
+  headers: Headers,
+  pairing: { projectId: string; userId: string; projectName: string },
+  place: unknown,
+): Promise<{ token: string; projectId: string; projectName: string; place: unknown }> {
   const secret = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join('');
   const token = `${pairing.projectId}.${secret}`;
-  const stub = sessionStub(c.env, pairing.projectId);
+  const stub = sessionStub(env, pairing.projectId);
   await stub.fetch('https://do/init', {
     method: 'POST',
     body: JSON.stringify({ projectId: pairing.projectId, projectName: pairing.projectName, ownerId: pairing.userId }),
@@ -2618,8 +2695,8 @@ app.post('/api/studio/claim', async (c) => {
     method: 'POST',
     body: JSON.stringify({
       tokenHash: await sha256hex(token),
-      pluginVersion: readWire(c.req.raw.headers, WIRE_HEADERS.pluginVersion),
-      pluginProtocol: readWire(c.req.raw.headers, WIRE_HEADERS.pluginProtocol),
+      pluginVersion: readWire(headers, WIRE_HEADERS.pluginVersion),
+      pluginProtocol: readWire(headers, WIRE_HEADERS.pluginProtocol),
       //[[ WHICH PLACE THIS PAIRING IS FOR, recorded at the moment it is made.
       //
       //   The plugin's session is a plugin-wide Studio setting, so without this the project is
@@ -2627,15 +2704,82 @@ app.post('/api/studio/claim', async (c) => {
       //   in the body rather than on a header because it is three values, and because a plugin too
       //   old to send it simply omits the field — which studio-place.ts reads as "cannot tell",
       //   binds nothing, and refuses nothing. ]]
-      place: body.place ?? null,
+      place,
     }),
   });
   const bound = registered.ok ? (((await registered.json()) as { place?: unknown }).place ?? null) : null;
-  void count(c.env, 'studio_paired');
+  void count(env, 'studio_paired');
   // `place` goes back so the plugin can CONFIRM the binding to the user in the dock — "paired to
   // <project> in <place>" — instead of leaving them to discover it when an op lands somewhere
   // unexpected. Null means the open place could not be identified, which is not an error.
-  return c.json({ token, projectId: pairing.projectId, projectName: pairing.projectName, place: bound });
+  return { token, projectId: pairing.projectId, projectName: pairing.projectName, place: bound };
+}
+
+//[[ CONNECT WITHOUT A CODE: the plugin's half. See the lobby notes in do/pairing.ts.
+//
+//   UNAUTHENTICATED BY A USER JWT, AUTHENTICATED BY THE INSTALL SECRET. The first announce from an
+//   install records the hash of its secret; every later one must match it, and a token is only ever
+//   handed out for a binding the project's owner made by pressing Connect. The secret is hashed here
+//   and is never logged or stored in the clear. ]]
+const HEX32 = /^[0-9a-f]{32}$/;
+const HEX64 = /^[0-9a-f]{64}$/;
+
+function readLobbyPlace(raw: unknown): { placeId: number; gameId: number; placeName: string } | null {
+  const p = raw as { placeId?: unknown; gameId?: unknown; placeName?: unknown } | null;
+  const whole = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+  if (!p || !whole(p.placeId) || !whole(p.gameId) || typeof p.placeName !== 'string') return null;
+  const placeName = p.placeName.trim().slice(0, 200);
+  return placeName ? { placeId: p.placeId as number, gameId: p.gameId as number, placeName } : null;
+}
+
+async function readInstall(c: { req: { json: <T>() => Promise<T> } }) {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null);
+  const installId = typeof body?.installId === 'string' ? body.installId.toLowerCase() : '';
+  const secret = typeof body?.secret === 'string' ? body.secret.toLowerCase() : '';
+  const place = readLobbyPlace(body?.place);
+  if (!HEX32.test(installId) || !HEX64.test(secret) || !place) return null;
+  return { body: body!, installId, secretHash: await sha256hex(`studio-install:${secret}`), place };
+}
+
+app.post('/api/studio/announce', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  // A waiting plugin holds each announce ~20 s and a connected one sends a heartbeat every ~20 s, so a
+  // handful of Studios behind one address spend single digits per minute.
+  if (ipLimited(`announce:${ip}`, 90)) return c.json({ error: 'slow down' }, 429);
+  const who = await readInstall(c);
+  if (!who) return c.json({ error: 'bad announce' }, 400);
+  const sessionId = typeof who.body.studioSessionId === 'string' ? who.body.studioSessionId.toLowerCase() : '';
+  if (!HEX32.test(sessionId)) return c.json({ error: 'bad announce' }, 400);
+  const rawUser = who.body.robloxUserId;
+  const robloxUserId = (typeof rawUser === 'number' && Number.isSafeInteger(rawUser) && rawUser > 0) ? String(rawUser) : null;
+  const connected = typeof who.body.connectedProjectId === 'string' && UUID_RE.test(who.body.connectedProjectId) ? who.body.connectedProjectId : null;
+  const res = await pairingStub(c.env).fetch('https://do/announce', {
+    method: 'POST',
+    body: JSON.stringify({
+      installId: who.installId, secretHash: who.secretHash, sessionId, robloxUserId, place: who.place, ip,
+      connectedProjectId: connected, holdMs: who.body.wait === false ? 0 : 20_000,
+    }),
+  });
+  if (!res.ok) return c.json(await res.json().catch(() => ({ error: 'refused' })), res.status as 403);
+  const { bound } = (await res.json()) as { bound: { projectId: string; userId: string; projectName: string } | null };
+  if (!bound) return c.json({ waiting: true });
+  return c.json(await issuePluginToken(c.env, c.req.raw.headers, bound, who.place));
+});
+
+/** The plugin's Disconnect: forget this Studio's binding (so it stops reconnecting by itself) and revoke the project's token. */
+app.post('/api/studio/release', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  if (ipLimited(`announce:${ip}`, 90)) return c.json({ error: 'slow down' }, 429);
+  const who = await readInstall(c);
+  if (!who) return c.json({ error: 'bad release' }, 400);
+  const res = await pairingStub(c.env).fetch('https://do/release', {
+    method: 'POST',
+    body: JSON.stringify({ installId: who.installId, secretHash: who.secretHash, place: who.place }),
+  });
+  if (!res.ok) return c.json({ error: 'refused' }, res.status as 403);
+  const { projectId } = (await res.json()) as { projectId: string | null };
+  if (projectId) await sessionStub(c.env, projectId).fetch('https://do/studio/revoke', { method: 'POST' });
+  return c.json({ ok: true });
 });
 
 app.post('/api/studio/poll', async (c) => {

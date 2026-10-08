@@ -1,5 +1,5 @@
 // The few product calls the chat makes outside the agent: the chat list (Supabase, under RLS) and the worker's own
-// routes for Studio pairing, undo and credits. The worker routes are same-origin (see lib/proxy.ts).
+// routes for the Studio connection, undo and credits. The worker routes are same-origin (see lib/proxy.ts).
 import { authHeaders, supabase } from "@/lib/supabase";
 
 export interface Project {
@@ -61,6 +61,7 @@ export const firstMessageKey = (projectId: string) =>
 export interface StudioLink {
   paired: boolean;
   connected: boolean;
+  place?: { placeName?: string } | null;
 }
 
 export async function studioLink(projectId: string): Promise<StudioLink | null> {
@@ -75,35 +76,41 @@ export async function studioLink(projectId: string): Promise<StudioLink | null> 
   return body.link ?? null;
 }
 
-export interface PairingCode {
-  code: string;
-  expiresAtIso: string;
+export interface StudioCandidate {
+  pickId: string;
+  placeName: string;
+  placeId: number;
 }
 
-export async function pairingCode(projectId: string): Promise<PairingCode> {
-  const res = await fetch(`/api/projects/${projectId}/pairing`, {
+/** What one Connect press found: bound, several waiting Studios to choose from, or none yet. */
+export type ConnectResult =
+  | { status: "connected"; placeName: string }
+  | { status: "choose"; candidates: StudioCandidate[] }
+  | { status: "waiting" };
+
+/** Bind this project to the Roblox Studio waiting with the StudPilot plugin (no code). `pickId` answers a choice. */
+export async function connectStudio(projectId: string, pickId?: string): Promise<ConnectResult> {
+  const res = await fetch(`/api/projects/${projectId}/connect`, {
+    method: "POST",
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+    body: JSON.stringify(pickId ? { pickId } : {}),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const body = (await res.json().catch(() => ({}))) as Partial<ConnectResult> & { error?: string };
+  if (!res.ok || !body.status) {
+    throw new Error(body.error ?? `could not connect (${res.status})`);
+  }
+  return body as ConnectResult;
+}
+
+/** Disconnect Studio from this project; it will not reconnect by itself until Connect is pressed again. */
+export async function disconnectStudio(projectId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/studio/disconnect`, {
     method: "POST",
     headers: await authHeaders(),
     signal: AbortSignal.timeout(15_000),
   });
-  const body = (await res.json().catch(() => ({}))) as Partial<PairingCode> & {
-    error?: string;
-  };
-  if (!(res.ok && body.code)) {
-    throw new Error(body.error ?? `could not make a code (${res.status})`);
-  }
-  return { code: body.code, expiresAtIso: body.expiresAtIso ?? "" };
-}
-
-/** Retire only the one unclaimed code this dialog was displaying. */
-export async function cancelPairingCode(projectId: string, code: string): Promise<void> {
-  const res = await fetch(`/api/projects/${projectId}/pairing/cancel`, {
-    method: "POST",
-    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!res.ok) throw new Error("Could not replace the connection code. Please try again.");
+  if (!res.ok) throw new Error("Could not disconnect Studio. Please try again.");
 }
 
 export interface Checkpoint {
