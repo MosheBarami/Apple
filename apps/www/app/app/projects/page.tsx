@@ -1,2 +1,6 @@
-import {ProjectsPage} from "@/components/app/workspace-pages";
-export default ProjectsPage;
+import { redirect } from "next/navigation";
+
+// The project list is the app's home now.
+export default function Page() {
+  redirect("/app");
+}

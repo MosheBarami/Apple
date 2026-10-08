@@ -1,2 +1,3 @@
-import {SettingsPage} from "@/components/app/workspace-pages";
+import { SettingsPage } from "@/components/app/settings";
+
 export default SettingsPage;

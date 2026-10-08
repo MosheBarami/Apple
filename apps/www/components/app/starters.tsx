@@ -1,7 +1,5 @@
-"use client";
-import { PromptArtwork } from "@/components/creative/atmosphere";
+// Example requests shown by the website (components/site/how-it-works.tsx). The app has no prompt library.
 import {
-  ArrowUpLeftIcon,
   CoinsIcon,
   LayoutPanelTopIcon,
   type LucideIcon,
@@ -56,47 +54,3 @@ export const EDIT_STARTERS: Starter[] = [
     title: "Fix a mechanic",
   },
 ];
-export function StarterGrid({
-  onPick,
-  disabled,
-  mode = "create",
-}: {
-  onPick: (text: string) => void;
-  disabled?: boolean;
-  mode?: "create" | "edit";
-}) {
-  return (
-    <ul className="grid gap-3 sm:grid-cols-3">
-      {(mode === "edit" ? EDIT_STARTERS : STARTERS).map((s, i) => (
-        <li
-          className="fade-up"
-          key={s.title}
-          style={{ animationDelay: `${i * 60}ms` }}
-        >
-          <button
-            className="prompt-tile group flex h-full w-full flex-col gap-5 rounded-md border border-border bg-card/70 p-4 text-left transition duration-200 hover:-translate-y-1 hover:border-signal/40 hover:shadow-md disabled:opacity-50"
-            data-uiverse="satyamchaudharydev/itchy-chipmunk-95"
-            disabled={disabled}
-            onClick={() => onPick(s.text)}
-            type="button"
-          >
-            <PromptArtwork kind={i} />
-            <span className="uiverse-card-arrow" aria-hidden="true"><ArrowUpLeftIcon /></span>
-            <div className="flex w-full items-center justify-between">
-              <span className="prompt-object">
-                <s.icon className="size-6" strokeWidth={1.5} />
-              </span>
-              <ArrowUpLeftIcon className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">{s.title}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {s.category}
-              </p>
-            </div>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}

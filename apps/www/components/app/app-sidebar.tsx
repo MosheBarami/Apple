@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  BookOpenIcon,
-  FolderOpenIcon,
-  PenSquareIcon,
-  SearchIcon,
-  SettingsIcon,
-} from "lucide-react";
+import { HomeIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
 import { Wordmark } from "@/components/site/logo";
 import {
   Sidebar,
@@ -19,156 +12,114 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarInput,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AccountMenu } from "./account-menu";
-import { CreditsMeter } from "./credits-meter";
 import { useProjects } from "./projects-provider";
+
+const RECENT = 12;
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { projects, error, refresh } = useProjects();
   const { setOpenMobile } = useSidebar();
-  const [query, setQuery] = useState("");
-
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (projects ?? []).filter((p) => p.name.toLowerCase().includes(q));
-  }, [projects, query]);
+  const close = () => setOpenMobile(false);
+  const recent = (projects ?? []).slice(0, RECENT);
 
   return (
-    <Sidebar
-      aria-label="Chats and account"
-      collapsible="icon"
-      role="complementary"
-    >
-      <SidebarHeader className="gap-3 p-3">
+    <Sidebar aria-label="Projects and account" collapsible="icon">
+      <SidebarHeader className="gap-2 p-3">
         <Link
-          aria-label="StudPilot"
-          className="flex h-8 items-center rounded-md px-1 text-sidebar-foreground transition-opacity hover:opacity-80 group-data-[collapsible=icon]:hidden"
+          aria-label="StudPilot home"
+          className="flex h-8 items-center rounded-md px-1.5 text-sidebar-foreground group-data-[collapsible=icon]:hidden"
           href="/app"
-          onClick={() => setOpenMobile(false)}
+          onClick={close}
         >
-          <Wordmark markClassName="size-6" />
+          <Wordmark markClassName="size-5" />
         </Link>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="h-8 border border-sidebar-border bg-background shadow-card transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-background hover:shadow-float active:translate-y-0"
-              tooltip="New conversation"
-            >
-              <Link href="/app" onClick={() => setOpenMobile(false)}>
-                <PenSquareIcon className="size-4" />
-                <span className="font-medium">New conversation</span>
+            <SidebarMenuButton asChild className="h-8 border border-sidebar-border bg-background" tooltip="New project">
+              <Link href="/app?new=1" onClick={close}>
+                <PlusIcon className="size-4" />
+                <span className="font-medium">New project</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="relative group-data-[collapsible=icon]:hidden">
-          <SearchIcon
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <SidebarInput
-            aria-label="Search projects"
-            className="h-9 pl-8"
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search projects"
-            value={query}
-          />
-        </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
+        <SidebarGroup className="py-0">
           <SidebarMenu>
-            {[
-              {
-                href: "/app/projects",
-                icon: FolderOpenIcon,
-                label: "Projects",
-              },
-              {
-                href: "/app/library",
-                icon: BookOpenIcon,
-                label: "Prompt library",
-              },
-              { href: "/app/settings", icon: SettingsIcon, label: "Settings" },
-            ].map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === item.href}
-                  tooltip={item.label}
-                >
-                  <Link href={item.href} onClick={() => setOpenMobile(false)}>
-                    <item.icon className="size-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/app"} tooltip="Projects">
+                <Link href="/app" onClick={close}>
+                  <HomeIcon className="size-4" />
+                  <span>Projects</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/app/settings"} tooltip="Settings">
+                <Link href="/app/settings" onClick={close}>
+                  <SettingsIcon className="size-4" />
+                  <span>Settings</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>RECENT PROJECTS</SidebarGroupLabel>
+          <SidebarGroupLabel>Recent</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {!error && projects && shown.length === 0 ? (
-                <p className="px-2 py-1 text-sidebar-foreground/70 text-xs">
-                  {query ? "No chats match." : "No chats yet."}
-                </p>
-              ) : null}
               {error ? (
-                <li className="px-2 py-3 text-xs text-muted-foreground">
-                  <p role="alert">{error}</p>
-                  <button
-                    className="mt-2 text-signal underline underline-offset-4"
-                    onClick={refresh}
-                    type="button"
-                  >
-                    Try again
+                <li className="px-2 py-1 text-muted-foreground text-xs">
+                  Projects did not load.{" "}
+                  <button className="underline underline-offset-2" onClick={refresh} type="button">
+                    Retry
                   </button>
                 </li>
               ) : null}
               {projects === null && !error
                 ? [0, 1, 2].map((i) => (
-                    <li
-                      className="mx-2 my-1 h-7 animate-pulse rounded-md bg-sidebar-accent"
-                      key={i}
-                    />
+                    <li className="flex h-8 items-center px-2" key={i}>
+                      <Skeleton className="h-3.5" style={{ width: `${72 - i * 14}%` }} />
+                    </li>
                   ))
                 : null}
-              {shown.map((p) => (
-                <SidebarMenuItem key={p.id}>
-                  <SidebarMenuButton
-                    asChild
-                    className="h-8 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium"
-                    isActive={pathname === `/app/chat/${p.id}`}
-                  >
-                    <Link
-                      href={`/app/chat/${p.id}`}
-                      onClick={() => setOpenMobile(false)}
-                    >
-                      <span className="truncate">{p.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {projects && projects.length === 0 ? (
+                <li className="px-2 py-1 text-muted-foreground text-xs">No projects yet.</li>
+              ) : null}
+              {recent.map((p) => {
+                const href = `/app/projects/${p.id}`;
+                return (
+                  <SidebarMenuItem key={p.id}>
+                    <SidebarMenuButton asChild className="h-8" isActive={pathname === href}>
+                      <Link href={href} onClick={close}>
+                        <span className="truncate">{p.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 border-sidebar-border border-t p-3">
-        <CreditsMeter />
-        <AccountMenu />
+      <SidebarFooter className="border-sidebar-border border-t p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <AccountMenu />
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

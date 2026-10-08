@@ -11,18 +11,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
       <ProjectsProvider>
-        <SidebarProvider
-          style={{ "--sidebar-width": "220px" } as CSSProperties}
-        >
+        <SidebarProvider className="studpilot-app" style={{ "--sidebar-width": "232px" } as CSSProperties}>
           <a
-            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 z-50 bg-background p-3"
+            className="sr-only z-50 bg-background p-3 focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
             href="#workspace-main"
           >
-            Skip to workspace
+            Skip to content
           </a>
           <AppSidebar />
-          <SidebarInset className="workspace-shell border-sidebar-border border bg-background">
-            <Toaster position="top-center" theme="system" />
+          <SidebarInset className="min-w-0 bg-background">
+            <Toaster position="bottom-right" theme="system" />
             {children}
           </SidebarInset>
         </SidebarProvider>

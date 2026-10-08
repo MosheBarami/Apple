@@ -1,5 +1,10 @@
-import { NewChat } from "@/components/app/new-chat";
+import { Suspense } from "react";
+import { Dashboard } from "@/components/app/dashboard";
 
 export default function Page() {
-  return <NewChat />;
+  return (
+    <Suspense>
+      <Dashboard />
+    </Suspense>
+  );
 }

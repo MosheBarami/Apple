@@ -1,4 +1,5 @@
 import "katex/dist/katex.min.css";
+import "./app.css";
 import { AppShell } from "@/components/app/app-shell";
 import { LegacyAppFrame } from "@/components/legacy-app-frame";
 
