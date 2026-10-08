@@ -310,7 +310,7 @@ import {
   type RateLimitVerdict,
 } from './public-api';
 import type { OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
-import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS } from '@studpilot/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS, INTERNAL_PER_CREDIT } from '@studpilot/shared';
 import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
 import { isPlanId, normalizeModelId, PRICE_CURRENCY, quotaLimit, type ProductModel } from '@studpilot/shared';
 import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@studpilot/shared';
@@ -1089,7 +1089,8 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     const owner = await studioGrantOwner(this.env, projectId);
     if (!owner) return { studio, credits: null };
     const state = (await (await this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(owner)).fetch('https://do/state')).json()) as QuotaState;
-    return { studio, credits: { remaining: state.creditsRemaining, unmetered: state.unmetered === true } };
+    // In credits as people see them (the ledger counts INTERNAL_PER_CREDIT units to a credit), the unit /api/me's readers show.
+    return { studio, credits: { remaining: Math.round((state.creditsRemaining / INTERNAL_PER_CREDIT) * 100) / 100, unmetered: state.unmetered === true } };
   }
 
   async releaseModel(model: string, reserved: number): Promise<void> {
