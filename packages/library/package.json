@@ -5,7 +5,7 @@
   "type": "module",
   "description": "The StudPilot Library pipeline (master plan \u00a74): licences, the human-made check, provenance, sanitizing, grading, families and search cards. Metadata only; binaries live in R2.",
   "scripts": {
-    "typecheck": "node --check src/licence.mjs && node --check src/item.mjs && node --check src/card.mjs && node --check src/aicheck.mjs && node --check src/glb.mjs && node --check src/ingest-pack.mjs && node --check src/to-sql.mjs && node --check src/embed.mjs && node --check src/ingest-code.mjs && node --check src/code-tree.mjs && node --check src/export-code.mjs && node --check src/ingest-fonts.mjs && node --check src/ingest-files.mjs && node --check src/ingest-skills.mjs && node --check src/ingest-game-icons.mjs && node --check src/ingest-kenney-2d.mjs && node --check tools/blend-to-glb.mjs",
+    "typecheck": "node --check src/licence.mjs && node --check src/item.mjs && node --check src/card.mjs && node --check src/aicheck.mjs && node --check src/glb.mjs && node --check src/ingest-pack.mjs && node --check src/to-sql.mjs && node --check src/embed.mjs && node --check src/ingest-code.mjs && node --check src/code-tree.mjs && node --check src/export-code.mjs && node --check src/ingest-fonts.mjs && node --check src/ingest-files.mjs && node --check src/ingest-skills.mjs && node --check src/ingest-game-icons.mjs && node --check src/ingest-kenney-2d.mjs && node --check tools/blend-to-glb.mjs && node --check src/ingest-skies.mjs",
     "test": "node --test tests/*.test.mjs",
     "ingest:kenney": "node src/ingest-pack.mjs --ledger ../../planning/library/ledger/kenney-3d.jsonl --dir ../../private/library-src/kenney --out ../../planning/library/items/kenney-3d.jsonl",
     "thumbs:kenney": "node tools/render-thumbs.mjs ../../planning/library/items/kenney-3d.jsonl ../../private/library-src/kenney ../../private/library-thumbs",
@@ -23,7 +23,9 @@
     "acceptance": "node tools/acceptance.mjs --items ../../planning/library/items",
     "overrides": "node tools/apply-overrides.mjs ../../planning/library/maturity-overrides.jsonl ../../planning/library/items ../../private/library-overrides-touched.jsonl ../../private/library-overrides-demoted.txt",
     "retrieval-test": "node tools/retrieval-test.mjs ../../planning/library/acceptance/L-A6-queries.jsonl ../../planning/library/items ../../private ../../private/library-acceptance/L-A6",
-    "ingest:kaykit": "node src/ingest-files.mjs ingest --ledger ../../planning/library/ledger/kaykit-github.jsonl --dir ../../private/library-src/kaykit --stats ../../private/library-thumbs/kaykit/stats.jsonl --out ../../planning/library/items/kaykit.jsonl --prefix kaykit"
+    "ingest:kaykit": "node src/ingest-files.mjs ingest --ledger ../../planning/library/ledger/kaykit-github.jsonl --dir ../../private/library-src/kaykit --stats ../../private/library-thumbs/kaykit/stats.jsonl --out ../../planning/library/items/kaykit.jsonl --prefix kaykit",
+    "fetch:skies": "node tools/fetch-polyhaven-hdris.mjs ../../private/library-src/polyhaven-hdris",
+    "ingest:skies": "node src/ingest-skies.mjs --dir ../../private/library-src/polyhaven-hdris --out ../../planning/library/items/polyhaven-skies.jsonl"
   },
   "devDependencies": {
     "playwright-core": "1.58.0",
