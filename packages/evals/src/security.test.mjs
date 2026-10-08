@@ -907,6 +907,8 @@ const TOOL_ARGS = {
   ungroup_instances: { paths: ['game.Workspace.A'] },
   move_instances: { moves: [{ path: 'game.Workspace.A', newParent: 'game.Workspace' }] },
   transform_instances: { paths: ['game.Workspace.A'], move: [0, 1, 0] },
+  apply_surface: { paths: ['game.Workspace.A'], surface: 'studs' },
+  insert_from_store: { assetId: 18717544 },
   rename_instance: { path: 'game.Workspace.A', name: 'B' },
   set_locked: { paths: ['game.Workspace.A'], locked: true },
   set_visible: { paths: ['game.Workspace.A'], visible: false },

@@ -292,7 +292,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
+          # No pnpm cache: this job installs nothing, so on a lockfile change (a cache miss) the post-job save found no
+          # store to save and failed the job.
 
       - name: The secret scanner's own tests
         # The scanner gained a suppression mechanism (scripts/known-fixtures.json) and had no
