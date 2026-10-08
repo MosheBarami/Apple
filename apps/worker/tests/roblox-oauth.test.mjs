@@ -3676,7 +3676,8 @@ test('LINKING: a ticket links the Roblox account to the signed-in account, signs
   const { res } = await finish(t.env, t.world, flow, { sub: '424242', username: 'builder' });
   assert.equal(res.status, 302);
   assert.equal(res.headers.get('Location'), '/app/projects/fe440692-b64a-4f1b-9f45-b12237ed4a91?roblox=linked');
-  assert.equal(userIdOf(t.db, '424242'), 'user-link-1');
+  assert.deepEqual(rowsOf(t.db, 'select user_id from studio_roblox_accounts where roblox_sub = ?', '424242').map((r) => r.user_id), ['user-link-1']);
+  assert.equal(identityCount(t.db), 0, 'linking for Studio makes no sign-in identity');
   assert.equal(kvHandles(t.env).length, 0, 'no sign-in handle is made');
   t.db.close();
 });
@@ -3688,13 +3689,15 @@ test('LINKING: a used or unknown ticket is refused, never treated as a sign-in',
   t.db.close();
 });
 
-test('LINKING: a Roblox account already linked to someone else is refused and stays theirs', async () => {
+test('LINKING: a Roblox account that signs in another account can still be linked for Studio, and its sign-in stays where it was', async () => {
   const t = scene();
-  const first = await linkFlow(t.env, 'user-a');
-  await finish(t.env, t.world, first.flow, { sub: '777', username: 'owner' });
-  const second = await linkFlow(t.env, 'user-b');
-  const { res } = await finish(t.env, t.world, second.flow, { sub: '777', username: 'owner' });
-  assert.equal(res.status, 409);
-  assert.equal(userIdOf(t.db, '777'), 'user-a');
+  await signIn(t.env, t.world, { sub: '777', username: 'owner' });
+  const owner = userIdOf(t.db, '777');
+  assert.ok(owner);
+  const link = await linkFlow(t.env, 'user-b');
+  const { res } = await finish(t.env, t.world, link.flow, { sub: '777', username: 'owner' });
+  assert.equal(res.status, 302);
+  assert.equal(userIdOf(t.db, '777'), owner, 'the sign-in identity is unchanged');
+  assert.deepEqual(rowsOf(t.db, 'select user_id from studio_roblox_accounts where roblox_sub = ?', '777').map((r) => r.user_id), ['user-b']);
   t.db.close();
 });

@@ -5,7 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
-import { allowedReturn, checkRobloxGrants, ensureRobloxOAuthTables, describeGrantCheck, describeRobloxConnection, disconnectRoblox, LINK_TICKET_PREFIX, randomToken, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
+import { allowedReturn, checkRobloxGrants, ensureStudioRobloxTable, describeGrantCheck, describeRobloxConnection, disconnectRoblox, LINK_TICKET_PREFIX, randomToken, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { STUDIO_TOOLS } from './studio-surface';
@@ -2309,13 +2309,18 @@ app.post('/api/projects/:id/pairing', async (c) => {
 });
 
 /** The Roblox accounts linked to this StudPilot user (Sign in with Roblox). Empty when none, or when the table cannot be read. */
+/** The Roblox accounts this user signs in with or has linked for Studio (Connect matches the Studio signed into any of them). */
 async function linkedRobloxIds(env: Env, userId: string): Promise<string[]> {
-  try {
-    const rows = await env.CORPUS.prepare('select roblox_sub from roblox_identities where user_id = ?').bind(userId).all<{ roblox_sub: string }>();
-    return (rows.results ?? []).map((r) => String(r.roblox_sub)).filter((s) => /^\d{1,20}$/.test(s));
-  } catch {
-    return [];
+  const ids = new Set<string>();
+  for (const sql of ['select roblox_sub from roblox_identities where user_id = ?', 'select roblox_sub from studio_roblox_accounts where user_id = ?']) {
+    try {
+      const rows = await env.CORPUS.prepare(sql).bind(userId).all<{ roblox_sub: string }>();
+      for (const r of rows.results ?? []) if (/^\d{1,20}$/.test(String(r.roblox_sub))) ids.add(String(r.roblox_sub));
+    } catch {
+      // a table that does not exist yet holds nothing
+    }
   }
+  return [...ids];
 }
 
 /** Roblox ids among `ids` that are linked to a StudPilot account OTHER than `userId`. */
@@ -2324,7 +2329,9 @@ async function foreignRobloxIds(env: Env, userId: string, ids: string[]): Promis
   try {
     const rows = await env.CORPUS.prepare(`select roblox_sub, user_id from roblox_identities where roblox_sub in (${ids.map(() => '?').join(',')})`)
       .bind(...ids).all<{ roblox_sub: string; user_id: string }>();
-    return new Set((rows.results ?? []).filter((r) => r.user_id !== userId).map((r) => String(r.roblox_sub)));
+    // A Roblox account this user has proven they use in Studio is theirs here, whoever else it signs in.
+    const own = new Set(await linkedRobloxIds(env, userId));
+    return new Set((rows.results ?? []).filter((r) => r.user_id !== userId && !own.has(String(r.roblox_sub))).map((r) => String(r.roblox_sub)));
   } catch {
     return new Set();
   }
@@ -2357,8 +2364,10 @@ app.post('/api/roblox/link-ticket', async (c) => {
 app.get('/api/roblox/link', async (c) => {
   const user = await verifyJwt(c.env, (c.req.header('Authorization') ?? '').replace(/^Bearer /, ''));
   if (!user) return c.json({ error: 'unauthorized' }, 401);
-  await ensureRobloxOAuthTables(c.env).catch(() => undefined);
-  const row = await c.env.CORPUS.prepare('select username from roblox_identities where user_id = ? limit 1').bind(user.userId).first<{ username: string }>().catch(() => null);
+  await ensureStudioRobloxTable(c.env).catch(() => undefined);
+  const row = await c.env.CORPUS.prepare(
+    'select username from studio_roblox_accounts where user_id = ? union all select username from roblox_identities where user_id = ? limit 1',
+  ).bind(user.userId, user.userId).first<{ username: string }>().catch(() => null);
   return c.json({ linked: !!row, username: row?.username ?? null });
 });
 

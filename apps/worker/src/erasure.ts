@@ -609,7 +609,14 @@ async function sweepRobloxLink(env: Pick<Env, 'CORPUS'>, userId: string): Promis
       env.CORPUS.prepare('delete from roblox_identities where user_id = ?').bind(userId),
       env.CORPUS.prepare('delete from roblox_wiped where user_id = ?').bind(userId),
     ]);
-    return { store: 'd1', target: 'roblox_identities', status: 'erased', rows: Number(link?.meta?.changes ?? 0) + Number(wiped?.meta?.changes ?? 0) };
+    // The Roblox accounts linked for Studio (Connect) go with it; a table not made yet holds nothing to erase.
+    let studio = 0;
+    try {
+      studio = Number((await env.CORPUS.prepare('delete from studio_roblox_accounts where user_id = ?').bind(userId).run())?.meta?.changes ?? 0);
+    } catch (err) {
+      if (!/no such table/i.test(String((err as Error)?.message ?? err))) throw err;
+    }
+    return { store: 'd1', target: 'roblox_identities', status: 'erased', rows: Number(link?.meta?.changes ?? 0) + Number(wiped?.meta?.changes ?? 0) + studio };
   } catch (err) {
     return { store: 'd1', target: 'roblox_identities', status: 'failed', rows: null, detail: String((err as Error)?.message ?? err) };
   }
