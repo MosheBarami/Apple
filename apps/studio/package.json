@@ -9,18 +9,23 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@cloudflare/ai-chat": "0.12.1",
     "@cloudflare/kumo": "^2.14.0",
     "@flue/react": "2.2.2",
     "@flue/runtime": "2.2.2",
     "@flue/sdk": "2.2.2",
     "@phosphor-icons/react": "^2.1.10",
     "@supabase/supabase-js": "^2.112.4",
+    "agents": "0.27.0",
+    "ai": "7.0.15",
     "hono": "^4.13.12",
     "jose": "^6.2.12",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "streamdown": "^2.7.0",
-    "valibot": "^1.5.0"
+    "valibot": "^1.5.0",
+    "workers-ai-provider": "4.0.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.62.5",
