@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Toaster } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,9 +11,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
       <ProjectsProvider>
-        <SidebarProvider>
+        <SidebarProvider
+          style={{ "--sidebar-width": "220px" } as CSSProperties}
+        >
+          <a
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 z-50 bg-background p-3"
+            href="#workspace-main"
+          >
+            Skip to workspace
+          </a>
           <AppSidebar />
-          <SidebarInset className="border-sidebar-border border-l bg-background">
+          <SidebarInset className="workspace-shell border-sidebar-border border bg-background">
             <Toaster position="top-center" theme="system" />
             {children}
           </SidebarInset>

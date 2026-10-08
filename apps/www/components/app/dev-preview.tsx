@@ -8,6 +8,7 @@ import { useState } from "react";
 import { AppShell } from "./app-shell";
 import { ChatScreen } from "./chat-view";
 import { NewChat } from "./new-chat";
+import { LibraryPage, ProjectsPage, SettingsPage } from "./workspace-pages";
 
 const NOW = Date.now();
 const PROJECTS = [
@@ -21,18 +22,19 @@ const PROJECTS = [
   "Pet shop path",
 ].map((name, i) => ({
   id: `demo-${i}`,
+  last_activity_at: null,
   name,
   updated_at: new Date(NOW - i * 3_600_000).toISOString(),
-  last_activity_at: null,
 }));
 
 let installed = false;
-function installMock(studio: "on" | "off") {
+function installMock(studio: "on" | "off", failHistory: boolean) {
   if (installed || typeof window === "undefined") {
     return;
   }
   installed = true;
   const real = window.fetch.bind(window);
+  let historyAttempts = 0;
   const json = (body: unknown) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -40,72 +42,130 @@ function installMock(studio: "on" | "off") {
       })
     );
   window.fetch = (input, init) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
     if (url.includes("/rest/v1/projects")) {
+      if (failHistory && historyAttempts++ === 0) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ message: "Fixture unavailable" }), {
+            headers: { "content-type": "application/json" },
+            status: 400,
+          })
+        );
+      }
       return json(url.includes("id=eq.") ? PROJECTS[0] : PROJECTS);
     }
     if (url.includes("/api/me")) {
-      return json({ quota: { allowanceRemaining: 4.2 * 150, credits: 0, unmetered: false } });
+      return json({
+        quota: { allowanceRemaining: 4.2 * 150, credits: 0, unmetered: false },
+      });
     }
     if (url.includes("/studio/diagnostics")) {
-      return json({ link: { paired: studio === "on", connected: studio === "on" } });
+      return json({
+        link: { connected: studio === "on", paired: studio === "on" },
+      });
     }
     if (url.includes("/checkpoints")) {
       return json({
-        checkpoints: [{ id: "c1", label: "before StudPilot Studio changes", createdAt: NOW - 120_000 }],
+        checkpoints: [
+          {
+            createdAt: NOW - 120_000,
+            id: "c1",
+            label: "before StudPilot Studio changes",
+          },
+        ],
       });
     }
     if (url.includes("/pairing")) {
-      return json({ code: "K7M3QP", expiresAtIso: new Date(NOW + 600_000).toISOString() });
+      return json({
+        code: "K7M3QP",
+        expiresAtIso: new Date(NOW + 600_000).toISOString(),
+      });
     }
     return real(input, init);
   };
 }
 
 const msg = (id: string, role: "user" | "assistant", parts: unknown[]) =>
-  ({ id, role, purpose: role, display: "visible", parts }) as unknown as FlueConversationMessage;
+  ({
+    display: "visible",
+    id,
+    parts,
+    purpose: role,
+    role,
+  }) as unknown as FlueConversationMessage;
 
 const SAMPLE: FlueConversationMessage[] = [
-  msg("u1", "user", [{ type: "text", text: "Build an egg shop screen with a featured egg and five more eggs, each with a Buy button", state: "done" }]),
-  msg("a1", "assistant", [
-    { type: "reasoning", text: "The place has a ScreenGui for the HUD. I will add a new ScreenGui for the shop and keep the HUD untouched.", state: "done" },
+  msg("u1", "user", [
     {
-      type: "dynamic-tool",
-      toolName: "inspect_place",
-      toolCallId: "t1",
-      state: "output-available",
+      state: "done",
+      text: "Build an egg shop screen with a featured egg and five more eggs, each with a Buy button",
+      type: "text",
+    },
+  ]),
+  msg("a1", "assistant", [
+    {
+      state: "done",
+      text: "The place has a ScreenGui for the HUD. I will add a new ScreenGui for the shop and keep the HUD untouched.",
+      type: "reasoning",
+    },
+    {
       input: { path: "StarterGui" },
       output: { children: ["HudGui"] },
-    },
-    {
-      type: "dynamic-tool",
-      toolName: "task",
-      toolCallId: "t2",
-      state: "input-available",
-      input: { agent: "ui-builder", prompt: "Create EggShopGui with a header, a featured egg row and a grid of five eggs" },
-    },
-    {
-      type: "dynamic-tool",
-      toolName: "create_instances",
-      toolCallId: "t3",
       state: "output-available",
-      input: { parent: "StarterGui", class: "ScreenGui", name: "EggShopGui" },
-      output: { ok: true },
+      toolCallId: "t1",
+      toolName: "inspect_place",
+      type: "dynamic-tool",
     },
     {
-      type: "text",
-      text: "I added **EggShopGui** with a header, one featured egg and five more eggs in a grid. Each card has a price and a Buy button.\n\nTwo things are still open:\n\n- The Buy buttons are not connected to your currency yet.\n- The egg pictures are placeholders.",
+      input: {
+        agent: "ui-builder",
+        prompt:
+          "Create EggShopGui with a header, a featured egg row and a grid of five eggs",
+      },
+      state: "input-available",
+      toolCallId: "t2",
+      toolName: "task",
+      type: "dynamic-tool",
+    },
+    {
+      input: { class: "ScreenGui", name: "EggShopGui", parent: "StarterGui" },
+      output: { ok: true },
+      state: "output-available",
+      toolCallId: "t3",
+      toolName: "create_instances",
+      type: "dynamic-tool",
+    },
+    {
       state: "streaming",
+      text: "I added **EggShopGui** with a header, one featured egg and five more eggs in a grid. Each card has a price and a Buy button.\n\nTwo things are still open:\n\n- The Buy buttons are not connected to your currency yet.\n- The egg pictures are placeholders.",
+      type: "text",
     },
   ]),
 ];
 
-export function DevPreview({ view, studio }: { view: string; studio: "on" | "off" }) {
+export function DevPreview({
+  view,
+  studio,
+}: {
+  view: string;
+  studio: "on" | "off";
+}) {
   // Installed in render, before any child effect runs, so the first requests are already answered.
-  useState(() => installMock(studio));
+  useState(() => installMock(studio, view === "history-error"));
   return (
     <AppShell>
-      {view === "chat" || view === "pair" ? (
+      {view === "projects" ? (
+        <ProjectsPage />
+      ) : view === "library" ? (
+        <LibraryPage />
+      ) : view === "settings" ? (
+        <SettingsPage />
+      ) : view === "chat" || view === "pair" ? (
         <ChatScreen
           busy={true}
           error={null}

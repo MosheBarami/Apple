@@ -6,7 +6,7 @@ import {
   type FlueConversationMessage,
   type FlueConversationPart,
 } from "@flue/sdk";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Checkpoint,
   CheckpointIcon,
@@ -42,11 +42,11 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import {
-  type Checkpoint as StudioCheckpoint,
   firstMessageKey,
   getProject,
   latestStudioCheckpoint,
   restoreCheckpoint,
+  type Checkpoint as StudioCheckpoint,
 } from "@/lib/api";
 import { authHeaders } from "@/lib/supabase";
 import { Composer } from "./composer";
@@ -54,6 +54,7 @@ import { CREDITS_REFRESH_EVENT } from "./credits-meter";
 import { useProjects } from "./projects-provider";
 import { StarterGrid } from "./starters";
 import { TopBar } from "./top-bar";
+import { ProjectWorkbench } from "./project-workbench";
 
 type ToolPart = Extract<FlueConversationPart, { type: "dynamic-tool" }>;
 
@@ -79,8 +80,8 @@ export function ChatView({
       typeof window === "undefined"
         ? undefined
         : createFlueClient({
-            url: `${location.origin}/studio/api/agents/studpilot/${projectId}`,
             headers: authHeaders,
+            url: `${location.origin}/studio/api/agents/studpilot/${projectId}`,
           }),
     [projectId]
   );
@@ -90,19 +91,29 @@ export function ChatView({
 
   // The message typed on the new-chat page.
   const { historyReady, sendMessage } = agent;
+  const firstInFlight = useRef(false);
+  const [failedFirst, setFailedFirst] = useState<string | null>(null);
   useEffect(() => {
-    if (!historyReady) {
+    if (!historyReady || firstInFlight.current) {
       return;
     }
     let first: string | null = null;
     try {
       first = sessionStorage.getItem(firstMessageKey(projectId));
-      sessionStorage.removeItem(firstMessageKey(projectId));
     } catch {
       // Private mode: nothing was stored.
     }
     if (first) {
-      sendMessage(first);
+      firstInFlight.current = true;
+      sendMessage(first)
+        .then(() => {
+          try {
+            sessionStorage.removeItem(firstMessageKey(projectId));
+          } catch {
+            /* Sending succeeded; unavailable storage must not turn it into a failed send. */
+          }
+        })
+        .catch(() => setFailedFirst(first));
     }
   }, [historyReady, projectId, sendMessage]);
 
@@ -122,10 +133,27 @@ export function ChatView({
       busy={busy}
       error={agent.error?.message ?? null}
       messages={visible}
+      onRecover={
+        failedFirst
+          ? async () => {
+              try {
+                await sendMessage(failedFirst);
+                try {
+                  sessionStorage.removeItem(firstMessageKey(projectId));
+                } catch {
+                  /* Sending succeeded; unavailable storage must not turn it into a failed send. */
+                }
+                setFailedFirst(null);
+              } catch {
+                /* Agent error remains visible; the request stays available for retry. */
+              }
+            }
+          : agent.refresh
+      }
       onSend={(text) => agent.sendMessage(text)}
       pair={pair}
-      ready={agent.historyReady}
       projectId={projectId}
+      ready={agent.historyReady}
       title={title}
     />
   );
@@ -141,6 +169,7 @@ export function ChatScreen({
   ready,
   error,
   onSend,
+  onRecover,
 }: {
   title: string;
   projectId: string;
@@ -149,7 +178,8 @@ export function ChatScreen({
   busy: boolean;
   ready: boolean;
   error: string | null;
-  onSend: (text: string) => void;
+  onSend: (text: string) => unknown | Promise<unknown>;
+  onRecover?: () => void;
 }) {
   const last = visible.at(-1);
   const waiting =
@@ -160,40 +190,75 @@ export function ChatScreen({
     );
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="workspace-canvas flex h-dvh flex-col" id="workspace-main">
       <TopBar openStudioOnMount={pair} projectId={projectId} title={title} />
-      <Conversation>
-        <ConversationContent className="mx-auto min-h-full w-full max-w-3xl">
-          {ready && visible.length === 0 && !busy ? (
-            <div className="my-auto space-y-5 py-8">
-              <h2 className="text-center font-semibold text-xl tracking-tight">
-                What should StudPilot build?
-              </h2>
-              <StarterGrid onPick={onSend} />
-            </div>
-          ) : null}
-          {visible.map((m, i) => (
-            <Turn
-              key={m.id}
-              live={busy && i === visible.length - 1}
-              message={m}
-            />
-          ))}
-          {waiting ? <Shimmer>Working...</Shimmer> : null}
-          {error ? (
-            <p className="text-destructive text-sm" role="alert">
-              {error}
+      <div className="agent-page-layout">
+        <div className="agent-chat-main">
+          <Conversation>
+            <ConversationContent className="mx-auto min-h-full w-full max-w-3xl pt-8 sm:px-8">
+              {!ready && !error ? (
+                <p className="text-sm text-muted-foreground" role="status">
+                  Loading your conversation…
+                </p>
+              ) : null}
+              {ready && visible.length === 0 && !busy ? (
+                <div className="my-auto space-y-5 py-8">
+                  <h2 className="text-center font-semibold text-xl tracking-tight">
+                    What should StudPilot build?
+                  </h2>
+                  <StarterGrid onPick={onSend} />
+                </div>
+              ) : null}
+              {visible.map((m, i) => (
+                <Turn
+                  key={m.id}
+                  live={busy && i === visible.length - 1}
+                  message={m}
+                />
+              ))}
+              {waiting ? (
+                <div
+                  className="luminous-panel flex items-center gap-3 px-4 py-3"
+                  role="status"
+                >
+                  <span className="size-2 animate-pulse rounded-full bg-signal" />
+                  <Shimmer>StudPilot is working</Shimmer>
+                </div>
+              ) : null}
+              {error ? (
+                <div className="luminous-panel rounded-md border border-destructive/30 bg-destructive/5 p-4">
+                  <p className="text-destructive text-sm" role="alert">
+                    {error}
+                  </p>
+                  {onRecover ? (
+                    <button
+                      className="mt-3 text-sm font-medium underline underline-offset-4"
+                      disabled={busy}
+                      onClick={onRecover}
+                      type="button"
+                    >
+                      Try again
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              <UndoCheckpoint busy={busy} projectId={projectId} />
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+          <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+            <Composer busy={busy} disabled={!ready} onSend={onSend} />
+            <p className="mt-2 text-center text-muted-foreground text-xs">
+              StudPilot works in your place. Look at what it built in Studio.
             </p>
-          ) : null}
-          <UndoCheckpoint busy={busy} projectId={projectId} />
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
-      <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-        <Composer busy={busy} onSend={onSend} />
-        <p className="mt-2 text-center text-muted-foreground text-xs">
-          StudPilot works in your place. Look at what it built in Studio.
-        </p>
+          </div>
+        </div>
+        <ProjectWorkbench
+          projectId={projectId}
+          title={title}
+          messages={visible}
+          busy={busy}
+        />
       </div>
     </div>
   );
@@ -207,7 +272,7 @@ export function Turn({
   live: boolean;
 }) {
   return (
-    <Message from={message.role}>
+    <Message className="message-fade-in" from={message.role}>
       <MessageContent>
         {message.parts.map((part, i) => (
           <Part
@@ -227,7 +292,13 @@ function toolLabel(part: ToolPart): string {
   const agent = (part.input as { agent?: unknown } | undefined)?.agent;
   return part.toolName === "task" && typeof agent === "string"
     ? agent
-    : part.toolName;
+    : ({
+        checkpoint: "Saving a checkpoint",
+        create_instances: "Creating objects",
+        execute_luau: "Running project code",
+        inspect_place: "Inspecting your place",
+        search_library: "Finding assets",
+      }[part.toolName] ?? part.toolName.replaceAll("_", " "));
 }
 
 function Part({

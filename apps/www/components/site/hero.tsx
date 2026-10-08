@@ -1,47 +1,98 @@
+"use client";
+import { useRef, useState } from "react";
 import Link from "next/link";
-
-/**
- * The hero (owner's master plan §7, 2026-10-07): a headline, one line and "Start building". Nothing else: no renders,
- * tabs, galleries, chips or captions.
- */
+import Image from "next/image";
+import { StudioDemo } from "@/components/creative/studio-demo";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 export function Hero() {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   return (
-    <section
-      aria-labelledby="hero-title"
-      className="relative isolate overflow-hidden bg-gradient-to-b from-[#52d0fb] via-[#27aef0] to-[#1788d6] text-ink"
-    >
-      <div
-        aria-hidden
-        className="studs absolute -inset-y-[300px] right-0 left-0 -z-10 opacity-30"
-        data-parallax="0.1"
-      />
-      <div className="mx-auto flex w-full max-w-[1000px] flex-col items-center px-5 pt-24 pb-28 text-center sm:px-8 lg:pt-32 lg:pb-36">
-        <h1
-          className="outline-text rise text-[46px] leading-[1.04] sm:text-[64px] lg:text-[84px]"
-          id="hero-title"
-          style={{ "--d": "0ms", "--sw": "10px", "--sh": "7px" } as React.CSSProperties}
-        >
-          A co-pilot that{" "}
-          <span style={{ color: "var(--color-sun)" }}>builds</span> inside Roblox Studio
+    <section className="reference-hero">
+      <div className="site-container">
+        <h1>
+          StudPilot is your Roblox agent for
+          <br />
+          building and refining your game.
         </h1>
-        <p
-          className="rise mt-8 max-w-[40rem] font-medium text-[19px] leading-relaxed sm:text-[22px]"
-          style={{ "--d": "120ms" } as React.CSSProperties}
-        >
-          Tell StudPilot what your game needs, and it builds it in your own place, step by step.
-        </p>
-        <div className="rise mt-10" style={{ "--d": "220ms" } as React.CSSProperties}>
-          <Link className="btn-candy text-[1.3rem]" href="/login" style={{ minHeight: "3.8rem", padding: "0 2.4rem" }}>
-            Start building
+        <div className="hero-actions">
+          <Link href="/app" className="studio-button">
+            Open StudPilot ↗
           </Link>
+          <button
+            type="button"
+            ref={trigger}
+            className="glass-button"
+            onClick={() => setOpen(true)}
+          >
+            Try a demo →
+          </button>
         </div>
+        <div className="hero-stage">
+          <Image
+            src="/art/landscape-cursor.webp"
+            width={1800}
+            height={1200}
+            alt="Painterly mountain landscape behind the StudPilot example workspace"
+            className="stage-landscape"
+            priority
+            sizes="(max-width:700px) 100vw,1300px"
+          />
+          <div className="hero-product">
+            <StudioDemo large autoPlay />
+          </div>
+          <div className="floating-output">
+            <div>
+              <span className="window-dots">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span>StudPilot · Example activity</span>
+            </div>
+            <p>Preparing a shop interface for review.</p>
+            <p>
+              <span className="output-bullet">●</span>Read project context
+            </p>
+            <p>
+              <span className="output-bullet">●</span>Keep existing HUD
+              unchanged
+            </p>
+            <p>
+              <span className="output-bullet">●</span>Connect to the game’s
+              currency next
+            </p>
+          </div>
+        </div>
+        <p className="stage-disclosure">
+          Interactive example workspace. Builds in your own place run through
+          the Studio plugin.
+        </p>
       </div>
-
-      {/* the ground: a lime plate with studs */}
-      <div aria-hidden className="relative h-5 border-lime-edge border-t-4 bg-lime">
-        <div className="studs-dark absolute inset-0 opacity-70" />
-        <div className="absolute inset-x-0 top-0 h-1 bg-lime-hi" />
-      </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className="demo-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            trigger.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Try the StudPilot workspace</DialogTitle>
+            <DialogDescription>
+              Choose a task, send a demo request, inspect the code and try the
+              sample shop. This example uses local state.
+            </DialogDescription>
+          </DialogHeader>
+          <StudioDemo large />
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

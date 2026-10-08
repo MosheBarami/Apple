@@ -125,3 +125,16 @@ The planner wrote this from the owner's decisions. **This is a real rebuild, not
 - The owner said yes at step 5.
 - The step 6 gates passed.
 - The old front-ends are deleted.
+
+## Owner revision — 2026-10-08
+
+Website-only takeover and revised visual direction: the owner rejected the flat, square iteration and selected a **dark futuristic interface with lighting and rich motion**. See [the current review and validation limits](proof/W-2026-10-08/SUMMARY.md). Earlier website-only radius constraints are superseded by this decision. Public deployment still requires the visual review.
+
+## Superseding owner brief — 2026-10-08
+
+The owner rejected the preceding implementation and ordered a complete rebuild under the supplied SaaS brief: **Luminous Futurism, abundant animation/shimmer, an asymmetric hero with a live interactive/mock product preview, working theme/pricing controls, cohesive original assets, and an actual-token style tile.** Earlier hero-only and restrained-motion restrictions are superseded. The rebuilt public and signed-in experience is documented in [the current summary](proof/W-2026-10-08/SUMMARY.md), with [asset provenance](proof/W-2026-10-08/ASSET-PROMPT.md). There is no approval to replace the public website yet.
+
+
+## Current visual directive — Cursor adaptation (2026-10-08)
+
+The owner rejected the luminous redesign and any invented aesthetic. The new mandate is to reconstruct the supplied Cursor website and product-interface reference for StudPilot, researching the live site and many Google screenshots, including the real agent/editor/account surfaces. This supersedes the luminous-motion brief and older hero/layout restrictions. Use the measured warm neutral palette, typography scale, spacing, small radii, product previews and agent-workspace layout. Preserve StudPilot's actual backend and Studio integration; do not advertise Cursor capabilities that StudPilot does not provide. Evidence and the reference map: `planning/proof/W-Cursor-2026-10-08/`. Public deployment still awaits the existing owner visual acceptance.

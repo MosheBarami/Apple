@@ -1,137 +1,198 @@
-import { CheckIcon, CornerDownLeftIcon } from "lucide-react";
-import { Reveal } from "./reveal";
-
-const CODE = ["K", "7", "M", "3", "Q", "P"];
-
-function StepCard({
-  n,
-  title,
-  body,
-  tone,
-  children,
-}: {
-  n: number;
-  title: string;
-  body: string;
-  tone: "sky" | "sun" | "lime";
-  children: React.ReactNode;
-}) {
-  const bar = {
-    sky: "[--bar-hi:var(--color-sky-hi)] [--bar-lo:var(--color-sky)] [--bar-edge:var(--color-sky-edge)]",
-    sun: "[--bar-hi:var(--color-sun-hi)] [--bar-lo:var(--color-sun-deep)] [--bar-edge:var(--color-sun-edge)]",
-    lime: "[--bar-hi:var(--color-lime-hi)] [--bar-lo:var(--color-lime)] [--bar-edge:var(--color-lime-edge)]",
-  }[tone];
-  return (
-    <article
-      className={`window group flex h-full flex-col hover:-translate-y-1.5 hover:shadow-[0_12px_0_var(--color-ink)] ${bar}`}
-    >
-      <span
-        aria-hidden
-        className="absolute -top-5 -left-4 z-10 grid size-12 -rotate-6 place-items-center rounded-[6px] border-[3px] border-ink bg-white font-display font-bold text-[1.6rem] text-ink shadow-[0_4px_0_var(--color-ink)] transition-transform duration-300 group-hover:rotate-0"
-      >
-        {n}
-      </span>
-      <div className="window-bar studs relative flex min-h-[4.75rem] items-center py-3 pr-5 pl-14">
-        <h3 className="font-display font-semibold text-[1.35rem] text-ink leading-tight">{title}</h3>
-      </div>
-      <div className="flex flex-1 flex-col gap-5 p-5">
-        <p className="text-[1rem] text-white/90 leading-relaxed">{body}</p>
-        <div className="mt-auto">{children}</div>
-      </div>
-    </article>
-  );
-}
-
+"use client";
+import Link from "next/link";
+import { StudioDemo } from "@/components/creative/studio-demo";
+import { STARTERS, EDIT_STARTERS } from "@/components/app/starters";
+const EXAMPLES = [...STARTERS, ...EDIT_STARTERS];
 export function HowItWorks() {
   return (
-    <section
-      aria-labelledby="how-title"
-      className="relative isolate overflow-hidden bg-night py-20 text-white lg:py-28"
-      id="how-it-works"
-    >
-      <div aria-hidden className="studs absolute -inset-y-[300px] right-0 left-0 -z-10 opacity-25" data-parallax="0.08" />
-      <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8">
-        <Reveal className="max-w-2xl">
-          <p className="font-display font-semibold text-lg text-lime">How it works</p>
-          <h2 className="mt-2 font-display font-semibold text-[32px] leading-[1.1] md:text-[46px]" id="how-title">
-            Three steps from idea to something in your place
-          </h2>
-        </Reveal>
-
-        <ol className="mt-14 grid gap-9 md:grid-cols-3 md:gap-6 lg:gap-8">
-          <Reveal as="li" delay={0}>
-            <StepCard
-              body="Open the StudPilot plugin in Roblox Studio and type the 6-character code from your chat. Edits stay off until you switch them on."
-              n={1}
-              title="Pair Studio with a code"
-              tone="sky"
-            >
-              <div className="rounded-[5px] border-2 border-ink bg-ink/60 p-3">
-                <p className="mb-2 text-[11px] text-white/70 uppercase tracking-[0.1em]">Example code</p>
-                <div className="flex gap-1.5" aria-label="Example pairing code K 7 M 3 Q P" role="img">
-                  {CODE.map((c, i) => (
-                    <span
-                      aria-hidden
-                      className="grid h-11 flex-1 place-items-center rounded-[4px] border-2 border-sky-edge bg-gradient-to-b from-white to-[#cfe6fb] font-mono font-bold text-[1.25rem] text-ink shadow-[0_3px_0_var(--color-sky-edge)] transition-transform duration-200 hover:-translate-y-0.5"
-                      key={`${c}-${i}`}
-                    >
-                      {c}
+    <>
+      <section className="reference-capabilities site-container">
+        <p>For the different parts of your Roblox project.</p>
+        <div>
+          {[
+            "Interfaces",
+            "Systems",
+            "Props",
+            "Worlds",
+            "Audio",
+            "Effects",
+            "Animation",
+            "Edits",
+          ].map((s) => (
+            <span key={s}>{s}</span>
+          ))}
+        </div>
+      </section>
+      <section className="reference-features site-container" id="how-it-works">
+        {[
+          {
+            title: "Turn ideas into your next build",
+            body: "Describe what your game needs and work with an agent connected to your own Roblox Studio place.",
+            link: "Explore the workspace →",
+            href: "/product",
+            variant: "shop",
+          },
+          {
+            title: "Keep the context. Keep creating.",
+            body: "Open a project, follow the work and ask for the next change. Your conversation stays beside the result.",
+            link: "Learn about projects →",
+            href: "/app/projects",
+            variant: "activity",
+          },
+          {
+            title: "Understand every change",
+            body: "See what the agent did, what was checked and what still needs attention. Keep the useful details close.",
+            link: "Read the getting started guide →",
+            href: "/docs",
+            variant: "code",
+          },
+          {
+            title: "Bring StudPilot into your Studio",
+            body: "Pair once with a six-character code. You choose when changes are enabled, and a checkpoint gives you a way back.",
+            link: "Connect your project →",
+            href: "/docs#pair",
+            variant: "connection",
+          },
+        ].map((f, i) => (
+          <article
+            key={f.title}
+            className={`reference-feature ${i % 2 ? "is-reversed" : ""}`}
+          >
+            <div className="feature-copy">
+              <h2>{f.title}</h2>
+              <p>{f.body}</p>
+              <Link href={f.href}>{f.link}</Link>
+            </div>
+            <div className="feature-product">
+              <StudioDemo
+                autoPlay={f.variant !== "connection"}
+                variant={
+                  f.variant as "shop" | "activity" | "code" | "connection"
+                }
+              />
+            </div>
+          </article>
+        ))}
+      </section>
+      <section className="reference-examples site-container">
+        <h2>A new way to work on your game.</h2>
+        <div>
+          {EXAMPLES.map((s) => (
+            <article key={s.title}>
+              <p>“{s.text}”</p>
+              <span>
+                <s.icon />
+                {s.title}
+                <small>Example request · {s.category}</small>
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="reference-frontier site-container">
+        <h2>From the first idea to the next iteration</h2>
+        <div>
+          {[
+            {
+              title: "Create something new",
+              body: "Start with an interface, a mechanic or an area. Use an example request or describe your own.",
+              link: "Explore prompts →",
+              href: "/app/library",
+            },
+            {
+              title: "Improve an existing project",
+              body: "Bring the place you already have. Make a focused change with the original context close by.",
+              link: "Open your projects →",
+              href: "/app/projects",
+            },
+            {
+              title: "Stay in control",
+              body: "Check the connection, choose edit access and review what changed before moving forward.",
+              link: "Read the setup guide →",
+              href: "/docs#pair",
+            },
+          ].map((f) => (
+            <article key={f.title}>
+              <h3>{f.title}</h3>
+              <p>{f.body}</p>
+              <Link href={f.href}>{f.link}</Link>
+              <div className="frontier-preview">
+                {f.title === "Create something new" ? (
+                  <>
+                    <span>
+                      Agent <small>Roblox Studio</small>
                     </span>
-                  ))}
-                </div>
+                    <span>Plan a coin collection loop</span>
+                    <span>Build an egg shop</span>
+                    <span>Review a daily reward screen</span>
+                  </>
+                ) : f.title === "Improve an existing project" ? (
+                  <>
+                    <span>
+                      Project history <small>Workspace</small>
+                    </span>
+                    <span>Continue a conversation →</span>
+                    <span>Review the previous changes</span>
+                    <span>Ask for a focused edit</span>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      Studio connection <small>Plugin</small>
+                    </span>
+                    <span>Pair with a six-character code</span>
+                    <span>Choose when edits are enabled</span>
+                    <span>Review a checkpoint</span>
+                  </>
+                )}
               </div>
-            </StepCard>
-          </Reveal>
-
-          <Reveal as="li" delay={120}>
-            <StepCard
-              body="Say it in plain words: a shop screen, a rewards system, a path lined with benches. No scripting needed."
-              n={2}
-              title="Describe what you want"
-              tone="sun"
-            >
-              <div className="rounded-[5px] border-2 border-ink bg-ink/60 p-3">
-                <p className="mb-2 text-[11px] text-white/70 uppercase tracking-[0.1em]">Example request</p>
-                <div className="flex items-end gap-2 rounded-[5px] border border-white/20 bg-night p-2.5">
-                  <p className="flex-1 text-[0.95rem] text-white leading-snug">
-                    Add an egg shop with a Buy button
-                    <span aria-hidden className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-lime" />
-                  </p>
-                  <span
-                    aria-hidden
-                    className="grid size-8 shrink-0 place-items-center rounded-[5px] bg-lime text-ink"
-                  >
-                    <CornerDownLeftIcon className="size-4" strokeWidth={2.6} />
-                  </span>
-                </div>
-              </div>
-            </StepCard>
-          </Reveal>
-
-          <Reveal as="li" delay={240}>
-            <StepCard
-              body="It saves a checkpoint, builds right in your place one step at a time, and checks each step. Undo changes puts everything back."
-              n={3}
-              title="StudPilot builds it and checks it"
-              tone="lime"
-            >
-              <div className="rounded-[5px] border-2 border-ink bg-ink/60 p-3">
-                <p className="mb-2 text-[11px] text-white/70 uppercase tracking-[0.1em]">Example steps</p>
-                <ul className="space-y-1.5 text-[0.9rem] text-white">
-                  {["Checkpoint saved", "Building your request", "Checking each step"].map((s) => (
-                    <li className="flex items-center gap-2" key={s}>
-                      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-lime text-ink">
-                        <CheckIcon className="size-3.5" strokeWidth={3.2} />
-                      </span>
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </StepCard>
-          </Reveal>
-        </ol>
-      </div>
-    </section>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="reference-notes site-container">
+        <h2>Getting started</h2>
+        <div>
+          {[
+            {
+              title: "Pair your Studio project",
+              tag: "Studio",
+              href: "/docs#pair",
+            },
+            {
+              title: "Describe your first build",
+              tag: "Create",
+              href: "/app/library",
+            },
+            {
+              title: "Understand credits",
+              tag: "Account",
+              href: "/docs#credits",
+            },
+            {
+              title: "Pick up an existing conversation",
+              tag: "Projects",
+              href: "/app/projects",
+            },
+          ].map((x) => (
+            <Link key={x.title} href={x.href}>
+              <span>{x.tag}</span>
+              {x.title}
+            </Link>
+          ))}
+        </div>
+      </section>
+      <section className="reference-studio-band site-container">
+        <div>
+          <h2>Your game stays in Roblox Studio.</h2>
+          <p>
+            Use the conversation to direct the work, and your own place to see
+            the result.
+          </p>
+          <Link href="/docs#pair">Get connected →</Link>
+        </div>
+        <StudioDemo variant="code" />
+      </section>
+    </>
   );
 }

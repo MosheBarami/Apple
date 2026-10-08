@@ -21,50 +21,65 @@ export function LoginForm() {
 
   const callback = () => `${location.origin}/auth/callback`;
 
+  const fail = (err: unknown) =>
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Could not connect. Please try again."
+    );
   const oauth = async (provider: "google" | "discord") => {
     setError(null);
     setBusy(true);
-    const { error: err } = await supabase().auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: callback() },
-    });
-    if (err) {
-      setError(err.message);
+    try {
+      const { error: err } = await supabase().auth.signInWithOAuth({
+        options: { redirectTo: callback() },
+        provider,
+      });
+      if (err) {
+        throw err;
+      }
+    } catch (err) {
+      fail(err);
       setBusy(false);
     }
   };
-
   const sendLink = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setBusy(true);
-    const { error: err } = await supabase().auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: callback() },
-    });
-    setBusy(false);
-    if (err) {
-      setError(err.message);
-      return;
+    try {
+      const { error: err } = await supabase().auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: callback() },
+      });
+      if (err) {
+        throw err;
+      }
+      setStep("code");
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
     }
-    setStep("code");
   };
-
   const verify = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setBusy(true);
-    const { error: err } = await supabase().auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: "email",
-    });
-    if (err) {
-      setError(err.message);
+    try {
+      const { error: err } = await supabase().auth.verifyOtp({
+        email: email.trim(),
+        token: code.trim(),
+        type: "email",
+      });
+      if (err) {
+        throw err;
+      }
+      location.assign("/app");
+    } catch (err) {
+      fail(err);
       setBusy(false);
-      return;
     }
-    location.assign("/app");
   };
 
   return (
@@ -74,8 +89,8 @@ export function LoginForm() {
           Sign in to StudPilot
         </h1>
         <p className="text-muted-foreground">
-          One account for the website and the chat. New here? Signing in
-          creates your account.
+          Your ideas and projects, all in one place. New here? We’ll create an
+          account when you sign in.
         </p>
       </div>
 
@@ -121,11 +136,11 @@ export function LoginForm() {
               value={email}
             />
             <button
-              className="btn-candy w-full disabled:cursor-not-allowed disabled:opacity-50"
+              className="studio-button w-full disabled:cursor-not-allowed disabled:opacity-50"
               disabled={busy || !email.trim()}
               type="submit"
             >
-              Email me a sign-in link
+              {busy ? "Sending…" : "Email me a sign-in link"}
             </button>
           </form>
         </div>
@@ -148,14 +163,16 @@ export function LoginForm() {
             value={code}
           />
           <button
-            className="btn-candy w-full disabled:cursor-not-allowed disabled:opacity-50"
+            className="studio-button w-full disabled:cursor-not-allowed disabled:opacity-50"
             disabled={busy || !code.trim()}
             type="submit"
           >
-            Sign in with the code
+            {busy ? "Signing in…" : "Sign in with the code"}
           </button>
           <Button
+            disabled={busy}
             onClick={() => {
+              setError(null);
               setStep("choose");
               setCode("");
             }}
@@ -178,11 +195,17 @@ export function LoginForm() {
 
       <p className="text-muted-foreground text-xs leading-relaxed">
         By continuing you agree to the{" "}
-        <Link className="underline underline-offset-4 hover:text-foreground" href="/terms">
+        <Link
+          className="underline underline-offset-4 hover:text-foreground"
+          href="/terms"
+        >
           Terms
         </Link>{" "}
         and the{" "}
-        <Link className="underline underline-offset-4 hover:text-foreground" href="/privacy">
+        <Link
+          className="underline underline-offset-4 hover:text-foreground"
+          href="/privacy"
+        >
           Privacy Policy
         </Link>
         . StudPilot is for people 13 and older.
