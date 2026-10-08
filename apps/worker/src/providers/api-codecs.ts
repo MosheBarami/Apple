@@ -81,7 +81,7 @@ export function encodeApiRequest(providerId: AiProviderId, request: NormalizedRe
     }
     case 'gemini': {
       const calls = new Map<string, { name: string; nativeId?: string }>();
-      const lastUser = request.messages.findLastIndex((message) => message.role === 'user');
+      const lastUser = request.messages.reduce((last, message, index) => message.role === 'user' ? index : last, -1);
       const contents = request.messages.flatMap((message, index): Json[] => {
         if (message.role === 'system') return [];
         const replay = replayFor(message);

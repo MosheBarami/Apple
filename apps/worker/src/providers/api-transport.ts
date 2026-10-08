@@ -107,6 +107,5 @@ export async function invokeApi(provider: AiProviderId, credentials: AiCredentia
   const result = decodeApiResponse(provider, request.modelId, raw);
   if (result.finishReason === 'error') throw new ApiInvocationError('invalid_response', provider, 'The provider did not confirm a complete response.');
   if (result.text && !result.truncated) options.onText?.(result.text);
-  if (result.finishReason === 'error') throw new ApiInvocationError('invalid_response', provider, 'The provider did not complete inference.');
   return result;
 }
