@@ -5,6 +5,8 @@
 // rule; a submission in OGA's AI-assisted collection is never fetched.
 //
 //   node packages/library/src/ingest-oga-audio.mjs --ledger <jsonl> --dir <packs> --out <items.jsonl>
+//
+// A file whose hash is already in <items.jsonl> keeps the measurements written there (ffmpeg is slow on 18,000 files).
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative, basename, extname } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -36,6 +38,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const arg = (n) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : undefined; };
   const ledger = arg('ledger'), dir = arg('dir'), out = arg('out');
   if (!ledger || !dir || !out) { console.error('usage: ingest-oga-audio.mjs --ledger <jsonl> --dir <packs> --out <items.jsonl>'); process.exit(2); }
+  const before = new Map(existsSync(out) ? readFileSync(out, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).map((i) => [i.file_sha256, i.checks]) : []);
   const rows = readFileSync(ledger, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
   const known = new Set(rows.map((r) => authorOf(r.human_made_evidence)).filter(([d, a]) => d && a && d < '2023-01-01').map(([, a]) => a.toLowerCase()));
   const items = [], seen = new Set(), ids = new Set();
@@ -54,7 +57,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       if (seen.has(sha)) { duplicate += 1; continue; }
       seen.add(sha);
       let checks;
-      try { checks = { format: extname(f).slice(1).toLowerCase(), ...measure(f), ...levels(f) }; } catch { unreadable += 1; continue; }
+      try { checks = before.get(sha) ?? { format: extname(f).slice(1).toLowerCase(), ...measure(f), ...levels(f) }; } catch { unreadable += 1; continue; }
       if (!(checks.seconds > 0)) { unreadable += 1; continue; }
       const words = soundWords(basename(f, extname(f)));
       const tags = [...new Set([...words.split(' '), ...(row.tags ?? []).map((t) => t.toLowerCase())].filter((w) => w.length > 1))];
