@@ -19,7 +19,7 @@ import {
   type LanguageModelUsage,
 } from 'ai';
 import { createWorkersAI } from 'workers-ai-provider';
-import { meteredAi } from './metering.ts';
+import { type Holds, meteredAi, releaseAll, settleNext } from './metering.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
 import { compactHistory, TurnReadCache } from './token-saver.ts';
@@ -66,8 +66,9 @@ export class StudPilotAgent extends AIChatAgent<Env> {
           const status = await this.env.GATE.projectStatus(projectId).catch(() => null);
           if (status?.credits) writer.write({ type: 'data-credits', data: status.credits, transient: true });
 
+          const holds: Holds = { model, pending: [] };
           const workersai = createWorkersAI({
-            binding: meteredAi(this.env),
+            binding: meteredAi(this.env, holds),
             gateway: { id: this.env.AI_GATEWAY_ID },
           });
           // Token saver: reasoning and tool traffic only for the latest exchange, older words shortened (token-saver.ts).
@@ -82,6 +83,8 @@ export class StudPilotAgent extends AIChatAgent<Env> {
 
           const charge = async (usage: LanguageModelUsage) => {
             const cached = usage.inputTokenDetails?.cacheReadTokens ?? 0;
+            // The shared budget gets the step's real usage, not its reservation (metering.ts).
+            await settleNext(this.env, holds, { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 });
             await this.env.GATE.chargeUsage(projectId, model, {
               inputTokens: usage.inputTokens ?? 0,
               outputTokens: usage.outputTokens ?? 0,
@@ -103,6 +106,15 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             experimental_transform: smoothStream({ chunking: 'word' }),
             onStepFinish: async ({ usage }) => {
               await charge(usage);
+            },
+            onFinish: async () => {
+              await releaseAll(this.env, holds);
+            },
+            onAbort: async () => {
+              await releaseAll(this.env, holds);
+            },
+            onError: async () => {
+              await releaseAll(this.env, holds);
             },
           });
           writer.merge(
