@@ -39,3 +39,14 @@ No provider secret from the owner's .env is provisioned to a public service. The
 opt-in and accepts a development env file explicitly; service startup never reads that file.
 Production infrastructure, approved service credentials and public-use permission are outstanding.
 The runner's tests use fixtures. Website inference and Studio build acceptance are outstanding.
+
+## Provider terms boundary
+
+The official Terms of Use (effective 2026-08-15, read 2026-10-08) specify internal use and prohibit
+using the hosted service for the benefit of third parties. They also contain a restriction on
+programmatic extraction of output. The open-source CLI license and the hosted inference terms
+are explicitly distinct. A public StudPilot free inference service is not authorized by installing
+the CLI or by the owner's personal Zen API key. Service reviews must remain empty/disabled until
+OpenCode supplies permission for this use. No identity/header/tool spoofing is an acceptable fix.
+
+Official source: https://opencode.ai/legal/terms-of-service

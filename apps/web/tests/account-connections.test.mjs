@@ -254,7 +254,9 @@ test('each identity row is drawn only inside a check of its provider, beside (an
   const section = nodes(source).find((n) => isTag(n) && tagOf(n) === 'Section' && attrText(n, 'id') === '"connections"');
   assert.ok(section, 'the Connections section was not found');
   const rows = nodes(section).filter((n) => isTag(n) && tagOf(n) === 'Row');
-  assert.deepEqual(rows.map((r) => attrText(r, 'id')), ['"roblox-signin"', '"google-signin"', '"discord-signin"', '"roblox-key"', '"api-keys"', '"discord"'], 'the rows, in order');
+  const legacyRows = ['"roblox-signin"', '"google-signin"', '"discord-signin"', '"roblox-key"', '"api-keys"', '"discord"'];
+  assert.deepEqual(rows.map((r) => attrText(r, 'id')).filter((id) => id !== '"ai-connections"'), legacyRows, 'the existing identity rows retain their order');
+  assert.equal(rows.filter((row) => attrText(row, 'id') === '"ai-connections"').length, 1, 'one private AI connection panel');
   for (const [provider, id] of [['google', '"google-signin"'], ['discord', '"discord-signin"']]) {
     const row = rows.find((r) => attrText(r, 'id') === id);
     const guard = (() => { for (let p = row.parent; p && p !== section; p = p.parent) if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return p.left.getText(); return null; })();
@@ -267,6 +269,7 @@ test('each identity row is drawn only inside a check of its provider, beside (an
   assert.ok(holds('"roblox-key"', 'RobloxKeyPanel'));
   assert.ok(holds('"api-keys"', 'ApiKeysPanel'));
   assert.ok(holds('"discord"', 'DiscordCard'));
+  assert.ok(holds('"ai-connections"', 'AiConnectionsPanel'));
 });
 
 test('the page’s fields, search and rail all follow the same answer', () => {
@@ -274,7 +277,12 @@ test('the page’s fields, search and rail all follow the same answer', () => {
   assert.match(src, /const oauthOn = useEnabledProviders\(\);/);
   assert.match(src, /const fields = useMemo\(\(\) => fieldsForProviders\(SETTING_FIELDS, oauthOn\), \[oauthOn\]\);/);
   assert.match(src, /matchSettings\(query, fields\)/, 'the search ignores the provider answer');
-  assert.match(src, /fields: \['roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord'\]/, 'the Connections rail entry does not list the rows');
+  const source = parse('routes', 'settings.tsx');
+  const section = nodes(source).find((n) => isTag(n) && tagOf(n) === 'Section' && attrText(n, 'id') === '"connections"');
+  const rowIds = nodes(section).filter((n) => isTag(n) && tagOf(n) === 'Row').map((n) => JSON.parse(attrText(n, 'id')));
+  const rail = /id: 'connections'[\s\S]*?fields: \[([^\]]+)\]/.exec(src)?.[1] ?? '';
+  assert.ok(rowIds.length >= 6);
+  for (const id of rowIds) assert.ok(rail.includes(`'${id}'`), `${id} is missing from the Connections rail`);
 });
 
 /* ------------------------------------------------------------------ the avatar --- */

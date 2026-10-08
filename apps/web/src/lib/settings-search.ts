@@ -32,6 +32,7 @@ export interface SettingField {
 }
 
 export const SETTING_FIELDS: readonly SettingField[] = [
+  { id: 'ai-connections', title: 'AI connections', section: 'Connections', keywords: ['BYOK', 'providers', 'models', 'OpenAI', 'Anthropic', 'Gemini', 'Hugging Face', 'API key'] },
   { id: 'display-name', title: 'Display name', section: 'Profile', keywords: ['name', 'nickname', 'call me', 'profile'] },
   { id: 'email-address', title: 'Email address', section: 'Security', keywords: ['mail', 'address', 'change email', 'verified', 'confirm'] },
   { id: 'password', title: 'Password', section: 'Security', keywords: ['change password', 'passphrase', 'credentials', 'reset'] },

@@ -7,3 +7,12 @@ Budget for test runs: ≤ $20 a month (plan §4.4). Figures are copied from the 
 |---|---|---|---|---|---|---|
 | 2026-10-04 17:5x | M0 start, before any change | 80,257 | 0.88 | 356,384 | 3.92 | 1,000,000,000 / 30,000,000,000 (lifted) |
 | 2026-10-04 19:0x | after the M0 deploy (71aa6776) | 80,257 | 0.88 | 356,384 | 3.92 | 150,000 / 2,270,000 (restored) |
+
+| 2026-10-08 18:57:53 | before AI provider API probes | not exposed (total day neurons 8002) | not exposed | 655,559 | 7.2111 | 300,000 / 2,270,000 |
+| 2026-10-08 19:07:56 | after one inference and the 5-case matrix; direct API usage separate below | not exposed (total day neurons 8002) | not exposed | 655,559 | 7.2111 | 300,000 / 2,270,000 |
+
+2026-10-08 AI provider checks: Cloudflare REST calls on the existing authorized development account returned actual usage.
+The endpoint above does not track those direct API calls, so its unchanged total is not a zero-cost claim.
+At published undiscounted token rates, the one OK probe estimates $0.0000271 and the 5-case matrix estimates $0.0004125 (combined $0.0004396).
+These are token-price estimates, not invoice totals; free allocation/cache discounts may change the bill. No token, account id or prompt output is logged here.
+Source: planning/proof/ai-providers/cloudflare-runtime.json and cloudflare-matrix.json.

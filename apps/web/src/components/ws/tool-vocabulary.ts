@@ -166,6 +166,7 @@ export const TOOL = {
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau', live: 'Making changes to your game' },
+  library_code: { kind: 'building', label: 'Used the code library', live: 'Working with reviewed Luau packages' },
 
   // The two audio tools that change the PLACE. `design_sound` writes SoundService's reverb and the
   // SoundGroup mixer; `assign_sounds` routes Sounds that already exist onto those groups. Neither

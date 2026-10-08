@@ -2,7 +2,8 @@
 
 The attached objective supersedes the old decision to hide providers. The rest of the final plan
 and handoff still govern build execution, Studio ownership, evidence, compatibility and spending.
-Work is isolated on `codex/ai-provider-integration`, based on main `21803602`.
+Work is isolated on `codex/ai-provider-integration`. Initial local main was `21803602`; groundwork
+was rebased onto the verified GitHub main `209650f4` before connecting the build path.
 
 Acceptance requires all three routes through the website and the real Studio build path. Nothing
 below is a completion claim until its evidence is recorded in this directory.

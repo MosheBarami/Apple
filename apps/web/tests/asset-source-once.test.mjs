@@ -16,7 +16,7 @@ test('small talk is talk, and a request with a greeting in front of it is work',
 
 test('a normal send carries files directly and clears only after success', () => {
   const send = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
-  assert.match(send, /sendChat\(text, attachments, productModel\)/);
+  assert.match(send, /sendChat\(text, attachments, productModel(?:, inference)?\)/);
   assert.doesNotMatch(send, /askFirst|justAnswered|setSourceAsk/);
   const composer = readFileSync(join(ROOT, 'apps', 'web', 'src', 'components', 'ws', 'composer.tsx'), 'utf8');
   assert.match(composer, /if \(!onSend\(message, readyAttachments\(staged\)\)\) return false;\s*afterSent\(\);/);

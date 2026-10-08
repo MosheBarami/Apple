@@ -438,6 +438,7 @@ export async function eraseAccountData(
   steps.push(await d1Sweep(env, 'api_keys', `delete from api_keys where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'user_credentials', `delete from user_credentials where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'ai_connections', `delete from ai_connections where owner_id = ?`, user.userId));
+  if (env.KV) steps.push(await kvSweep(env, 'AI inference preferences', `ai:selection:${user.userId}:`));
   steps.push(await d1Sweep(env, 'creator_write_log', `delete from creator_write_log where user_id = ?`, user.userId));
   //[[ THE ROBLOX SIGN-IN, and the grant is revoked at Roblox BEFORE our copy of the token is deleted: the
   //   sealed refresh token is the only handle there is to revoke it with. A failed revoke does not stop

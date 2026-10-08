@@ -15,14 +15,54 @@ export function normalizeApiModels(providerId: AiProviderId, records: Record<str
   const provider = apiProvider(providerId);
   const models: AiModelRecord[] = [];
   for (const record of records) {
+    if (providerId === 'cloudflare' && Array.isArray(record.properties)) {
+      const properties = Object.fromEntries(record.properties.map(({ property_id, value }: any) => [property_id, value]));
+      const prices = Array.isArray(properties.price) ? properties.price : [];
+      const text = record.task?.name === 'Text Generation';
+      const name = words(record.name); if (!name) continue;
+      const { properties: _properties, ...base } = record;
+      const [model] = normalizeApiModels(providerId, [{ ...base, name, id: name,
+        context_length: /^\d+$/.test(String(properties.context_window ?? '')) ? Number(properties.context_window) : undefined,
+        supports_tools: properties.function_calling === 'true' ? true : properties.function_calling === 'false' ? false : undefined,
+        type: text ? 'chat' : 'non-text' }], checkedAt);
+      if (model) models.push({ ...model,
+        producer: ['@cf/openai/gpt-oss-20b', '@cf/openai/gpt-oss-120b'].includes(name) ? 'OpenAI'
+          : name === '@cf/zai-org/glm-5.3-flash' ? 'Z.AI' : model.producer,
+        inputCostPer1M: price(prices.find((entry: any) => entry.unit === 'per M input tokens' && entry.currency === 'USD')?.price),
+        outputCostPer1M: price(prices.find((entry: any) => entry.unit === 'per M output tokens' && entry.currency === 'USD')?.price) });
+      continue;
+    }
+    if (providerId === 'huggingface' && Array.isArray(record.providers)) {
+      // HF documents explicit provider suffixes. Pin a live upstream host so default :fastest
+      // cannot change the cost, context budget or capabilities behind the selected model.
+      for (const host of record.providers) {
+        if (host.status !== 'live' || typeof host.provider !== 'string' || !/^[a-z0-9-]+$/.test(host.provider)) continue;
+        const { providers: _providers, ...base } = record;
+        const [model] = normalizeApiModels(providerId, [{ ...base, id: `${record.id}:${host.provider}`,
+          name: record.id, author: record.owned_by, context_length: host.context_length,
+          supports_tools: host.supports_tools, capabilities: { structured_outputs: host.supports_structured_output },
+          type: record.architecture?.output_modalities?.includes('text') ? 'chat' : 'unknown', status: 'active' }], checkedAt);
+        if (model) models.push({ ...model, hostedBy: host.provider,
+          inputCostPer1M: price(host.pricing?.input), outputCostPer1M: price(host.pricing?.output) });
+      }
+      continue;
+    }
     const id = words(providerId === 'google' || providerId === 'fireworks' ? record.name : record.id ?? record.name ?? record.model_name);
     if (!id || /[\x00-\x1f?#]/.test(id)) continue;
     const parameters = Array.isArray(record.supported_parameters) ? record.supported_parameters : null;
     const geminiChat = Array.isArray(record.supportedGenerationMethods) ? record.supportedGenerationMethods.includes('generateContent') : null;
     const mistralChat = flag(record.capabilities?.completion_chat);
     const retired = record.archived === true || record.active === false || record.status === 'deprecated';
-    models.push({ provider: providerId, producer: provider.producer ?? words(record.model_developer ?? record.author),
-      id, name: words(record.display_name ?? record.displayName ?? record.displayName ?? record.name) ?? id,
+    // OpenRouter supplies publisher-branded display names. This is display branding from the
+    // provider catalog, never a way to choose a serving provider or credential from a model string.
+    const catalogBrand = providerId === 'openrouter' && typeof record.name === 'string'
+      ? (record.name.split(':')[0] ?? '').trim() : null;
+    const knownBrands: Record<string, string> = { OpenAI: 'OpenAI', Anthropic: 'Anthropic', Google: 'Google',
+      xAI: 'xAI', DeepSeek: 'DeepSeek', Mistral: 'Mistral AI', Qwen: 'Qwen', 'Z.AI': 'Z.AI',
+      MiniMax: 'MiniMax', NVIDIA: 'NVIDIA', Meta: 'Meta', MoonshotAI: 'Moonshot AI', Cohere: 'Cohere' };
+    models.push({ provider: providerId, producer: provider.producer ?? words(record.model_developer ?? record.author ?? record.owned_by ?? record.organization)
+      ?? (catalogBrand ? knownBrands[catalogBrand] ?? null : null),
+      id, name: words(record.display_name ?? record.displayName ?? record.name) ?? id,
       protocol: provider.protocol,
       lifecycle: retired ? 'retired' : record.status === 'active' || record.active === true || record.archived === false ? 'active' : 'unknown',
       contextWindow: positive(record.context_length ?? record.max_context_length ?? record.context_window
@@ -48,13 +88,13 @@ const DOCUMENTED_MODELS: Partial<Record<AiProviderId, AiModelRecord[]>> = {
     provider: 'minimax', producer: 'MiniMax', id, name: id, protocol: 'chat-completions', lifecycle: 'active',
     contextWindow: id === 'MiniMax-M3' ? 1_000_000 : 204_800, maxOutput: null, inputCostPer1M: null, outputCostPer1M: null,
     capabilities: { tools: true, structuredOutput: null, text: true }, source: apiProvider('minimax').docs,
-    checkedAt: '2026-10-08T00:00:00.000Z', access: 'listed', runtimeCheckedAt: null,
+    checkedAt: '2026-10-08', access: 'listed', runtimeCheckedAt: null,
   })),
   zai: ['glm-5.3', 'glm-5.2', 'glm-5.1'].map((id) => ({
     provider: 'zai', producer: 'Z.AI', id, name: id.toUpperCase(), protocol: 'chat-completions', lifecycle: 'active',
     contextWindow: null, maxOutput: 131_072, inputCostPer1M: null, outputCostPer1M: null,
     capabilities: { tools: true, structuredOutput: null, text: true }, source: apiProvider('zai').docs,
-    checkedAt: '2026-10-08T00:00:00.000Z', access: 'listed', runtimeCheckedAt: null,
+    checkedAt: '2026-10-08', access: 'listed', runtimeCheckedAt: null,
   })),
 };
 

@@ -331,6 +331,7 @@ export interface NonPostgresStore {
  * is why the erasure path in erasure.ts does not visit it.
  */
 export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
+  { store: 'kv', binding: 'KV', name: 'ai_inference_preferences', personal: true, holds: 'your saved AI route selection for your account and projects; connection references contain no raw API key' },
   // ------------------------------------------------------------------ D1 (CORPUS)
   { store: 'd1', binding: 'CORPUS', name: 'memory_entries', personal: true, holds: 'what StudPilot was told to remember — per person, per project and per organisation' },
   { store: 'd1', binding: 'CORPUS', name: 'memory_audit', personal: true, holds: 'who changed a remembered fact, when, and what it said before' },
@@ -381,6 +382,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   // ---------------------------------------------------------- Durable Object storage
   { store: 'do', binding: 'SESSION_DO', name: 'messages', personal: true, holds: 'THE CONVERSATION — every message, in full, with its tool trace' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_models', personal: true, holds: 'which model each conversation message ran on: a StudPilot product model, or the catalogue id of a run on the customer\u2019s own key' },
+  { store: 'do', binding: 'SESSION_DO', name: 'message_inference', personal: true, holds: 'the selected AI route and operational routing decisions for each build; no raw credentials' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_revisions', personal: true, holds: 'earlier versions of a message the person edited and re-sent' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoints', personal: true, holds: 'snapshots of the place, with who took them' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoint_chunks', personal: true, holds: 'the bytes of those snapshots' },

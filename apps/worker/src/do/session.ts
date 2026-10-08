@@ -38,6 +38,10 @@ import type {
   PluginCapabilityReportV1,
 } from '@studpilot/shared';
 import { creditsText, isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, quotaLimit, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
+import { pinRunInference, type PinnedInference } from '../inference-runs';
+import type { RoutingDecision } from '@studpilot/shared';
+import { parseInferenceSelection } from '@studpilot/shared';
+import { ApiInvocationError } from '../providers/api-transport';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@studpilot/shared';
 import { asUiTheme, uiThemeContextLine, type UiTheme } from '@studpilot/shared';
 import { WIRE_HEADERS, echoSubprotocol, readWire } from '@studpilot/shared';
@@ -259,6 +263,8 @@ interface AgentState {
   mode: ProductMode;
   /** The engine the run is on: always StudPilot. A run persisted by an older build may hold a retired id. */
   productModel?: ProductModel;
+  inference?: PinnedInference;
+  routingDecisions?: RoutingDecision[];
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
   approvedLibraryAssetId?: number;
   selectedAssetInsertion?: SelectedAssetInsertion;
@@ -887,6 +893,8 @@ export class SessionDO extends DurableObject<Env> {
           created_at integer not null, primary key(message_id, seq));
         create table if not exists message_models(
           message_id text primary key, product_model text not null);
+        create table if not exists message_inference(
+          message_id text primary key, selection text not null, decisions text not null);
       `);
       //[[ WHY a failure is recorded as a KIND and not only as a sentence: see src/op-failure.ts.
       //
@@ -1101,8 +1109,8 @@ export class SessionDO extends DurableObject<Env> {
    * The column holds the id a turn was stored with. Retired ids (`apple-max`, `gpt-5.6`, ...) are
    * normalized to StudPilot by asProductModel, so old sessions keep loading.
    */
-  private productModelsFor(ids: readonly string[]): Map<string, { productModel: ProductModel }> {
-    const out = new Map<string, { productModel: ProductModel }>();
+  private productModelsFor(ids: readonly string[]): Map<string, { productModel: ProductModel; inference?: PinnedInference['selection']; routing?: RoutingDecision }> {
+    const out = new Map<string, { productModel: ProductModel; inference?: PinnedInference['selection']; routing?: RoutingDecision }>();
     if (ids.length === 0) return out;
     const placeholders = ids.map(() => '?').join(',');
     const rows = this.sql
@@ -1113,7 +1121,22 @@ export class SessionDO extends DurableObject<Env> {
       const productModel = asProductModel(row.product_model);
       if (productModel) out.set(row.message_id, { productModel });
     }
+    const selections = this.sql.exec(`select message_id, selection, decisions from message_inference where message_id in (${placeholders})`, ...ids)
+      .toArray() as { message_id: string; selection: string; decisions: string }[];
+    for (const row of selections) {
+      try {
+        const decisions = JSON.parse(row.decisions) as RoutingDecision[];
+        out.set(row.message_id, { productModel: out.get(row.message_id)?.productModel ?? normalizeModelId(undefined),
+          inference: JSON.parse(row.selection), ...(decisions.length ? { routing: decisions.at(-1) } : {}) });
+      } catch { /* unreadable metadata is omitted, never replaced by a model guess */ }
+    }
     return out;
+  }
+
+  private rememberInference(agent: AgentState): void {
+    if (!agent.inference) return;
+    this.sql.exec(`insert or replace into message_inference(message_id, selection, decisions) values(?,?,?)`,
+      agent.msgId, JSON.stringify(agent.inference.selection), JSON.stringify(agent.routingDecisions ?? []));
   }
 
   /**
@@ -1660,12 +1683,16 @@ export class SessionDO extends DurableObject<Env> {
     call.catch(() => {}); // a call abandoned by Stop may still reject later
     try {
       return await Promise.race([call, stopped]);
+    } catch (error) {
+      if (await stopRequested(this.ctx.storage)) return STOPPED_IN_FLIGHT;
+      throw error;
     } finally {
       if (timer !== undefined) clearInterval(timer);
     }
   }
 
   private async hurryStop(agent: AgentState): Promise<void> {
+    if (this.activeInference?.msgId === agent.msgId) this.activeInference.controller.abort();
     // No step running in THIS instance means nothing will reach the stop signal by itself: a run whose step died with
     // a deploy (or an eviction) has no alarm left (round 11 of the owner's test 1, 2026-10-01: Stop answered
     // "stopping" and the run stayed "running"). The alarm finishes it as stopped.
@@ -1856,6 +1883,7 @@ export class SessionDO extends DurableObject<Env> {
    */
   /** A step of the run is executing in this instance right now (false in a fresh instance, e.g. after a deploy). */
   private stepInFlight = false;
+  private activeInference?: { msgId: string; controller: AbortController };
   private studioSilenceAnnounced = false;
 
   /**
@@ -2627,6 +2655,7 @@ export class SessionDO extends DurableObject<Env> {
       if (!this.isBenchProject()) return json({ ok: false, error: 'not a benchmark project: no bench-baseline checkpoint' }, 409);
       await this.resetProjectState();
       this.sql.exec('delete from message_models');
+      this.sql.exec('delete from message_inference');
       this.sql.exec('delete from message_revisions');
       this.sql.exec('delete from messages');
       this.sql.exec('delete from oplog');
@@ -2661,6 +2690,7 @@ export class SessionDO extends DurableObject<Env> {
       const first = this.sql.exec(`select id from messages order by created_at asc, rowid asc limit 1`).toArray()[0] as { id: string } | undefined;
       const removed = (this.sql.exec(`select count(*) as n from messages`).one() as { n: number }).n;
       this.sql.exec(`delete from message_models where message_id in (select id from messages)`);
+      this.sql.exec(`delete from message_inference where message_id in (select id from messages)`);
       this.sql.exec(`delete from messages`);
       if (first) this.broadcast({ type: 'history_truncated', fromMessageId: first.id, removed });
       const had = async (key: string) => (await this.ctx.storage.get(key)) !== undefined;
@@ -2690,10 +2720,12 @@ export class SessionDO extends DurableObject<Env> {
     // same quota, same budget — so what it measures is the real agent, not a test harness.
     if (path === '/agent-run' && req.method === 'POST') {
       // A legacy `mode` or `autonomous` in the body is ignored: every request runs the one behaviour.
-      const { text, effort, productModel } = (await req.json()) as {
+      const { text, effort, productModel, inference, inferenceActorId } = (await req.json()) as {
         text: string;
         effort?: Effort;
         productModel?: unknown;
+        inference?: unknown;
+        inferenceActorId?: unknown;
       };
       if (!text?.trim()) return json({ ok: false, error: 'text required' }, 400);
       if (!buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
@@ -2703,7 +2735,14 @@ export class SessionDO extends DurableObject<Env> {
       // exists so the policy itself can be A/B tested against real builds rather than against
       // text-only probes — the measurement that missed the tool-calling regression.
       const selectedModel = asProductModel(productModel);
-      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), 'agent', effort, undefined, undefined, selectedModel, bind.ownerId);
+      const privateRoute = parseInferenceSelection(inference)?.route === 'byok';
+      if (privateRoute && (typeof inferenceActorId !== 'string' || !inferenceActorId)) {
+        return json({ ok: false, started: false, error: 'BYOK requires the authenticated connection owner; a shared admin key cannot use a private connection.' }, 403);
+      }
+      const admitted = await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), 'agent', effort, undefined, undefined, selectedModel,
+        privateRoute ? inferenceActorId as string : bind.ownerId,
+        undefined, undefined, inference);
+      if (!admitted) return json({ ok: false, started: false, error: 'The run was not admitted. Check the selected route and account allowance.' }, 422);
       return json({ ok: true, started: true, mode: 'agent', ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
     }
 
@@ -3080,6 +3119,8 @@ export class SessionDO extends DurableObject<Env> {
       msgId: agent.msgId,
       mode: agent.mode,
       ...(agent.productModel ? { productModel: normalizeModelId(agent.productModel) } : {}),
+      ...(agent.inference ? { inference: agent.inference.selection } : {}),
+      ...(agent.routingDecisions?.length ? { routing: agent.routingDecisions.at(-1) } : {}),
       phase: agent.phase ?? 'planning',
       step: agent.step,
       totalSteps: MAX_RUN_STEPS,
@@ -3252,6 +3293,7 @@ export class SessionDO extends DurableObject<Env> {
             me?.userId,
             me?.grantExpiresAt ?? undefined,
             asUiTheme(msg.uiTheme),
+            msg.inference,
           );
         }
         return;
@@ -3322,6 +3364,7 @@ export class SessionDO extends DurableObject<Env> {
           this.sql.exec(`select count(*) as n from messages where created_at >= ?`, row.created_at).one() as { n: number }
         ).n;
         this.sql.exec(`delete from message_models where message_id in (select id from messages where created_at >= ?)`, row.created_at);
+        this.sql.exec(`delete from message_inference where message_id in (select id from messages where created_at >= ?)`, row.created_at);
         this.sql.exec(`delete from messages where created_at >= ?`, row.created_at);
 
         // Every client, not just the asker: a second tab would otherwise keep showing messages the
@@ -3359,6 +3402,7 @@ export class SessionDO extends DurableObject<Env> {
             me?.userId,
             me?.grantExpiresAt ?? undefined,
             asUiTheme(msg.uiTheme),
+            msg.inference,
           );
         }
         return;
@@ -3484,13 +3528,15 @@ export class SessionDO extends DurableObject<Env> {
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
     uiTheme?: UiTheme,
+    inferenceChoice?: unknown,
   ) {
     const attempt = await this.startGate(() =>
-      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt, uiTheme),
+      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt, uiTheme, inferenceChoice),
     );
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'StudPilot is already working — stop the current run first.' });
     }
+    return attempt.ran && attempt.value === true;
   }
 
   private async startRunInner(
@@ -3504,6 +3550,7 @@ export class SessionDO extends DurableObject<Env> {
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
     uiTheme?: UiTheme,
+    inferenceChoice?: unknown,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle') {
@@ -3536,6 +3583,12 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     const selectedProductModel = productModel ?? normalizeModelId(undefined);
+    let inference: PinnedInference;
+    try { inference = await pinRunInference(this.env, initiatedBy ?? bind.ownerId, inferenceChoice, bind.projectId); }
+    catch (error) {
+      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: error instanceof Error ? error.message : 'The selected inference route is unavailable.' });
+      return;
+    }
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
     // a stop that arrives in the moment a run is finishing can land after that clear, and it
     // must not travel into the run the user starts next.
@@ -3691,6 +3744,7 @@ export class SessionDO extends DurableObject<Env> {
       status: 'running',
       mode,
       productModel: selectedProductModel,
+      inference,
       msgId,
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
@@ -3746,7 +3800,9 @@ export class SessionDO extends DurableObject<Env> {
     // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
     // against the messages table — answered "That message is no longer in the conversation" until
     // the page was reloaded. See web/src/lib/message-identity.ts.
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, productModel: selectedProductModel, userMsgId });
+    this.rememberInference(agent);
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, productModel: selectedProductModel, userMsgId,
+      inference: inference.selection });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;
@@ -3800,6 +3856,7 @@ export class SessionDO extends DurableObject<Env> {
       try { await this.execStudioOp(surfaceDefaultOp(effectiveRequest), 10_000); } catch { /* a missed default is not a failed run */ }
     }
     await this.ctx.storage.setAlarm(Date.now() + 10);
+    return true;
   }
 
   async alarm() {
@@ -3860,6 +3917,12 @@ export class SessionDO extends DurableObject<Env> {
           `${e.message} Everything I finished is saved in your place. ${tail}`;
         this.broadcast({ type: 'error', code: 'capacity', message: e.message });
         await this.finishRun(agent, 'quota');
+        return;
+      }
+      if (e instanceof ApiInvocationError) {
+        agent.finalText = `${e.message} Everything already built is saved. ${e.code === 'auth' || e.code === 'billing'
+          ? 'Check the connection in Settings, then start a new run.' : 'Try again when the provider is available.'}`;
+        await this.finishRun(agent, 'error', 'model_failed');
         return;
       }
       if (e instanceof RateLimitedError) {
@@ -4238,7 +4301,8 @@ export class SessionDO extends DurableObject<Env> {
     //
     //   What the policy chose is NOT wasted on this lane — `tokensForEffort` still sizes the output
     //   budget from it. What is withheld is only the statement about the provider's own knob. ]]
-    const effortApplied = await reasoningEffortApplies(this.env, gatewayModel);
+    const effortApplied = (!agent.inference || agent.inference.selection.route === 'studpilot')
+      && await reasoningEffortApplies(this.env, gatewayModel);
     if (effortApplied) {
       // Surface the reasoning POLICY's decision — the tier it picked and its own
       // one-line justification. This is a classification of the request, never
@@ -4278,6 +4342,8 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'reasoning_delta', msgId: agent.msgId, step: agent.step, text: pending });
       pending = '';
     };
+    const inferenceController = new AbortController();
+    this.activeInference = { msgId: agent.msgId, controller: inferenceController };
     const stepCall = llmChat(
       this.env,
       {
@@ -4304,6 +4370,26 @@ export class SessionDO extends DurableObject<Env> {
         actorId: agent.initiatedBy ?? agent.userId,
         ...(this.boundProjectId ? { projectId: this.boundProjectId } : {}),
         runId: agent.msgId,
+        inference: agent.inference,
+        requestId: `${agent.msgId}-step-${agent.step}`,
+        signal: inferenceController.signal,
+        requirements: {
+          task: (agent.failedCalls?.length ?? 0) > 0 ? 'repair' : agent.step === 1 ? 'intake' : agent.plan ? 'tools' : 'planning',
+          features: { blocks: agent.trace.filter((t) => t.ok && t.tool === 'build_blocks').length,
+            dependencies: Math.max(0, (agent.plan?.steps?.length ?? 1) - 1),
+            unresolvedFields: agent.plan ? 0 : 1, failedChecks: agent.failedCalls?.length ?? 0,
+            customCode: agent.trace.some((t) => ['edit_script', 'run_luau'].includes(t.tool)) },
+          inputTokens: new TextEncoder().encode(JSON.stringify({ messages: stepMessages,
+            tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed) })).length + 1024,
+          outputTokens: tokensAfterCuts(baseTokensFor(agent.mode), choice.effort, agent.consecutiveCuts ?? 0),
+          tools: !talkOnly, structuredOutput: false,
+          allowTraining: agent.inference?.selection.route === 'opencode-free' && agent.inference.selection.allowTraining === true,
+        },
+        onRoute: (decision) => {
+          agent.routingDecisions = [...(agent.routingDecisions ?? []).slice(-31), decision];
+          this.rememberInference(agent);
+          this.broadcast({ type: 'inference_route', msgId: agent.msgId, decision });
+        },
         onReasoning: (delta: string) => {
           streamedReasoning = true;
           pending += delta;
@@ -4318,6 +4404,8 @@ export class SessionDO extends DurableObject<Env> {
       // paid work. See StepRefusedError.
       if (e instanceof RateLimitedError) throw new StepRefusedError(e.message);
       throw e;
+    }).finally(() => {
+      if (this.activeInference?.controller === inferenceController) delete this.activeInference;
     });
     const raced = await this.untilStopped(stepCall);
     // G10: Stop pressed while the model is still thinking ends the run now instead of when the call
@@ -4697,7 +4785,8 @@ export class SessionDO extends DurableObject<Env> {
     // form the target model expects. Only arguments the provider can read back go into history: a
     // call whose arguments are not JSON is still run (and runTool tells the model so), but its bytes
     // are replaced by `{}` here, because echoing them made the provider reject the next request.
-    agent.llm.push({ role: 'assistant', content: res.text ?? '', toolCalls: historySafeToolCalls(res.toolCalls) });
+    agent.llm.push({ role: 'assistant', content: res.text ?? '', toolCalls: historySafeToolCalls(res.toolCalls),
+      ...(res.providerReplay ? { providerReplay: res.providerReplay } : {}) });
     // A real call was made, so the text-payload steer's run of consecutive uses is over.
     agent.textCallSteers = 0;
 
@@ -5518,7 +5607,9 @@ export class SessionDO extends DurableObject<Env> {
   private async judgeFindings(agent: AgentState, input: Parameters<typeof checkAtAnswer>[0]): Promise<Finding[] | undefined> {
     if (selfCheckMode(this.env) !== 'full' || !judgeWorthIt(input)) return undefined;
     const existing = auditReply(input.reply, input.ledger).findings;
-    const judged = await judgeReply({ reply: input.reply, ledger: input.ledger, existing }, (req, opts) => llmChat(this.env, req as never, opts));
+    const judged = await judgeReply({ reply: input.reply, ledger: input.ledger, existing }, (req, opts) => llmChat(this.env, req as never,
+      { ...opts, ...(agent.inference ? { inference: agent.inference, actorId: agent.inference.actorId,
+        projectId: agent.inference.projectId, runId: agent.msgId, requestId: `${agent.msgId}-claim-check` } : {}) }));
     await this.settleNeurons(agent, judged.neurons);
     return judged.findings;
   }
@@ -5924,6 +6015,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.msgId,
     );
     this.rememberProductModel(agent.msgId, normalizeModelId(agent.productModel));
+    this.rememberInference(agent);
     await this.persistAgent(agent);
     // G10: direction that reached a run too late to be applied is said to be unapplied, not lost.
     // Read after the idle write above, so a message that arrives later starts its own run instead.
@@ -6194,7 +6286,9 @@ export class SessionDO extends DurableObject<Env> {
         ],
         maxTokens: 600,
       },
-      { kind: 'memory' },
+      { kind: 'memory', ...(agent?.inference ? { inference: agent.inference,
+        actorId: agent.inference.actorId, projectId: agent.inference.projectId, runId: agent.msgId,
+        requestId: `${agent.msgId}-memory` } : {}) },
     );
     try {
       const jsonStart = res.text.indexOf('{');

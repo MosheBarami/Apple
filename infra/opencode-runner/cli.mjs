@@ -52,6 +52,7 @@ export async function isolatedEnvironment(root, { apiKey, model, modelInfo, maxT
       OPENCODE_DISABLE_AUTOUPDATE: 'true', OPENCODE_DISABLE_DEFAULT_PLUGINS: 'true',
       OPENCODE_DISABLE_CLAUDE_CODE: 'true', OPENCODE_DISABLE_CLAUDE_CODE_PROMPT: 'true',
       OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: 'true', OPENCODE_DISABLE_LSP_DOWNLOAD: 'true',
+      OPENCODE_DISABLE_EXTERNAL_SKILLS: 'true',
       ...(apiKey ? { OPENCODE_API_KEY: apiKey } : {}),
     },
   };

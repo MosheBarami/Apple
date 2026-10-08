@@ -527,9 +527,25 @@ function makeSession({ responses = [], book = ledger(), chat = null } = {}) {
   return { session: new SessionDO(ctx, env), store, sql, sent, book, ws, corpus };
 }
 
+test('a shared admin-run caller cannot adopt the project owner\'s private AI connection', async () => {
+  const h = makeSession();
+  const response = await h.session.fetch(new Request('https://do/agent-run', { method: 'POST', body: JSON.stringify({
+    text: 'Build an evaluation panel', inference: { route: 'byok', provider: 'openai',
+      connectionId: '12345678-1234-1234-1234-123456789abc', modelId: 'fixture' }, inferenceActorId: null,
+  }) }));
+  assert.equal(response.status, 403);
+  const body = await response.json(); assert.equal(body.started, false);
+  assert.match(body.error, /shared admin key/);
+  assert.equal(h.book.spends.length, 0); assert.equal(h.store.has('agent'), false);
+});
+
 const start = async (h, text = 'build a small tower', mode = 'agent') => {
   const res = await h.session.fetch(new Request('https://do/agent-run', { method: 'POST', body: JSON.stringify({ text, mode, productModel: 'apple' }) }));
-  assert.equal(res.status, 200, await res.text());
+  const body = await res.json();
+  if (res.status === 422) {
+    assert.equal(body.started, false, 'a refused admission must not report a started run');
+    assert.ok(h.sent.some((message) => message.type === 'error' && message.code === 'quota'), 'only the quota refusal under test can reject admission');
+  } else assert.equal(res.status, 200, JSON.stringify(body));
   return h.store.get('agent');
 };
 const lastEnd = (h) => [...h.sent].reverse().find((m) => m.type === 'msg_end');

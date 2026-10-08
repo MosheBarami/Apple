@@ -125,6 +125,9 @@ export interface Env {
   SUPABASE_SECRET_KEY?: string;
   /** Separate AES-GCM wrapping key for AI connections; never sent to a provider or browser. */
   AI_CREDENTIAL_KEY?: string;
+  /** Independent rollout/rollback switches; missing values keep new inference disabled. */
+  AI_BYOK_ENABLED?: string;
+  AI_OPENCODE_ENABLED?: string;
   /** Authenticated service origin and independent signing key for the OpenCode CLI runner. */
   OPENCODE_RUNNER_URL?: string;
   OPENCODE_RUNNER_SIGNING_KEY?: string;

@@ -74,6 +74,8 @@ export function chatItemFromMessageDto(message: MessageDto): ChatItem {
     ...(message.creditsSpent !== undefined ? { creditsSpent: message.creditsSpent } : {}),
     ...(message.context !== undefined ? { context: message.context } : {}),
     ...(message.deniedTools !== undefined ? { deniedTools: message.deniedTools } : {}),
+    ...(message.inference !== undefined ? { inference: message.inference } : {}),
+    ...(message.routing !== undefined ? { routing: message.routing } : {}),
   };
 }
 

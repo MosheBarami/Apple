@@ -61,8 +61,8 @@ test('every ModelMark variant has its colour rule: the class is built from the s
 test('the workspace sends StudPilot on every plan, with no mode and no Autonomous grant (V3 G01)', () => {
   const workspace = read('routes/workspace.tsx');
   assert.match(workspace, /const productModel: ProductModel = 'apple';/);
-  assert.match(workspace, /sendChat\(text, attachments, productModel\)/);
-  assert.match(workspace, /editAndResend\([^;]+, productModel\)/);
+  assert.match(workspace, /sendChat\(text, attachments, productModel(?:, inference)?\)/);
+  assert.match(workspace, /editAndResend\([^;]+, productModel(?:, inference)?\)/);
   assert.doesNotMatch(workspace, /modelAllowed|chooseProductModel|fetchModels|productModel=\{/);
 });
 

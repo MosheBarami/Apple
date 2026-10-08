@@ -25,16 +25,30 @@ const args = (call: GatewayToolCall) => JSON.parse(call.arguments);
 
 export function encodeApiRequest(providerId: AiProviderId, request: NormalizedRequest): Json {
   const provider = apiProvider(providerId), tools = request.tools ?? [];
+  const replayFor = (message: GatewayMessage) => message.role === 'assistant'
+    && message.providerReplay?.provider === providerId && message.providerReplay.modelId === request.modelId
+    ? message.providerReplay.content : null;
   if (request.requiredTool && !tools.some((tool) => tool.name === request.requiredTool)) throw new Error('Required tool was not offered.');
   // Full message objects never cross the provider boundary: omit product ids and internal flags.
-  const messages = request.messages.map((message) => ({ role: message.role, content: textContent(message),
+  const messages = request.messages.map((message) => {
+    const replay = replayFor(message);
+    if (replay && typeof replay === 'object' && !Array.isArray(replay)) {
+      const previous = object(replay);
+      return { role: 'assistant', content: previous.content,
+        ...(previous.tool_calls ? { tool_calls: previous.tool_calls } : {}),
+        ...(previous.reasoning_content ? { reasoning_content: previous.reasoning_content } : {}) };
+    }
+    return { role: message.role, content: textContent(message),
     ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
     ...(message.toolCalls?.length ? { tool_calls: message.toolCalls.map((call) => ({ id: call.id, type: 'function',
-      function: { name: call.name, arguments: call.arguments } })) } : {}) }));
+      function: { name: call.name, arguments: call.arguments } })) } : {}) };
+  });
   const base = { model: request.modelId };
   switch (provider.protocol) {
     case 'responses': {
       const input = request.messages.flatMap((message): Json[] => {
+        const replay = replayFor(message);
+        if (Array.isArray(replay)) return replay;
         if (message.role === 'tool') return [{ type: 'function_call_output', call_id: message.toolCallId, output: textContent(message) }];
         const content = textContent(message), items: Json[] = [];
         if (content) items.push({ role: message.role, content: [{ type: message.role === 'assistant' ? 'output_text' : 'input_text', text: content }] });
@@ -42,6 +56,7 @@ export function encodeApiRequest(providerId: AiProviderId, request: NormalizedRe
         return items;
       });
       return { ...base, input, max_output_tokens: request.maxTokens, store: false,
+        ...(providerId === 'openai' ? { include: ['reasoning.encrypted_content'] } : {}),
         ...(tools.length ? { tools: tools.map((tool) => ({ type: 'function', ...tool, strict: false })),
           tool_choice: request.requiredTool ? { type: 'function', name: request.requiredTool } : 'auto' } : {}),
         ...(request.jsonSchema ? { text: { format: { type: 'json_schema', name: 'studpilot', schema: request.jsonSchema, strict: true } } } : {}) };
@@ -49,7 +64,8 @@ export function encodeApiRequest(providerId: AiProviderId, request: NormalizedRe
     case 'anthropic': {
       const turns: Json[] = [];
       for (const message of request.messages.filter((message) => message.role !== 'system')) {
-        const content: Json[] = message.role === 'tool'
+        const replay = replayFor(message);
+        const content: Json[] = Array.isArray(replay) ? replay : message.role === 'tool'
           ? [{ type: 'tool_result', tool_use_id: message.toolCallId, content: textContent(message) }]
           : [...(textContent(message) ? [{ type: 'text', text: textContent(message) }] : []),
             ...(message.toolCalls ?? []).map((call) => ({ type: 'tool_use', id: call.id, name: call.name, input: args(call) }))];
@@ -65,13 +81,19 @@ export function encodeApiRequest(providerId: AiProviderId, request: NormalizedRe
     }
     case 'gemini': {
       const calls = new Map(request.messages.flatMap((message) => (message.toolCalls ?? []).map((call) => [call.id, call.name] as const)));
-      const contents = request.messages.filter((message) => message.role !== 'system').map((message) => ({
+      const contents = request.messages.filter((message) => message.role !== 'system').map((message) => {
+        const replay = replayFor(message);
+        if (replay && typeof replay === 'object' && Array.isArray(object(replay).parts)) return replay;
+        if (message.role === 'assistant' && message.toolCalls?.length) {
+          throw new Error('Gemini tool history requires its original signed replay state. Start a new run on this model.');
+        }
+        return {
         role: message.role === 'assistant' ? 'model' : 'user',
         parts: message.role === 'tool' ? [{ functionResponse: { id: message.toolCallId,
           name: message.name ?? calls.get(message.toolCallId ?? ''), response: { result: textContent(message) } } }]
           : [...(textContent(message) ? [{ text: textContent(message) }] : []),
             ...(message.toolCalls ?? []).map((call) => ({ functionCall: { id: call.id, name: call.name, args: args(call) } }))],
-      }));
+      }; });
       return { contents, systemInstruction: { parts: [{ text: request.messages.filter((m) => m.role === 'system').map(textContent).join('\n') }] },
         generationConfig: { maxOutputTokens: request.maxTokens, temperature: request.temperature,
           ...(request.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: request.jsonSchema } : {}) },
@@ -134,7 +156,7 @@ export function decodeApiResponse(provider: AiProviderId, model: string, raw: un
       result.replay = data.message; break;
     default: {
       const choice = object(list(data.choices)[0]);
-      result.text = string(choice.message?.content) || string(data.response);
+      result.text = (string(choice.message?.content) || string(data.response)).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
       result.toolCalls = calls(choice.message?.tool_calls ?? data.tool_calls);
       reason = choice.finish_reason ?? (data.response !== undefined ? 'stop' : 'error');
       result.usage = { inputTokens: count(data.usage?.prompt_tokens), outputTokens: count(data.usage?.completion_tokens),

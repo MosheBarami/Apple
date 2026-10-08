@@ -165,7 +165,7 @@ test('chat authority is loaded for the workspace and gates send, edit, retry and
   assert.match(WORKSPACE, /if \(!chatAllowed\)[\s\S]{0,220}Your draft is kept/);
   assert.match(WORKSPACE, /editable=\{item\.role === 'user' && !running && chatAllowed\}/);
   assert.match(WORKSPACE, /onRetry=\{item\.id === lastAssistantId && !running && chatAllowed/);
-  assert.match(WORKSPACE, /disabled=\{conn !== 'open' \|\| !chatAllowed\}/);
+  assert.match(WORKSPACE, /disabled=\{conn !== 'open' \|\| !chatAllowed(?:\s*\|\|[^}]+)?\}/);
 });
 
 test('falsification: removing the chat gate from edit/retry would be detected', () => {

@@ -59,6 +59,9 @@ import {
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { aiConnectionRoutes } from './ai-connection-routes';
+import { inferencePreferenceKey, savedInferenceSelection } from './inference-runs';
+import { parseInferenceSelection } from '@studpilot/shared';
+import { getAiConnection } from './ai-connections';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
@@ -741,6 +744,23 @@ app.use('/api/*', async (c, next) => {
  */
 app.route('/auth/roblox', robloxOAuthRoutes(ipLimited, ipSpent));
 app.route('/api/me/ai', aiConnectionRoutes);
+app.get('/api/projects/:id/ai-selection', async (c) => {
+  const access = await sharedAccess(c, c.req.param('id'), 'read');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  return c.json({ selection: await savedInferenceSelection(c.env, c.get('user').userId, access.ctx.project.id) });
+});
+app.put('/api/projects/:id/ai-selection', async (c) => {
+  const access = await sharedAccess(c, c.req.param('id'), 'build');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  const body = await c.req.json().catch(() => null), selection = parseInferenceSelection(body?.selection);
+  if (!selection) return c.json({ error: 'invalid_selection' }, 400);
+  if (selection.route === 'byok') {
+    const connection = await getAiConnection(c.env, c.get('user').userId, selection.connectionId);
+    if (!connection || connection.view.provider !== selection.provider) return c.json({ error: 'connection_not_found' }, 404);
+  }
+  await c.env.KV.put(inferencePreferenceKey(c.get('user').userId, access.ctx.project.id), JSON.stringify(selection));
+  return c.json({ selection });
+});
 
 /**
  * Compare two secrets without leaking their contents through timing.
@@ -4723,9 +4743,12 @@ app.get('/api/admin/session-info/:id', async (c) => {
  * takes exactly the path a chat message takes, so it measures the real agent.
  */
 app.post('/api/admin/agent-run/:id', async (c) => {
+  const input = await c.req.json();
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/agent-run', {
     method: 'POST',
-    body: JSON.stringify(await c.req.json()),
+    // A shared admin key is not the owner of a customer's private provider connection.
+    // This identity comes only from the admin gate's verified JWT, never the request body.
+    body: JSON.stringify({ ...input, inferenceActorId: c.get('adminActorId') ?? null }),
   });
   return c.json(await res.json(), res.status as 200);
 });

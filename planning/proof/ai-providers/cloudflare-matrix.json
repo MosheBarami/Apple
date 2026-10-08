@@ -1,0 +1,80 @@
+{
+  "matrixVersion": "studpilot-provider-matrix-1",
+  "checkedAt": "2026-10-08T16:04:22.061Z",
+  "modelId": "@cf/openai/gpt-oss-20b",
+  "provider": "cloudflare",
+  "budgetUsd": 0.01,
+  "measuredCostUsd": 0.0004125,
+  "knownMeasuredCostUsd": 0.0004125,
+  "usageComplete": true,
+  "outcomes": [
+    {
+      "task": "intake",
+      "metric": "valid-json",
+      "status": "measured",
+      "passed": true,
+      "latencyMs": 1148,
+      "usage": {
+        "inputTokens": 83,
+        "outputTokens": 46,
+        "cachedInputTokens": 0
+      },
+      "costUsd": 0.000030399999999999997
+    },
+    {
+      "task": "schema",
+      "metric": "real-block-parameters",
+      "status": "measured",
+      "passed": true,
+      "latencyMs": 2082,
+      "usage": {
+        "inputTokens": 368,
+        "outputTokens": 166,
+        "cachedInputTokens": 0
+      },
+      "costUsd": 0.00012340000000000002
+    },
+    {
+      "task": "luau",
+      "metric": "luau-syntax",
+      "status": "measured",
+      "passed": true,
+      "latencyMs": 2151,
+      "usage": {
+        "inputTokens": 111,
+        "outputTokens": 289,
+        "cachedInputTokens": 0
+      },
+      "costUsd": 0.0001089
+    },
+    {
+      "task": "repair",
+      "metric": "syntax-repair",
+      "status": "measured",
+      "passed": true,
+      "latencyMs": 5265,
+      "usage": {
+        "inputTokens": 123,
+        "outputTokens": 273,
+        "cachedInputTokens": 0
+      },
+      "costUsd": 0.0001065
+    },
+    {
+      "task": "tools",
+      "metric": "typed-native-tool",
+      "status": "measured",
+      "passed": true,
+      "latencyMs": 1243,
+      "usage": {
+        "inputTokens": 143,
+        "outputTokens": 49,
+        "cachedInputTokens": 0
+      },
+      "costUsd": 0.000043299999999999995
+    }
+  ],
+  "scope": "JSON/schema/compiled Luau/native tool probes; no game behavior or Studio acceptance",
+  "requested": 5,
+  "measured": 5
+}

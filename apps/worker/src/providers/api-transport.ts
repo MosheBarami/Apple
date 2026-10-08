@@ -6,8 +6,8 @@ import { encodeApiRequest, decodeApiResponse } from './api-codecs';
 import { collectApiStream } from './api-stream';
 
 export class ApiInvocationError extends Error {
-  constructor(readonly code: 'auth' | 'rate_limit' | 'context' | 'blocked' | 'unavailable' | 'interrupted' | 'invalid_response',
-    readonly provider: AiProviderId, message: string, readonly status?: number, readonly retryAfterMs?: number) {
+  constructor(readonly code: 'auth' | 'rate_limit' | 'billing' | 'context' | 'blocked' | 'unavailable' | 'interrupted' | 'invalid_response',
+    readonly provider: AiProviderId | 'opencode', message: string, readonly status?: number, readonly retryAfterMs?: number) {
     super(message); this.name = 'ApiInvocationError';
   }
 }
@@ -51,19 +51,21 @@ export async function checkedApiFetch(provider: AiProviderId, url: string, crede
     const retryAfterMs = Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 3600_000)
       : Number.isFinite(date) ? Math.max(0, Math.min(date - Date.now(), 3600_000)) : undefined;
     const code = [401, 403].includes(response.status) ? 'auth' : response.status === 429 ? 'rate_limit'
+      : response.status === 402 ? 'billing'
       : response.status === 413 ? 'context' : response.status >= 500 ? 'unavailable' : 'blocked';
     // Never surface/log provider response bodies. They can echo API keys, prompts or private paths.
     await response.body?.cancel().catch(() => {});
     throw new ApiInvocationError(code, provider, code === 'auth' ? 'The provider rejected this connection or model access.'
-      : code === 'rate_limit' ? 'The provider rate limit or quota was reached.' : 'The provider rejected the inference request.',
+      : code === 'rate_limit' ? 'The provider rate limit or quota was reached.'
+      : code === 'billing' ? 'Your provider account requires available inference credits.' : 'The provider rejected the inference request.',
     response.status, retryAfterMs);
   }
   return response;
 }
 
 export async function invokeApi(provider: AiProviderId, credentials: AiCredentials, request: NormalizedRequest,
-  options: { signal?: AbortSignal; onText?: (delta: string) => void; fetcher?: typeof fetch } = {}) {
-  const definition = apiProvider(provider), streaming = Boolean(options.onText);
+  options: { signal?: AbortSignal; stream?: boolean; onText?: (delta: string) => void; fetcher?: typeof fetch } = {}) {
+  const definition = apiProvider(provider), streaming = options.stream ?? Boolean(options.onText);
   const payload = encodeApiRequest(provider, request);
   if (streaming && provider !== 'google') payload.stream = true;
   // These providers document the OpenAI stream usage option; others report it in final events.
@@ -78,8 +80,18 @@ export async function invokeApi(provider: AiProviderId, credentials: AiCredentia
       if (!response.body) throw new Error('Missing provider stream.');
       raw = await collectApiStream(response.body, definition.protocol, options.onText);
     } else {
-      const text = await response.text();
-      if (text.length > 4 * 1024 * 1024) throw new Error('Provider response exceeded its output limit.');
+      if (!response.body) throw new Error('Missing provider response.');
+      const reader = response.body.getReader(), decoder = new TextDecoder();
+      let text = '', bytes = 0;
+      try {
+        while (true) {
+          const chunk = await reader.read(); if (chunk.done) break;
+          bytes += chunk.value.byteLength;
+          if (bytes > 4 * 1024 * 1024) throw new Error('Provider response exceeded its output limit.');
+          text += decoder.decode(chunk.value, { stream: true });
+        }
+        text += decoder.decode();
+      } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
       raw = JSON.parse(text);
     }
   } catch { throw new ApiInvocationError('interrupted', provider, 'The provider returned an incomplete or unreadable response.'); }

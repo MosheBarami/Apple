@@ -15,7 +15,7 @@ const input = { actorId: 'user-1', runId: 'run-1', requestId: 'req-1', modelId: 
   catalogVersion: catalog.version, input: 'OK', instructions: 'Return JSON.', maxTokens: 400 };
 async function signed(path, data, options = {}) {
   const method = options.method ?? (data ? 'POST' : 'GET'), body = data ? JSON.stringify(data) : '';
-  const headers = await signRunnerRequest(signingKey, method, path, body, clock);
+  const headers = await signRunnerRequest(signingKey, method, path, body, options.time ?? clock);
   return new Request(`http://runner${path}`, { method, headers, ...(body ? { body } : {}), signal: options.signal });
 }
 function service(options = {}) { return createRunnerService({ executable: '/fixture', signingKey,
@@ -80,6 +80,19 @@ test('catalog changes cannot silently reroute an admitted request', async () => 
   const runner = service(); await runner.refresh();
   assert.equal((await runner.fetch(await signed('/v1/infer', { ...input, catalogVersion: 'different' }))).status, 409);
   assert.equal((await runner.fetch(await signed('/v1/infer', { ...input, modelId: 'paid' }))).status, 422);
+});
+
+test('catalog refresh preserves the old pinned record for later calls in an active run', async () => {
+  let time = clock, discovered = 0, actualContext;
+  const runner = service({ now: () => time, discover: async () => {
+    discovered++;
+    return discovered === 1 ? structuredClone(catalog) : { ...catalog, version: 'fixture-v2',
+      checkedAt: new Date(time).toISOString(), models: [{ ...model, limit: { context: 64000, output: 6500 } }] };
+  }, invoke: async (request) => { actualContext = request.modelInfo.limit.context; return { text: 'OK' }; } });
+  await runner.refresh(); time += 61000; await runner.refresh();
+  const response = await runner.fetch(await signed('/v1/infer', input, { time }));
+  assert.equal(response.status, 200); assert.equal(actualContext, 32000);
+  assert.equal((await response.json()).catalogVersion, 'fixture-v1');
 });
 
 test('provider exceptions never leak keys, stderr, input or a raw error message', async () => {

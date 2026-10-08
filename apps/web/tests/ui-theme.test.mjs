@@ -51,8 +51,8 @@ test('blocked storage never throws and the choice still holds for the session', 
 
 test('the socket reads the stored theme into every chat and edit_resend frame', () => {
   const socket = src('lib', 'use-project-socket.ts');
-  assert.match(socket, /type: 'chat', text, mode, [^\n]*uiTheme: readUiTheme\(projectId\)/);
-  assert.match(socket, /type: 'edit_resend', messageId, text, mode, [^\n]*uiTheme: readUiTheme\(projectId\)/);
+  assert.match(socket, /type: 'chat', text, mode, [\s\S]{0,180}uiTheme: readUiTheme\(projectId\)/);
+  assert.match(socket, /type: 'edit_resend', messageId, text, mode, [\s\S]{0,180}uiTheme: readUiTheme\(projectId\)/);
 });
 
 test('the composer offers exactly the three themes, next to Create, and stores the pick', () => {

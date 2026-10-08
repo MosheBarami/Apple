@@ -244,7 +244,12 @@ async function start(h, text = 'build a small tower') {
     method: 'POST',
     body: JSON.stringify({ text, mode: 'agent', productModel: 'apple' }),
   }));
-  assert.equal(res.status, 200, await res.text());
+  const body = await res.json();
+  if (res.status === 422) {
+    assert.equal(body.started, false);
+    assert.match(h.sent.at(-1)?.message ?? '', /visual choice is no longer available/,
+      'only the stale visual choice under test may refuse this admission');
+  } else assert.equal(res.status, 200, JSON.stringify(body));
   return h.store.get('agent');
 }
 

@@ -24,6 +24,7 @@ import { DISCORD_INVITE_URL } from '../lib/community';
 import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
 import { ApiKeysPanel } from '../components/api-keys-panel';
+import { AiConnectionsPanel } from '../components/ai/ai-connections';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
 import { RobloxConnectionCard } from '../components/roblox-connection-card';
 import { useAuth } from '../lib/auth';
@@ -896,7 +897,7 @@ const SECTION_INDEX = [
     label: 'Security',
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
-  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'ai-connections', 'discord'] },
   { group: 'Account', id: 'sharing', label: 'Share', fields: ['invite-link', 'made-with-badge'] },
   {
     group: 'Building',
@@ -2377,7 +2378,8 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord')}>
+      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'ai-connections', 'discord')}>
+        <Row id="ai-connections" visible={shows('ai-connections')}><AiConnectionsPanel /></Row>
         <Row id="roblox-signin" visible={shows('roblox-signin')}>
           <RobloxConnectionCard userId={userId} />
         </Row>

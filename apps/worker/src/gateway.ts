@@ -16,6 +16,11 @@ import { collectStream } from './stream-collect';
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@studpilot/shared';
 import { ENGINE_RELEASE } from '@studpilot/shared';
+import { externalInference } from './external-inference';
+import type { PinnedInference } from './inference-runs';
+import type { RoutingRequirements } from './inference-router';
+import { taskComplexity } from './inference-router';
+import type { RoutingDecision } from '@studpilot/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';
@@ -265,6 +270,12 @@ function parsePromptedToolCalls(text: string): { calls: GatewayToolCall[]; clean
 // main entry
 // ---------------------------------------------------------------------------
 export interface ChatOptions {
+  inference?: PinnedInference;
+  requirements?: RoutingRequirements;
+  requestId?: string;
+  signal?: AbortSignal;
+  onText?: (delta: string) => void;
+  onRoute?: (decision: RoutingDecision) => void;
   /** what this call is for, used for spend attribution in the admin report */
   kind?: string;
   /**
@@ -292,7 +303,24 @@ export interface ChatOptions {
 }
 
 export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}): Promise<GatewayResponse> {
-  const models = await getModels(env);
+  if (opts.inference && (opts.actorId !== opts.inference.actorId
+    || (opts.inference.projectId && opts.projectId !== opts.inference.projectId))) throw new Error('Inference account or project identity does not match this run.');
+  if (opts.inference && opts.inference.selection.route !== 'studpilot') {
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_MODELS, req.model)) throw new Error('Unknown inference task key.');
+    if (opts.actorId !== opts.inference.actorId || !opts.runId || !opts.requestId) throw new Error('Inference run identity is missing or does not match its account.');
+    const state = await budgetState(env) as { killed?: boolean };
+    if (state.killed) throw new BudgetError('killed', BUDGET_MESSAGES.killed!);
+    return externalInference(env, req, opts.inference, {
+      runId: opts.runId, requestId: opts.requestId, signal: opts.signal, stream: Boolean(req.stream || opts.onReasoning),
+      onText: opts.onText, onRoute: opts.onRoute,
+      requirements: opts.requirements ?? { task: req.model === 'memory' ? 'summary' : 'tools',
+        features: { blocks: 0, dependencies: 0, unresolvedFields: 0, failedChecks: 0, customCode: false },
+        inputTokens: new TextEncoder().encode(JSON.stringify(req.messages)).length + 1024,
+        outputTokens: req.maxTokens ?? 6500, tools: Boolean(req.tools?.length), structuredOutput: Boolean(req.jsonSchema),
+        allowTraining: opts.inference.selection.route === 'opencode-free' && opts.inference.selection.allowTraining === true },
+    });
+  }
+  const models = opts.inference?.managedModels ?? await getModels(env);
   const cfg = models[req.model];
   if (!cfg) throw new Error(`unknown model key: ${req.model}`);
 
@@ -525,13 +553,15 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const actual = Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
   await settle(env, reserved, actual, cfg.id, kind);
   trace({
-    outcome: 'ok',
-    latencyMs: lastLatencyMs,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-    cachedInputTokens: usage.cachedInputTokens ?? null,
-    neurons: actual,
+    outcome: 'ok', latencyMs: lastLatencyMs,
+    inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+    cachedInputTokens: usage.cachedInputTokens ?? null, neurons: actual,
   });
+  if (opts.inference) opts.onRoute?.({ route: 'studpilot', task: opts.requirements?.task ?? (req.model === 'memory' ? 'summary' : 'tools'),
+    complexity: opts.requirements ? taskComplexity(opts.requirements.features) : 'simple',
+    provider: adapter.id, modelId: cfg.id, connectionId: null,
+    catalogVersion: opts.inference.candidates[0]?.catalogVersion ?? ENGINE_RELEASE.configVersion,
+    policyVersion: opts.inference.policyVersion, reason: 'Using the managed engine configuration fixed at the start of this run.' });
 
   return {
     text,
