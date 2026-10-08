@@ -1,64 +1,106 @@
 "use client";
-import { ArrowUpRightIcon, MenuIcon, XIcon } from "lucide-react";
+import { MenuIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ThemeToggle } from "@/components/creative/experience";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Wordmark } from "./logo";
-const LINKS = [
-  { href: "/#how-it-works", label: "Product" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/docs", label: "Docs" },
+const MENUS = [
+  {
+    label: "Create",
+    links: [
+      ["Interfaces", "/app/library"],
+      ["Systems", "/app/library"],
+      ["Worlds", "/app/library"],
+      ["Edit a project", "/app/projects"],
+    ],
+  },
+  {
+    label: "Product",
+    links: [
+      ["The workspace", "/product"],
+      ["Studio connection", "/docs#pair"],
+      ["Projects", "/app/projects"],
+    ],
+  },
+  {
+    label: "Resources",
+    links: [
+      ["Documentation", "/docs"],
+      ["Getting started", "/docs#pair"],
+      ["Privacy", "/privacy"],
+      ["Terms", "/terms"],
+    ],
+  },
 ];
 export function SiteNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const read = () => setScrolled(scrollY > 10);
-    read();
-    addEventListener("scroll", read, { passive: true });
-    return () => removeEventListener("scroll", read);
-  }, []);
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
-    const key = (e: KeyboardEvent) => {
+    const close = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    addEventListener("keydown", key);
-    return () => removeEventListener("keydown", key);
+    addEventListener("keydown", close);
+    return () => removeEventListener("keydown", close);
   }, []);
   return (
-    <header className={`saas-nav ${scrolled ? "scrolled" : ""}`}>
+    <header className="reference-nav">
       <nav className="site-container" aria-label="Main">
         <Link href="/" aria-label="StudPilot, home">
           <Wordmark />
         </Link>
-        <div className="nav-links">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              aria-current={pathname === l.href ? "page" : undefined}
-            >
-              {l.label}
-            </Link>
+        <div className="reference-nav-links">
+          {MENUS.slice(0, 2).map((menu) => (
+            <DropdownMenu key={menu.label}>
+              <DropdownMenuTrigger className="nav-menu-trigger">
+                {menu.label}
+                <span>↓</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="reference-menu" align="start">
+                {menu.links.map(([label, href]) => (
+                  <DropdownMenuItem key={label} asChild>
+                    <Link href={href}>{label}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           ))}
+          <Link href="/docs#pair">Studio</Link>
+          <Link href="/pricing">Pricing</Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="nav-menu-trigger">
+              Resources<span>↓</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="reference-menu">
+              {MENUS[2].links.map(([label, href]) => (
+                <DropdownMenuItem key={label} asChild>
+                  <Link href={href}>{label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="nav-actions">
-          <ThemeToggle />
+        <div className="reference-nav-actions">
           <Link href="/login" className="nav-signin">
             Sign in
           </Link>
-          <Link href="/login" className="studio-button is-sm">
-            <span>Start building</span>
-            <ArrowUpRightIcon className="size-3.5" />
+          <Link href="/docs" className="nav-secondary">
+            Get started
+          </Link>
+          <Link href="/app" className="nav-primary">
+            Open app
           </Link>
           <button
             type="button"
             className="nav-menu-toggle"
-            aria-expanded={open}
             aria-controls="mobile-menu"
+            aria-expanded={open}
             aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen((v) => !v)}
           >
@@ -67,16 +109,21 @@ export function SiteNav() {
         </div>
       </nav>
       <div
+        className={`nav-mobile ${open ? "is-open" : ""}`}
         id="mobile-menu"
         inert={!open}
-        className={`nav-mobile ${open ? "is-open" : ""}`}
       >
-        {LINKS.map((l) => (
-          <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
-            {l.label}
+        {[
+          ["Product", "/product"],
+          ["Studio", "/docs#pair"],
+          ["Pricing", "/pricing"],
+          ["Docs", "/docs"],
+          ["Sign in", "/login"],
+        ].map(([label, href]) => (
+          <Link key={label} href={href} onClick={() => setOpen(false)}>
+            {label}
           </Link>
         ))}
-        <Link href="/login">Sign in</Link>
       </div>
     </header>
   );

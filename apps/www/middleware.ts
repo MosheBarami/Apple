@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase-config";
 
 // The website pages never need a session; the sign-in pages do their own redirects below.
-const MARKETING_PATHS = new Set(["/", "/pricing", "/docs", "/privacy", "/terms"]);
+const MARKETING_PATHS = new Set(["/", "/product", "/pricing", "/docs", "/privacy", "/terms"]);
 const PUBLIC_PATHS = ["/login", "/auth/"];
 // A page that renders the app shell with made-up data, for design review. It does not exist in a production build.
 const DEV_ONLY_PATHS = process.env.NODE_ENV === "production" ? [] : ["/dev/"];

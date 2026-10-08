@@ -29,3 +29,6 @@ tsconfig.tsbuildinfo
 # OpenNext build output
 .open-next/
 .wrangler/
+
+# Isolated local production preview
+.next-production/

@@ -1,48 +1,70 @@
 import Link from "next/link";
-import { ArrowUpRightIcon } from "lucide-react";
-import { StyleTile } from "@/components/creative/style-tile";
-import { SUPPORT_EMAIL } from "@/lib/site-data";
-import { Wordmark } from "./logo";
+import { ThemeChoices } from "@/components/creative/experience";
+const GROUPS = [
+  {
+    title: "Product",
+    links: [
+      ["Workspace", "/app"],
+      ["Projects", "/app/projects"],
+      ["Prompt library", "/app/library"],
+      ["Pricing", "/pricing"],
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      ["Documentation", "/docs"],
+      ["Get started", "/docs#pair"],
+      ["Studio connection", "/docs#pair"],
+      ["Credits", "/docs#credits"],
+    ],
+  },
+  {
+    title: "StudPilot",
+    links: [
+      ["Sign in", "/login"],
+      ["Settings", "/app/settings"],
+      ["Contact", "mailto:support@studpilot.app"],
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      ["Terms of service", "/terms"],
+      ["Privacy policy", "/privacy"],
+    ],
+  },
+  {
+    title: "Create",
+    links: [
+      ["New project", "/app"],
+      ["Edit a project", "/app/projects"],
+      ["Example requests", "/app/library"],
+    ],
+  },
+];
 export function SiteFooter() {
   return (
-    <footer className="saas-footer">
+    <footer className="reference-footer">
       <div className="site-container">
-        <div className="footer-top">
-          <div>
-            <Wordmark />
-            <p>
-              A little more imagination.
-              <br />A lot more possibility.
-            </p>
-          </div>
-          <nav aria-label="Product">
-            <p>Explore</p>
-            <Link href="/docs">Documentation</Link>
-            <Link href="/pricing">Plans & credits</Link>
-            <Link href="/login">Your workspace</Link>
-          </nav>
-          <nav aria-label="Legal">
-            <p>The important things</p>
-            <Link href="/privacy">Privacy policy</Link>
-            <Link href="/terms">Terms of service</Link>
-            <a href={`mailto:${SUPPORT_EMAIL}`}>
-              Get in touch <ArrowUpRightIcon className="size-3" />
-            </a>
-          </nav>
-          <div className="footer-design">
-            <span className="footer-signal">
-              <i />
-              Always room for your next idea.
-            </span>
-            <StyleTile />
-          </div>
+        <div className="footer-columns">
+          {GROUPS.map((g) => (
+            <nav key={g.title} aria-label={g.title}>
+              <h2>{g.title}</h2>
+              {g.links.map(([label, href]) => (
+                <Link key={label} href={href}>
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          ))}
         </div>
         <div className="footer-bottom">
-          <span>© {new Date().getUTCFullYear()} StudPilot</span>
           <span>
-            Independent. Made for Roblox Studio. Not affiliated with Roblox
-            Corporation.
+            © {new Date().getUTCFullYear()} StudPilot · Independent. Not
+            affiliated with Roblox Corporation.
           </span>
+          <ThemeChoices />
         </div>
       </div>
     </footer>

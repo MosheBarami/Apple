@@ -1,3 +1,5 @@
+> Superseded visually by the owner’s Cursor directive. Current work and proof: `../W-Cursor-2026-10-08/`.
+
 # Complete luminous website rebuild — 8 October 2026
 
 ## Current brief

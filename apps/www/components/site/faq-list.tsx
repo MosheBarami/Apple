@@ -1,4 +1,3 @@
-import { PlusIcon } from "lucide-react";
 import { FAQ } from "@/lib/site-data";
 export function FaqList({
   items = FAQ,
@@ -6,16 +5,14 @@ export function FaqList({
   items?: readonly { q: string; a: string }[];
 }) {
   return (
-    <div className="faq-list">
-      {items.map((item) => (
-        <details key={item.q} className="faq-item">
+    <div className="reference-faq-list">
+      {items.map((x) => (
+        <details key={x.q}>
           <summary>
-            {item.q}
-            <PlusIcon className="size-4 shrink-0" />
+            {x.q}
+            <span>↓</span>
           </summary>
-          <div className="faq-answer">
-            <p>{item.a}</p>
-          </div>
+          <p>{x.a}</p>
         </details>
       ))}
     </div>

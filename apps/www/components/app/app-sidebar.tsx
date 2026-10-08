@@ -60,12 +60,12 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="h-10 border border-signal/25 bg-signal/10 shadow-card transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-background hover:shadow-float active:translate-y-0"
-              tooltip="New creation"
+              className="h-8 border border-sidebar-border bg-background shadow-card transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-background hover:shadow-float active:translate-y-0"
+              tooltip="New conversation"
             >
               <Link href="/app" onClick={() => setOpenMobile(false)}>
                 <PenSquareIcon className="size-4" />
-                <span className="font-medium">New creation</span>
+                <span className="font-medium">New conversation</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -117,7 +117,7 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Recent projects</SidebarGroupLabel>
+          <SidebarGroupLabel>RECENT PROJECTS</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {!error && projects && shown.length === 0 ? (

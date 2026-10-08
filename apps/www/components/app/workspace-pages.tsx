@@ -12,7 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { StyleTile } from "@/components/creative/style-tile";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/lib/supabase";
 import { CreditsMeter } from "./credits-meter";
@@ -132,29 +131,20 @@ export function ProjectsPage() {
           )}
         </div>
       ) : null}
-      <ul className="project-grid">
+      <ul className="project-table">
         {shown.map((p) => (
-          <li key={p.id} className="fade-up">
-            <Link
-              href={`/app/chat/${p.id}`}
-              className="project-card luminous-panel"
-            >
-              <div className="project-cover" aria-hidden>
-                <FolderIcon />
-              </div>
-              <div className="flex gap-3 items-center">
-                <span className="min-w-0 flex-1">
-                  <strong className="truncate">{p.name}</strong>
-                  <small>
-                    Updated{" "}
-                    {new Date(p.updated_at).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </small>
-                </span>
-                <ArrowUpRightIcon className="size-4 text-muted-foreground" />
-              </div>
+          <li key={p.id}>
+            <Link href={`/app/chat/${p.id}`}>
+              <FolderIcon />
+              <span>{p.name}</span>
+              <small>
+                Updated{" "}
+                {new Date(p.updated_at).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </small>
+              <ArrowUpRightIcon />
             </Link>
           </li>
         ))}
@@ -277,9 +267,7 @@ export function SettingsPage() {
           <p className="mt-4 text-xs text-muted-foreground">
             Motion follows your device’s reduced-motion preference.
           </p>
-          <div className="mt-4">
-            <StyleTile />
-          </div>
+          <div className="mt-4"></div>
         </section>
         <section className="p-6">
           <h3 className="font-medium">Account</h3>

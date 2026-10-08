@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowUpRightIcon } from "lucide-react";
-import { AmbientField } from "@/components/creative/experience";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 export const metadata = { title: "Page not found" };
@@ -12,12 +11,11 @@ export default function NotFound() {
         className="relative flex flex-1 items-center overflow-hidden py-24"
         id="main"
       >
-        <AmbientField />
         <div className="site-container relative">
           <p className="studio-eyebrow">
             <span />A SMALL DETOUR
           </p>
-          <h1 className="gradient-text mt-5 font-display text-[100px] leading-none font-semibold tracking-[-.06em]">
+          <h1 className="mt-5 font-display text-[100px] leading-none font-semibold tracking-[-.06em]">
             404
           </h1>
           <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">

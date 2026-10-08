@@ -1,8 +1,7 @@
 "use client";
-import { ArrowUpRightIcon, PlayIcon, CheckIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { useState } from "react";
-import { AmbientField } from "@/components/creative/experience";
+import Image from "next/image";
 import { StudioDemo } from "@/components/creative/studio-demo";
 import {
   Dialog,
@@ -12,79 +11,83 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 export function Hero() {
-  const [watch, setWatch] = useState(false);
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   return (
-    <section className="saas-hero" aria-labelledby="hero-title">
-      <AmbientField />
-      <div className="hero-layout">
-        <div className="hero-copy">
-          <div className="release-badge">
-            <span className="signal-pulse" />
-            YOUR CREATIVE CO-PILOT
-            <span className="badge-divider" />
-            BETA
-          </div>
-          <h1 id="hero-title">
-            Big ideas.
-            <br />
-            <span className="gradient-text">
-              Meet your
-              <br />
-              building partner.
-            </span>
-          </h1>
-          <p>
-            Your next Roblox creation starts with a conversation. Shape worlds,
-            craft interfaces and improve your game — right beside Studio.
-          </p>
-          <div className="hero-actions">
-            <Link href="/login" className="studio-button">
-              <span>Start building free</span>
-              <ArrowUpRightIcon className="size-4" />
-            </Link>
-            <button
-              type="button"
-              className="glass-button"
-              onClick={() => setWatch(true)}
-            >
-              <PlayIcon className="size-4" />
-              Watch demo
-            </button>
-          </div>
-          <div className="hero-footnotes">
-            <span>
-              <CheckIcon />
-              No card needed
-            </span>
-            <span>
-              <CheckIcon />
-              Your Studio. Your control.
-            </span>
-          </div>
+    <section className="reference-hero">
+      <div className="site-container">
+        <h1>
+          StudPilot is your Roblox agent for
+          <br />
+          building and refining your game.
+        </h1>
+        <div className="hero-actions">
+          <Link href="/app" className="studio-button">
+            Open StudPilot ↗
+          </Link>
+          <button
+            type="button"
+            ref={trigger}
+            className="glass-button"
+            onClick={() => setOpen(true)}
+          >
+            Try a demo →
+          </button>
         </div>
-        <div className="hero-preview">
-          <div aria-hidden className="preview-halo" />
-          <div className="preview-window">
-            <StudioDemo />
+        <div className="hero-stage">
+          <Image
+            src="/art/landscape-cursor.webp"
+            width={1800}
+            height={1200}
+            alt="Painterly mountain landscape behind the StudPilot example workspace"
+            className="stage-landscape"
+            priority
+            sizes="(max-width:700px) 100vw,1300px"
+          />
+          <div className="hero-product">
+            <StudioDemo large autoPlay />
           </div>
-          <div className="floating-note">
-            <span className="note-icon">
-              <SparklesIcon />
-            </span>
+          <div className="floating-output">
             <div>
-              <strong>From prompt to possibility</strong>
-              <span>An interactive concept preview</span>
+              <span className="window-dots">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span>StudPilot · Example activity</span>
             </div>
+            <p>Preparing a shop interface for review.</p>
+            <p>
+              <span className="output-bullet">●</span>Read project context
+            </p>
+            <p>
+              <span className="output-bullet">●</span>Keep existing HUD
+              unchanged
+            </p>
+            <p>
+              <span className="output-bullet">●</span>Connect to the game’s
+              currency next
+            </p>
           </div>
         </div>
+        <p className="stage-disclosure">
+          Interactive example workspace. Builds in your own place run through
+          the Studio plugin.
+        </p>
       </div>
-      <Dialog open={watch} onOpenChange={setWatch}>
-        <DialogContent className="demo-dialog">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className="demo-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            trigger.current?.focus();
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Take StudPilot for a spin</DialogTitle>
+            <DialogTitle>Try the StudPilot workspace</DialogTitle>
             <DialogDescription>
-              Try the demo request, switch views, or buy an item in the sample
-              shop. This is an interactive UI demonstration.
+              Choose a task, send a demo request, inspect the code and try the
+              sample shop. This example uses local state.
             </DialogDescription>
           </DialogHeader>
           <StudioDemo large />
@@ -93,4 +96,3 @@ export function Hero() {
     </section>
   );
 }
-import { SparklesIcon } from "lucide-react";

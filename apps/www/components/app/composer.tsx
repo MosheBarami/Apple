@@ -69,7 +69,7 @@ export function Composer({
               large ? "min-h-28 text-base" : "min-h-16"
             )}
             onChange={(e) => change(e.target.value)}
-            placeholder="Describe what you want to build or change…"
+            placeholder="Plan, build, or change your game…"
             readOnly={sending}
             value={text}
           />
@@ -77,7 +77,7 @@ export function Composer({
         <PromptInputFooter className="px-4 pb-3">
           <PromptInputTools>
             <span className="flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
-              <span className="signal-pulse" />
+              <span className="size-1.5 rounded-full bg-muted-foreground" />
               StudPilot<span className="mx-1 text-border">/</span>Roblox Studio
             </span>
           </PromptInputTools>
@@ -88,7 +88,7 @@ export function Composer({
             />
             <PromptInputSubmit
               aria-label={busy ? "StudPilot is working" : "Send message"}
-              className="size-9 rounded-md bg-signal text-white transition-transform hover:-translate-y-px disabled:opacity-40"
+              className="size-9 rounded-md bg-primary text-primary-foreground transition-transform hover:-translate-y-px disabled:opacity-40"
               disabled={disabled || busy || sending || !text.trim()}
               status="ready"
               title={

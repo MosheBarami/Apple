@@ -1,21 +1,21 @@
 "use client";
-import { motion, useReducedMotion } from "motion/react";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+
 import Link from "next/link";
-import { ArrowUpRightIcon, SparklesIcon, BookOpenIcon } from "lucide-react";
 
 import { createProject, firstMessageKey } from "@/lib/api";
 import { Composer } from "./composer";
 import { useProjects } from "./projects-provider";
 import { StarterGrid } from "./starters";
 import { TopBar } from "./top-bar";
+import { ProjectWorkbench } from "./project-workbench";
 export const NEW_DRAFT_KEY = "studpilot:new-draft";
 export function NewChat() {
   const router = useRouter();
   const { refresh } = useProjects();
-  const reduce = useReducedMotion();
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -59,36 +59,15 @@ export function NewChat() {
   };
   return (
     <div className="workspace-canvas flex h-dvh flex-col">
-      <TopBar projectId={null} title="Create" />
-      <main className="flex-1 overflow-y-auto" id="workspace-main">
-        <div className="app-create-layout">
-          <div className="min-w-0">
-            <div className="creation-banner">
-              <Image
-                src="/art/creation-world.webp"
-                width={1600}
-                height={900}
-                alt=""
-                className="banner-art"
-                sizes="(max-width: 640px) 85vw, 600px"
-                priority
-              />
-              <div className="creation-banner-copy">
-                <p className="studio-eyebrow">
-                  <span />
-                  YOUR CREATIVE WORKSPACE
-                </p>
-                <h2>
-                  What will you
-                  <br />
-                  <span className="gradient-text">bring to life?</span>
-                </h2>
-                <p>
-                  Your next Roblox idea starts here. Describe what you want to
-                  create or change. Let’s work on it together.
-                </p>
-              </div>
-            </div>
+      <TopBar projectId={null} title="New conversation" />
+      <div className="agent-page-layout">
+        <main className="new-agent-main" id="workspace-main">
+          <div className="new-agent-content">
+            <h2>What do you want to build?</h2>
+            <p>
+              Describe your next change. StudPilot works in your Roblox Studio
+              project.
+            </p>
             <div
               className="creation-tabs"
               role="group"
@@ -100,15 +79,7 @@ export function NewChat() {
                   key={m}
                   aria-pressed={mode === m}
                   onClick={() => setMode(m)}
-                  className={`relative ${mode === m ? "text-foreground" : "text-muted-foreground"}`}
                 >
-                  {mode === m ? (
-                    <motion.span
-                      className="selection-glass"
-                      layoutId="start-mode"
-                      transition={{ duration: reduce ? 0 : 0.2 }}
-                    />
-                  ) : null}
                   {m === "create"
                     ? "Create something new"
                     : "Improve my project"}
@@ -118,27 +89,20 @@ export function NewChat() {
             <Composer
               busy={busy}
               large
+              value={draft}
               onChange={updateDraft}
               onSend={start}
-              value={draft}
             />
             {error ? (
               <p className="mt-3 text-xs text-destructive" role="alert">
                 {error}
               </p>
             ) : null}
-            <div className="mt-7">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[10px] text-muted-foreground">
-                  A little inspiration to get you started
-                </p>
-                <Link href="/app/library" className="text-[9px] text-signal">
-                  Explore prompts ↗
-                </Link>
-              </div>
+            <div className="new-agent-suggestions">
+              <p>Try a starting point</p>
               <StarterGrid
-                disabled={busy}
                 mode={mode}
+                disabled={busy}
                 onPick={(text) => {
                   updateDraft(text);
                   document
@@ -147,60 +111,16 @@ export function NewChat() {
                 }}
               />
             </div>
-            <p className="mt-6 text-[9px] leading-5 text-muted-foreground">
-              Enter to send · Shift+Enter for a new line. Connect Studio when
-              you’re ready to work in your place.
+            <p className="agent-keyboard-note">
+              Enter to send · Shift+Enter for a new line
             </p>
+            <Link href="/app/projects" className="new-agent-project-link">
+              Open an existing project →
+            </Link>
           </div>
-          <aside className="creation-aside" aria-label="Getting started">
-            <div className="readiness-panel luminous-panel">
-              <h3>Get Studio ready.</h3>
-              <p>
-                A few steps to get your workspace ready. Each project has its
-                own connection.
-              </p>
-              <ol>
-                {[
-                  {
-                    title: "Open your place",
-                    text: "Choose the project in Roblox Studio.",
-                  },
-                  {
-                    title: "Pair the plugin",
-                    text: "Use the six-character code from your chat.",
-                  },
-                  {
-                    title: "Choose edit access",
-                    text: "Enable changes when you are ready.",
-                  },
-                ].map((step, i) => (
-                  <li key={step.title}>
-                    <span>{i + 1}</span>
-                    <div>
-                      <strong>{step.title}</strong>
-                      {step.text}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              <Link href="/docs#pair">
-                <BookOpenIcon className="size-3" />
-                Open the setup guide
-                <ArrowUpRightIcon className="size-3" />
-              </Link>
-            </div>
-            <div className="inspiration-card">
-              <SparklesIcon />
-              <p>Start with one focused change.</p>
-              <small>
-                Choose an existing project, explain what you want to improve,
-                and keep the context in one chat.
-              </small>
-              <Link href="/app/projects">Pick up a project ↗</Link>
-            </div>
-          </aside>
-        </div>
-      </main>
+        </main>
+        <ProjectWorkbench projectId={null} />
+      </div>
     </div>
   );
 }

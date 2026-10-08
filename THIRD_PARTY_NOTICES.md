@@ -45,3 +45,8 @@ madebyshaurya/stud is AGPL-3.0: no code of it is in StudPilot (owner decision pe
 Copyright 2024 Vercel, Inc. Licensed under the Apache License, Version 2.0. apps/www starts from
 https://github.com/vercel/chatbot at commit c2f8235e1f3ea903ad8b7f61447c4f74164b5c58; the licence text is apps/www/LICENSE,
 and apps/www/TEMPLATE.md lists what was changed.
+
+
+## Cursor visual reference (apps/www, 2026-10-08)
+
+The owner supplied https://cursor.com/ as the visual reference. The site and agent workspace layouts were reconstructed for StudPilot; Cursor source code, branded product screenshots and font binaries are not distributed. The hero landscape file `apps/www/public/art/landscape-cursor.webp` is an optimized copy of the reference site's publicly served landscape at https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/misc/asset-cc24ca462279ca23250c.jpg. Its original artist and reuse licence have not been established independently; this notice is source attribution, not a licence grant. The visual study and source map are in `planning/proof/W-Cursor-2026-10-08/REFERENCE-MAP.md`.

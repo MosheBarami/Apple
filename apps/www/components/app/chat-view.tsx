@@ -54,6 +54,7 @@ import { CREDITS_REFRESH_EVENT } from "./credits-meter";
 import { useProjects } from "./projects-provider";
 import { StarterGrid } from "./starters";
 import { TopBar } from "./top-bar";
+import { ProjectWorkbench } from "./project-workbench";
 
 type ToolPart = Extract<FlueConversationPart, { type: "dynamic-tool" }>;
 
@@ -191,63 +192,73 @@ export function ChatScreen({
   return (
     <div className="workspace-canvas flex h-dvh flex-col" id="workspace-main">
       <TopBar openStudioOnMount={pair} projectId={projectId} title={title} />
-      <Conversation>
-        <ConversationContent className="mx-auto min-h-full w-full max-w-3xl pt-8 sm:px-8">
-          {!ready && !error ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              Loading your conversation…
-            </p>
-          ) : null}
-          {ready && visible.length === 0 && !busy ? (
-            <div className="my-auto space-y-5 py-8">
-              <h2 className="text-center font-semibold text-xl tracking-tight">
-                What should StudPilot build?
-              </h2>
-              <StarterGrid onPick={onSend} />
-            </div>
-          ) : null}
-          {visible.map((m, i) => (
-            <Turn
-              key={m.id}
-              live={busy && i === visible.length - 1}
-              message={m}
-            />
-          ))}
-          {waiting ? (
-            <div
-              className="luminous-panel flex items-center gap-3 px-4 py-3"
-              role="status"
-            >
-              <span className="size-2 animate-pulse rounded-full bg-signal" />
-              <Shimmer>StudPilot is working</Shimmer>
-            </div>
-          ) : null}
-          {error ? (
-            <div className="luminous-panel rounded-md border border-destructive/30 bg-destructive/5 p-4">
-              <p className="text-destructive text-sm" role="alert">
-                {error}
-              </p>
-              {onRecover ? (
-                <button
-                  className="mt-3 text-sm font-medium underline underline-offset-4"
-                  disabled={busy}
-                  onClick={onRecover}
-                  type="button"
-                >
-                  Try again
-                </button>
+      <div className="agent-page-layout">
+        <div className="agent-chat-main">
+          <Conversation>
+            <ConversationContent className="mx-auto min-h-full w-full max-w-3xl pt-8 sm:px-8">
+              {!ready && !error ? (
+                <p className="text-sm text-muted-foreground" role="status">
+                  Loading your conversation…
+                </p>
               ) : null}
-            </div>
-          ) : null}
-          <UndoCheckpoint busy={busy} projectId={projectId} />
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
-      <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-        <Composer busy={busy} disabled={!ready} onSend={onSend} />
-        <p className="mt-2 text-center text-muted-foreground text-xs">
-          StudPilot works in your place. Look at what it built in Studio.
-        </p>
+              {ready && visible.length === 0 && !busy ? (
+                <div className="my-auto space-y-5 py-8">
+                  <h2 className="text-center font-semibold text-xl tracking-tight">
+                    What should StudPilot build?
+                  </h2>
+                  <StarterGrid onPick={onSend} />
+                </div>
+              ) : null}
+              {visible.map((m, i) => (
+                <Turn
+                  key={m.id}
+                  live={busy && i === visible.length - 1}
+                  message={m}
+                />
+              ))}
+              {waiting ? (
+                <div
+                  className="luminous-panel flex items-center gap-3 px-4 py-3"
+                  role="status"
+                >
+                  <span className="size-2 animate-pulse rounded-full bg-signal" />
+                  <Shimmer>StudPilot is working</Shimmer>
+                </div>
+              ) : null}
+              {error ? (
+                <div className="luminous-panel rounded-md border border-destructive/30 bg-destructive/5 p-4">
+                  <p className="text-destructive text-sm" role="alert">
+                    {error}
+                  </p>
+                  {onRecover ? (
+                    <button
+                      className="mt-3 text-sm font-medium underline underline-offset-4"
+                      disabled={busy}
+                      onClick={onRecover}
+                      type="button"
+                    >
+                      Try again
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              <UndoCheckpoint busy={busy} projectId={projectId} />
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+          <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+            <Composer busy={busy} disabled={!ready} onSend={onSend} />
+            <p className="mt-2 text-center text-muted-foreground text-xs">
+              StudPilot works in your place. Look at what it built in Studio.
+            </p>
+          </div>
+        </div>
+        <ProjectWorkbench
+          projectId={projectId}
+          title={title}
+          messages={visible}
+          busy={busy}
+        />
       </div>
     </div>
   );

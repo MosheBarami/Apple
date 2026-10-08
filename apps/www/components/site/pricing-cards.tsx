@@ -1,154 +1,110 @@
 "use client";
-import {
-  ArrowUpRightIcon,
-  CheckIcon,
-  CoinsIcon,
-  SparklesIcon,
-} from "lucide-react";
-import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
+import Link from "next/link";
 import { PLANS } from "@/lib/site-data";
 export function PricingCards() {
-  const [view, setView] = useState<"plans" | "packs">("plans");
-  const reduce = useReducedMotion();
+  const [yearly, setYearly] = useState(false);
   const [compare, setCompare] = useState(false);
-  const plans = PLANS.filter((p) =>
-    view === "packs" ? p.id === "topup" : p.id !== "topup"
-  );
   return (
-    <div>
-      <div className="pricing-switch" role="group" aria-label="Pricing options">
-        {(
-          [
-            { id: "plans", label: "Monthly plans" },
-            { id: "packs", label: "Credit packs" },
-          ] as const
-        ).map((v) => (
-          <button
-            type="button"
-            key={v.id}
-            aria-pressed={view === v.id}
-            onClick={() => setView(v.id)}
-          >
-            {view === v.id ? (
-              <motion.span
-                layoutId="pricing-choice"
-                className="selection-glass"
-                transition={{ duration: reduce ? 0 : 0.2 }}
-              />
-            ) : null}
-            {v.label}
-            {v.id === "packs" ? <CoinsIcon className="size-3.5" /> : null}
-          </button>
-        ))}
-      </div>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={view}
-          initial={{
-            opacity: 0,
-            transform: reduce ? "none" : "translateY(10px)",
-          }}
-          animate={{ opacity: 1, transform: "translateY(0px)" }}
-          exit={{ opacity: 0, transform: reduce ? "none" : "translateY(-6px)" }}
-          transition={{ duration: 0.2 }}
-          className={`pricing-grid ${view === "packs" ? "packs-grid" : ""}`}
+    <>
+      <div className="pricing-switch" role="group" aria-label="Pricing view">
+        <button
+          type="button"
+          aria-pressed={!yearly}
+          onClick={() => setYearly(false)}
         >
-          {plans.map((p) => (
-            <article
-              key={p.id}
-              className={`price-panel luminous-panel ${p.id === "pro" ? "is-featured" : ""}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="price-plan-name">{p.name}</span>
-                {p.id === "pro" ? (
-                  <span className="plan-tag">
-                    <SparklesIcon className="size-3" />
-                    More room to create
-                  </span>
-                ) : null}
-              </div>
+          Monthly
+        </button>
+        <button
+          type="button"
+          aria-pressed={yearly}
+          onClick={() => setYearly(true)}
+        >
+          Yearly totals
+        </button>
+      </div>
+      <div className="pricing-grid">
+        {PLANS.map((p) => {
+          const recurring = p.id === "pro" || p.id === "max";
+          const price =
+            yearly && recurring
+              ? `$${(Number(p.price.slice(1)) * 12).toFixed(2)}`
+              : p.price;
+          return (
+            <article key={p.id} className="price-panel">
+              <h2>{p.name}</h2>
+              <p className="plan-subtitle">{p.blurb}</p>
               <p className="price-value">
-                {p.price}
-                <span>{p.unit || "to start"}</span>
+                {p.id === "free" ? "Free" : price}
+                <span>
+                  {p.id === "topup"
+                    ? "/once"
+                    : p.id === "free"
+                      ? ""
+                      : yearly
+                        ? "/12 months"
+                        : "/mo."}
+                </span>
               </p>
-              <p className="price-description">{p.blurb}</p>
-              <div className="price-credit">
-                <CoinsIcon className="size-4" />
-                <strong>{p.credits}</strong>
-                <span>{p.creditsNote}</span>
+              <div className="plan-credit-label">
+                {p.credits}
+                <small>{p.creditsNote}</small>
               </div>
-              {p.id === "free" ? (
-                <Link href="/login" className="studio-button">
-                  <span>Start building free</span>
-                  <ArrowUpRightIcon className="size-4" />
-                </Link>
-              ) : (
-                <button type="button" disabled className="glass-button w-full">
-                  Available after beta
-                </button>
-              )}
+              <div className="plan-includes">Includes:</div>
               <ul>
                 {p.features.map((f) => (
                   <li key={f}>
-                    <CheckIcon />
+                    <span>✓</span>
                     {f}
                   </li>
                 ))}
               </ul>
-              {p.id !== "free" ? (
-                <p className="price-status">Not available for purchase yet</p>
-              ) : null}
+              {p.id === "free" ? (
+                <Link href="/app" className="studio-button">
+                  Try StudPilot
+                </Link>
+              ) : (
+                <div className="planned-plan-button">Available after beta</div>
+              )}
             </article>
-          ))}
-        </motion.div>
-      </AnimatePresence>
+          );
+        })}
+      </div>
+      <p className="pricing-note">
+        {yearly
+          ? "Yearly totals show 12 months at the monthly rate. Annual billing is not available."
+          : "Paid plans and top-ups are planned. Checkout is closed during beta."}
+      </p>
       <button
         type="button"
         className="compare-trigger"
         aria-expanded={compare}
         onClick={() => setCompare((v) => !v)}
       >
-        {compare ? "Hide" : "Compare"} plan details
-        <span>{compare ? "−" : "+"}</span>
+        {compare ? "Hide" : "Compare"} plan details {compare ? "↑" : "↓"}
       </button>
-      <AnimatePresence>
-        {compare ? (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: reduce ? 0 : 0.25 }}
-            className="plan-comparison"
-          >
-            <div>
-              <span>Plan</span>
-              <b>Free</b>
-              <b>Pro</b>
-              <b>Max</b>
-            </div>
-            <div>
-              <span>Credits</span>
-              <span>5/day · max 30/month</span>
-              <span>100/month</span>
-              <span>300/month</span>
-            </div>
-            <div>
-              <span>Access today</span>
-              <span>Beta</span>
-              <span>Planned</span>
-              <span>Planned</span>
-            </div>
-            <div>
-              <span>Billing</span>
-              <span>No card</span>
-              <span>$9.99/month</span>
-              <span>$24.99/month</span>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
+      {compare ? (
+        <div className="plan-comparison">
+          <div>
+            <span>Plan</span>
+            <b>Free</b>
+            <b>Pro</b>
+            <b>Max</b>
+          </div>
+          <div>
+            <span>Credits</span>
+            <span>5/day · max 30/month</span>
+            <span>100/month</span>
+            <span>300/month</span>
+          </div>
+          <div>
+            <span>Availability</span>
+            <span>Beta</span>
+            <span>Planned</span>
+            <span>Planned</span>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

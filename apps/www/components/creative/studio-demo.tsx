@@ -1,55 +1,105 @@
 "use client";
 import {
   ArrowUpIcon,
-  CheckIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckCircle2Icon,
   ChevronDownIcon,
-  LayersIcon,
-  Maximize2Icon,
-  MousePointer2Icon,
-  PlayIcon,
-  RotateCcwIcon,
-  SparklesIcon,
-  ShoppingBagIcon,
-  BoxIcon,
+  FileIcon,
+  PanelRightIcon,
+  RefreshCwIcon,
+  LoaderCircleIcon,
+  PlugIcon,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { LogoMark } from "@/components/site/logo";
-
-const STEPS = [
-  "Understanding your idea",
-  "Preparing the scene",
-  "Adding the interface",
-  "Preview ready",
+const TASKS = [
+  "Build an egg shop",
+  "Plan a coin collection loop",
+  "Add a main menu",
+  "Improve the spawn area",
+  "Review a daily rewards screen",
 ];
-const REPLY =
-  "Your floating island concept is ready to explore. Add a shop, reshape the world, or keep refining your idea.";
-/** An explicitly labelled interactive UI demonstration. It never calls the AI or changes a real place. */
-export function StudioDemo({ large = false }: { large?: boolean }) {
-  const reduce = useReducedMotion();
-  const [mode, setMode] = useState<"world" | "interface">("world");
+const STEPS = [
+  "Read project context",
+  "Prepare a checkpoint",
+  "Create the example interface",
+  "Example ready for review",
+];
+const CODE = [
+  "-- Shop.client.luau",
+  "local shop = script.Parent",
+  "local selectedItem = nil",
+  "",
+  "local function selectItem(item)",
+  "    selectedItem = item",
+  "    shop.Details.Title.Text = item.Name",
+  "end",
+  "",
+  "-- Connect purchases to your game economy",
+  "-- after choosing the currency and prices.",
+];
+export function StudioDemo({
+  large = false,
+  autoPlay = false,
+  variant = "shop",
+}: {
+  large?: boolean;
+  autoPlay?: boolean;
+  variant?: "shop" | "code" | "activity" | "connection";
+}) {
+  const root = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
+  const [request, setRequest] = useState(
+    "Build an egg shop with three eggs and a Buy button"
+  );
   const [step, setStep] = useState(-1);
   const [running, setRunning] = useState(false);
-  const [text, setText] = useState(
-    "Create a floating island with a portal and a shop"
+  useEffect(() => {
+    if (
+      !autoPlay ||
+      !root.current ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && !started.current) {
+          started.current = true;
+          setStep(0);
+          setRunning(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.25 }
+    );
+    observer.observe(root.current);
+    return () => observer.disconnect();
+  }, [autoPlay]);
+  const [task, setTask] = useState(0);
+  const [view, setView] = useState<"preview" | "code">(
+    variant === "code" ? "code" : "preview"
   );
-  const [written, setWritten] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  const [mode, setMode] = useState("Build");
   const [gems, setGems] = useState(320);
   const [owned, setOwned] = useState<string[]>([]);
   const [note, setNote] = useState("");
-  const root = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [written, setWritten] = useState(0);
+  const [runMode, setRunMode] = useState("Build");
+  const steps =
+    runMode === "Inspect"
+      ? [
+          "Read example context",
+          "Inspect the example source",
+          "Review the shop interaction",
+          "Example review ready",
+        ]
+      : STEPS;
+  const reply =
+    runMode === "Inspect"
+      ? "The sample shop tracks gems and owned items locally. Its purchases need a server-side economy in a real game. No Studio changes were made by this demonstration."
+      : "The example interface is ready. Purchases in this demonstration use local sample state. Connect your own project to build in Studio.";
   useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) =>
-      setVisible(entry.isIntersecting)
-    );
-    if (root.current) observer.observe(root.current);
-    return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    if (!running || !visible) return;
+    if (!running) return;
     const timer = setInterval(
       () =>
         setStep((s) => {
@@ -59,236 +109,302 @@ export function StudioDemo({ large = false }: { large?: boolean }) {
           }
           return s + 1;
         }),
-      900
+      750
     );
     return () => clearInterval(timer);
-  }, [running, visible]);
+  }, [running]);
   useEffect(() => {
-    if (step < 3 || !visible) return;
+    if (step !== 3) return;
     const timer = setInterval(
       () =>
         setWritten((n) => {
-          if (n >= REPLY.length) {
+          if (n >= reply.length) {
             clearInterval(timer);
             return n;
           }
-          return Math.min(n + 3, REPLY.length);
+          return Math.min(n + 4, reply.length);
         }),
-      22
+      24
     );
     return () => clearInterval(timer);
-  }, [step, visible]);
-  const build = () => {
-    if (!text.trim()) return;
+  }, [step, reply]);
+  const run = () => {
+    if (!request.trim()) return;
+    setRunMode(mode);
+    if (mode === "Inspect") setView("code");
     setStep(0);
     setWritten(0);
     setRunning(true);
-    setNote("");
+  };
+  const choose = (i: number) => {
+    setTask(i);
+    setRequest(TASKS[i]);
+    setStep(-1);
+    setRunning(false);
+    setWritten(0);
   };
   const buy = (name: string, cost: number) => {
     if (owned.includes(name)) {
-      setNote(`${name} is already in your demo inventory.`);
+      setNote(`${name} is already owned in the example.`);
       return;
     }
     if (gems < cost) {
-      setNote("Not enough gems in the demo.");
+      setNote("Not enough gems in the example.");
       return;
     }
     setGems((n) => n - cost);
     setOwned((v) => [...v, name]);
-    setNote(`${name} added to your demo inventory.`);
+    setNote(`${name} added to the sample inventory.`);
   };
   return (
     <div
+      className={`reference-window ${large ? "window-large" : ""} demo-${variant}`}
       ref={root}
-      className={`studio-demo luminous-panel ${large ? "demo-large" : ""}`}
       data-testid="studio-demo"
-      data-visible={visible}
     >
-      <div className="demo-toolbar">
-        <div className="flex items-center gap-2">
-          <LogoMark className="size-5" />
-          <span className="font-medium">Untitled world</span>
-          <ChevronDownIcon className="size-3 opacity-40" />
-        </div>
-        <span className="demo-label">
-          <span />
-          Interactive demo
+      <div className="window-chrome">
+        <span className="window-dots">
+          <i />
+          <i />
+          <i />
         </span>
+        <span>StudPilot Workspace · Example</span>
+        <button type="button" aria-label="Restart example" onClick={run}>
+          <RefreshCwIcon />
+        </button>
       </div>
-      <div className="demo-body">
-        <aside className="demo-rail" aria-label="Preview layers">
-          <button
-            type="button"
-            aria-label="Show world preview"
-            aria-pressed={mode === "world"}
-            onClick={() => setMode("world")}
-          >
-            <BoxIcon />
-          </button>
-          <button
-            type="button"
-            aria-label="Show interface preview"
-            aria-pressed={mode === "interface"}
-            onClick={() => setMode("interface")}
-          >
-            <LayersIcon />
-          </button>
-          <span />
-          <MousePointer2Icon />
-        </aside>
-        <div className={`demo-scene ${playing ? "is-playing" : ""}`}>
-          <Image
-            src="/art/creation-world.webp"
-            width={1600}
-            height={900}
-            alt="Original concept illustration of a floating island with a luminous portal"
-            priority
-            className="world-art"
-            sizes="(max-width: 640px) 90vw, (max-width: 900px) 580px, 620px"
-          />
-          <div className="scene-grid" aria-hidden />
-          <div className="scene-beam" aria-hidden />
-          <div className="demo-view-tools">
-            <span>{mode === "world" ? "WORLD VIEW" : "INTERFACE VIEW"}</span>
+      <div className="window-layout">
+        <aside className="window-projects">
+          <div className="window-group-label">EXAMPLE PROJECTS</div>
+          {TASKS.map((name, i) => (
             <button
               type="button"
-              onClick={() => setPlaying((v) => !v)}
-              aria-label={playing ? "Pause scene motion" : "Play scene motion"}
-              className={playing ? "active" : ""}
+              key={name}
+              className={task === i ? "selected" : ""}
+              onClick={() => choose(i)}
             >
-              <PlayIcon className="size-3" />
-              {playing ? "Playing" : "Play"}
+              {i === task && running ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <CheckCircle2Icon />
+              )}
+              <span>
+                {name}
+                <small>
+                  {i === task && running ? steps[step] : "Interactive example"}
+                </small>
+              </span>
+            </button>
+          ))}
+        </aside>
+        <div className="window-conversation">
+          <div className="window-task-title">
+            {variant === "connection" ? "Connect Studio" : TASKS[task]}
+          </div>
+          <div className="demo-request-message">{request}</div>
+          <div className="demo-reading">
+            {step < 0
+              ? "Ready when you are."
+              : steps.slice(0, step + 1).map((s, i) => (
+                  <div key={s}>
+                    {i === step && running ? (
+                      <LoaderCircleIcon className="animate-spin" />
+                    ) : (
+                      <CheckCircle2Icon />
+                    )}
+                    {s}
+                  </div>
+                ))}
+          </div>
+          {step === 3 ? (
+            <>
+              <div className="demo-change-row">
+                <FileIcon />
+                Shop.client.luau<span>+ example</span>
+              </div>
+              <p className="demo-reply" role="status">
+                {reply.slice(0, written)}
+                {written < reply.length ? (
+                  <span className="type-cursor" />
+                ) : null}
+              </p>
+            </>
+          ) : (
+            <p className="demo-reply">
+              Describe what your game needs. Review the changes, then ask for
+              the next edit.
+            </p>
+          )}
+          <form
+            className="demo-composer"
+            onSubmit={(e) => {
+              e.preventDefault();
+              run();
+            }}
+          >
+            <textarea
+              aria-label="Demo request"
+              value={request}
+              onChange={(e) => setRequest(e.target.value)}
+              rows={2}
+            />
+            <div>
+              <label>
+                <select
+                  aria-label="Demo mode"
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value)}
+                >
+                  <option>Build</option>
+                  <option>Inspect</option>
+                </select>
+                <ChevronDownIcon />
+              </label>
+              <span>Studio project</span>
+              <button
+                type="submit"
+                aria-label={running ? "Restart demo" : "Run demo"}
+                disabled={!request.trim()}
+              >
+                {running ? (
+                  <LoaderCircleIcon className="animate-spin" />
+                ) : (
+                  <ArrowUpIcon />
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+        <div className="window-preview">
+          <div className="preview-navigation">
+            <span>
+              <ArrowLeftIcon />
+              <ArrowRightIcon />
+              <RefreshCwIcon />
+            </span>
+            <span>My Roblox project</span>
+            <button
+              type="button"
+              aria-label={
+                view === "preview"
+                  ? "Show code preview"
+                  : "Show interface preview"
+              }
+              onClick={() =>
+                setView((v) => (v === "preview" ? "code" : "preview"))
+              }
+            >
+              <PanelRightIcon />
             </button>
           </div>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mode}
-              initial={{
-                opacity: 0,
-                transform: reduce ? "none" : "translateY(8px)",
-              }}
-              animate={{ opacity: 1, transform: "translateY(0px)" }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="demo-overlay"
-            >
-              {mode === "interface" ? (
-                <div className="demo-shop">
-                  <div className="flex items-center justify-between">
-                    <span>
-                      <ShoppingBagIcon className="inline size-4" /> Portal shop
-                    </span>
-                    <b>{gems} gems</b>
+          {view === "code" ? (
+            <div className="demo-code">
+              <div>Shop.client.luau</div>
+              {CODE.map((line, i) => (
+                <p key={i}>
+                  <span>{i + 1}</span>
+                  <code>{line || " "}</code>
+                </p>
+              ))}
+            </div>
+          ) : variant === "activity" ? (
+            <div className="sample-activity">
+              <p>Example activity</p>
+              <h3>Build an egg shop</h3>
+              <p>
+                A view of the local demonstration. No Studio work is running
+                here.
+              </p>
+              <div>
+                {steps.map((label, i) => (
+                  <div key={label} className={step >= i ? "step-returned" : ""}>
+                    {step >= i ? (
+                      <CheckCircle2Icon />
+                    ) : (
+                      <span className="activity-idle" />
+                    )}
+                    <span>{label}</span>
+                    <small>{step >= i ? "Example returned" : "Waiting"}</small>
                   </div>
-                  <div className="demo-shop-items">
-                    {[
-                      { name: "Crystal", cost: 80 },
-                      { name: "Wing", cost: 120 },
-                      { name: "Crown", cost: 450 },
-                    ].map((item, i) => (
-                      <button
-                        key={item.name}
-                        type="button"
-                        onClick={() => buy(item.name, item.cost)}
-                        className={`demo-item demo-item-${i}`}
-                      >
-                        <span className="item-art">
-                          {i === 0 ? "◆" : i === 1 ? "✦" : "♜"}
-                        </span>
-                        <strong>{item.name}</strong>
-                        <span>
-                          {owned.includes(item.name)
-                            ? "Owned"
-                            : `${item.cost} gems`}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <p role="status">
-                    {note ||
-                      "Try a purchase. This demo has its own local state."}
-                  </p>
-                </div>
-              ) : (
-                <div className="world-coordinate">
-                  <span className="crosshair" />
-                  <span>
-                    Floating island
-                    <br />
-                    <small>Concept illustration</small>
-                  </span>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-          <div className="scene-caption">
-            <Maximize2Icon className="size-3" />
-            Concept art · UI demonstration
-          </div>
-        </div>
-      </div>
-      <div className="demo-agent">
-        <div className="demo-avatar">
-          <SparklesIcon className="size-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between">
-            <b>StudPilot</b>
-            <span className="text-[10px] text-muted-foreground">
-              {running
-                ? "DEMO RUNNING"
-                : step === 3
-                  ? "DEMO COMPLETE"
-                  : "READY TO EXPLORE"}
-            </span>
-          </div>
-          <div className="demo-progress" aria-label="Demo progress">
-            {STEPS.map((s, i) => (
-              <span
-                key={s}
-                className={i <= step ? "reached" : ""}
-                style={{ transitionDelay: `${i * 45}ms` }}
-              />
-            ))}
-          </div>
-          <p role="status" className={running ? "shimmer-text" : ""}>
-            {step === 3
-              ? REPLY.slice(0, written)
-              : step < 0
-                ? "Try a request, or switch to the interface preview."
-                : STEPS[step]}
-            {step === 3 && written < REPLY.length ? (
-              <span className="type-cursor" />
-            ) : null}
-          </p>
-        </div>
-      </div>
-      <form
-        className="demo-input"
-        onSubmit={(e) => {
-          e.preventDefault();
-          build();
-        }}
-      >
-        <input
-          aria-label="Demo request"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Describe your idea…"
-        />
-        <button
-          aria-label={running ? "Restart demo" : "Run demo"}
-          type="submit"
-          disabled={!text.trim()}
-        >
-          {running ? (
-            <RotateCcwIcon className="size-4" />
+                ))}
+              </div>
+              <div className="sample-review">
+                <FileIcon />
+                <span>
+                  Shop.client.luau
+                  <small>Example source available in the code view</small>
+                </span>
+                <button type="button" onClick={() => setView("code")}>
+                  View source →
+                </button>
+              </div>
+            </div>
+          ) : variant === "connection" ? (
+            <div className="sample-connection">
+              <PlugIcon />
+              <h3>Bring your place into the workspace.</h3>
+              <p>
+                Pair the StudPilot plugin with your project. Connection and edit
+                access remain under your control.
+              </p>
+              <div>
+                <span>Example pairing code</span>
+                <code>K7M3QP</code>
+                <small>
+                  Illustration only · this code will not connect a real place.
+                </small>
+              </div>
+              <ol>
+                <li>Open your place in Studio.</li>
+                <li>Open the StudPilot plugin.</li>
+                <li>Get a fresh code from your project.</li>
+                <li>Choose when to enable edits.</li>
+              </ol>
+              <a href="/docs#pair">Open the setup guide →</a>
+            </div>
           ) : (
-            <ArrowUpIcon className="size-4" />
+            <div className="sample-place">
+              <div className="sample-place-label">StarterGui / EggShopGui</div>
+              <div className="sample-shop">
+                <div>
+                  <h3>Egg shop</h3>
+                  <span>{gems} gems</span>
+                </div>
+                <p>Choose your next companion.</p>
+                <div className="sample-items">
+                  {[
+                    { name: "Forest egg", cost: 80 },
+                    { name: "Golden egg", cost: 120 },
+                    { name: "Crystal egg", cost: 450 },
+                  ].map((item, i) => (
+                    <button
+                      type="button"
+                      key={item.name}
+                      onClick={() => buy(item.name, item.cost)}
+                    >
+                      <span className={`sample-egg egg-${i}`} />
+                      <strong>{item.name}</strong>
+                      <small>
+                        {owned.includes(item.name)
+                          ? "Owned"
+                          : `${item.cost} gems`}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+                <p className="sample-note" role="status">
+                  {note || "Sample interface · local demo state"}
+                </p>
+              </div>
+              <div className="sample-place-footer">
+                <span>Workspace</span>
+                <span>StarterGui</span>
+                <span>Scripts</span>
+              </div>
+            </div>
           )}
-        </button>
-      </form>
+        </div>
+      </div>
     </div>
   );
 }
