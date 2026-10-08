@@ -935,6 +935,7 @@ const TOOL_ARGS = {
   create_rig: { rigType: 'R15', name: 'Shopkeeper', position: [0, 5, 0], npc: true },
   check_ui_layout: { screen: 'game.StarterGui.ShopGui' },
   build_ui: { screen: 'ShopGui', theme: 'tycoon', tree: { kind: 'panel', id: 'Panel', anchor: 'center', size: [0.5, 0.6], children: [{ kind: 'button', id: 'Buy', text: 'Buy' }] } },
+  check_ui: { screen: 'game.StarterGui.ShopGui' },
   // D-UIONLY-1. Egress reviewed 2026-09-23: ui-components.ts gets an op-sender and an image resolver
   // (shared id table, then the user's KV cache, then uploadLibraryAsset with their stored key). The
   // result carries component, instance paths, asset -> rbxassetid pairs and missing file names; the
