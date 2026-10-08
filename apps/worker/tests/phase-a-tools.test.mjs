@@ -273,18 +273,18 @@ test('play_check tells the model which tool presses buttons (F-050)', () => {
 
 /* ---------------------------------------------------------------------- build_ui --- */
 
-// D-UIONLY-1 retired the build_ui TOOL (it drew UI by hand); its builder stays in phase-a-tools.ts so
-// the decision reverses in one line. These tests keep that builder honest; the tool itself refuses.
+// D-UIONLY-1 retired the theme-based build_ui builder; its code stays in phase-a-tools.ts and these tests
+// keep it honest. The build_ui TOOL is now the UI engine (ui-engine.ts, tests/ui-engine.test.mjs).
 const PA = await import(pathToFileURL(bundle('phase-a-tools')).href);
 const buildUi = (ctx, a) => PA.buildUi.run(async (o, t) => {
   const r = await ctx.execStudioOp(o, t);
   return r.ok ? r.data : { error: r.error };
 }, a);
 
-test('the build_ui tool is retired (D-UIONLY-1): it sends nothing and names insert_ui_component', async () => {
+test('the build_ui tool no longer runs the theme builder: its old arguments are refused and nothing is sent', async () => {
   const { ctx, calls } = studio(() => ({ matches: [], truncated: false }));
   const out = await T.TOOLS.build_ui.run(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: [] });
-  assert.match(out.error, /insert_ui_component/);
+  assert.match(out.error, /Nothing was sent/);
   assert.equal(calls.length, 0);
 });
 

@@ -1718,6 +1718,16 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 		local text, err = safeText(value.v, 100, label)
 		if not text then return nil, err end
 		return enumValue(text)
+	elseif t == "Font" then
+		-- { family, weight, style }: a built-in family by name (Font.fromName), e.g. { "Montserrat", "Bold", "Normal" }.
+		if type(value.v) ~= "table" or type(value.v[1]) ~= "string" or not string.match(value.v[1], "^%a[%w]*$") or #value.v[1] > 40 then
+			return nil, ("%s must be {family, weight, style} with a built-in family name"):format(label)
+		end
+		local ok, result = pcall(function()
+			return Font.fromName(value.v[1], Enum.FontWeight[value.v[2] or "Regular"], Enum.FontStyle[value.v[3] or "Normal"])
+		end)
+		if not ok then return nil, ("%s could not be constructed (weight is Thin..Heavy, style Normal or Italic)"):format(label) end
+		return result
 	elseif t == "Instance" then
 		if not allowInstance then return nil, ("%s may not reference an instance"):format(label) end
 		if gameRef == nil then return nil, ("%s cannot resolve an instance reference without a DataModel"):format(label) end

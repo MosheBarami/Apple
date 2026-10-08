@@ -355,6 +355,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
   check_ui_layout: 'Changes nothing in the place, but it builds a temporary copy of a screen in Studio\'s own UI layer, and its plugin operation is opt-in, which MCP does not negotiate. Excluded for both reasons.',
+  check_ui: 'Excluded for the same reasons as check_ui_layout: a temporary copy of the screen in Studio\'s own UI layer, through the opt-in measure_ui operation that MCP does not negotiate.',
 };
 
 // ---------------------------------------------------------------------------
