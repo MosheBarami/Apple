@@ -71,7 +71,19 @@ export function ChatView({
     projects?.find((p) => p.id === projectId)?.name ?? loadedName ?? "Chat";
 
   useEffect(() => {
-    getProject(projectId).then((p) => setLoadedName(p?.name ?? null));
+    let current = true;
+    setLoadedName(null);
+    getProject(projectId).then(
+      (p) => {
+        if (current) setLoadedName(p?.name ?? null);
+      },
+      () => {
+        if (current) setLoadedName(null);
+      }
+    );
+    return () => {
+      current = false;
+    };
   }, [projectId]);
 
   // The agent route takes the project id as the conversation id; the bearer token is read fresh for every request.
@@ -93,6 +105,10 @@ export function ChatView({
   const { historyReady, sendMessage } = agent;
   const firstInFlight = useRef(false);
   const [failedFirst, setFailedFirst] = useState<string | null>(null);
+  useEffect(() => {
+    firstInFlight.current = false;
+    setFailedFirst(null);
+  }, [projectId]);
   useEffect(() => {
     if (!historyReady || firstInFlight.current) {
       return;
@@ -181,6 +197,29 @@ export function ChatScreen({
   onSend: (text: string) => unknown | Promise<unknown>;
   onRecover?: () => void;
 }) {
+  const [draft, setDraft] = useState({ projectId, text: "" });
+  useEffect(() => {
+    let text = "";
+    try {
+      text = sessionStorage.getItem(`studpilot:draft:${projectId}`) ?? "";
+    } catch {}
+    setDraft({ projectId, text });
+  }, [projectId]);
+  const updateDraft = (text: string) => {
+    setDraft({ projectId, text });
+    try {
+      sessionStorage.setItem(`studpilot:draft:${projectId}`, text);
+    } catch {}
+  };
+  const tools = visible.flatMap((message) =>
+    message.parts.filter((part) => part.type === "dynamic-tool")
+  );
+  const returned = tools.filter(
+    (part) => part.type === "dynamic-tool" && part.state === "output-available"
+  ).length;
+  const failed = tools.filter(
+    (part) => part.type === "dynamic-tool" && part.state === "output-error"
+  ).length;
   const last = visible.at(-1);
   const waiting =
     busy &&
@@ -191,9 +230,28 @@ export function ChatScreen({
 
   return (
     <div className="workspace-canvas flex h-dvh flex-col" id="workspace-main">
-      <TopBar openStudioOnMount={pair} projectId={projectId} title={title} />
+      <TopBar
+        active={busy}
+        openStudioOnMount={pair}
+        projectId={projectId}
+        title={title}
+      />
       <div className="agent-page-layout">
         <div className="agent-chat-main">
+          <div className="chat-context-strip" aria-label="Conversation status">
+            <span className={busy ? "is-working" : ""}>
+              {!ready
+                ? "Loading history"
+                : busy
+                  ? "Work in progress"
+                  : "Your project workspace"}
+            </span>
+            <span>
+              {tools.length
+                ? `${returned} tool responses${failed ? ` · ${failed} need attention` : ""}`
+                : "Changes and checks appear in the conversation"}
+            </span>
+          </div>
           <Conversation>
             <ConversationContent className="mx-auto min-h-full w-full max-w-3xl pt-8 sm:px-8">
               {!ready && !error ? (
@@ -206,7 +264,14 @@ export function ChatScreen({
                   <h2 className="text-center font-semibold text-xl tracking-tight">
                     What should StudPilot build?
                   </h2>
-                  <StarterGrid onPick={onSend} />
+                  <StarterGrid
+                    onPick={(text) => {
+                      updateDraft(text);
+                      document
+                        .querySelector<HTMLTextAreaElement>("textarea")
+                        ?.focus();
+                    }}
+                  />
                 </div>
               ) : null}
               {visible.map((m, i) => (
@@ -247,7 +312,13 @@ export function ChatScreen({
             <ConversationScrollButton />
           </Conversation>
           <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-            <Composer busy={busy} disabled={!ready} onSend={onSend} />
+            <Composer
+              busy={busy}
+              disabled={!ready}
+              onSend={onSend}
+              value={draft.projectId === projectId ? draft.text : ""}
+              onChange={updateDraft}
+            />
             <p className="mt-2 text-center text-muted-foreground text-xs">
               StudPilot works in your place. Look at what it built in Studio.
             </p>
@@ -274,6 +345,10 @@ export function Turn({
   return (
     <Message className="message-fade-in" from={message.role}>
       <MessageContent>
+        <div className="chat-speaker">
+          {message.role === "user" ? "You" : "StudPilot"}
+          {live && message.role === "assistant" ? <span>Working</span> : null}
+        </div>
         {message.parts.map((part, i) => (
           <Part
             key={`${message.id}-${i}`}

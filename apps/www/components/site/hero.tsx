@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { UiverseAction } from "@/components/uiverse/elements";
-import { BuildConstellation } from "@/components/creative/atmosphere";
+import { AssemblyScene } from "@/components/creative/assembly-scene";
 import { StudioDemo } from "@/components/creative/studio-demo";
 import {
   Dialog,
@@ -16,27 +16,52 @@ export function Hero() {
   return (
     <section className="reference-hero">
       <div className="site-container">
-        <div className="hero-overline"><span /> YOUR IMAGINATION. INSIDE ROBLOX STUDIO.</div>
-        <h1>
-          From <span className="luminous-text">what if</span>
-          <br />
-          to what’s next.
-        </h1>
-        <p className="hero-description">Build the interface. Shape the world. Make the mechanic work.<br className="hidden sm:block" /> Your creative partner, connected to your Roblox Studio.</p>
-        <div className="hero-actions">
-          <UiverseAction href="/app">Open StudPilot</UiverseAction>
-          <button
-            type="button"
-            ref={trigger}
-            className="glass-button"
-            onClick={() => setOpen(true)}
-          >
-            Try a demo →
-          </button>
+        <div className="assembly-hero-layout">
+          <div className="assembly-hero-copy">
+            <div className="hero-overline">
+              <span /> YOUR IMAGINATION. INSIDE ROBLOX STUDIO.
+            </div>
+            <h1>
+              Your next world
+              <br />
+              starts with
+              <br />
+              <span className="luminous-text">a little idea.</span>
+            </h1>
+            <p className="hero-description">
+              Build the interface. Shape the world. Make the mechanic work.
+              <br className="hidden sm:block" /> Your creative partner,
+              connected to your Roblox Studio.
+            </p>
+            <div className="hero-actions">
+              <UiverseAction href="/app">Open StudPilot</UiverseAction>
+              <button
+                type="button"
+                ref={trigger}
+                className="glass-button"
+                onClick={() => setOpen(true)}
+              >
+                Try a demo →
+              </button>
+            </div>
+            <p className="hero-beta-note">
+              Private beta · Free to explore · Built for Roblox creators
+            </p>
+          </div>
+          <AssemblyScene compact />
+        </div>
+        <div className="demo-section-heading">
+          <span>FROM YOUR WORDS TO YOUR WORKSPACE</span>
+          <h2>See the idea take shape.</h2>
+          <p>Try the interactive example. Then bring your own project.</p>
         </div>
         <div className="hero-stage">
-          <div className="stage-aurora" aria-hidden="true"><i /><i /><i /></div>
-          <div className="stage-constellation"><BuildConstellation compact /></div>
+          <div className="stage-aurora" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+
           <div className="hero-product">
             <StudioDemo large autoPlay />
           </div>

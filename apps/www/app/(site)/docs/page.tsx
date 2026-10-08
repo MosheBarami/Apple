@@ -81,7 +81,7 @@ export default function DocsPage() {
             another window, and pair that too.
           </li>
           <li>
-            You can disconnect from the panel or from the website. Nothing
+            You can disconnect from the plugin panel. Nothing
             already built is undone.
           </li>
         </ul>

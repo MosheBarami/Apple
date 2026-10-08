@@ -5,8 +5,10 @@ import { AtmosphereProvider } from "@/components/creative/atmosphere";
 import "./globals.css";
 import "./uiverse.css";
 import "./luminous.css";
+import "./assembly.css";
 
 export const metadata: Metadata = {
+  other: { "studpilot-build": process.env.STUDPILOT_WEB_BUILD_SHA ?? "development" },
   description:
     "StudPilot is a co-pilot that builds parts of your game inside your Roblox Studio: screens, systems, props and areas.",
   metadataBase: new URL("https://studpilot.app"),
@@ -20,8 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-const LIGHT_THEME_COLOR = "#f1f3fb";
-const DARK_THEME_COLOR = "#080b14";
+const LIGHT_THEME_COLOR = "#eef4f5";
+const DARK_THEME_COLOR = "#090e18";
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;

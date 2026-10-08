@@ -88,6 +88,7 @@ export const ConversationScrollButton = ({
   return (
     !isAtBottom && (
       <Button
+        aria-label="Scroll to latest message"
         className={cn(
           "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-md bg-background shadow-float transition-transform hover:-translate-y-0.5 dark:bg-background dark:hover:bg-muted",
           className

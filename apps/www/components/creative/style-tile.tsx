@@ -8,7 +8,7 @@ export function StyleTile() {
   return (
     <details className="style-tile">
       <summary>
-        Workspace style <span>Luminous studio</span>
+        Workspace style <span>Assembly studio</span>
       </summary>
       <div className="style-tile-body">
         <Wordmark />
@@ -16,8 +16,8 @@ export function StyleTile() {
           {[
             ["Canvas", "--background"],
             ["Surface", "--card"],
-            ["Violet", "--signal"],
-            ["Ice", "--cyan"],
+            ["Mint", "--signal"],
+            ["Sky", "--cyan"],
             ["Text", "--foreground"],
           ].map(([name, token]) => (
             <div key={token}>

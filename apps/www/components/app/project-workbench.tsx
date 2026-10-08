@@ -26,11 +26,13 @@ export function ProjectWorkbench({
   title,
   messages = [],
   busy = false,
+  compactOnly = false,
 }: {
   projectId: string | null;
   title?: string;
   messages?: FlueConversationMessage[];
   busy?: boolean;
+  compactOnly?: boolean;
 }) {
   const [tab, setTab] = useState<"project" | "activity" | "source">("project");
   const [project, setProject] = useState<Project | null>(null);
@@ -247,12 +249,12 @@ export function ProjectWorkbench({
   );
   return (
     <>
-      <aside className="project-workbench" aria-label="Project workspace">
+      <aside className={`project-workbench ${compactOnly ? "workbench-drawer-only" : ""}`} aria-label="Project workspace">
         {content}
       </aside>
       <button
         type="button"
-        className="workbench-mobile-trigger"
+        className={`workbench-mobile-trigger ${compactOnly ? "workbench-always-trigger" : ""}`}
         aria-label="Open project panel"
         onClick={() => setMobileOpen(true)}
       >

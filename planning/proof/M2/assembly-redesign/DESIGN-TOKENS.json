@@ -1,0 +1,80 @@
+{
+  "light": {
+    "--font-sans": "Manrope,Arial,sans-serif",
+    "--font-display": "'Space Grotesk',Arial,sans-serif",
+    "--font-mono": "'SFMono-Regular',Consolas,monospace",
+    "--background": "#eef4f5",
+    "--foreground": "#142838",
+    "--card": "#ffffff",
+    "--popover": "#fff",
+    "--primary": "#185d55",
+    "--primary-foreground": "#fff",
+    "--secondary": "#e0ecee",
+    "--muted": "#e4eef0",
+    "--muted-foreground": "#4d6575",
+    "--signal": "#176657",
+    "--cyan": "#2f62a1",
+    "--ring": "#247c6d",
+    "--border": "#315b6e26",
+    "--input": "#315b6e55",
+    "--sidebar": "#e5eef0",
+    "--sidebar-accent": "#d6e6e6",
+    "--glass": "#ffffffcc",
+    "--glow-violet": "#488db214",
+    "--glow-cyan": "#43b7a718",
+    "--uv-violet": "#257b70",
+    "--uv-blue": "#568fd3",
+    "--uv-glow": "#489e8d16",
+    "--assembly-amber": "#9a5b22",
+    "--motion-fast": "180ms",
+    "--motion-panel": "260ms",
+    "--ease-out": "cubic-bezier(.2,.8,.2,1)"
+  },
+  "dark": {
+    "--background": "#090e18",
+    "--foreground": "#eaf4fb",
+    "--card": "#121d2d",
+    "--popover": "#162335",
+    "--primary": "#a1f4df",
+    "--primary-foreground": "#092d29",
+    "--secondary": "#1b2b3d",
+    "--muted": "#142131",
+    "--muted-foreground": "#a0b3c8",
+    "--signal": "#73ebcf",
+    "--cyan": "#86baff",
+    "--ring": "#73ebcf",
+    "--border": "#9ac2e324",
+    "--input": "#9ac2e349",
+    "--sidebar": "#0c1421",
+    "--sidebar-accent": "#1b3041",
+    "--glass": "#122033dc",
+    "--glow-violet": "#4b83d317",
+    "--glow-cyan": "#45d3bc16",
+    "--uv-violet": "#73ebcf",
+    "--uv-blue": "#86baff",
+    "--uv-glow": "#63d9bd18",
+    "--assembly-amber": "#ffc88a"
+  },
+  "usage": {
+    "source": "apps/www/app/assembly.css",
+    "fonts": {
+      "body": "Manrope 200-800 variable, SIL OFL 1.1",
+      "display": "Space Grotesk 300-700 variable, SIL OFL 1.1",
+      "mono": "SFMono-Regular, Consolas, monospace"
+    },
+    "motion": {
+      "controls": "180ms",
+      "panels": "260ms",
+      "entrance": "600-1200ms",
+      "world": "9s transform loop",
+      "beams": "8s",
+      "glow": "4-9s",
+      "accessibility": "persistent-motion pause and prefers-reduced-motion"
+    },
+    "layout": {
+      "desktop": "composer and interactive concept side by side; independent evidence panel in conversations",
+      "mobile": "composer first; decorative concept omitted in app; accessible project drawer",
+      "settings": "controls and theme sample side by side; stacked below 1100px"
+    }
+  }
+}

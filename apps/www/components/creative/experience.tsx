@@ -11,6 +11,7 @@ export function ThemeToggle() {
     <button
       type="button"
       className="theme-switch"
+      disabled={!mounted}
       aria-pressed={dark}
       data-uiverse="alexruix/splendid-liger-23"
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}

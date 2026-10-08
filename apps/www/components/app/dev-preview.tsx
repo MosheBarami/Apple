@@ -165,12 +165,21 @@ export function DevPreview({
         <LibraryPage />
       ) : view === "settings" ? (
         <SettingsPage />
-      ) : view === "chat" || view === "pair" ? (
+      ) : view === "chat" ||
+        view === "pair" ||
+        view === "chat-error" ||
+        view === "chat-empty" ? (
         <ChatScreen
-          busy={true}
-          error={null}
-          messages={SAMPLE}
-          onSend={() => undefined}
+          busy={view === "chat" || view === "pair"}
+          error={
+            view === "chat-error"
+              ? "The connection was interrupted. Your draft is still here."
+              : null
+          }
+          messages={view === "chat-empty" ? [] : SAMPLE}
+          onSend={async () => {
+            if (view === "chat-error") throw new Error("Fixture send failure");
+          }}
           pair={view === "pair"}
           projectId="demo-0"
           ready

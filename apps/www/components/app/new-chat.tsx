@@ -11,7 +11,14 @@ import { useProjects } from "./projects-provider";
 import { StarterGrid } from "./starters";
 import { TopBar } from "./top-bar";
 import { ProjectWorkbench } from "./project-workbench";
-import { SparklesIcon } from "lucide-react";
+import {
+  SparklesIcon,
+  ArrowRightIcon,
+  MessageSquareIcon,
+  PlugIcon,
+  ScanEyeIcon,
+} from "lucide-react";
+import { AssemblyScene } from "@/components/creative/assembly-scene";
 export const NEW_DRAFT_KEY = "studpilot:new-draft";
 export function NewChat() {
   const router = useRouter();
@@ -64,42 +71,64 @@ export function NewChat() {
       <div className="agent-page-layout">
         <main className="new-agent-main" id="workspace-main">
           <div className="new-agent-content">
-            <div className="creation-eyebrow"><SparklesIcon size={14} /> YOUR NEXT IDEA STARTS HERE</div>
-            <h2>Think it.<br /><span className="luminous-text">Let’s build it.</span></h2>
-            <p>
-              A new mechanic. A better interface. A world of your own.
-              Create with an agent connected to Roblox Studio.
-            </p>
-            <div
-              className="creation-tabs"
-              role="group"
-              aria-label="Starting point"
-            >
-              {(["create", "edit"] as const).map((m) => (
-                <button
-                  type="button"
-                  key={m}
-                  aria-pressed={mode === m}
-                  onClick={() => setMode(m)}
+            <div className="creation-intro">
+              <div className="creation-writing">
+                <div className="creation-eyebrow">
+                  <SparklesIcon size={14} /> YOUR IDEAS HAVE A PLACE HERE
+                </div>
+                <h2>
+                  A little idea.
+                  <br />
+                  <span className="luminous-text">A world of possibility.</span>
+                </h2>
+                <p>
+                  Build something new. Make something better. Your creative
+                  partner is right here, connected to Roblox Studio.
+                </p>
+                <div
+                  className="creation-tabs"
+                  role="group"
+                  aria-label="Starting point"
                 >
-                  {m === "create"
-                    ? "Create something new"
-                    : "Improve my project"}
-                </button>
-              ))}
+                  {(["create", "edit"] as const).map((m) => (
+                    <button
+                      type="button"
+                      key={m}
+                      aria-pressed={mode === m}
+                      onClick={() => setMode(m)}
+                    >
+                      {m === "create"
+                        ? "Create something new"
+                        : "Improve my project"}
+                    </button>
+                  ))}
+                </div>
+                <Composer
+                  busy={busy}
+                  large
+                  value={draft}
+                  onChange={updateDraft}
+                  onSend={start}
+                />
+                {error ? (
+                  <p className="mt-3 text-xs text-destructive" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <p className="creation-draft-note">
+                  Your request starts a project. Studio edits require a
+                  connected plugin.
+                </p>
+              </div>
+              <AssemblyScene
+                onPick={(text) => {
+                  updateDraft(text);
+                  document
+                    .querySelector<HTMLTextAreaElement>("textarea")
+                    ?.focus();
+                }}
+              />
             </div>
-            <Composer
-              busy={busy}
-              large
-              value={draft}
-              onChange={updateDraft}
-              onSend={start}
-            />
-            {error ? (
-              <p className="mt-3 text-xs text-destructive" role="alert">
-                {error}
-              </p>
-            ) : null}
             <div className="new-agent-suggestions">
               <p>Try a starting point</p>
               <StarterGrid
@@ -113,6 +142,19 @@ export function NewChat() {
                 }}
               />
             </div>
+            <div className="creation-workflow" aria-label="How creating works">
+              <span>
+                <MessageSquareIcon /> Describe your idea
+              </span>
+              <ArrowRightIcon />
+              <span>
+                <PlugIcon /> Connect your place
+              </span>
+              <ArrowRightIcon />
+              <span>
+                <ScanEyeIcon /> Review the changes
+              </span>
+            </div>
             <p className="agent-keyboard-note">
               Enter to send · Shift+Enter for a new line
             </p>
@@ -121,7 +163,7 @@ export function NewChat() {
             </Link>
           </div>
         </main>
-        <ProjectWorkbench projectId={null} />
+        <ProjectWorkbench projectId={null} compactOnly />
       </div>
     </div>
   );

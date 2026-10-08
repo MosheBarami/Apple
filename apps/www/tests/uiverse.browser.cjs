@@ -109,6 +109,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.goto(base + '/dev/app');
     const toggle = page.locator('[data-uiverse="alexruix/splendid-liger-23"]');
     await expect(toggle).toBeVisible();
+    await expect(toggle).toBeEnabled();
     const before = await toggle.getAttribute('aria-pressed');
     await toggle.focus();
     await page.keyboard.press('Space');

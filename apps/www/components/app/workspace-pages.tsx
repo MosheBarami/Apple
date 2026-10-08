@@ -104,7 +104,10 @@ export function ProjectsPage() {
         </div>
       ) : null}
       {!projects && !error ? (
-        <p className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
+        <p
+          className="flex items-center gap-3 text-sm text-muted-foreground"
+          role="status"
+        >
           <UiverseBuildLoader /> Loading your projects…
         </p>
       ) : null}
@@ -179,7 +182,8 @@ export function LibraryPage() {
     >
       <div
         aria-label="Filter prompts"
-        className="uiverse-filter-group mb-6" data-uiverse="andrew-demchenk0/hot-bird-10"
+        className="uiverse-filter-group mb-6"
+        data-uiverse="andrew-demchenk0/hot-bird-10"
         role="group"
       >
         {["All", "Create", "Improve"].map((f) => (
@@ -205,7 +209,11 @@ export function LibraryPage() {
             (_, i) => filter === "All" || (filter === "Create" ? i < 3 : i >= 3)
           )
           .map((s, i) => (
-            <li className="prompt-library-card luminous-panel" data-uiverse="satyamchaudharydev/itchy-chipmunk-95" key={s.title}>
+            <li
+              className="prompt-library-card luminous-panel"
+              data-uiverse="satyamchaudharydev/itchy-chipmunk-95"
+              key={s.title}
+            >
               <PromptArtwork kind={i} />
               <div className="flex items-center gap-3">
                 <s.icon className="size-5 text-signal" />
@@ -240,73 +248,83 @@ export function SettingsPage() {
       heading="Your workspace, your way."
       title="Settings"
     >
-      <div className="max-w-2xl divide-y divide-border luminous-panel">
-        <section className="p-6">
-          <h3 className="font-medium">Appearance</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choose a theme that feels comfortable.
-          </p>
-          <div
-            aria-label="Appearance"
-            className="mt-5 uiverse-appearance-group"
-            data-uiverse="andrew-demchenk0/hot-bird-10"
-            role="group"
-          >
-            {[
-              { icon: SunIcon, id: "light", label: "Light" },
-              { icon: MoonIcon, id: "dark", label: "Dark" },
-              { icon: MonitorIcon, id: "system", label: "System" },
-            ].map((t) => (
-              <button
-                type="button"
-                aria-pressed={mounted && theme === t.id}
-                className={`flex flex-col items-center gap-3 rounded-md border py-5 text-sm transition-colors ${mounted && theme === t.id ? "border-signal bg-signal/5 text-signal" : "border-border hover:bg-muted"}`}
-                key={t.id}
-                onClick={() => setTheme(t.id)}
-              >
-                <t.icon className="size-5" />
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Motion follows your device’s reduced-motion preference.
+      <div className="settings-layout">
+        <div className="settings-controls divide-y divide-border luminous-panel">
+          <section className="p-6">
+            <h3 className="font-medium">Appearance</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose a theme that feels comfortable.
+            </p>
+            <div
+              aria-label="Appearance"
+              className="mt-5 uiverse-appearance-group"
+              data-uiverse="andrew-demchenk0/hot-bird-10"
+              role="group"
+            >
+              {[
+                { icon: SunIcon, id: "light", label: "Light" },
+                { icon: MoonIcon, id: "dark", label: "Dark" },
+                { icon: MonitorIcon, id: "system", label: "System" },
+              ].map((t) => (
+                <button
+                  type="button"
+                  aria-pressed={mounted && theme === t.id}
+                  className={`flex flex-col items-center gap-3 rounded-md border py-5 text-sm transition-colors ${mounted && theme === t.id ? "border-signal bg-signal/5 text-signal" : "border-border hover:bg-muted"}`}
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                >
+                  <t.icon className="size-5" />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Motion follows your device’s reduced-motion preference.
+            </p>
+          </section>
+          <section className="p-6">
+            <h3 className="font-medium">Account</h3>
+            <p className="mt-2 break-all text-sm text-muted-foreground">
+              {session === undefined
+                ? "Loading account…"
+                : (session?.user.email ??
+                  "No signed-in account in this preview.")}
+            </p>
+          </section>
+          <section className="p-6">
+            <h3 className="mb-4 font-medium">Credits</h3>
+            <CreditsMeter />
+            <Link
+              className="mt-4 inline-block text-sm text-signal"
+              href="/pricing"
+            >
+              View plans and pricing →
+            </Link>
+          </section>
+          <section className="p-6">
+            <h3 className="font-medium">Connecting your project</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Open a project and choose Connect Studio to pair it with your
+              place. Each project has its own connection.
+            </p>
+            <Link
+              className="mt-4 inline-flex items-center gap-2 text-sm text-signal"
+              href="/docs#pair"
+            >
+              <BookOpenIcon className="size-4" />
+              Read the setup guide
+            </Link>
+          </section>
+        </div>
+        <aside className="settings-preview" aria-label="Appearance preview">
+          <p className="studio-eyebrow">YOUR CREATIVE SPACE</p>
+          <h3>Make room for your next idea.</h3>
+          <p className="settings-preview-note">
+            Your theme follows you across every project. Preview the colors and
+            controls below.
           </p>
           <StyleTile />
-        </section>
-        <section className="p-6">
-          <h3 className="font-medium">Account</h3>
-          <p className="mt-2 break-all text-sm text-muted-foreground">
-            {session === undefined
-              ? "Loading account…"
-              : (session?.user.email ??
-                "No signed-in account in this preview.")}
-          </p>
-        </section>
-        <section className="p-6">
-          <h3 className="mb-4 font-medium">Credits</h3>
-          <CreditsMeter />
-          <Link
-            className="mt-4 inline-block text-sm text-signal"
-            href="/pricing"
-          >
-            View plans and pricing →
-          </Link>
-        </section>
-        <section className="p-6">
-          <h3 className="font-medium">Connecting your project</h3>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Open a project and choose Connect Studio to pair it with your place.
-            Each project has its own connection.
-          </p>
-          <Link
-            className="mt-4 inline-flex items-center gap-2 text-sm text-signal"
-            href="/docs#pair"
-          >
-            <BookOpenIcon className="size-4" />
-            Read the setup guide
-          </Link>
-        </section>
+        </aside>
       </div>
     </PageFrame>
   );

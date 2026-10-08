@@ -60,6 +60,6 @@ export const config = {
   // The two API prefixes are proxied to the StudPilot worker and carry their own bearer token; the renders and
   // other static files in public/ are served to everyone.
   matcher: [
-    "/((?!api/|studio/api/|_next/static|_next/image|favicon.ico|renders/|.*\\.(?:png|jpg|jpeg|webp|avif|svg|ico|txt|xml)$).*)",
+    "/((?!api/|studio/api/|_next/static|_next/image|favicon.ico|renders/|fonts/|.*\\.(?:png|jpg|jpeg|webp|avif|svg|ico|txt|xml)$).*)",
   ],
 };

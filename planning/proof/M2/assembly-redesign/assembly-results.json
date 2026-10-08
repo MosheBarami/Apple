@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Concept selection changes the illustration and fills an editable unsent draft",
+    "pass": true
+  },
+  {
+    "name": "Existing-chat send failure preserves draft through reload",
+    "pass": true
+  },
+  {
+    "name": "An existing-chat starting point populates the composer without sending",
+    "pass": true
+  },
+  {
+    "name": "Ambient geometry moves, freezes on pause, resumes, and obeys reduced motion",
+    "pass": true
+  },
+  {
+    "name": "The composer and connection control fit at desktop, laptop and phone sizes",
+    "pass": true
+  },
+  {
+    "name": "Full chat scroll respects the reader and offers a return to latest",
+    "pass": true
+  },
+  {
+    "name": "Every screenshot route is free of horizontal overflow",
+    "pass": true
+  }
+]
