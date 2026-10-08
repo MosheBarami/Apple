@@ -2753,23 +2753,31 @@ export class SessionDO extends DurableObject<Env> {
         return json({ ok: false, error: `${typeof tool === 'string' ? tool : 'that tool'} is not a Studio tool.` }, 403);
       }
       const ctx = this.agentCtx();
+      let checkpointNote: string | null = null;
       // The Studio agent is offered exactly STUDIO_TOOLS: no library tool, so no library-order gate holds its builds back.
       ctx.offeredTools = new Set(STUDIO_TOOLS);
       if (isStudioWriteTool(tool)) {
         const bind = await this.bind();
         if (!bind || !buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
-        const running = await this.ctx.storage.get<AgentState>('agent');
-        if (running && running.status !== 'idle') return json({ ok: false, error: 'StudPilot is already building in this project; wait for it to finish.' }, 409);
+        // No "already building" refusal here (owner, 2026-10-08): the old loop's run state is not this agent's, and a run left
+        // stuck from before the rebuild blocked every edit for good. The agent itself queues one turn at a time.
         const last = (await this.ctx.storage.get<number>('studioCheckpointAt')) ?? 0;
         if (Date.now() - last > STUDIO_CHECKPOINT_GAP_MS) {
           const checkpoint = await this.createCheckpoint('before StudPilot Studio changes', 'pre_agent', {
             description: 'StudPilot Studio was about to change the place.',
           });
-          if ('error' in checkpoint) return json({ ok: false, error: "Couldn't save a copy of the place first, so nothing was changed." }, 409);
+          // A place that cannot be copied (too large, a snapshot that times out) must not stop the work: every plugin edit is
+          // still recorded in Studio's own undo history. The agent is told once, and the copy is not retried before each edit.
+          if ('error' in checkpoint) {
+            checkpointNote = `Note for this turn: StudPilot could not save its own undo checkpoint (${checkpoint.error}). The change was made; it can be undone with Studio's Undo (Ctrl+Z). Mention this once in your reply.`;
+          }
           await this.ctx.storage.put('studioCheckpointAt', Date.now());
         }
       }
       const out = await runTool(ctx, tool, JSON.stringify(args ?? {}));
+      if (checkpointNote && out && typeof out === 'object' && typeof (out as { resultForLlm?: unknown }).resultForLlm === 'string') {
+        (out as { resultForLlm: string }).resultForLlm = `${checkpointNote}\n${(out as { resultForLlm: string }).resultForLlm}`;
+      }
       return json(out);
     }
 

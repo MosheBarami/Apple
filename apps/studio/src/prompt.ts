@@ -58,12 +58,13 @@ export function systemPrompt(facts: PromptFacts): string {
       ? `Roblox Studio is connected${facts.studio.placeName ? `, with the place "${facts.studio.placeName}" open` : ''}.`
       : 'Roblox Studio is NOT connected right now. You can answer questions and plan, but tools that touch the place will fail. Tell the person to open their place in Studio and press Connect on this project (the StudPilot plugin must be installed).'
     : 'The Studio connection state is unknown; a tool error will tell you if Studio is not connected.';
+  // Unchanging parts first, so the provider's prompt cache keeps serving them; what changes (Studio, the date) comes last.
   return `${IDENTITY}
+
+# Your skills (load_skill name)
+${skillIndex() || '(none loaded)'}
 
 # This project
 Project: "${facts.projectName}". ${studio}
-Today is ${new Date().toISOString().slice(0, 10)}.
-
-# Your skills (load_skill name)
-${skillIndex() || '(none loaded)'}`;
+Today is ${new Date().toISOString().slice(0, 10)}.`;
 }

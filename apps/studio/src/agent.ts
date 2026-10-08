@@ -19,9 +19,10 @@ import {
   type LanguageModelUsage,
 } from 'ai';
 import { createWorkersAI } from 'workers-ai-provider';
-import { meteredAi } from './metering.ts';
+import { type Holds, meteredAi, releaseAll, settleNext } from './metering.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
+import { compactHistory, TurnReadCache } from './token-saver.ts';
 
 /** Measured 2026-10-08 (scripts/model-probe.mjs): first token in 1.0s and first tool call in 2.1s, against 3.6s/6.1s for
  * DeepSeek V4 Pro (which then reasoned for 113s) and 9.9s for GLM 5.3 Flash. */
@@ -65,19 +66,25 @@ export class StudPilotAgent extends AIChatAgent<Env> {
           const status = await this.env.GATE.projectStatus(projectId).catch(() => null);
           if (status?.credits) writer.write({ type: 'data-credits', data: status.credits, transient: true });
 
+          const holds: Holds = { model, pending: [] };
           const workersai = createWorkersAI({
-            binding: meteredAi(this.env),
+            binding: meteredAi(this.env, holds),
             gateway: { id: this.env.AI_GATEWAY_ID },
           });
-          const messages = pruneMessages({
-            messages: await convertToModelMessages(this.messages),
-            reasoning: 'before-last-message',
-            toolCalls: 'before-last-2-messages',
-            emptyMessages: 'remove',
-          });
+          // Token saver: reasoning and tool traffic only for the latest exchange, older words shortened (token-saver.ts).
+          const messages = compactHistory(
+            pruneMessages({
+              messages: await convertToModelMessages(this.messages),
+              reasoning: 'before-last-message',
+              toolCalls: 'before-last-2-messages',
+              emptyMessages: 'remove',
+            }),
+          );
 
           const charge = async (usage: LanguageModelUsage) => {
             const cached = usage.inputTokenDetails?.cacheReadTokens ?? 0;
+            // The shared budget gets the step's real usage, not its reservation (metering.ts).
+            await settleNext(this.env, holds, { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 });
             await this.env.GATE.chargeUsage(projectId, model, {
               inputTokens: usage.inputTokens ?? 0,
               outputTokens: usage.outputTokens ?? 0,
@@ -92,13 +99,22 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             model: workersai(model, { reasoning_effort: 'low', sessionAffinity: projectId }),
             system: systemPrompt({ projectName: project.name, studio: status?.studio ?? null }),
             messages,
-            tools: { ...studioTools(this.env, projectId), ...knowledgeTools(this.env, writer) },
+            tools: { ...studioTools(this.env, projectId, new TurnReadCache()), ...knowledgeTools(this.env, writer) },
             stopWhen: isStepCount(MAX_STEPS),
             maxOutputTokens: 16_000,
             abortSignal: options?.abortSignal,
             experimental_transform: smoothStream({ chunking: 'word' }),
             onStepFinish: async ({ usage }) => {
               await charge(usage);
+            },
+            onFinish: async () => {
+              await releaseAll(this.env, holds);
+            },
+            onAbort: async () => {
+              await releaseAll(this.env, holds);
+            },
+            onError: async () => {
+              await releaseAll(this.env, holds);
             },
           });
           writer.merge(
