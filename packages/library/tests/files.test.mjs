@@ -74,3 +74,8 @@ test('an x.gltf.glb export and x.fbx are one model, the GLB first', async () => 
   for (const f of ['x/fbx/crate.fbx', 'x/gltf/crate.gltf.glb']) { mkdirSync(join(d, f, '..'), { recursive: true }); writeFileSync(join(d, f), 'x'); }
   assert.deepEqual(packModels(d).map((p) => basename(p)), ['crate.gltf.glb']);
 });
+
+test('in a character pack only a .glb or .fbx is a character; its .gltf held items are props', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../src/ingest-files.mjs', import.meta.url), 'utf8');
+  assert.match(src, /k === 'character' && \/\\\.gltf\$\/i\.test\(file\) \? 'prop' : k/);
+});

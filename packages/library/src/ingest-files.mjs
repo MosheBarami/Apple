@@ -27,6 +27,12 @@ const convertedFrom = (packDir, f) => {
 // A pack the ledger files under category 3 (maps and environments) holds terrain and scenery pieces, not finished maps:
 // they are props tagged 'environment'. A complete map is a different item (a place), never a single model.
 const KIND_OF_CATEGORY = { 1: 'prop', 2: 'building', 3: 'prop', 4: 'character', 5: 'vehicle', 13: 'animation' };
+// A character pack also ships the characters' held items (KayKit: rigged characters are .glb, weapons, shields and
+// books are .gltf): in a character pack, only a .glb or .fbx is a character; the rest are props.
+const kindOf = (row, file) => {
+  const k = KIND_OF_CATEGORY[(row.categories ?? [])[0]] ?? 'prop';
+  return k === 'character' && /\.gltf$/i.test(file) ? 'prop' : k;
+};
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const words = (s) => s.replace(/[-_.]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
 
@@ -96,7 +102,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const tags = [...new Set(name.toLowerCase().split(' ').filter((w) => w.length > 1))];
         const item = {
           id: idOf(ps, f),
-          title, kind: KIND_OF_CATEGORY[(row.categories ?? [])[0]] ?? 'prop', family: `${PREFIX}:${slug(ps)}`,
+          title, kind: kindOf(row, f), family: `${PREFIX}:${slug(ps)}`,
           source_url: row.url, author: author ?? 'unknown',
           licence_words: firstLicence(row.licence_words), licence_class: lic.class, licence_url: row.licence_url,
           ...(lic.class.startsWith('cc-by') ? { attribution: `${row.pack} by ${author} (${lic.class.toUpperCase()}, ${row.url})${notice ? `. ${notice}` : ''}` } : {}),

@@ -1,7 +1,7 @@
 // Master plan §4.3 #8 (UI art): Kenney's 2D packs (CC0), one style family per pack. One item per distinct PNG at
 // its base size: the same image again at 2x (Double, 2x, Retina, Large) and the sheets (tilesheets, tilemaps,
 // spritesheets, textures) are left out, and byte-identical files are kept once across packs. UI packs, borders and mobile
-// controls are frames; the rest are icons. The pack's own License.txt must say CC0, like its ledger row.
+// controls are frames; particle, smoke, splat and light-mask packs are VFX textures; the rest are icons. The pack's own License.txt must say CC0, like its ledger row.
 //
 //   node packages/library/src/ingest-kenney-2d.mjs --ledger <kenney-2d-ui.jsonl> --dir <packs> --out <items.jsonl>
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
@@ -12,8 +12,9 @@ import { aiCheck } from './aicheck.mjs';
 import { validateItem } from './item.mjs';
 import { KNOWN_HUMAN } from './ingest-pack.mjs';
 
-const DROP = /^(double|retina|large)\b|\(2[x×]\)|^2[x×]$|^(tilesheets?|tilemaps?|spritesheets?|textures)$/i;
+const DROP = /^(double|retina|large)\b|\(2[x×]\)|^2[x×]$|^(tilesheets?|tilemaps?|spritesheets?|textures)$|\(black background\)/i; // a black-background copy repeats its transparent twin
 const FRAMES = /^(ui-pack|pixel-ui-pack|fantasy-ui-borders|mobile-controls)/;
+const VFX = /^(particle-pack|smoke-particles|splat-pack|light-masks)$/; // textures for ParticleEmitters, Beams and Decals
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const words = (s) => s.replace(/[-_]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
 
@@ -56,7 +57,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       const title = titleOf(file, row.pack);
       const tags = [...new Set(words(file.replace(/\.png$/i, '')).toLowerCase().split(/[ /]+/).filter((w) => w.length > 1 && !/^(png|default|\d+)$/.test(w)))];
       const item = {
-        id: `kenney2d:${ps}:${slug(file.replace(/\.png$/i, ''))}`.slice(0, 120), title, kind: FRAMES.test(ps) ? 'frame' : 'icon',
+        id: `kenney2d:${ps}:${slug(file.replace(/\.png$/i, ''))}`.slice(0, 120), title, kind: VFX.test(ps) ? 'vfx' : FRAMES.test(ps) ? 'frame' : 'icon',
         family: `kenney2d:${ps}`, source_url: row.url, author: 'Kenney', licence_words: row.licence_words, licence_class: lic.class,
         licence_url: row.licence_url, fetched_at: fetched, uploader: 'none', file: `${ps}/${file}`, file_sha256: sha,
         categories: row.categories, tags, checks: { format: 'png', size: pngSize(buf) },
