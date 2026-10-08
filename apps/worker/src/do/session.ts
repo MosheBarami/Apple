@@ -2759,8 +2759,8 @@ export class SessionDO extends DurableObject<Env> {
       if (isStudioWriteTool(tool)) {
         const bind = await this.bind();
         if (!bind || !buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
-        const running = await this.ctx.storage.get<AgentState>('agent');
-        if (running && running.status !== 'idle') return json({ ok: false, error: 'StudPilot is already building in this project; wait for it to finish.' }, 409);
+        // No "already building" refusal here (owner, 2026-10-08): the old loop's run state is not this agent's, and a run left
+        // stuck from before the rebuild blocked every edit for good. The agent itself queues one turn at a time.
         const last = (await this.ctx.storage.get<number>('studioCheckpointAt')) ?? 0;
         if (Date.now() - last > STUDIO_CHECKPOINT_GAP_MS) {
           const checkpoint = await this.createCheckpoint('before StudPilot Studio changes', 'pre_agent', {
