@@ -7,18 +7,18 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 
 | # | Category | Target | Ingested (A / B / C) | Where it stands |
 |---|---|---|---|---|
-| 1 | Props and models | 10,000 | 6,782 (1,489 / 3,839 / 1,454) | Kenney, OpenGameArt and KayKit packs, incl. terrain and scenery pieces tagged environment |
-| 2 | Modular building sets | 150 families / 5,000 parts | 5,375 (703 / 3,274 / 1,398) | Kenney, OpenGameArt and KayKit families |
+| 1 | Props and models | 10,000 | 7,191 (1,490 / 3,913 / 1,788) | Kenney, OpenGameArt, KayKit and Poly Haven, incl. terrain and scenery pieces tagged environment |
+| 2 | Modular building sets | 150 families / 5,000 parts | 5,387 (703 / 3,274 / 1,410) | Kenney, OpenGameArt, KayKit and Poly Haven families |
 | 3 | Complete maps and environments | 300 | 0 | not started (terrain and scenery pieces are props, row 1) |
 | 4 | Characters, NPCs, creatures, pets | 1,500 | 439 (173 / 84 / 182) | Kenney, OpenGameArt and KayKit packs |
-| 5 | Vehicles and mechanisms | 400 | 691 (327 / 291 / 73) | Kenney, OpenGameArt and KayKit packs |
+| 5 | Vehicles and mechanisms | 400 | 698 (327 / 294 / 77) | Kenney, OpenGameArt, KayKit and Poly Haven |
 | 6 | Textures, materials, terrain presets | 1,000 | 2,009 (436 / 1,344 / 229) | ambientCG PBR materials (CC0), 95 families by material type; 1K-JPG sets hashed, colour maps kept; not uploaded yet (MaterialVariants need O-GROUP) |
 | 7 | Skies and lighting presets | 300 + 100 | 701 skies (206 / 245 / 250); 0 lighting presets | Poly Haven outdoor HDRIs (CC0), 1K HDR kept for the 6-face skybox made at upload; lighting presets need a source (Creator Store, O-KEY) |
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: icons A 5,421 / B 4,030 / C 2,201, frames A 649 / B 1,198 / C 9, plus 43 kit icons | 27 families; after the L4 overrides; not uploaded yet (O-GROUP) |
 | 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
 | 10 | VFX | 2,000 | 665 (153 / 310 / 202) | Kenney Particle Pack, Smoke Particles, Splat Pack and Light Masks (CC0) as textures for ParticleEmitters, Beams and Decals; Creator Store effects wait on O-KEY; not uploaded yet (O-GROUP) |
-| 11 | SFX | 30,000 indexed | 0 | ledger only |
-| 12 | Music | 10,000 indexed | 0 | ledger only (APM via Roblox) |
+| 11 | SFX | 30,000 indexed | 657 (219 / 436 / 2) | Kenney's 9 CC0 sound packs; Creator Store audio (by ID, no upload) waits on O-KEY; not uploaded yet (O-GROUP) |
+| 12 | Music | 10,000 indexed | 85 (0 / 85 / 0) | Kenney Music Jingles (CC0); the APM library is used by ID inside Roblox (O-KEY) |
 | 13 | Animations | 1,000 | 47 (0 / 2 / 45) | 3 OpenGameArt rigs graded as models; clips not yet split out |
 | 14 | Code modules | 300 | 404 (29 / 296 / 79) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4: 315 clean static scans; the 89 flagged reviewed by two reviewers each: 65 safe, 18 restricted (purchases, web, teleport: only when the game asks), 6 unsafe and kept out |
 | 15 | Knowledge | 100 % of the docs | 8,447 doc chunks, all embedded | creator-docs (966 guide pages, 1,200 API files) and luau.org, refreshed 2026-10-07 (#120): 1,170 new or changed, 90 removed upstream pruned; plus research and skill chunks |
@@ -76,6 +76,19 @@ near-black maps, decal strips and normal-map-like images.
 Skies (2026-10-08): Poly Haven's 701 outdoor HDRIs through its public API (CC0; a User-Agent naming StudPilot; no page
 scraping), each 1K HDR checked against the API's md5 and hashed. Two critics per board judged each as a Roblox skybox:
 A 206, B 245, C 250 (C: enclosed or cluttered panoramas). Credited 'Powered by Poly Haven' with the photographer.
+
+Poly Haven models (2026-10-08): its 520 CC0 models through the public API (a User-Agent naming StudPilot), each 1K
+glTF with its buffer and textures checked against the API's md5. Rendered from the files; 92 dense photoscans left out as
+over Roblox's mesh import limit (20,000 triangles a mesh, or 100,000 in all). Two critics per board graded the other 428:
+A 1, B 77, C 350. The photoreal scans clash with the chunky toy anchors, so only plain, bright or simple pieces pass
+(light-wood furniture, barrels, chests, a few foods). L4: two real firearms and a grenade set to Mild; wine bottles and
+two cigarette props set to C.
+
+Audio (2026-10-08): Kenney's ten CC0 audio packs, 742 sounds (2 byte-identical copies left out), each measured with
+ffprobe and ffmpeg (length, rate, channels, peak and mean level). Two critics per numbered waveform board, with name and
+levels on each tile: they cannot listen, so the grade covers name clarity, waveform shape (onset, silence, clipping) and
+level, and an owner listening check belongs in the SFX board. A 219, B 521, C 2; three 'kill him/her/it' announcer lines
+set to maturity Mild. OpenGameArt music (about 8,700 submissions) is not taken: grading music needs listening.
 
 Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
 Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.

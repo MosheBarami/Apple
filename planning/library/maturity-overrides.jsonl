@@ -718,3 +718,9 @@
 {"id": "kenney-audio:voiceover-pack-fighter:audio-kill-her", "maturity": "Mild", "reason": "L4: an announcer line saying 'kill her'; fighting games only (two critics flagged it, audio grade 2026-10-08)"}
 {"id": "kenney-audio:voiceover-pack-fighter:audio-kill-him", "maturity": "Mild", "reason": "L4: an announcer line saying 'kill him'; fighting games only (two critics flagged it, audio grade 2026-10-08)"}
 {"id": "kenney-audio:voiceover-pack-fighter:audio-kill-it", "maturity": "Mild", "reason": "L4: an announcer line saying 'kill it'; fighting games only (two critics flagged it, audio grade 2026-10-08)"}
+{"id": "ph:bolt-action-rifle-7-62", "maturity": "Mild", "reason": "L4: a real firearm model; offered for shooter or military games only (Poly Haven models, 2026-10-08)"}
+{"id": "ph:service-pistol", "maturity": "Mild", "reason": "L4: a real firearm model; offered for shooter or military games only (Poly Haven models, 2026-10-08)"}
+{"id": "ph:stick-grenade", "maturity": "Mild", "reason": "L4: a real explosive weapon; offered for shooter or military games only (Poly Haven models, 2026-10-08)"}
+{"id": "ph:wine-bottles-01", "grade": "C", "reason": "L4: alcohol (wine and champagne bottles) is kept out of all-ages games (Poly Haven models, 2026-10-08)"}
+{"id": "ph:cigarette-case", "grade": "C", "reason": "L4: tobacco is kept out of all-ages games (Poly Haven models, 2026-10-08)"}
+{"id": "ph:cigarette-pack", "grade": "C", "reason": "L4: tobacco is kept out of all-ages games (Poly Haven models, 2026-10-08)"}

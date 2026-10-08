@@ -1,9 +1,10 @@
 // Fetch OpenGameArt 3D packs from the ledger (master plan §4.4 step 3): for each allowed pack, its page's direct
 // file links (opengameart.org/sites/default/files/...), downloaded at most one request a second, archives unpacked with
 // bsdtar (zip, rar, 7z). Kenney uploads are skipped (ingested from kenney.nl); .blend files are fetched too and
-// converted by blend-to-glb.mjs. Resumable: a pack folder with a fetch.json is not fetched again.
+// converted by blend-to-glb.mjs. With --audio it fetches sound packs instead (audio files and archives), from the file
+// links list-oga.mjs wrote into each row. Resumable: a pack folder with a fetch.json is not fetched again.
 //
-//   node packages/library/tools/fetch-oga.mjs <ledger.jsonl> <out-dir> [--max-file-mb 300] [--max-total-gb 8]
+//   node packages/library/tools/fetch-oga.mjs <ledger.jsonl> <out-dir> [--audio] [--max-file-mb 300] [--max-total-gb 8]
 import { readFileSync, writeFileSync, mkdirSync, existsSync, createWriteStream, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -17,15 +18,18 @@ const flag = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 
 const MAX_FILE = flag('max-file-mb', 300) * 1e6, MAX_TOTAL = flag('max-total-gb', 8) * 1e9;
 const UA = { 'user-agent': 'StudPilot-Library/1.0 (+https://studpilot.app; library ingestion of CC0/CC-BY packs)' };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const MODEL = /\.(glb|gltf|obj|fbx|dae|blend|zip|rar|7z)$/i;
+const AUDIO = process.argv.includes('--audio');
+const MODEL = AUDIO ? /\.(ogg|wav|mp3|flac|zip|rar|7z)$/i : /\.(glb|gltf|obj|fbx|dae|blend|zip|rar|7z)$/i;
+const FORMATS = { audio: ['ogg', 'wav', 'mp3', 'flac', 'zip', 'rar', '7z'], models: ['glb', 'gltf', 'obj', 'fbx', 'dae', 'blend'] };
 
-/** Whether a ledger row is fetched: an allowed licence, not a Kenney upload, a model format three.js or Blender reads. Pure. */
-export function wanted(row) {
+/** Whether a ledger row is fetched: an allowed licence, not a Kenney upload, not in OGA's AI-assisted collection, a
+ * format the run wants (a model three.js or Blender reads, or with --audio a sound or an archive). Pure. */
+export function wanted(row, audio = AUDIO) {
   const words = String(row.licence_words ?? '').replace(/^License\(s\):\s*/i, '').split('|')[0];
   if (!classifyLicence(words).ok) return false;
-  if (/\bby kenney\b/i.test(row.human_made_evidence ?? '')) return false;
+  if (/\bby kenney\b/i.test(row.human_made_evidence ?? '') || row.ai_assisted) return false;
   const fm = (row.formats ?? []).map((f) => String(f).toLowerCase());
-  return fm.some((f) => ['glb', 'gltf', 'obj', 'fbx', 'dae', 'blend'].includes(f));
+  return fm.some((f) => FORMATS[audio ? 'audio' : 'models'].includes(f));
 }
 
 /** The direct file links of an OGA page (archives and model files only). Pure. */
@@ -35,7 +39,7 @@ export function fileLinks(html) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  if (!ledger || !out) { console.error('usage: fetch-oga.mjs <ledger.jsonl> <out-dir>'); process.exit(2); }
+  if (!ledger || !out) { console.error('usage: fetch-oga.mjs <ledger.jsonl> <out-dir> [--audio]'); process.exit(2); }
   const rows = readFileSync(ledger, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter(wanted);
   mkdirSync(out, { recursive: true });
   let total = 0, packs = 0;
@@ -45,11 +49,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (existsSync(join(dir, 'fetch.json'))) { packs++; continue; }
     if (total > MAX_TOTAL) { console.log(`stop: ${(total / 1e9).toFixed(1)} GB fetched this run`); break; }
     mkdirSync(dir, { recursive: true });
-    let html;
-    try { html = await (await fetch(row.url, { headers: UA })).text(); } catch (e) { console.log(`page ${slug}: ${e.message}`); continue; }
-    await wait(1000);
+    let links = row.files?.filter((u) => MODEL.test(decodeURIComponent(u))); // list-oga.mjs read the page already
+    if (!links) {
+      try { links = fileLinks(await (await fetch(row.url, { headers: UA })).text()); } catch (e) { console.log(`page ${slug}: ${e.message}`); continue; }
+      await wait(1000);
+    }
     const files = [];
-    for (const u of fileLinks(html)) {
+    for (const u of links) {
       const name = decodeURIComponent(u.split('/').pop()).replace(/[^A-Za-z0-9._ ()-]/g, '_');
       try {
         const head = await fetch(u, { method: 'HEAD', headers: UA });
