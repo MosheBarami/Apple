@@ -1,6 +1,11 @@
 import "katex/dist/katex.min.css";
 import { AppShell } from "@/components/app/app-shell";
+import { LegacyAppFrame } from "@/components/legacy-app-frame";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <LegacyAppFrame>
+      <AppShell>{children}</AppShell>
+    </LegacyAppFrame>
+  );
 }
