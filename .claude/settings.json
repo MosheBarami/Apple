@@ -165,6 +165,18 @@
     "/Users/moshe/.claude/rules/context7.md"
   ],
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/claude-cloud-start.sh\"",
+            "timeout": 900
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
