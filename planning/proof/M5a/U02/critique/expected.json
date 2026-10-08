@@ -1,5 +1,5 @@
 {
- "piece": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02",
+ "piece": "planning/proof/M5a/U02",
  "images": [
   {
    "file": "shots/play-1.jpg",
@@ -25,107 +25,107 @@
  "crops": [
   {
    "id": "play-1.panel",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/play-1.panel.png"
+   "path": "planning/proof/M5a/U02/critique/crops/play-1.panel.png"
   },
   {
    "id": "play-1.whole",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/play-1.whole.png"
+   "path": "planning/proof/M5a/U02/critique/crops/play-1.whole.png"
   },
   {
    "id": "play-2.panel",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/play-2.panel.png"
+   "path": "planning/proof/M5a/U02/critique/crops/play-2.panel.png"
   },
   {
    "id": "play-2.whole",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/play-2.whole.png"
+   "path": "planning/proof/M5a/U02/critique/crops/play-2.whole.png"
   },
   {
    "id": "play-3.panel",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/play-3.panel.png"
+   "path": "planning/proof/M5a/U02/critique/crops/play-3.panel.png"
   },
   {
    "id": "play-3.whole",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/play-3.whole.png"
+   "path": "planning/proof/M5a/U02/critique/crops/play-3.whole.png"
   },
   {
    "id": "ui-1174x623.panel",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.panel.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.panel.png"
   },
   {
    "id": "ui-1174x623.r1c1",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r1c1.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r1c1.png"
   },
   {
    "id": "ui-1174x623.r1c2",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r1c2.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r1c2.png"
   },
   {
    "id": "ui-1174x623.r1c3",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r1c3.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r1c3.png"
   },
   {
    "id": "ui-1174x623.r2c1",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r2c1.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r2c1.png"
   },
   {
    "id": "ui-1174x623.r2c2",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r2c2.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r2c2.png"
   },
   {
    "id": "ui-1174x623.r2c3",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r2c3.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r2c3.png"
   },
   {
    "id": "ui-1174x623.r3c1",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r3c1.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r3c1.png"
   },
   {
    "id": "ui-1174x623.r3c2",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r3c2.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r3c2.png"
   },
   {
    "id": "ui-1174x623.r3c3",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-1174x623.r3c3.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-1174x623.r3c3.png"
   },
   {
    "id": "ui-open-2.panel",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.panel.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.panel.png"
   },
   {
    "id": "ui-open-2.r1c1",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r1c1.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r1c1.png"
   },
   {
    "id": "ui-open-2.r1c2",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r1c2.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r1c2.png"
   },
   {
    "id": "ui-open-2.r1c3",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r1c3.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r1c3.png"
   },
   {
    "id": "ui-open-2.r2c1",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r2c1.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r2c1.png"
   },
   {
    "id": "ui-open-2.r2c2",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r2c2.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r2c2.png"
   },
   {
    "id": "ui-open-2.r2c3",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r2c3.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r2c3.png"
   },
   {
    "id": "ui-open-2.r3c1",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r3c1.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r3c1.png"
   },
   {
    "id": "ui-open-2.r3c2",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r3c2.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r3c2.png"
   },
   {
    "id": "ui-open-2.r3c3",
-   "path": "../../../../../../../Users/moshe/Developer/RbxAI-ci/planning/proof/M5a/U02/critique/crops/ui-open-2.r3c3.png"
+   "path": "planning/proof/M5a/U02/critique/crops/ui-open-2.r3c3.png"
   }
  ],
  "defects": [
