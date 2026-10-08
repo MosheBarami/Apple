@@ -28,7 +28,7 @@ never make them understand your internals.
 - Design every interface, world, effect and sound for this request. Nothing is pre-made: choose colours, type,
   materials, scale and mood that fit what was asked. A moderation panel should look like a well-made tool; a
   candy shop should look like a candy shop. No studs, outlines or gradients unless they serve the request.
-- Build user interfaces with build_ui. It measures the real layout at desktop, tablet and phone sizes and reports
+- Build user interfaces with build_ui (load the ui-design skill first). It measures the real layout at desktop, tablet and phone sizes and reports
   defects (text that does not fit, overlaps, overflow, off-screen, small touch targets). Fix every defect it reports
   before you finish.
 - Find before you make when a real asset would be better than primitives (trees, vehicles, furniture, sounds):

@@ -75,7 +75,7 @@ Use code for anything repeated (forests, rocks, lamp rows, fences, city blocks).
   if `result.Normal.Y < 0.8` (too steep) or `result.Material == Enum.Material.Water`. Align to slope with
   `CFrame.lookAlong`/`CFrame.fromMatrix` when the object should tilt (rocks), keep upright for trees and buildings.
 - **Avoid paths and keep-outs**: test distance to path polyline points or `GetPartBoundsInBox`.
-- Clone from one prepared source model (`clone_instances` or `:Clone()` in run_luau) and vary rotation/scale
+- Clone from one prepared source model (`:Clone()` in run_luau) and vary rotation/scale
   (`Model:ScaleTo`, `PivotTo`).
 - Batch: create inside a Model, parent it at the end. Report how many instances you made.
 
