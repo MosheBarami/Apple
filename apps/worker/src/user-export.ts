@@ -252,6 +252,16 @@ export const USER_EXPORT: readonly ExportTable[] = [
     },
   },
   {
+    // The Roblox accounts this person has linked as the ones they use in Studio, so Connect finds their Studio. Public Roblox
+    // ids and usernames, and this person's own.
+    store: 'd1',
+    table: 'studio_roblox_accounts',
+    access: 'worker',
+    ownerColumn: 'user_id',
+    fields: ['user_id', 'roblox_sub', 'username', 'created_at'],
+    excluded: {},
+  },
+  {
     // What a wipe on loss of Roblox access leaves next to the account id: the one-way code that stands in for the Roblox user id, so a re-authentication can find the account.
     // It is the person's own and says nothing a person could read: the code is a keyed digest and cannot be turned back into the id without the server's key.
     store: 'd1',
