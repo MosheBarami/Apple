@@ -5,7 +5,7 @@
  */
 import { jsonSchema, tool, type ToolSet, type UIMessageStreamWriter } from 'ai';
 import { z } from 'zod';
-import { searchCreatorStore } from './knowledge/creator-store.ts';
+import { formatCreatorStoreResult, searchCreatorStore } from './knowledge/creator-store.ts';
 import { readDoc, searchDocs } from './knowledge/docs.ts';
 import { SKILLS } from './skills.generated.ts';
 import { STUDIO_TOOL_SPECS } from './tools/generated.ts';
@@ -93,7 +93,7 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
         category: z.enum(['model', 'mesh', 'decal', 'audio', 'animation', 'video']).optional().describe('Default model.'),
         limit: z.number().int().min(1).max(20).optional(),
       }),
-      execute: async ({ query, category, limit }) => searchCreatorStore({ query, category: category ?? 'model', limit: limit ?? 8 }),
+      execute: async ({ query, category, limit }) => formatCreatorStoreResult(await searchCreatorStore({ query, category: category ?? 'model', limit: limit ?? 8 })),
     }),
     load_skill: tool({
       description:

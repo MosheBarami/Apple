@@ -16,6 +16,8 @@
     "AI_GATEWAY_ID": "studpilot",
     "AGENT_MODEL": "@cf/moonshotai/kimi-k2.7-code"
   },
+  // The docs index: Roblox Creator Docs + Luau docs, rebuilt weekly (scripts/docs-index, .github/workflows/docs-index.yml).
+  "d1_databases": [{ "binding": "DOCS", "database_name": "studpilot-docs", "database_id": "2384c651-1abd-4142-a6e1-9af0f2a7441b" }],
   "observability": { "enabled": true },
   "durable_objects": {
     "bindings": [
