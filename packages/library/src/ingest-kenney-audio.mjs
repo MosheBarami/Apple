@@ -27,14 +27,14 @@ export function createdOf(licence) {
 const files = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? files(join(d, f)) : [join(d, f)]));
 
 /** Duration, sample rate and channels of a sound, from ffprobe. */
-function measure(f) {
+export function measure(f) {
   const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', f], { encoding: 'utf8' }));
   const s = probe.streams?.[0] ?? {};
   return { seconds: Number(Number(probe.format?.duration).toFixed(3)), sample_rate: Number(s.sample_rate), channels: s.channels };
 }
 
 /** Peak and mean level in dBFS of a sound, from ffmpeg's volumedetect. */
-function levels(f) {
+export function levels(f) {
   const out = execFileSync('sh', ['-c', 'ffmpeg -hide_banner -nostats -i "$0" -af volumedetect -f null - 2>&1', f], { encoding: 'utf8' });
   const n = (k) => Number(new RegExp(`${k}_volume: (-?[\\d.]+) dB`).exec(out)?.[1]);
   return { peak_db: n('max'), mean_db: n('mean') };
