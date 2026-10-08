@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { TERMS_UPDATED, TermsBody } from "@/components/site/legal/terms-body";
-import { PageHeader } from "@/components/site/page-header";
+import { LegalPage } from "@/components/site/legal-page";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/terms" },
@@ -11,16 +11,8 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <>
-      <PageHeader
-        kicker={`Updated ${TERMS_UPDATED}`}
-        title="Terms of Service"
-      />
-      <div className="bg-background py-14 lg:py-20">
-        <article className="longform mx-auto w-full max-w-[760px] px-5 sm:px-8">
-          <TermsBody />
-        </article>
-      </div>
-    </>
+    <LegalPage title="Terms of Service" updated={TERMS_UPDATED}>
+      <TermsBody />
+    </LegalPage>
   );
 }

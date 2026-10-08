@@ -1,32 +1,25 @@
 import Link from "next/link";
-import { ArrowUpRightIcon } from "lucide-react";
-import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
+import { SiteNav } from "@/components/site/site-nav";
+
 export const metadata = { title: "Page not found" };
+
 export default function NotFound() {
   return (
-    <div className="site-shell flex min-h-dvh flex-col bg-background text-foreground">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <SiteNav />
-      <main
-        className="relative flex flex-1 items-center overflow-hidden py-24"
-        id="main"
-      >
-        <div className="site-container relative">
-          <p className="studio-eyebrow">
-            <span />A SMALL DETOUR
-          </p>
-          <h1 className="mt-5 font-display text-[100px] leading-none font-semibold tracking-[-.06em]">
-            404
-          </h1>
-          <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">
-            This page isn’t here. Let’s get you back to your next idea.
+      <main className="flex flex-1 items-center py-24" id="main">
+        <div className="site-container">
+          <p className="font-mono text-[12.5px] text-muted-foreground">404</p>
+          <h1 className="mt-4 font-semibold text-[40px] leading-[1.05] tracking-[-0.04em] sm:text-[56px]">This page isn&rsquo;t here.</h1>
+          <p className="mt-5 max-w-md text-[16px] text-muted-foreground leading-relaxed">
+            The link may be old, or the page may have moved. The docs have a search that can help.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/" className="studio-button">
-              <span>Back to home</span>
-              <ArrowUpRightIcon className="size-4" />
+            <Link className="inline-flex h-10 items-center rounded-[10px] bg-primary px-4 font-medium text-[14.5px] text-primary-foreground" href="/">
+              Back to home
             </Link>
-            <Link href="/docs" className="glass-button">
+            <Link className="inline-flex h-10 items-center rounded-[10px] border bg-card px-4 font-medium text-[14.5px]" href="/docs">
               Read the docs
             </Link>
           </div>
