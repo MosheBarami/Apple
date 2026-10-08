@@ -108,7 +108,9 @@ export function ChatView({
         .then(() => {
           try {
             sessionStorage.removeItem(firstMessageKey(projectId));
-          } catch { /* Sending succeeded; unavailable storage must not turn it into a failed send. */ }
+          } catch {
+            /* Sending succeeded; unavailable storage must not turn it into a failed send. */
+          }
         })
         .catch(() => setFailedFirst(first));
     }
@@ -137,7 +139,9 @@ export function ChatView({
                 await sendMessage(failedFirst);
                 try {
                   sessionStorage.removeItem(firstMessageKey(projectId));
-                } catch { /* Sending succeeded; unavailable storage must not turn it into a failed send. */ }
+                } catch {
+                  /* Sending succeeded; unavailable storage must not turn it into a failed send. */
+                }
                 setFailedFirst(null);
               } catch {
                 /* Agent error remains visible; the request stays available for retry. */
@@ -211,7 +215,7 @@ export function ChatScreen({
           ))}
           {waiting ? (
             <div
-              className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3"
+              className="luminous-panel flex items-center gap-3 px-4 py-3"
               role="status"
             >
               <span className="size-2 animate-pulse rounded-full bg-signal" />
@@ -219,7 +223,7 @@ export function ChatScreen({
             </div>
           ) : null}
           {error ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+            <div className="luminous-panel rounded-md border border-destructive/30 bg-destructive/5 p-4">
               <p className="text-destructive text-sm" role="alert">
                 {error}
               </p>

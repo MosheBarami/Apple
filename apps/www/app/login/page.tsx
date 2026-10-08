@@ -1,46 +1,58 @@
-import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
+import { ArrowLeftIcon } from "lucide-react";
 import { LoginForm } from "@/components/app/login-form";
-import { CreationOrbit } from "@/components/creative/creation-orbit";
 import { Wordmark } from "@/components/site/logo";
+import { ThemeToggle } from "@/components/creative/experience";
 export const metadata: Metadata = { title: "Sign in" };
 export default function LoginPage() {
   return (
-    <div className="grid min-h-dvh bg-background text-foreground lg:grid-cols-2">
-      <aside className="relative hidden overflow-hidden login-scene border-r border-border bg-muted/40 lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <div aria-hidden className="drafting-grid absolute inset-0" />
-        <Link className="relative w-fit" href="/">
+    <div className="login-experience">
+      <aside className="login-scene">
+        <Image
+          src="/art/creation-world.webp"
+          width={1600}
+          height={900}
+          alt="Original concept illustration of a floating world"
+          className="login-world"
+          sizes="50vw"
+        />
+        <Link href="/" className="w-fit">
           <Wordmark />
         </Link>
-        <div className="relative max-w-lg">
-          <CreationOrbit className="login-orbit" />
-          <p className="studio-eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
-          <h2 className="mt-5 text-5xl font-semibold leading-[1.1] tracking-[-0.045em]">
-            A space for your
+        <div>
+          <div className="release-badge">
+            <span className="signal-pulse" />A SPACE FOR YOUR IMAGINATION
+          </div>
+          <h2>
+            Your ideas.
             <br />
-            <span className="text-signal">next big idea.</span>
+            <span className="gradient-text">A world of possibility.</span>
           </h2>
-          <p className="mt-6 max-w-sm text-base leading-7 text-muted-foreground">
-            Start something new. Make something better. Your Roblox Studio, with
-            a creative co-pilot beside you.
+          <p>
+            A creative co-pilot for your Roblox project.
+            <br />
+            Start something new. Keep making it yours.
           </p>
         </div>
-        <p className="relative text-xs text-muted-foreground">
-          StudPilot · Made for creators
+        <p className="text-[9px] text-muted-foreground">
+          Original concept illustration · StudPilot
         </p>
       </aside>
-      <main className="flex flex-col px-6 py-8 sm:px-12" id="main">
-        <Link className="mb-8 w-fit lg:hidden" href="/">
-          <Wordmark />
-        </Link>
-        <div className="rise flex flex-1 items-center justify-center py-8">
+      <main className="login-main" id="main">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="login-mobile-logo">
+            <Wordmark />
+          </Link>
+          <span className="ml-auto">
+            <ThemeToggle />
+          </span>
+        </div>
+        <div className="login-form-frame rise">
           <LoginForm />
         </div>
-        <Link
-          className="mx-auto mt-8 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-          href="/"
-        >
+        <Link href="/" className="login-back">
           <ArrowLeftIcon className="size-3" />
           Back to StudPilot
         </Link>

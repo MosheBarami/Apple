@@ -1,83 +1,171 @@
 import {
-  ArrowUpRightIcon,
-  LinkIcon,
   MessageSquareIcon,
-  Undo2Icon,
+  CableIcon,
+  ScanEyeIcon,
+  ArrowUpRightIcon,
+  CheckIcon,
+  Wand2Icon,
+  LayersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Reveal } from "./reveal";
-
-const STEPS = [
+const CAPABILITIES = [
   {
-    body: "Pair your Studio project with a six-character code. You control when StudPilot can make changes.",
-    detail: "01 / CONNECT",
-    icon: LinkIcon,
-    title: "Your place. Your starting point.",
+    icon: LayersIcon,
+    title: "Interfaces that belong in your game",
+    body: "Menus, shops, inventories and HUDs. Describe the experience you want, then keep refining it.",
+    tag: "CREATE",
   },
   {
-    body: "Describe a new idea or a change to something you already made. Keep the context and follow the work in one chat.",
-    detail: "02 / CREATE & REFINE",
-    icon: MessageSquareIcon,
-    title: "Start with a conversation.",
+    icon: Wand2Icon,
+    title: "Your existing project. More possibilities.",
+    body: "Bring the context you already have. Explore your place, work on a mechanic, or ask for a focused edit.",
+    tag: "REFINE",
   },
   {
-    body: "Review what changed, see what still needs attention, and ask for the next edit. A checkpoint lets you go back.",
-    detail: "03 / REVIEW",
-    icon: Undo2Icon,
-    title: "Keep shaping it in Studio.",
+    icon: ScanEyeIcon,
+    title: "Know what happened at every step",
+    body: "Follow the work, review the result and see what still needs attention. Keep the conversation with your project.",
+    tag: "UNDERSTAND",
   },
 ];
 export function HowItWorks() {
   return (
-    <section
-      aria-labelledby="how-title"
-      className="border-b border-border py-20 lg:py-28"
-      id="how-it-works"
-    >
-      <div className="mx-auto max-w-[1200px] px-6 sm:px-8">
-        <Reveal className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div>
+    <>
+      <section className="workflow-strip" aria-label="The StudPilot workflow">
+        <div>
+          <span>YOUR IDEA</span>
+          <i />
+          <span>ONE CONVERSATION</span>
+          <i />
+          <span>YOUR STUDIO PROJECT</span>
+          <i />
+          <span>THE NEXT ITERATION</span>
+        </div>
+      </section>
+      <section
+        className="capabilities section-space"
+        id="how-it-works"
+        aria-labelledby="how-title"
+      >
+        <div className="site-container">
+          <Reveal className="section-heading">
             <p className="studio-eyebrow">
-              A little less friction. A lot more creating.
+              <span />
+              CREATE WITHOUT THE FRICTION
             </p>
-            <h2
-              className="mt-4 max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl"
-              id="how-title"
-            >
-              From “what if”
+            <h2 id="how-title">
+              You bring the vision.
               <br />
-              to your next iteration.
+              <span className="text-muted-foreground">
+                We keep the momentum.
+              </span>
             </h2>
+            <p>
+              A workspace built around the way ideas evolve.
+              <br />
+              Start small. Try things. Make them yours.
+            </p>
+          </Reveal>
+          <div className="feature-grid">
+            {CAPABILITIES.map((c, i) => (
+              <Reveal
+                key={c.title}
+                delay={i * 90}
+                className={`feature-panel feature-${i} luminous-panel`}
+              >
+                <div className="feature-visual" aria-hidden>
+                  {i === 0 ? (
+                    <div className="mini-interface">
+                      <div />
+                      <span />
+                      <span />
+                      <b>
+                        <span />
+                        <span />
+                      </b>
+                    </div>
+                  ) : i === 1 ? (
+                    <div className="mini-connections">
+                      <span>
+                        <Wand2Icon />
+                      </span>
+                      <i />
+                      <span>
+                        <LayersIcon />
+                      </span>
+                      <i />
+                      <span>
+                        <CheckIcon />
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mini-steps">
+                      {[
+                        "Request understood",
+                        "Changes made",
+                        "Review the result",
+                      ].map((v, k) => (
+                        <span key={v}>
+                          <CheckIcon />
+                          {v}
+                          <i style={{ animationDelay: `${k * 0.4}s` }} />
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="studio-eyebrow">{c.tag}</p>
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
+              </Reveal>
+            ))}
           </div>
-          <Link
-            className="inline-flex items-center gap-2 text-sm font-medium text-signal"
-            href="/docs"
-          >
-            Explore the workflow <ArrowUpRightIcon className="size-4" />
-          </Link>
-        </Reveal>
-        <ol className="mt-14 grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
-          {STEPS.map((s, i) => (
-            <Reveal
-              as="li"
-              className="py-8 first:pl-0 md:px-8 md:py-0"
-              delay={i * 80}
-              key={s.title}
-            >
-              <s.icon className="mb-9 size-6 text-signal" strokeWidth={1.5} />
-              <p className="font-mono text-[10px] tracking-widest text-muted-foreground">
-                {s.detail}
-              </p>
-              <h3 className="mt-3 text-xl font-medium tracking-tight">
-                {s.title}
-              </h3>
-              <p className="mt-3 max-w-sm text-sm leading-7 text-muted-foreground">
-                {s.body}
-              </p>
+          <div className="journey-band">
+            <Reveal>
+              <p className="studio-eyebrow">YOUR FIRST FIVE MINUTES</p>
+              <h3>One simple creative loop.</h3>
+              <Link
+                href="/docs"
+                className="inline-flex items-center gap-2 text-sm text-signal"
+              >
+                Get the setup guide
+                <ArrowUpRightIcon className="size-4" />
+              </Link>
             </Reveal>
-          ))}
-        </ol>
-      </div>
-    </section>
+            <ol>
+              {[
+                {
+                  n: "01",
+                  icon: MessageSquareIcon,
+                  title: "Start the conversation",
+                  text: "Describe your idea in plain words.",
+                },
+                {
+                  n: "02",
+                  icon: CableIcon,
+                  title: "Connect your place",
+                  text: "Pair Studio with a six-character code.",
+                },
+                {
+                  n: "03",
+                  icon: ScanEyeIcon,
+                  title: "Review & keep shaping",
+                  text: "See what changed. Ask for the next edit.",
+                },
+              ].map((s) => (
+                <li key={s.n}>
+                  <span className="step-number">{s.n}</span>
+                  <div>
+                    <strong>{s.title}</strong>
+                    <p>{s.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

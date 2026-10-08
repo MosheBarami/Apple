@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { StyleTile } from "@/components/creative/style-tile";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/lib/supabase";
 import { CreditsMeter } from "./credits-meter";
@@ -38,13 +39,20 @@ function PageFrame({
       <TopBar projectId={null} title={title} />
       <main className="flex-1 overflow-auto" id="workspace-main">
         <div className="mx-auto max-w-5xl px-5 py-10 sm:px-10 sm:py-14">
-          <p className="studio-eyebrow">{eyebrow}</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-            {heading}
-          </h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            {description}
-          </p>
+          <div className="app-page-heading">
+            <div className="app-page-content">
+              <p className="studio-eyebrow">
+                <span />
+                {eyebrow}
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+                {heading}
+              </h2>
+              <p className="mt-3 max-w-xl text-xs leading-6 text-muted-foreground">
+                {description}
+              </p>
+            </div>
+          </div>
           <div className="mt-9">{children}</div>
         </div>
       </main>
@@ -85,7 +93,7 @@ export function ProjectsPage() {
             {error}
           </p>
           <button
-                  type="button"
+            type="button"
             className="mt-3 text-sm text-signal underline"
             onClick={refresh}
           >
@@ -111,7 +119,7 @@ export function ProjectsPage() {
           </p>
           {query ? (
             <button
-                  type="button"
+              type="button"
               className="mt-5 text-sm text-signal"
               onClick={() => setQuery("")}
             >
@@ -124,29 +132,29 @@ export function ProjectsPage() {
           )}
         </div>
       ) : null}
-      <ul className="divide-y divide-border border-t border-border">
+      <ul className="project-grid">
         {shown.map((p) => (
-          <li key={p.id}>
+          <li key={p.id} className="fade-up">
             <Link
-              className="group flex items-center gap-4 px-3 py-5 transition-colors hover:bg-muted/60"
               href={`/app/chat/${p.id}`}
+              className="project-card luminous-panel"
             >
-              <span className="grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card text-signal">
-                <FolderIcon className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
-                  {p.name}
+              <div className="project-cover" aria-hidden>
+                <FolderIcon />
+              </div>
+              <div className="flex gap-3 items-center">
+                <span className="min-w-0 flex-1">
+                  <strong className="truncate">{p.name}</strong>
+                  <small>
+                    Updated{" "}
+                    {new Date(p.updated_at).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </small>
                 </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  Updated{" "}
-                  {new Date(p.updated_at).toLocaleDateString(undefined, {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-              </span>
-              <ArrowUpRightIcon className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                <ArrowUpRightIcon className="size-4 text-muted-foreground" />
+              </div>
             </Link>
           </li>
         ))}
@@ -183,7 +191,7 @@ export function LibraryPage() {
       >
         {["All", "Create", "Improve"].map((f) => (
           <button
-                  type="button"
+            type="button"
             aria-pressed={filter === f}
             className={`rounded-md border px-4 py-2 text-xs transition-colors ${filter === f ? "border-signal bg-signal/5 text-signal" : "border-border text-muted-foreground hover:bg-muted"}`}
             key={f}
@@ -204,10 +212,7 @@ export function LibraryPage() {
             (_, i) => filter === "All" || (filter === "Create" ? i < 3 : i >= 3)
           )
           .map((s) => (
-            <li
-              className="flex flex-col rounded-md border border-border bg-card p-6"
-              key={s.title}
-            >
+            <li className="prompt-library-card luminous-panel" key={s.title}>
               <div className="flex items-center gap-3">
                 <s.icon className="size-5 text-signal" />
                 <span className="studio-eyebrow">{s.category}</span>
@@ -217,7 +222,7 @@ export function LibraryPage() {
                 {s.text}
               </p>
               <button
-                  type="button"
+                type="button"
                 className="mt-6 flex items-center gap-2 text-sm font-medium text-signal"
                 onClick={() => usePrompt(s.text)}
               >
@@ -241,7 +246,7 @@ export function SettingsPage() {
       heading="Your workspace, your way."
       title="Settings"
     >
-      <div className="max-w-2xl divide-y divide-border rounded-md border border-border bg-card">
+      <div className="max-w-2xl divide-y divide-border luminous-panel">
         <section className="p-6">
           <h3 className="font-medium">Appearance</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -258,7 +263,7 @@ export function SettingsPage() {
               { icon: MonitorIcon, id: "system", label: "System" },
             ].map((t) => (
               <button
-                  type="button"
+                type="button"
                 aria-pressed={mounted && theme === t.id}
                 className={`flex flex-col items-center gap-3 rounded-md border py-5 text-sm transition-colors ${mounted && theme === t.id ? "border-signal bg-signal/5 text-signal" : "border-border hover:bg-muted"}`}
                 key={t.id}
@@ -272,6 +277,9 @@ export function SettingsPage() {
           <p className="mt-4 text-xs text-muted-foreground">
             Motion follows your device’s reduced-motion preference.
           </p>
+          <div className="mt-4">
+            <StyleTile />
+          </div>
         </section>
         <section className="p-6">
           <h3 className="font-medium">Account</h3>

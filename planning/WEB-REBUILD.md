@@ -129,3 +129,7 @@ The planner wrote this from the owner's decisions. **This is a real rebuild, not
 ## Owner revision — 2026-10-08
 
 Website-only takeover and revised visual direction: the owner rejected the flat, square iteration and selected a **dark futuristic interface with lighting and rich motion**. See [the current review and validation limits](proof/W-2026-10-08/SUMMARY.md). Earlier website-only radius constraints are superseded by this decision. Public deployment still requires the visual review.
+
+## Superseding owner brief — 2026-10-08
+
+The owner rejected the preceding implementation and ordered a complete rebuild under the supplied SaaS brief: **Luminous Futurism, abundant animation/shimmer, an asymmetric hero with a live interactive/mock product preview, working theme/pricing controls, cohesive original assets, and an actual-token style tile.** Earlier hero-only and restrained-motion restrictions are superseded. The rebuilt public and signed-in experience is documented in [the current summary](proof/W-2026-10-08/SUMMARY.md), with [asset provenance](proof/W-2026-10-08/ASSET-PROMPT.md). There is no approval to replace the public website yet.

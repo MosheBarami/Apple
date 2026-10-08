@@ -1,38 +1,96 @@
-import { ArrowUpRightIcon } from "lucide-react";
+"use client";
+import { ArrowUpRightIcon, PlayIcon, CheckIcon } from "lucide-react";
 import Link from "next/link";
-import { CreationOrbit } from "@/components/creative/creation-orbit";
-
+import { useState } from "react";
+import { AmbientField } from "@/components/creative/experience";
+import { StudioDemo } from "@/components/creative/studio-demo";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 export function Hero() {
+  const [watch, setWatch] = useState(false);
   return (
-    <section
-      aria-labelledby="hero-title"
-      className="studio-hero relative overflow-hidden border-b border-border"
-    >
-      <CreationOrbit className="hero-orbit" />
-      <div className="relative mx-auto max-w-5xl px-6 pt-52 pb-24 text-center sm:pt-64 sm:pb-28">
-        <h1
-          className="rise text-balance text-[clamp(3rem,6.8vw,6rem)] font-semibold leading-[1.03] tracking-[-0.065em]"
-          id="hero-title"
-        >
-          Your next idea.
-          <br />
-          <span className="creative-title">Built in Studio.</span>
-        </h1>
-        <p
-          className="rise mx-auto mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl"
-          style={{ animationDelay: "80ms" }}
-        >
-          A creative co-pilot for your Roblox game. Describe what you want to
-          build or change, and work on it together.
-        </p>
-        <Link
-          className="studio-button rise mt-9 inline-flex gap-3"
-          href="/login"
-          style={{ animationDelay: "160ms" }}
-        >
-          Start building <ArrowUpRightIcon className="size-4" />
-        </Link>
+    <section className="saas-hero" aria-labelledby="hero-title">
+      <AmbientField />
+      <div className="hero-layout">
+        <div className="hero-copy">
+          <div className="release-badge">
+            <span className="signal-pulse" />
+            YOUR CREATIVE CO-PILOT
+            <span className="badge-divider" />
+            BETA
+          </div>
+          <h1 id="hero-title">
+            Big ideas.
+            <br />
+            <span className="gradient-text">
+              Meet your
+              <br />
+              building partner.
+            </span>
+          </h1>
+          <p>
+            Your next Roblox creation starts with a conversation. Shape worlds,
+            craft interfaces and improve your game — right beside Studio.
+          </p>
+          <div className="hero-actions">
+            <Link href="/login" className="studio-button">
+              <span>Start building free</span>
+              <ArrowUpRightIcon className="size-4" />
+            </Link>
+            <button
+              type="button"
+              className="glass-button"
+              onClick={() => setWatch(true)}
+            >
+              <PlayIcon className="size-4" />
+              Watch demo
+            </button>
+          </div>
+          <div className="hero-footnotes">
+            <span>
+              <CheckIcon />
+              No card needed
+            </span>
+            <span>
+              <CheckIcon />
+              Your Studio. Your control.
+            </span>
+          </div>
+        </div>
+        <div className="hero-preview">
+          <div aria-hidden className="preview-halo" />
+          <div className="preview-window">
+            <StudioDemo />
+          </div>
+          <div className="floating-note">
+            <span className="note-icon">
+              <SparklesIcon />
+            </span>
+            <div>
+              <strong>From prompt to possibility</strong>
+              <span>An interactive concept preview</span>
+            </div>
+          </div>
+        </div>
       </div>
+      <Dialog open={watch} onOpenChange={setWatch}>
+        <DialogContent className="demo-dialog">
+          <DialogHeader>
+            <DialogTitle>Take StudPilot for a spin</DialogTitle>
+            <DialogDescription>
+              Try the demo request, switch views, or buy an item in the sample
+              shop. This is an interactive UI demonstration.
+            </DialogDescription>
+          </DialogHeader>
+          <StudioDemo large />
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
+import { SparklesIcon } from "lucide-react";

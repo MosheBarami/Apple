@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeToggle } from "@/components/creative/experience";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StudioLight } from "./studio-light";
 
@@ -35,6 +36,7 @@ export function TopBar({
           className="live-bar absolute inset-x-0 bottom-0 h-px opacity-70"
         />
       ) : null}
+      <ThemeToggle />
       <StudioLight openOnMount={openStudioOnMount} projectId={projectId} />
     </header>
   );

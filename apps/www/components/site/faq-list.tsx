@@ -6,16 +6,16 @@ export function FaqList({
   items?: readonly { q: string; a: string }[];
 }) {
   return (
-    <div className="divide-y divide-border border-y border-border">
+    <div className="faq-list">
       {items.map((item) => (
-        <details className="group" key={item.q}>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-base font-medium">
+        <details key={item.q} className="faq-item">
+          <summary>
             {item.q}
-            <PlusIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45" />
+            <PlusIcon className="size-4 shrink-0" />
           </summary>
-          <p className="max-w-2xl pb-6 text-sm leading-7 text-muted-foreground">
-            {item.a}
-          </p>
+          <div className="faq-answer">
+            <p>{item.a}</p>
+          </div>
         </details>
       ))}
     </div>

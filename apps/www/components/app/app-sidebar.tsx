@@ -60,7 +60,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="h-9 border border-sidebar-border bg-background shadow-card transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-background hover:shadow-float active:translate-y-0"
+              className="h-10 border border-signal/25 bg-signal/10 shadow-card transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-background hover:shadow-float active:translate-y-0"
               tooltip="New creation"
             >
               <Link href="/app" onClick={() => setOpenMobile(false)}>

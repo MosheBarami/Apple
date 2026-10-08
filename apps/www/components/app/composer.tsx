@@ -76,8 +76,8 @@ export function Composer({
         </PromptInputBody>
         <PromptInputFooter className="px-4 pb-3">
           <PromptInputTools>
-            <span className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-signal" />
+            <span className="flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
+              <span className="signal-pulse" />
               StudPilot<span className="mx-1 text-border">/</span>Roblox Studio
             </span>
           </PromptInputTools>

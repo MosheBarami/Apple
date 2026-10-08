@@ -2,8 +2,10 @@
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CreationOrbit } from "@/components/creative/creation-orbit";
-import { MotionSurface } from "@/components/creative/motion-surface";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpRightIcon, SparklesIcon, BookOpenIcon } from "lucide-react";
+
 import { createProject, firstMessageKey } from "@/lib/api";
 import { Composer } from "./composer";
 import { useProjects } from "./projects-provider";
@@ -22,13 +24,17 @@ export function NewChat() {
   useEffect(() => {
     try {
       setDraft(sessionStorage.getItem(NEW_DRAFT_KEY) ?? "");
-    } catch { /* Draft persistence is optional when browser storage is unavailable. */ }
+    } catch {
+      /* Draft persistence is optional when browser storage is unavailable. */
+    }
   }, []);
   const updateDraft = (text: string) => {
     setDraft(text);
     try {
       sessionStorage.setItem(NEW_DRAFT_KEY, text);
-    } catch { /* Draft persistence is optional when browser storage is unavailable. */ }
+    } catch {
+      /* Draft persistence is optional when browser storage is unavailable. */
+    }
   };
   const start = async (text: string) => {
     setBusy(true);
@@ -55,47 +61,60 @@ export function NewChat() {
     <div className="workspace-canvas flex h-dvh flex-col">
       <TopBar projectId={null} title="Create" />
       <main className="flex-1 overflow-y-auto" id="workspace-main">
-        <div className="mx-auto flex min-h-full w-full max-w-[850px] flex-col justify-center px-5 py-12 sm:px-8">
-          <div className="creation-intro relative mb-6">
-            <CreationOrbit className="intro-orbit" compact />
-            <div className="relative">
-              <p className="studio-eyebrow mb-3">YOUR CREATIVE WORKSPACE</p>
-              <h2 className="text-balance text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-[42px]">
-                A little spark.
-                <br />
-                <span className="creative-title">A whole new possibility.</span>
-              </h2>
-              <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
-                Start something new or give your existing game its next chapter.
-                You bring the idea. We’ll work on it together.
-              </p>
+        <div className="app-create-layout">
+          <div className="min-w-0">
+            <div className="creation-banner">
+              <Image
+                src="/art/creation-world.webp"
+                width={1600}
+                height={900}
+                alt=""
+                className="banner-art"
+                sizes="(max-width: 640px) 85vw, 600px"
+                priority
+              />
+              <div className="creation-banner-copy">
+                <p className="studio-eyebrow">
+                  <span />
+                  YOUR CREATIVE WORKSPACE
+                </p>
+                <h2>
+                  What will you
+                  <br />
+                  <span className="gradient-text">bring to life?</span>
+                </h2>
+                <p>
+                  Your next Roblox idea starts here. Describe what you want to
+                  create or change. Let’s work on it together.
+                </p>
+              </div>
             </div>
-          </div>
-          <div
-            aria-label="Starting point"
-            className="creation-tabs mb-5 flex gap-1 self-start"
-            role="group"
-          >
-            {(["create", "edit"] as const).map((m) => (
-              <button
-                aria-pressed={mode === m}
-                className={`relative rounded-full px-4 py-2.5 text-xs transition-colors ${mode === m ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                key={m}
-                onClick={() => setMode(m)}
-                type="button"
-              >
-                {m === "create" ? "Create something new" : "Improve my project"}
-                {mode === m ? (
-                  <motion.span
-                    className="absolute inset-0 -z-10 rounded-full bg-card shadow-sm"
-                    layoutId="start-mode"
-                    transition={{ duration: reduce ? 0 : 0.22 }}
-                  />
-                ) : null}
-              </button>
-            ))}
-          </div>
-          <MotionSurface className="composer-stage">
+            <div
+              className="creation-tabs"
+              role="group"
+              aria-label="Starting point"
+            >
+              {(["create", "edit"] as const).map((m) => (
+                <button
+                  type="button"
+                  key={m}
+                  aria-pressed={mode === m}
+                  onClick={() => setMode(m)}
+                  className={`relative ${mode === m ? "text-foreground" : "text-muted-foreground"}`}
+                >
+                  {mode === m ? (
+                    <motion.span
+                      className="selection-glass"
+                      layoutId="start-mode"
+                      transition={{ duration: reduce ? 0 : 0.2 }}
+                    />
+                  ) : null}
+                  {m === "create"
+                    ? "Create something new"
+                    : "Improve my project"}
+                </button>
+              ))}
+            </div>
             <Composer
               busy={busy}
               large
@@ -103,31 +122,83 @@ export function NewChat() {
               onSend={start}
               value={draft}
             />
-          </MotionSurface>
-          {error ? (
-            <p className="mt-3 text-sm text-destructive" role="alert">
-              {error}
+            {error ? (
+              <p className="mt-3 text-xs text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <div className="mt-7">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[10px] text-muted-foreground">
+                  A little inspiration to get you started
+                </p>
+                <Link href="/app/library" className="text-[9px] text-signal">
+                  Explore prompts ↗
+                </Link>
+              </div>
+              <StarterGrid
+                disabled={busy}
+                mode={mode}
+                onPick={(text) => {
+                  updateDraft(text);
+                  document
+                    .querySelector<HTMLTextAreaElement>("textarea")
+                    ?.focus();
+                }}
+              />
+            </div>
+            <p className="mt-6 text-[9px] leading-5 text-muted-foreground">
+              Enter to send · Shift+Enter for a new line. Connect Studio when
+              you’re ready to work in your place.
             </p>
-          ) : null}
-          <div className="mt-8">
-            <p className="mb-3 text-xs text-muted-foreground">
-              A starting point, if you need one
-            </p>
-            <StarterGrid
-              disabled={busy}
-              mode={mode}
-              onPick={(text) => {
-                updateDraft(text);
-                document
-                  .querySelector<HTMLTextAreaElement>("textarea")
-                  ?.focus();
-              }}
-            />
           </div>
-          <p className="mt-7 text-xs leading-5 text-muted-foreground">
-            Connect your project in Studio when you’re ready to work in your
-            place.
-          </p>
+          <aside className="creation-aside" aria-label="Getting started">
+            <div className="readiness-panel luminous-panel">
+              <h3>Get Studio ready.</h3>
+              <p>
+                A few steps to get your workspace ready. Each project has its
+                own connection.
+              </p>
+              <ol>
+                {[
+                  {
+                    title: "Open your place",
+                    text: "Choose the project in Roblox Studio.",
+                  },
+                  {
+                    title: "Pair the plugin",
+                    text: "Use the six-character code from your chat.",
+                  },
+                  {
+                    title: "Choose edit access",
+                    text: "Enable changes when you are ready.",
+                  },
+                ].map((step, i) => (
+                  <li key={step.title}>
+                    <span>{i + 1}</span>
+                    <div>
+                      <strong>{step.title}</strong>
+                      {step.text}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <Link href="/docs#pair">
+                <BookOpenIcon className="size-3" />
+                Open the setup guide
+                <ArrowUpRightIcon className="size-3" />
+              </Link>
+            </div>
+            <div className="inspiration-card">
+              <SparklesIcon />
+              <p>Start with one focused change.</p>
+              <small>
+                Choose an existing project, explain what you want to improve,
+                and keep the context in one chat.
+              </small>
+              <Link href="/app/projects">Pick up a project ↗</Link>
+            </div>
+          </aside>
         </div>
       </main>
     </div>
