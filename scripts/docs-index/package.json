@@ -1,0 +1,14 @@
+{
+  "name": "@studpilot/docs-index",
+  "private": true,
+  "type": "module",
+  "description": "Builds and uploads the studpilot-docs D1 index (Roblox Creator Docs + Luau). Standalone: npm install here.",
+  "scripts": {
+    "build": "node build.mjs",
+    "upload": "node upload.mjs"
+  },
+  "dependencies": {
+    "wrangler": "4.147.0",
+    "yaml": "2.8.3"
+  }
+}

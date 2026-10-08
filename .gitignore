@@ -1,4 +1,6 @@
 node_modules/
+# docs index build output (scripts/docs-index)
+scripts/docs-index/out/
 # also a node_modules symlink (a worktree pointing at another checkout's packages): never committed
 node_modules
 dist/
