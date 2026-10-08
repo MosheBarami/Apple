@@ -15,6 +15,7 @@ import { runBlocks, runOrder, fill, fillSource, luauLiteral, stepOps, MAX_REPAIR
 import { intake, parseIntake, blockMenu } from '../src/intake.ts';
 import { fillParams, checkFill, repairParam, MAX_FILL_RETRIES } from '../src/plan-fill.ts';
 import { checkCustomCode, proveCustomCode, writeCustomCode } from '../src/custom-code.ts';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -295,23 +296,18 @@ test('custom code counts only after a clean play; its test is always removed, an
   assert.deepEqual(broken.ops.at(-1).paths, ['game.ServerScriptService.StudPilotProof_Bonus', 'game.ServerScriptService.Bonus']);
 });
 
-// ---- the plugin allowlist the blocks need ----------------------------------------------------------------------
-function allowTable(source, name) {
-  const start = source.indexOf(`local ${name} = {`);
-  assert.ok(start >= 0, `${name} is in Commands.luau`);
-  const body = source.slice(start, source.indexOf('\n}', start));
-  return new Set([...body.matchAll(/^\s*([A-Za-z0-9_]+) = true,/gm)].map((m) => m[1]));
-}
-
-test('every class and property a block writes is on the plugin\'s allowlists', () => {
-  const luau = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
-  const classes = allowTable(luau, 'CREATE_CLASSES');
-  const scripts = allowTable(luau, 'SCRIPT_CLASSES');
-  const props = allowTable(luau, 'PROPERTY_ALLOW');
+// ---- what the plugin must accept for the blocks ----------------------------------------------------------------
+// Plugin 2.0 (owner, 2026-10-08): no allowlists; the plugin creates what Roblox's API dump calls creatable and
+// writes what it calls plugin-writable on that class, minus a short deny list (apps/studpilot-plugin/scripts/api-dump.mjs).
+test('every class and property a block writes is one the plugin accepts', () => {
+  const P = pluginPermissions();
+  const classes = P.creatableNames;
+  const scripts = P.scriptCreate;
+  const props = { has: (key) => { const [cls, prop] = key.split('.'); return P.propertyType(cls, prop) !== null; } };
   const needs = { classes: new Set(), scripts: new Set(), props: new Set() };
   const walk = (item) => {
     needs.classes.add(item.className);
-    Object.keys(item.props ?? {}).forEach((p) => needs.props.add(p));
+    Object.keys(item.props ?? {}).forEach((p) => needs.props.add(`${item.className}.${p}`));
     (item.children ?? []).forEach(walk);
   };
   for (const b of Object.values(BLOCKS)) {
@@ -319,7 +315,7 @@ test('every class and property a block writes is on the plugin\'s allowlists', (
     for (const step of b.recipe.steps) {
       for (const op of stepOps(step, b, params)) {
         if (op.op === 'create_instances') op.items.forEach(walk);
-        if (op.op === 'set_props') Object.keys(op.props).forEach((p) => needs.props.add(p));
+        if (op.op === 'set_props') Object.keys(op.props).forEach((p) => P.writableNames.has(p) || needs.props.add(`?.${p}`));
         if (op.op === 'edit_script') needs.scripts.add(op.create.className);
       }
     }

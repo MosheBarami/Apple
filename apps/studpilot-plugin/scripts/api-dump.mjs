@@ -58,10 +58,11 @@ export function pluginPermissions() {
     }
     return null;
   };
+  const creatableNames = new Set([...classes.keys()].filter(canCreate));
   const writableNames = new Set();
   for (const [name, info] of classes) for (const prop of info.p.keys()) if (propertyType(name, prop)) writableNames.add(prop);
   cached = {
-    classes, enums, denyProperty, denyClass, scriptCreate, instantiable, canCreate, propertyType, writableNames,
+    classes, enums, denyProperty, denyClass, scriptCreate, instantiable, canCreate, propertyType, writableNames, creatableNames,
     /** Set-shaped views, for checks written against the 1.x allowlist tables. */
     createClasses: { has: canCreate },
     propertyAllow: { has: (prop) => writableNames.has(prop) },

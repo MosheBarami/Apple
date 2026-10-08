@@ -102,13 +102,12 @@ test('the categories and presets a game needs are present', () => {
   assert.ok(PRESETS.some((p) => p.attachments?.length), 'no preset places Attachments');
 });
 
-test('preset textures are on the plugin allowlist, and every packTexture is a committed file', () => {
-  const commands = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8')
-    .replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, '').replace(/--[^\n]*/g, '');
-  const block = /CONTENT_PROPERTY\.Texture\.ParticleEmitter = \{([\s\S]*?)\n\}/.exec(commands);
-  assert.ok(block, 'the plugin engine-texture list was not found — this test would check nothing');
-  const allowed = new Set([...block[1].matchAll(/\["([^"]+)"\]\s*=\s*true/g)].map((m) => m[1]));
-  assert.ok(allowed.size >= 8);
+test('preset textures are content the plugin accepts, and every packTexture is a committed file', () => {
+  // Plugin 2.0 (owner, 2026-10-08): no engine-texture list. A content property takes any rbxasset path the content
+  // rule in apps/studpilot-plugin/src/Permissions.luau accepts (word characters, - . /, never "..").
+  const permissions = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'Permissions.luau'), 'utf8');
+  assert.match(permissions, /if scheme == "rbxasset" then return string\.match\(rest, "\^\[%w_%-%\.\/\]\+\$"\) ~= nil and string\.find\(rest, "\.\.", 1, true\) == nil end/, 'the plugin content rule moved: re-aim this test');
+  const allowed = { has: (path) => /^[\w\-./]+$/.test(`textures/${path}`) && !path.includes('..') };
   for (const path of Object.values(ENGINE_TEXTURES)) assert.ok(allowed.has(path), `the plugin refuses ${path}`);
   let seen = 0;
   for (const p of PRESETS) {

@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const temp = mkdtempSync(join(tmpdir(), 'audio-anim-'));
@@ -71,10 +72,9 @@ test('every new class is accepted by create_instances and forwarded to the plugi
   }
 });
 
-test('every new class is on the plugin create allowlist this worker is talking to', () => {
-  const m = COMMANDS.match(/local CREATE_CLASSES = \{([\s\S]*?)\n\}/);
-  assert.ok(m, 'CREATE_CLASSES not found');
-  const allowed = new Set([...m[1].matchAll(/([A-Za-z0-9_]+)\s*=\s*true/g)].map((x) => x[1]));
+test('every new class is one the plugin this worker is talking to will create', () => {
+  // Plugin 2.0: the API dump decides (apps/studpilot-plugin/scripts/api-dump.mjs).
+  const allowed = pluginPermissions().creatableNames;
   assert.deepEqual(NEW_CLASSES.filter((c) => !allowed.has(c)), [], 'the worker offers a class the plugin refuses');
 });
 
@@ -122,10 +122,10 @@ test('every reference property the plugin added is read as a reference, and plai
     assert.deepEqual(r.props[name], { t: 'Instance', v: 'game.Workspace.Rig.Hand' }, name);
     assert.equal(r.refusals.length, 0, name);
   }
-  // the plugin's own reference list holds these names; the worker must not invent one the plugin cannot resolve
-  const m = COMMANDS.match(/local INSTANCE_REF_PROPERTY = \{([\s\S]*?)\n\}/);
-  const plugin = new Set([...m[1].matchAll(/([A-Za-z0-9_]+)\s*=\s*true/g)].map((x) => x[1]));
-  for (const name of ['SourceInstance', 'TargetInstance', 'PositionInstance', 'EndEffector', 'ChainRoot', 'Target', 'Pole']) assert.ok(plugin.has(name), `${name} is not a plugin reference property`);
+  // the plugin types these as references (an Instance-valued property in the API dump); the worker must not invent one
+  const PERM = pluginPermissions();
+  const refClass = { SourceInstance: 'Wire', TargetInstance: 'Wire', PositionInstance: 'AudioEmitter', EndEffector: 'IKControl', ChainRoot: 'IKControl', Target: 'IKControl', Pole: 'IKControl' };
+  for (const [name, cls] of Object.entries(refClass)) assert.equal(PERM.propertyType(cls, name), 'Instance', `${cls}.${name} is not a plugin reference property`);
   // Value is an ObjectValue reference but also a StringValue's text: it must stay a plain string here
   assert.deepEqual(P.normaliseProps({ Value: 'Workspace.Thing' }).props.Value, { t: 'string', v: 'Workspace.Thing' });
   // an enum item or an empty string in a reference slot is not turned into a path

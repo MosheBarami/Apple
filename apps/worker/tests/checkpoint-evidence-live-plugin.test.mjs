@@ -103,8 +103,10 @@ end
 snapshot("healthy", "cp-healthy")
 
 do
-    -- Not MeshPart: since plugin 1.2.0 a checkpoint holds a MeshPart copy in the session (F-053).
-    local unsupported = Instance.new("UnionOperation"); unsupported.Name = "Unsupported"; unsupported.Parent = workspace
+    -- Not MeshPart: since plugin 1.2.0 a checkpoint holds a MeshPart copy in the session (F-053). Since 2.0 it
+    -- holds any class it cannot recreate (a union included), so the one object it can neither recreate nor
+    -- copy is one whose Archivable is off.
+    local unsupported = Instance.new("UnionOperation"); unsupported.Name = "Unsupported"; unsupported.Archivable = false; unsupported.Parent = workspace
     snapshot("unsupported", "cp-unsupported")
     unsupported:Destroy()
 end
@@ -116,15 +118,15 @@ do
     workspace:FindFirstChild("Deep1"):Destroy()
 end
 
--- The object budget (800) and the per-parent child limit (400) are DIFFERENT ceilings and the first
--- draft of this file could not tell them apart: one folder of 900 parts reaches the child limit at
--- 402 nodes, never the object budget, and the guard said so. Four folders of 250 crosses 800 total
--- objects while no single parent is anywhere near its fan-out limit.
+-- The object budget (4000 since 2.0) and the per-parent child limit (1000) are DIFFERENT ceilings and the
+-- first draft of this file could not tell them apart: one folder of too many parts reaches the child limit
+-- first, never the object budget, and the guard said so. Five folders of 900 crosses 4000 total objects
+-- while no single parent is anywhere near its fan-out limit.
 do
     local holder = Instance.new("Folder"); holder.Name = "Wide"; holder.Parent = workspace
-    for group = 1, 4 do
+    for group = 1, 5 do
         local bucket = Instance.new("Folder"); bucket.Name = "Bucket" .. group; bucket.Parent = holder
-        for i = 1, 250 do local p = Instance.new("Part"); p.Name = "P" .. i; p.Parent = bucket end
+        for i = 1, 900 do local p = Instance.new("Part"); p.Name = "P" .. i; p.Parent = bucket end
     end
     snapshot("objects", "cp-objects")
     holder:Destroy()
@@ -132,7 +134,7 @@ end
 
 do
     local holder = Instance.new("Folder"); holder.Name = "Fanout"; holder.Parent = workspace
-    for i = 1, 500 do local p = Instance.new("Part"); p.Name = "P" .. i; p.Parent = holder end
+    for i = 1, 1100 do local p = Instance.new("Part"); p.Name = "P" .. i; p.Parent = holder end
     snapshot("children", "cp-children")
     holder:Destroy()
 end
@@ -140,11 +142,11 @@ end
 do
     local holder = Instance.new("Folder"); holder.Name = "Scripted"; holder.Parent = workspace
     -- Under the 240,000-character PER-SCRIPT limit, which fails the op outright, and over the
-    -- 600,000-character cumulative budget, which is the ceiling being measured. The first draft used
+    -- 2,400,000-character cumulative budget (2.0), which is the ceiling being measured. The first draft used
     -- three scripts of 250,000 and the plugin refused the whole operation instead — a different
     -- defect entirely, and the guard said which one.
-    for i = 1, 4 do
-        local s = Instance.new("ModuleScript"); s.Name = "Big" .. i; s.Source = string.rep("x", 160000); s.Parent = holder
+    for i = 1, 11 do
+        local s = Instance.new("ModuleScript"); s.Name = "Big" .. i; s.Source = string.rep("x", 230000); s.Parent = holder
     end
     snapshot("script", "cp-script")
     holder:Destroy()
@@ -220,7 +222,7 @@ test('a checkpoint the plugin refused names the cause the plugin actually hit', 
   const unsupported = refusal('unsupported', 'cp-unsupported');
   assert.equal(unsupported.payload.truncated, false);
   assert.equal(unsupported.payload.restorable, false);
-  assert.match(unsupported.error, /UnionOperation x1/);
+  assert.match(unsupported.error, /UnionOperation \(Archivable is off, so Studio will not copy it\) x1/);
 
   // CAUSE 2 — the walk stopped because the place is NESTED too deeply, which is a different place and
   // a different remedy from a place that is too big. The plugin stops at MAX_SNAPSHOT_DEPTH after
@@ -235,7 +237,7 @@ test('a checkpoint the plugin refused names the cause the plugin actually hit', 
   // CAUSE 3 — genuinely more objects than one checkpoint carries. Same field, opposite sentence.
   const objects = refusal('objects', 'cp-objects');
   assert.equal(objects.payload.truncated, true);
-  assert.ok(objects.payload.nodeCount >= 800, `expected the object ceiling: nodeCount=${objects.payload.nodeCount}`);
+  assert.ok(objects.payload.nodeCount >= 4000, `expected the object ceiling: nodeCount=${objects.payload.nodeCount}`);
   assert.match(objects.error, /more objects than/i);
   assert.doesNotMatch(objects.error, /nests|deep/i);
 
@@ -243,7 +245,7 @@ test('a checkpoint the plugin refused names the cause the plugin actually hit', 
   // as false here as it is for depth, and the remedy is to group them rather than delete them.
   const children = refusal('children', 'cp-children');
   assert.equal(children.payload.truncated, true);
-  assert.ok(children.payload.nodeCount < 800, `expected the fan-out ceiling: nodeCount=${children.payload.nodeCount}`);
+  assert.ok(children.payload.nodeCount < 4000, `expected the fan-out ceiling: nodeCount=${children.payload.nodeCount}`);
   assert.match(children.error, /children/i);
 
   // CAUSE 5 — script bytes, which is none of the above and has its own remedy.

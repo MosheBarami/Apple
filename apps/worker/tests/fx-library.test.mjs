@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -211,12 +212,14 @@ const stripLuauComments = (src) => src.replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, '').
 const COMMANDS = stripLuauComments(readFileSync(join(PLUGIN_SRC, 'Commands.luau'), 'utf8'));
 const FX_FAMILY = stripLuauComments(readFileSync(join(PLUGIN_SRC, 'ops', 'Fx.luau'), 'utf8'));
 const union = (...sets) => new Set(sets.flatMap((s) => [...(s ?? [])]));
+// Plugin 2.0 (owner, 2026-10-08): no allowlists; the API dump and a short deny list decide (scripts/api-dump.mjs).
+// An engine texture is any rbxasset path the plugin's content rule takes (Permissions.contentAllowed).
+const PERMS = pluginPermissions();
 const ALLOW = {
-  classes: tableKeys(COMMANDS, 'local CREATE_CLASSES = {'),
-  props: union(tableKeys(COMMANDS, 'local PROPERTY_ALLOW = {'), tableKeys(FX_FAMILY, 'propertyAllow = {')),
-  enums: union(tableKeys(COMMANDS, 'local ENUM_ALLOW = {'), tableKeys(FX_FAMILY, 'enumAllow = {')),
-  // The engine particle textures the plugin accepts, read from the plugin's own list.
-  textures: new Set([...(/CONTENT_PROPERTY\.Texture\.ParticleEmitter = \{([\s\S]*?)\n\}/.exec(COMMANDS)?.[1] ?? '').matchAll(/\["([^"]+)"\]\s*=\s*true/g)].map((m) => m[1])),
+  classes: new Set(PERMS.creatableNames),
+  props: union(PERMS.writableNames, tableKeys(FX_FAMILY, 'propertyAllow = {')),
+  enums: union(PERMS.enums, tableKeys(FX_FAMILY, 'enumAllow = {')),
+  textures: { has: (path) => /^[\w\-./]+$/.test(path) && !path.includes('..'), size: Infinity },
 };
 
 function walk(items, out = []) {
@@ -226,7 +229,6 @@ function walk(items, out = []) {
 
 test('the plugin allowlists read back non-empty (else the next test checks nothing)', () => {
   assert.ok(ALLOW.classes.size > 20 && ALLOW.props.size > 50 && ALLOW.enums.size > 5, JSON.stringify({ c: ALLOW.classes.size, p: ALLOW.props.size, e: ALLOW.enums.size }));
-  assert.ok(ALLOW.textures.size >= 8, `engine textures read: ${ALLOW.textures.size}`);
   for (const path of F.ENGINE_TEXTURE_PATHS) assert.ok(ALLOW.textures.has(path), `the plugin would refuse preset texture ${path}`);
 });
 

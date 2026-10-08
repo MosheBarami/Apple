@@ -3,10 +3,11 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pluginPermissions } from '../../../apps/studpilot-plugin/scripts/api-dump.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const WORLD_STATE_PATH = join(HERE, '..', 'luau', 'world-state.luau');
-/** The plugin's write allowlist lives here; the properties the harness tracks are read from it, never typed twice. */
+/** The plugin's command engine. Since plugin 2.0 it has no write allowlist: what it may write is the API dump's rule. */
 export const COMMANDS_PATH = join(HERE, '..', '..', '..', 'apps', 'studpilot-plugin', 'src', 'Commands.luau');
 export const MODES = ['capture', 'reset', 'verify', 'measure', 'ui-enable', 'ui-restore'];
 /** The shape of a baseline file: 2 records every property and attribute of every kept instance (1 recorded only the services and the parts in Workspace). */
@@ -14,18 +15,14 @@ export const BASELINE_FORMAT = 2;
 const LONG_BRACKET = ']=====]';
 
 /**
- * The property names the Studio plugin may write, read from `PROPERTY_ALLOW` in Commands.luau (the `Name = true,` lines of
- * that table). Throws when the table cannot be found or reads implausibly short: an unreadable list must never become an
- * empty one, because then the harness would track nothing and call every place clean.
+ * The property names the Studio plugin may write. Plugin 2.0 (owner, 2026-10-08) has no hand-written allowlist: it writes
+ * every property Roblox's API dump marks plugin-writable, minus a short deny list, read here the same way
+ * (apps/studpilot-plugin/scripts/api-dump.mjs). Throws when the list reads implausibly short: an unreadable list must
+ * never become an empty one, because then the harness would track nothing and call every place clean.
  */
-export function propertyAllowNames(source = readFileSync(COMMANDS_PATH, 'utf8')) {
-  const start = source.indexOf('local PROPERTY_ALLOW = {');
-  if (start < 0) throw new Error('Commands.luau has no `local PROPERTY_ALLOW = {` table: the harness cannot tell which properties the plugin may write');
-  const end = source.indexOf('\n}', start);
-  if (end < 0) throw new Error('the PROPERTY_ALLOW table in Commands.luau does not end where the harness expects');
-  const lines = source.slice(start, end).split('\n').filter((l) => !/^\s*--/.test(l));
-  const names = [...new Set([...lines.join('\n').matchAll(/^\s*([A-Za-z][A-Za-z0-9_]*) = true,/gm)].map((m) => m[1]))].sort();
-  if (names.length < 100) throw new Error(`only ${names.length} property names were read from PROPERTY_ALLOW in Commands.luau; refusing to track a fraction of what the plugin can write`);
+export function propertyAllowNames(perms = pluginPermissions()) {
+  const names = [...perms.writableNames].filter((n) => /^[A-Za-z][A-Za-z0-9_]*$/.test(n)).sort();
+  if (names.length < 100) throw new Error(`only ${names.length} property names were read from the plugin's API dump; refusing to track a fraction of what the plugin can write`);
   return names;
 }
 

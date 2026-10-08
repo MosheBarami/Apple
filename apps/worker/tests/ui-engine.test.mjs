@@ -17,6 +17,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -49,17 +50,10 @@ function tableKeys(source, head) {
   return new Set([...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true\b/g)].map((m) => m[1]));
 }
 const COMMANDS = readFileSync(join(PLUGIN_SRC, 'Commands.luau'), 'utf8');
-const ALLOW = {
-  classes: tableKeys(COMMANDS, 'local CREATE_CLASSES = {'),
-  props: tableKeys(COMMANDS, 'local PROPERTY_ALLOW = {'),
-  enums: tableKeys(COMMANDS, 'local ENUM_ALLOW = {'),
-};
-for (const file of readdirSync(join(PLUGIN_SRC, 'ops')).filter((f) => f.endsWith('.luau') && f !== 'init.luau')) {
-  const src = readFileSync(join(PLUGIN_SRC, 'ops', file), 'utf8');
-  for (const [key, head] of [['classes', 'createClasses = {'], ['props', 'propertyAllow = {'], ['enums', 'enumAllow = {']]) {
-    for (const name of tableKeys(src, head) ?? []) ALLOW[key].add(name);
-  }
-}
+// Plugin 2.0 (owner, 2026-10-08): no allowlists. The plugin creates what Roblox's API dump calls creatable and
+// writes what it calls plugin-writable, minus a short deny list; read the same way here (scripts/api-dump.mjs).
+const PERMS = pluginPermissions();
+const ALLOW = { classes: new Set(PERMS.creatableNames), props: new Set(PERMS.writableNames), enums: new Set(PERMS.enums) };
 const VALUE_TYPES = new Set([...COMMANDS.matchAll(/\bt == "([A-Za-z0-9]+)"/g)].map((m) => m[1]));
 
 /* --------------------------------------------------------------------------- trees --- */
