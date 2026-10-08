@@ -1,20 +1,23 @@
 /** Cross-file guard: every product run mode must fit inside its configured provider ceiling. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
-const GATEWAY = readFileSync(join(SRC, 'gateway.ts'), 'utf8');
 const SESSION = readFileSync(join(SRC, 'do', 'session.ts'), 'utf8');
+const dir = mkdtempSync(join(tmpdir(), 'lane-budget-'));
+const bundled = join(dir, 'gateway.mjs');
+execFileSync(join(SRC, '../node_modules/.bin/esbuild'), [join(SRC, 'gateway.ts'), '--bundle', '--format=esm',
+  `--outfile=${bundled}`], { stdio: 'pipe' });
+const { DEFAULT_MODELS } = await import(`file://${bundled}`);
+rmSync(dir, { recursive: true, force: true });
 
 function gatewayLanes() {
-  const out = {};
-  for (const m of GATEWAY.matchAll(/^\s*(plan|agent):\s*\{\s*id:\s*'([^']+)'[^}]*maxTokens:\s*(\d+)/gm)) {
-    out[m[1]] = { id: m[2], maxTokens: Number(m[3]) };
-  }
-  return out;
+  return { plan: DEFAULT_MODELS.plan, agent: DEFAULT_MODELS.agent };
 }
 
 function sessionBudgets() {

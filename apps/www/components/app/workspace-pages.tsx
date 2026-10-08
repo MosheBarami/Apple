@@ -20,6 +20,7 @@ import { useSession } from "@/lib/supabase";
 import { CreditsMeter } from "./credits-meter";
 import { NEW_DRAFT_KEY } from "./new-chat";
 import { useProjects } from "./projects-provider";
+import { AiConnectionsPanel } from "../ai/ai-connections";
 import { EDIT_STARTERS, STARTERS } from "./starters";
 import { TopBar } from "./top-bar";
 
@@ -291,6 +292,7 @@ export function SettingsPage() {
                   "No signed-in account in this preview.")}
             </p>
           </section>
+          <section className="p-6" aria-label="AI connections"><AiConnectionsPanel /></section>
           <section className="p-6">
             <h3 className="mb-4 font-medium">Credits</h3>
             <CreditsMeter />

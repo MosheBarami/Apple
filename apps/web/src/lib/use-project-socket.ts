@@ -23,6 +23,7 @@ import type {
 // The rule for what counts as a new version of a message, shared with the DO so the count this
 // client shows before the round trip and the rows the server writes cannot disagree.
 import { recordsRevision } from '@studpilot/shared';
+import type { InferenceSelection, RoutingDecision } from '@studpilot/shared';
 // The composer's UI theme for this project; read at send time so the frame carries the current pick.
 import { readUiTheme } from './ui-theme';
 import type { PhaseMark } from '../components/ws/activity-model';
@@ -89,6 +90,8 @@ export interface ChatItem extends TraceFields {
   role: 'user' | 'assistant' | 'system';
   mode: ProductMode | null;
   productModel?: ProductModel;
+  inference?: InferenceSelection;
+  routing?: RoutingDecision;
   content: string;
   tools: ToolEvent[];
   streaming: boolean;
@@ -279,7 +282,7 @@ export interface ProjectSocket {
    */
   restoreStatus: RestoreStatus | null;
   /** There is no mode to choose (V3 G01): the frame carries `mode: 'agent'` only as the wire's compatibility bridge. */
-  sendChat: (text: string, attachments?: ChatAttachment[], productModel?: ProductModel) => boolean;
+  sendChat: (text: string, attachments?: ChatAttachment[], productModel?: ProductModel, inference?: InferenceSelection) => boolean;
   /**
    * "I am still here, and this is what I am doing."
    *
@@ -290,7 +293,7 @@ export interface ProjectSocket {
    */
   signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
-  editAndResend: (messageId: string, text: string, productModel?: ProductModel) => boolean;
+  editAndResend: (messageId: string, text: string, productModel?: ProductModel, inference?: InferenceSelection) => boolean;
   /** Resolves false only when neither the socket nor the HTTP stop reached the worker. */
   stop: () => Promise<boolean>;
   /** G03: resume a run paused for Studio. The worker refuses it until the paired place is back. */
@@ -608,7 +611,7 @@ export function useProjectSocket(
             // `run_intent` may have created the shell first; fill in the mode
             // it did not know, and keep the intent it did.
             const next = [...list];
-            next[existing] = { ...list[existing]!, mode: msg.mode, productModel: msg.productModel, streaming: true };
+            next[existing] = { ...list[existing]!, mode: msg.mode, productModel: msg.productModel, inference: msg.inference, streaming: true };
             return next;
           }
           return [
@@ -618,6 +621,7 @@ export function useProjectSocket(
               role: 'assistant',
               mode: msg.mode,
               productModel: msg.productModel,
+              inference: msg.inference,
               content: '',
               tools: [],
               streaming: true,
@@ -625,6 +629,9 @@ export function useProjectSocket(
             },
           ];
         });
+        break;
+      case 'inference_route':
+        setMessages((list) => list.map((item) => item.id === msg.msgId ? { ...item, routing: msg.decision } : item));
         break;
       case 'delta':
         setMessages((list) => {
@@ -872,6 +879,8 @@ export function useProjectSocket(
             role: 'assistant',
             mode: run.mode,
             productModel: run.productModel,
+            inference: run.inference,
+            routing: run.routing,
             content: run.text,
             tools: run.tools.map((t) => ({
               toolId: t.toolId,
@@ -1231,11 +1240,12 @@ export function useProjectSocket(
    * message id that has already gone, finds nothing, and changes nothing.
    */
   const editAndResend = useCallback(
-    (messageId: string, text: string, productModel?: ProductModel): boolean => {
+    (messageId: string, text: string, productModel?: ProductModel, inference?: InferenceSelection): boolean => {
       const mode = 'agent';
       // `model` only for a model on the customer's own key: a StudPilot run stays byte-identical on the
       // wire to every run before the picker existed (the worker reads `productModel` then).
-      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}), uiTheme: readUiTheme(projectId) });
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}),
+        ...(inference ? { inference } : {}), uiTheme: readUiTheme(projectId) });
       if (ok) {
         setRunning(true);
         setMessages((list) => {
@@ -1261,12 +1271,13 @@ export function useProjectSocket(
   );
 
   const sendChat = useCallback(
-    (text: string, attachments: ChatAttachment[] = [], productModel?: ProductModel): boolean => {
+    (text: string, attachments: ChatAttachment[] = [], productModel?: ProductModel, inference?: InferenceSelection): boolean => {
       // The field has been on this frame since the protocol was written and nothing ever set it.
       // Omitted entirely when there are none, so a message with no files is byte-identical on the
       // wire to every message this product has ever sent.
       const mode = 'agent';
-      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), uiTheme: readUiTheme(projectId), ...(attachments.length ? { attachments } : {}) });
+      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), ...(inference ? { inference } : {}),
+        uiTheme: readUiTheme(projectId), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         const id = localId();

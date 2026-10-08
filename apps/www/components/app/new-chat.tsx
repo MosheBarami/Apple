@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { InferencePicker } from '../ai/inference-picker';
+import { fetchInferenceSelection, saveInferenceSelection } from '@/lib/ai-api';
+import type { InferenceSelection } from '../../../../packages/shared/src/inference';
 
 import Link from "next/link";
 
@@ -27,6 +30,20 @@ export function NewChat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [inference, setInference] = useState<InferenceSelection | null>(null);
+  const [inferenceReady, setInferenceReady] = useState(false);
+  const [savingInference, setSavingInference] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void fetchInferenceSelection().then(({ selection }) => { if (live) setInference(selection); })
+      .catch(() => { if (live) setError('Your AI choice could not be loaded. Reload before starting a project.'); });
+    return () => { live = false; };
+  }, []);
+  const chooseInference = useCallback(async (selection: InferenceSelection | null) => {
+    setSavingInference(true);
+    try { if (selection) await saveInferenceSelection(selection); setInference(selection); }
+    finally { setSavingInference(false); }
+  }, []);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const pending = useRef<string | null>(null);
   useEffect(() => {
@@ -45,11 +62,13 @@ export function NewChat() {
     }
   };
   const start = async (text: string) => {
+    if (!inference || !inferenceReady || savingInference) throw new Error('Choose a ready AI route first.');
     setBusy(true);
     setError(null);
     try {
       const id = pending.current ?? (await createProject(text));
       pending.current = id;
+      await saveInferenceSelection(inference, id);
       // Keep the same project on retry if browser storage fails after creation.
       sessionStorage.setItem(firstMessageKey(id), text);
       sessionStorage.removeItem(NEW_DRAFT_KEY);
@@ -105,11 +124,13 @@ export function NewChat() {
                 </div>
                 <Composer
                   busy={busy}
+                  disabled={!inferenceReady || savingInference}
                   large
                   value={draft}
                   onChange={updateDraft}
                   onSend={start}
                 />
+                <div className="mt-3"><InferencePicker value={inference} onChange={chooseInference} onReady={setInferenceReady} running={busy} /></div>
                 {error ? (
                   <p className="mt-3 text-xs text-destructive" role="alert">
                     {error}

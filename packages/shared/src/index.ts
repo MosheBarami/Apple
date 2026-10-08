@@ -3,6 +3,7 @@
 
 import { MODEL_IDS, MODEL_REGISTRY, type ModelId } from './models.ts';
 import type { UiTheme } from './ui-theme.ts';
+import type { InferenceSelection, RoutingDecision } from './inference.ts';
 
 // ---------------------------------------------------------------------------
 // Studio op protocol: commands the agent sends to the Studio plugin.
@@ -777,7 +778,7 @@ export interface ChatAttachment {
 }
 
 export type ClientMsg =
-  | { type: 'chat'; text: string; mode: ProductMode; productModel?: ProductModel; uiTheme?: UiTheme; attachments?: ChatAttachment[] }
+  | { type: 'chat'; text: string; mode: ProductMode; productModel?: ProductModel; uiTheme?: UiTheme; attachments?: ChatAttachment[]; inference?: InferenceSelection }
   /**
    * Correct an earlier prompt and run again from there.
    *
@@ -789,7 +790,7 @@ export type ClientMsg =
    * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
    * wording fix should not silently revert a working door.
    */
-  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; productModel?: ProductModel; uiTheme?: UiTheme }
+  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; productModel?: ProductModel; uiTheme?: UiTheme; inference?: InferenceSelection }
   | { type: 'stop' } // interrupt agent
   /** Resume a run paused because Studio disconnected (G03). Only this resumes it; a reconnect never does. */
   | { type: 'continue' }
@@ -1121,6 +1122,8 @@ export interface RunSnapshot {
   mode: ProductMode;
   /** The selected model, when the run came from a model-aware client. */
   productModel?: ProductModel;
+  inference?: InferenceSelection;
+  routing?: RoutingDecision;
   phase: AgentPhase;
   step: number;
   /** Hard work-step ceiling for this message. */
@@ -1339,7 +1342,8 @@ export type ServerMsg =
   //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
   //   because the worker and the web app deploy separately: a client that required it would be
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; productModel?: ProductModel; userMsgId?: string }
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; productModel?: ProductModel; userMsgId?: string; inference?: InferenceSelection }
+  | { type: 'inference_route'; msgId: string; decision: RoutingDecision }
   | { type: 'delta'; msgId: string; text: string }
   /**
    * The model's own reasoning as the provider returns it (D-REASONING-2: plain text, never the prompt), streamed while
@@ -1700,6 +1704,8 @@ export interface ProjectDto {
 }
 
 export interface MessageDto {
+  inference?: InferenceSelection;
+  routing?: RoutingDecision;
   id: string;
   role: 'user' | 'assistant' | 'system';
   mode: ProductMode | null;
@@ -1772,6 +1778,8 @@ export interface PairingCodeDto {
   existingLink?: StudioLinkSummary | null;
 }
 
+export * from './inference.ts';
+export * from './ai-providers.ts';
 // Model gateway internals (worker-side only, exported for evals)
 /**
  * Message content. A plain string stays a plain string on the wire. The array form is text parts only: no picture is ever
@@ -1786,6 +1794,8 @@ export interface GatewayMessage {
   name?: string;
   /** structured tool calls made by the assistant on this turn (never serialised as text) */
   toolCalls?: GatewayToolCall[];
+  /** Protocol replay state (e.g. Gemini signatures); never a Studio operation or credential. */
+  providerReplay?: { provider: string; modelId: string; content: unknown };
   /**
    * The transcript trim may never evict this message. Set on the user's original request, which a
    * character-budget trim would otherwise delete out from under a long run — see trimTranscript in
@@ -1837,6 +1847,8 @@ export interface GatewayResponse {
   finishReason: 'stop' | 'tool_calls' | 'length' | 'error';
   /** The provider's own reasoning text (GLM reasoning_content), shown as-is (D-REASONING-2); never fed back to the model. */
   reasoning?: string;
+  providerReplay?: GatewayMessage['providerReplay'];
+  routing?: RoutingDecision;
 }
 
 /** Credits are billed from measured neuron usage, so these are typical costs rather than fixed prices. */

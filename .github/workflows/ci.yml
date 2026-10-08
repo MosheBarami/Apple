@@ -53,7 +53,8 @@ jobs:
   # ---------------------------------------------------------------- checks --
   tests:
     # Owner speed order (2026-10-06): CI under 3 minutes. The tests run in parallel shards; apps/site and apps/web are
-    # not built or tested any more, nor packages/design, their design system (the web rebuild replaces all three).
+    # Site/design checks remain outside this job. The explicit AI integration mandate restores
+    # web verification because provider selection and private connection management are shipped UI.
     name: Tests (${{ matrix.part }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -73,6 +74,10 @@ jobs:
             run: cd apps/worker && node --test --test-shard=4/4
           - part: packages
             run: pnpm -r --filter '!@studpilot/site' --filter '!@studpilot/web' --filter '!@studpilot/worker' --filter '!@studpilot/design' test
+          - part: AI runner contracts
+            run: node --test infra/opencode-runner/*.test.mjs infra/ai-model-matrix.test.mjs
+          - part: AI web integration
+            run: pnpm --filter @studpilot/web typecheck && pnpm --filter @studpilot/web test && pnpm --filter @studpilot/web build
           - part: root 1/4
             run: node --test --test-timeout=240000 --test-shard=1/4 tests/*.test.mjs
           - part: root 2/4
@@ -115,11 +120,28 @@ jobs:
   typecheck-and-test:
     # The one name the branch ruleset requires (.github/rulesets/main.json): green only when every shard is.
     name: Typecheck and tests
-    needs: tests
+    needs: [tests, current-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: test "${{ needs.tests.result }}" = success
+      - run: test "${{ needs.tests.result }}" = success && test "${{ needs.current-frontend.result }}" = success
+
+  current-frontend:
+    name: Current frontend AI integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.32.1'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install the isolated frontend lockfile
+        run: pnpm --dir apps/www install --frozen-lockfile --ignore-workspace
+      - name: Verify and build the current frontend
+        run: pnpm --dir apps/www typecheck && pnpm --dir apps/www build
 
   plugin:
     name: Build and verify the Studio plugin (apps/studpilot-plugin)

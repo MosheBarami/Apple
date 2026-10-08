@@ -1,0 +1,25 @@
+{
+  "scope": "local UI with explicit API fixtures; no live inference or Studio proof",
+  "options": [
+    "StudPilot V1.0",
+    "OpenCode Free",
+    "Bring Your Own Key"
+  ],
+  "requests": [
+    {
+      "path": "/api/me/ai/connections",
+      "method": "POST",
+      "credentialSubmitted": true
+    }
+  ],
+  "keyboardFocus": "A",
+  "pageErrors": [],
+  "desktop": {
+    "width": 1440,
+    "height": 1000
+  },
+  "mobile": {
+    "width": 390,
+    "height": 844
+  }
+}

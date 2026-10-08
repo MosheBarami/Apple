@@ -3,6 +3,32 @@
 import { PRICE_CURRENCY, WIRE_HEADERS, readWire, type RobloxScope, type AssetSourcePolicy } from '@studpilot/shared';
 import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@studpilot/shared';
 import type { ApiKeyMode, ApiScope } from '@studpilot/shared';
+import type { AiConnectionView, AiModelCatalog, AiProviderId, InferenceSelection } from '@studpilot/shared';
+
+export const fetchAiProviders = (): Promise<{ providers: { id: AiProviderId; name: string; producer: string | null;
+  source: string; accountIdRequired: boolean; endpoint: string; billing: string }[] }> => request('/api/me/ai/providers');
+export const fetchAiConnections = (): Promise<{ connections: AiConnectionView[] }> => request('/api/me/ai/connections');
+export const addAiConnection = (body: { provider: AiProviderId; name: string; credentials: { apiKey: string; accountId?: string } }): Promise<{ connection: AiConnectionView }> =>
+  request('/api/me/ai/connections', { method: 'POST', body: JSON.stringify(body) });
+export const replaceAiConnection = (id: string, body: { name: string; credentials: { apiKey: string; accountId?: string } }): Promise<{ connection: AiConnectionView }> =>
+  request(`/api/me/ai/connections/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) });
+export const removeAiConnection = (id: string): Promise<{ removed: boolean }> =>
+  request(`/api/me/ai/connections/${encodeURIComponent(id)}`, { method: 'DELETE' });
+export const fetchAiModels = (id: string): Promise<{ catalog: AiModelCatalog | null; connection: AiConnectionView }> =>
+  request(`/api/me/ai/connections/${encodeURIComponent(id)}/models`);
+export const refreshAiModels = (id: string): Promise<{ catalog: AiModelCatalog; status: string; inferenceVerified: boolean; message: string }> =>
+  request(`/api/me/ai/connections/${encodeURIComponent(id)}/models/refresh`, { method: 'POST' });
+export const testAiConnection = (id: string, modelId: string): Promise<{ verified: boolean; provider: string; modelId: string }> =>
+  request(`/api/me/ai/connections/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify({ modelId }) });
+export const testAiBuildingSupport = (id: string, modelId: string): Promise<{ tools: boolean; message: string }> =>
+  request(`/api/me/ai/connections/${encodeURIComponent(id)}/capabilities`, { method: 'POST', body: JSON.stringify({ modelId }) });
+export const fetchInferenceSelection = (projectId?: string): Promise<{ selection: InferenceSelection }> =>
+  request(projectId ? `/api/projects/${encodeURIComponent(projectId)}/ai-selection` : '/api/me/ai/selection');
+export const saveInferenceSelection = (selection: InferenceSelection, projectId?: string): Promise<{ selection: InferenceSelection }> =>
+  request(projectId ? `/api/projects/${encodeURIComponent(projectId)}/ai-selection` : '/api/me/ai/selection',
+    { method: 'PUT', body: JSON.stringify({ selection }) });
+export const fetchOpenCodeModels = (): Promise<{ version?: string; models: { id: string; name: string; available: boolean }[] }> =>
+  request('/api/me/ai/opencode/models');
 import type { ApiKeyView } from './api-keys.ts';
 import type { RobloxConnection, RobloxDisconnectResult } from './roblox-signin.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';

@@ -41,6 +41,15 @@
 
 **AI:** GLM 5.3 Flash on Cloudflare Workers AI, behind one switch. No vision model in the product.
 
+**Owner amendment, 2026-10-08:** expose exactly three inference routes: StudPilot V1.0 (the managed
+engine above), OpenCode Free (verified permitted free CLI routes), and Bring Your Own Key (the
+user's explicitly selected provider, model and private connection). The previous hidden-provider
+decision is superseded. Route selection must reach the real build gateway, remain fixed per run,
+and be reported with evidence. No silent cross-route or paid fallback. BYOK provider cost is paid
+directly by that user and is separate from StudPilot's service policy. The Studio executor,
+compatibility, build checks and no-vision rule remain. Acceptance and implementation order for
+this addition are recorded in `proof/ai-providers/PLAN.md`; it is not yet accepted or deployed.
+
 **Money:**
 - Credits charged by real AI usage, shown with two decimals (1 credit = $0.05 of AI cost).
 - Free: 5 credits a day, at most 30 a month.

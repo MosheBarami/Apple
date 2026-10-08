@@ -104,6 +104,7 @@ export interface AccountExport {
  * offered as a download" is a real answer and is written as such; an empty string is not.
  */
 const WHERE_ELSE: Readonly<Record<string, string>> = {
+  message_inference: 'GET /api/projects/{projectId}/messages — selected AI route and last operational routing decision on each assistant message',
   generated_images: 'GET /api/projects/{projectId}/images/{imageId} — the index of your private saved images, linked from each conversation result',
   // The same route answers for both halves, because a person asking for their images wants the
   // files and not the rows that point at them. Naming the bucket separately is what keeps the
@@ -124,6 +125,8 @@ const WHERE_ELSE: Readonly<Record<string, string>> = {
   automations: 'GET /api/projects/{projectId}/automations',
   automation_runs: 'GET /api/automations/{id}/runs',
   user_credentials: 'GET /api/me/roblox-key — the fingerprint or last four only; the key itself is never returned to anyone',
+  ai_connections: 'GET /api/me/ai/connections — connection names, state and last four only; keys are never returned',
+  ai_inference_preferences: 'GET /api/me/ai/selection and GET /api/projects/{projectId}/ai-selection — saved route and private connection reference only',
   creator_write_log: 'GET /api/me/roblox/writes',
   project_asset_use: 'GET /api/projects/{projectId}/attribution',
   project_branding: 'GET /api/projects/{projectId}/branding',

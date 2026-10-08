@@ -1,0 +1,109 @@
+{
+  "checkedAt": "2026-10-08T16:02:31.300Z",
+  "readonly": true,
+  "inferencePerformed": false,
+  "cloudflare": {
+    "httpStatus": 200,
+    "success": true,
+    "returnedModels": 69,
+    "modelNames": [
+      "@cf/pipecat-ai/smart-turn-v2",
+      "@cf/openai/gpt-oss-120b",
+      "@cf/baai/bge-m3",
+      "@cf/huggingface/distilbert-sst-2-int8",
+      "@cf/google/gemma-2b-it-lora",
+      "@cf/black-forest-labs/flux-2-klein-9b"
+    ],
+    "sample": {
+      "id": "188a4e1e-253e-46d0-9616-0bf8c149763f",
+      "source": 1,
+      "name": "@cf/openai/gpt-oss-20b",
+      "description": "OpenAI’s open-weight models designed for powerful reasoning, agentic tasks, and versatile developer use cases – gpt-oss-20b is for lower latency, and local or specialized use-cases.",
+      "task": {
+        "id": "c329a1f9-323d-4e91-b2aa-582dd4188d34",
+        "name": "Text Generation",
+        "description": "Family of generative text models, such as large language models (LLM), that can be adapted for a variety of natural language tasks."
+      },
+      "created_at": "2025-08-05 10:49:53.265",
+      "tags": [],
+      "properties": [
+        {
+          "property_id": "async_queue",
+          "value": "true"
+        },
+        {
+          "property_id": "context_window",
+          "value": "128000"
+        },
+        {
+          "property_id": "price",
+          "value": [
+            {
+              "unit": "per M input tokens",
+              "price": 0.2,
+              "currency": "USD"
+            },
+            {
+              "unit": "per M output tokens",
+              "price": 0.3,
+              "currency": "USD"
+            }
+          ]
+        },
+        {
+          "property_id": "function_calling",
+          "value": "true"
+        },
+        {
+          "property_id": "reasoning",
+          "value": "true"
+        },
+        {
+          "property_id": "reasoning_effort",
+          "value": {
+            "supported_efforts": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "default_effort": "medium",
+            "mandatory": true,
+            "default_enabled": true
+          }
+        }
+      ]
+    },
+    "errorCodes": []
+  },
+  "budget": {
+    "httpStatus": 200,
+    "fields": [
+      "state",
+      "limits",
+      "maxThirdPartyDailyUsd",
+      "maxThirdPartyMonthlyUsd",
+      "maxMonthlyUsd",
+      "days",
+      "breakdown"
+    ],
+    "dailyNeurons": null,
+    "monthlyNeurons": null,
+    "state": {
+      "dayNeurons": 8002,
+      "dayPending": 0,
+      "monthBillableNeurons": 655559,
+      "killed": false,
+      "dayRemainingFraction": 0.9741870967741936,
+      "estimatedMonthUsd": 7.2111,
+      "freeRemainingToday": 1998
+    },
+    "limits": {
+      "freeNeuronsPerDay": 10000,
+      "billableNeuronsPerDay": 300000,
+      "billableNeuronsPerMonth": 2270000,
+      "maxNeuronsPerRequest": 1200,
+      "thirdPartyNeuronsPerDay": 454545,
+      "thirdPartyNeuronsPerMonth": 5454545
+    }
+  }
+}

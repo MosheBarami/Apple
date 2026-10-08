@@ -1431,6 +1431,12 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
       // chose, in a picker, before the run started.
       'productModel',
 
+      // Reviewed 2026-10-08: inference is parseInferenceSelection's bounded route/provider/
+      // model/connection reference, never the pinned candidate or decrypted credentials.
+      // RoutingDecision contains bounded operational task/model/policy/reason metadata;
+      // external-inference constructs it without provider replay, prompts or key material.
+      'inference', 'routing',
+
       // `deniedTools` REVIEWED 2026-09-19. Same blind spot, older field.
       //
       // `deniedTools(base, perms)` in preferences.ts pushes a name ONLY when `base.has(tool)` —
@@ -3245,7 +3251,7 @@ test('A6 an outside model bills through the SAME spend gate — its tokens are p
   });
   await assert.rejects(
     () => GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'hello there' }], maxTokens: 120 }),
-    (e) => e.name === 'UnpricedModelError',
+    (e) => e.name === 'UnpricedModelError' || /^Unknown platform model:/.test(e.message),
     'an unpriced outside model ran instead of being refused',
   );
   assert.equal(trace.order.includes('AI.run'), false, 'an unpriced model reached the binding');

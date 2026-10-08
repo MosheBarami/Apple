@@ -3,12 +3,13 @@
 // focused work to a planner, a builder, a reviewer and a tester. Each delegate gets a fresh context and only the
 // tools its role needs; only its final answer returns to the coordinator. Only the builder can change the place,
 // and the session checkpoints before its first change (apps/worker/src/do/session.ts, /studio-tool).
-import { type AgentProps, useModel, useResponseFinish, useSubagent, useTool } from '@flue/runtime';
+import { type AgentProps, useModel, useResponseFinish, useResponseStart, useAgentStart, useAgentFinish, useDataWriter, useDelivery, usePersistentState, useSubagent, useTool } from '@flue/runtime';
 import { env } from 'cloudflare:workers';
 import { STUDIO_TOOL_SPECS } from '../tools/generated.ts';
 import { projectOf } from '../conversation-id.ts';
 import { studioTools } from '../tools/studio.ts';
 import { FINISH_RULES } from './build-rules.ts';
+import { ENGINE_RELEASE } from '../../../../packages/shared/src/inference.ts';
 
 const READS = STUDIO_TOOL_SPECS.filter((t) => !t.writes).map((t) => t.name);
 /**
@@ -30,7 +31,8 @@ Scripts are Luau: server logic in ServerScriptService, client UI and input in St
 Never claim you did or saw something you did not. End with a short summary of what you found or did.`;
 
 /** The coordinator's whole instruction. Kept at 10,000 characters or fewer (M4 acceptance; a test holds it). */
-export const INSTRUCTIONS = `You are StudPilot, the coordinator of a small team that builds in Roblox Studio for a Roblox creator.
+export const INSTRUCTIONS = `Engine ${ENGINE_RELEASE.id}, prompts ${ENGINE_RELEASE.promptVersion}, routing ${ENGINE_RELEASE.policyVersion}.
+You are StudPilot, the coordinator of a small team that builds in Roblox Studio for a Roblox creator.
 You can read the place yourself. You cannot change it: the builder does that.
 
 For a question about the place, read and answer yourself.
@@ -89,16 +91,35 @@ line it names, and say plainly when the run was clean. Change nothing. ${SHARED}
 } as const;
 
 /** One instance per conversation: `id` is `<project>` or `<project>~<chat>` (checked against its owner in app.ts). */
-const MODEL = '@cf/zai-org/glm-5.3-flash';
+const MODEL = ENGINE_RELEASE.modelId;
 
 export function StudPilot({ id }: AgentProps) {
-  // Flue otherwise supplies medium before the binding's fallback defaults run.
-  // Delegates inherit this setting, so their reasoning fits the metered output cap.
-  useModel(`cloudflare/${MODEL}`, { thinkingLevel: 'low' });
   const projectId = projectOf(id) ?? id;
+  const delivery = useDelivery();
+  const requestedRef = delivery.kind === 'signal' && delivery.type === 'studpilot-creator-request'
+    && /^[0-9a-f-]{36}$/.test(delivery.attributes?.runRef ?? '') ? delivery.attributes!.runRef : null;
+  const [activeRef, setActiveRef] = usePersistentState<string | null>('inferenceRunRef', null);
+  const runRef = requestedRef ?? (delivery.kind === 'user' ? null : activeRef);
+  const routedModel = runRef ? `@cf/studpilot/${projectId}/${runRef}` : MODEL;
+  useModel(`cloudflare/${routedModel}`, { thinkingLevel: 'low' });
+  const writeInference = useDataWriter('inference');
+  useResponseStart(() => ({ inference: { engineVersion: ENGINE_RELEASE.version,
+    ...(runRef ? { runRef } : { route: 'studpilot', label: ENGINE_RELEASE.label }) } }));
+  useAgentStart(async () => {
+    if (requestedRef) {
+      const evidence = await (env as unknown as Env).GATE.inferenceEvidence(projectId, requestedRef);
+      setActiveRef(requestedRef); writeInference(evidence);
+    } else if (delivery.kind === 'user') setActiveRef(null);
+  });
+  useAgentFinish(async () => {
+    if (runRef) writeInference(await (env as unknown as Env).GATE.inferenceEvidence(projectId, runRef));
+  });
   // Credits: the response's settled token usage (its delegates' calls included) is charged to the project's owner.
   // The hook is synchronous, so the charge is sent and not awaited; the shared budget has already metered every call.
-  useResponseFinish(({ response }) => {
+  useResponseFinish(({ response, metadata }) => {
+    // Private gateway calls have no platform provider neurons. The managed legacy
+    // path retains its existing usage charge; a personal API bill is never priced as GLM.
+    if ((metadata.inference as { runRef?: string } | undefined)?.runRef) { setActiveRef(null); return; }
     const u = response.usage;
     void (env as unknown as Env).GATE.chargeUsage(projectId, MODEL, { inputTokens: u.input + u.cacheRead, outputTokens: u.output, cachedInputTokens: u.cacheRead }).catch(() => undefined);
   });
@@ -112,7 +133,9 @@ export function StudPilot({ id }: AgentProps) {
       description: role.description,
       agent: () => {
         for (const tool of pick(role.tools)) useTool(tool);
-        return role.instructions;
+        // Omit a per-render model override: Flue delegates inherit the submission's
+        // pinned parent model, even if another delivery joins the active response.
+        return `<studpilot-role name="${name}">\n${role.instructions}`;
       },
     });
   }

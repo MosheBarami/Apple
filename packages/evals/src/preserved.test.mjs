@@ -884,7 +884,7 @@ test('B9 the admin key still opens admin routes and still opens nothing else', a
   assert.equal((await hitApp(`/api/projects/${PROJECT_ID}/checkpoints`, { adminKey: ADMIN_KEY })).status, 401);
 });
 
-test('B9 the provider abstraction did not change which model actually serves a request', () => {
+test('B9 managed model keys use their registered transport and unknown models fail closed', async () => {
   // The whole product still resolves every model key to the one Workers AI model. If a refactor
   // ever repoints a key at a credential-less provider, production breaks silently — this catches it.
   const gw = read('gateway.ts');
@@ -897,21 +897,22 @@ test('B9 the provider abstraction did not change which model actually serves a r
   //
   //   The exact key set is still asserted, as a TRIPWIRE rather than a pin: adding or removing a
   //   catalogue row is a product decision, and this should force somebody to read it. ]]
-  const block = /export const DEFAULT_MODELS: Record<string, ModelCfg> = \{([\s\S]*?)\n\};/.exec(gw);
-  assert.ok(block, 'DEFAULT_MODELS is no longer declared the way this guard reads it');
-  const entries = [...block[1].matchAll(/^\s*(\w+): \{ id: '([^']+)'/gm)].map(([, k, id]) => [k, id]);
-  assert.ok(entries.length >= 3, `parsed ${entries.length} model keys; the parse is broken, not the gateway`);
+  const G = await import(`file://${bundle(SRC('gateway.ts'), 'preserved-models')}`);
+  const providers = await import(`file://${bundle(SRC('providers', 'index.ts'), 'preserved-providers')}`);
+  const entries = Object.entries(await G.getModels({ KV: { get: async () => null } })).map(([key, cfg]) => [key, cfg.id]);
+  assert.ok(entries.length >= 3, 'the gateway supplied no managed model configuration');
   // REVIEWED in M4 (no vision): the `vision` key is gone, so the tripwire reads three keys. A fourth must be read, and a picture role must not return.
   assert.deepEqual(entries.map(([k]) => k).sort(), ['agent', 'memory', 'plan'],
     'the model catalogue changed shape — that is a product decision, so it needs reading');
   for (const [k, id] of entries) {
     assert.match(id, /^@cf\//, `${k} must still resolve to a Workers AI model id`);
+    assert.equal(providers.adapterForModelId(id).id, 'workers-ai');
   }
   // Every call is chosen from the model id. (The customer-key alternative to OpenRouter went with
   // BYOK, D-VISION-1, so there is no second choice left for this to allow.)
   assert.match(gw, /const adapter = adapterForModelId\(cfg\.id\);/, 'the adapter must be chosen from the resolved model id');
-  // …and an unknown id still falls back to the only transport this worker has.
-  assert.match(read('providers/registry.ts'), /return workersAiAdapter;/, 'an unrecognised model id must fall back to the AI binding');
+  // The explicit multi-provider mandate replaces the historical implicit fallback.
+  assert.throws(() => providers.adapterForModelId('@cf/unregistered/model'), /Unknown platform model/);
 });
 
 // ---------------------------------------------------------------------------

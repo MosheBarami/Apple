@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-10-08T17:11:39.420Z",
+  "scope": "real JWT and local HTTPS Worker BYOK; no website or Studio build acceptance",
+  "productionDeployment": false,
+  "studioMutation": false,
+  "authHttpStatus": 200,
+  "loopbackTlsFingerprint": "0577de4bd6b1a2d80579cb47a5c8c98b5de79c7e4f01c1f09563937ec86dff5f",
+  "steps": [
+    {
+      "stage": "encrypted connection save",
+      "httpStatus": 201
+    },
+    {
+      "stage": "authenticated model discovery",
+      "httpStatus": 200
+    },
+    {
+      "stage": "real selected model inference",
+      "httpStatus": 200
+    },
+    {
+      "stage": "real native tool support",
+      "httpStatus": 200
+    }
+  ],
+  "modelsReturned": 69,
+  "inference": {
+    "provider": "cloudflare",
+    "modelId": "@cf/openai/gpt-oss-20b",
+    "verified": true,
+    "usage": {
+      "inputTokens": 74,
+      "outputTokens": 41,
+      "cachedInputTokens": 0
+    }
+  },
+  "tools": {
+    "provider": "cloudflare",
+    "modelId": "@cf/openai/gpt-oss-20b",
+    "passed": true,
+    "usage": {
+      "inputTokens": 135,
+      "outputTokens": 41,
+      "cachedInputTokens": 0
+    }
+  },
+  "passed": true,
+  "connectionRemoved": true,
+  "publishedTokenCostEstimateUsd": 6.64e-05
+}

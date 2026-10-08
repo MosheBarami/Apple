@@ -45,10 +45,10 @@ These were already false or were made false by the Roblox lane. Each is now corr
 |---|---|---|
 | Operator the former operator name, contact the former Gmail inbox | **policy** (BLOCKED N6: the legal name and inbox are the owner's). Left exactly as it was. | `OO` |
 | Email sign-up asks for an email, a password **and a date of birth** (a day, a month and a year); the password is hashed. **The date is checked in the browser and never sent or stored**; see section 9 | `auth-pages.tsx:854 supabase.auth.signUp(` (`signUp` with email, password and, at `auth-pages.tsx:860 data: gate.data`, the pass note), `auth-pages.tsx:964 <BirthDateField` (the field); hashing is Supabase Auth's | `PC` "13 AND OLDER ..." (fails if the form loses the field or the pages stop saying it) |
-| The display name starts as the part of the email before the `@`, and can be changed in Settings | `infra/supabase/migrations/0001_init.sql:98`; `settings.tsx:2167 title="Display name"` | none new (carried over) |
+| The display name starts as the part of the email before the `@`, and can be changed in Settings | `infra/supabase/migrations/0001_init.sql:98`; `settings.tsx:2168 title="Display name"` | none new (carried over) |
 | Operator "StudPilot", contact `support@studpilot.app` | **policy** (owner decision D-13, 2026-10-05; before any money is charged an adult or a company must become the named operator, BLOCKED N9). `OPERATOR_NAME` and `SUPPORT_EMAIL` in `packages/shared/src/index.ts` are the values. | `OO`, `tests/support-expectations.test.mjs` |
 | Email sign-up asks for an email, a password and a date of birth (judged in the browser, never sent); the password is hashed | `auth-pages.tsx:854 supabase.auth.signUp(`, `auth-pages.tsx:964 <BirthDateField`, `auth-pages.tsx:345 auth-roblox-link` (the Roblox button); hashing is Supabase Auth's | `PC` birth-date test reads this form |
-| The display name starts as the part of the email before the `@`, and can be changed in Settings | `infra/supabase/migrations/0001_init.sql:98`; `settings.tsx:1918 .update({ display_name:` | none new (carried over) |
+| The display name starts as the part of the email before the `@`, and can be changed in Settings | `infra/supabase/migrations/0001_init.sql:98`; `settings.tsx:1919 .update({ display_name:` | none new (carried over) |
 | Projects: names, descriptions, place name and id | `0001_init.sql:13-26` | none new |
 | Chat history, tool record, attachments, checkpoints | carried over from the previous page and `AGENTS.md` (SessionDO owns them) | none new |
 | Checkpoints: the newest 25 per project | `retention.ts:38` | `PC` retention test |
@@ -102,7 +102,7 @@ The data page repeats the privacy rows above in shorter form; the same guards re
 | Claim | Evidence | Guard |
 |---|---|---|
 | 13 or older to create an account; under-13 accounts are deleted | **policy** | `PC` |
-| Roblox sign-in: you authorise through Roblox's consent screen; Disconnect Roblox (Settings > Connections) asks Roblox to revoke, then removes the token and the link, and the sign-in identity (Roblox id and username) is kept; Roblox-only accounts have no Disconnect, which today is every Roblox account | `roblox-oauth.ts:1105-1132`, `roblox-signin.ts:299-323 export function describeConnection`, `settings.tsx:2382 <RobloxConnectionCard userId={userId} />` | `PC` terms test |
+| Roblox sign-in: you authorise through Roblox's consent screen; Disconnect Roblox (Settings > Connections) asks Roblox to revoke, then removes the token and the link, and the sign-in identity (Roblox id and username) is kept; Roblox-only accounts have no Disconnect, which today is every Roblox account | `roblox-oauth.ts:1105-1132`, `roblox-signin.ts:299-323 export function describeConnection`, `settings.tsx:2384 <RobloxConnectionCard userId={userId} />` | `PC` terms test |
 | Free while in beta; the Free plan is 5 Credits a day and up to 30 a month; paid plans start later and cannot be bought yet | `packages/shared/src/index.ts:2290-2293` (`PLAN_TABLE`), rendered into the page by `terms.astro` (`{PLAN_TABLE.free.creditsPerDay}` and `.creditsPerMonth`, `fullRateDays`); pricing page headline "Free while in beta. Paid plans start later" (`pricing.astro:266`); checkout state is probed from `/api/billing/config` (`index.ts:3042`) at build time, and an unreachable probe means "closed" | `PC`, `pricing-config.test.mjs` |
 | Improvement data and Roblox data are as the Privacy Policy says, and the Policy controls | **policy** | `PC` |
 | Beta, as-is, liability, acceptable use, governing law | **policy** (legal text, carried over) | none |
@@ -113,7 +113,7 @@ The data page repeats the privacy rows above in shorter form; the same guards re
 | Claim | Evidence | Guard |
 |---|---|---|
 | A switch, on = opted out, off by default (absent = not opted out) | `settings.tsx:2540-2570 <Row id="improvement-opt-out"`; `preferences.ts:66` (key), `:254-258` (boolean only), `:461-470` (narrows: any layer's true wins) | `AD` (writes `improvement_opt_out` at user scope, reads `?? false`), `IO` |
-| What came back, not what was sent, is what the toast says; a failed read is not shown as "not opted out" | `settings.tsx:1972-1988 const setImprovementOptOut = useMutation` and the row's `settings.tsx:2564 storedPrefs.isError` branch | `AD` |
+| What came back, not what was sent, is what the toast says; a failed read is not shown as "not opted out" | `settings.tsx:1972-1988 const setImprovementOptOut = useMutation` and the row's `settings.tsx:2566 storedPrefs.isError` branch | `AD` |
 | The choice is exported and erased with the rest of the preferences (they are `memory_entries` rows of the user scope) | `erasure.ts:387`; export of `memory_entries` (existing) | none new |
 | "Improvement data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key, credentials or payment details" | the same sentence as the pages (**policy**) | `PC`, `PM` lock 2 (string equality with the pages) |
 | "Collection is not active yet" | `consent-staging.mjs:93` | `PM` lock 3 |
@@ -577,3 +577,5 @@ branch (never in the branch), the named test run, and the file restored; the lis
 
 **Before deploying.** (1) Apply migration `0015_usage_ledger_survives_account_deletion.sql` BEFORE the worker that deletes sign-in identities (9.2). (2) `CF_WORKER_OPS_TOKEN` is owner item N4: until it is set the gateway deletion does nothing and says so, and the 30-day sentence holds
 without it until 2026-11-03 (9.3). (3) Email Routing (BLOCKED E1) makes `support@studpilot.app` reach a person (9.1). (4) The first live run of the daily Roblox check is the verification list in 9.4. (5) Nothing is applied by hand for this cycle's D1 changes: the Worker adds the `created_username` column and makes the `roblox_wiped` table itself on first use. (6) The two Cloudflare list calls and the delete `limit` are verified on the first live run once N4 is set (9.3): until then the step fails closed, and says so in the admin log.
+
+Code-pointer maintenance, 2026-10-08: four Settings line anchors above were refreshed after the AI Connections insertion. This changes no recorded acceptance result or legal claim.

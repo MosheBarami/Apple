@@ -123,6 +123,15 @@ export interface Env {
   ROBLOX_OAUTH_CLIENT_ID?: string;
   ROBLOX_OAUTH_CLIENT_SECRET?: string;
   SUPABASE_SECRET_KEY?: string;
+  /** Separate AES-GCM wrapping key for AI connections; never sent to a provider or browser. */
+  AI_CREDENTIAL_KEY?: string;
+  /** Independent rollout/rollback switches; missing values keep new inference disabled. */
+  AI_BYOK_ENABLED?: string;
+  AI_OPENCODE_ENABLED?: string;
+  AI_STUDIO_ROUTES_ENABLED?: string;
+  /** Authenticated service origin and independent signing key for the OpenCode CLI runner. */
+  OPENCODE_RUNNER_URL?: string;
+  OPENCODE_RUNNER_SIGNING_KEY?: string;
   /** The Roblox account library assets are created under. Public id, not a credential;
    *  the credential is ROBLOX_API_KEY, declared further down beside the other asset fields. */
   ROBLOX_CREATOR_USER_ID?: string;

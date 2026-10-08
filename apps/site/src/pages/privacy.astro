@@ -47,6 +47,12 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Google or Discord, where the sign-in page offers them.</strong> A "Continue with Google" or "Continue with Discord" button appears only when StudPilot's sign-in service has that provider switched on; if you do not see the button, none of this applies to you. If you sign in with Google or Discord, Supabase receives from that provider the details you allow on its consent screen, typically your email address, your name or username and a link to your profile picture, and keeps them as your sign-in identity. The provider also learns that you signed in to StudPilot.</li>
   </ul>
 
+  <h2>Your AI provider connections</h2>
+  <p>If you choose Bring Your Own Key, StudPilot sends your prompts and the relevant build context to the API provider and model you select. That provider bills your API account directly and applies its own privacy and retention terms. StudPilot service limits are separate.</p>
+  <p>Your AI API keys are stored with authenticated encryption and a wrapping key kept outside the database. Connection names, masked key endings, account-specific model catalogs and verification state are kept until you remove the connection or delete your account. Keys are never returned to the browser after saving and are not included in transcripts, analytics or data exports.</p>
+  <p>The selected route and operational model decisions are kept with your project conversation. Removing a key prevents further inference with it. A request already sent to a provider may have used that provider's credits before removal.</p>
+  <p>OpenCode Free is unavailable for public builds until provider permission and a verified isolated service runner exist. Some free models allow submitted data to be used for training; those models require a separate explicit choice. The route never silently moves to a paid provider.</p>
+
   <h2>Sign in with Roblox</h2>
   <p>
     <strong>In plain words:</strong> Roblox tells us who you are. From your Roblox account we keep
@@ -142,9 +148,10 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Voice input</strong> — if you use the microphone in the chat box, the recording is turned into text by a Cloudflare speech model, or by AssemblyAI on a deployment that has an AssemblyAI key. StudPilot never stores the recording, and it asks AssemblyAI to delete the transcript right after reading it.</li>
   </ul>
   <p>
-    Your prompts and relevant project context are sent to the model to answer your request. Model
-    calls are logged by Cloudflare AI Gateway as described above: each prompt and reply is kept
-    for 30 days and then deleted.
+    Your prompts and relevant project context are sent to the model to answer your request. Managed
+    model calls use the Cloudflare AI Gateway log described above. BYOK inference goes to your selected
+    provider, whose own retention and data-use terms apply; those requests do not use StudPilot's
+    managed inference credentials.
   </p>
 
   <h2>How long we keep it</h2>

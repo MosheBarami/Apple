@@ -6,7 +6,11 @@ import {
   type FlueConversationMessage,
   type FlueConversationPart,
 } from "@flue/sdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { InferencePicker } from "../ai/inference-picker";
+import { BrandMark } from "../ai/brand-mark";
+import { fetchInferenceSelection, saveInferenceSelection } from "@/lib/ai-api";
+import { INFERENCE_ROUTES, type InferenceSelection } from "../../../../packages/shared/src/inference";
 import {
   Checkpoint,
   CheckpointIcon,
@@ -67,6 +71,29 @@ export function ChatView({
 }) {
   const { projects } = useProjects();
   const [loadedName, setLoadedName] = useState<string | null>(null);
+  const [inferenceState, setInferenceState] = useState<{ projectId: string; value: InferenceSelection | null; loaded: boolean }>({ projectId, value: null, loaded: false });
+  const [inferenceError, setInferenceError] = useState<string | null>(null);
+  const [inferenceReady, setInferenceReady] = useState(false);
+  const [savingInference, setSavingInference] = useState(false);
+  const inference = inferenceState.projectId === projectId ? inferenceState.value : null;
+  const inferenceLoaded = inferenceState.projectId === projectId && inferenceState.loaded;
+  const inferenceRef = useRef<InferenceSelection | null>(inference);
+  inferenceRef.current = inference;
+  const pendingSend = useRef<{ text: string; key: string; selection: InferenceSelection } | null>(null);
+  useEffect(() => {
+    let live = true; setInferenceError(null); setInferenceReady(false); pendingSend.current = null;
+    void fetchInferenceSelection(projectId).then(({ selection }) => {
+      if (live) setInferenceState({ projectId, value: selection, loaded: true });
+    }).catch(() => { if (live) setInferenceError('Your AI choice could not be loaded. Reload before starting a build.'); });
+    return () => { live = false; };
+  }, [projectId]);
+  const chooseInference = useCallback(async (selection: InferenceSelection | null) => {
+    setSavingInference(true); setInferenceError(null);
+    try {
+      if (selection) await saveInferenceSelection(selection, projectId);
+      setInferenceState({ projectId, value: selection, loaded: true });
+    } finally { setSavingInference(false); }
+  }, [projectId]);
   const title =
     projects?.find((p) => p.id === projectId)?.name ?? loadedName ?? "Chat";
 
@@ -90,21 +117,41 @@ export function ChatView({
   const client = useMemo(
     () =>
       typeof window === "undefined"
+        || !inferenceLoaded
         ? undefined
         : createFlueClient({
-            headers: authHeaders,
+            headers: async () => {
+              const choice = pendingSend.current?.selection ?? inferenceRef.current;
+              return { ...(await authHeaders()), ...(choice ? { 'X-StudPilot-Inference': JSON.stringify(choice) } : {}) };
+            },
             url: `${location.origin}/studio/api/agents/studpilot/${projectId}`,
           }),
-    [projectId]
+    [projectId, inferenceLoaded]
   );
   // A stalled persistent SSE connection hid completed submissions in production.
   // Finite update reads reconnect from the durable offset after every batch.
   const agent = useFlueAgent({ client, live: "long-poll" });
   const busy = agent.status === "submitted" || agent.status === "streaming";
-  const visible = agent.messages.filter((m) => m.display === "visible");
+  const visible = agent.messages.flatMap((message): FlueConversationMessage[] => {
+    if (message.signal?.tagName === 'studpilot-creator-request' && typeof message.signal.attributes?.requestText === 'string') {
+      return [{ ...message, role: 'user', purpose: 'user', display: 'visible',
+        parts: [{ type: 'text', text: message.signal.attributes.requestText, state: 'done' }] }];
+    }
+    return message.display === 'visible' ? [message] : [];
+  });
 
   // The message typed on the new-chat page.
   const { historyReady, sendMessage } = agent;
+  const sendSelected = useCallback(async (text: string) => {
+    const choice = inferenceRef.current;
+    if (!choice || !inferenceReady || savingInference) throw new Error('Choose a ready AI route before sending.');
+    // Freeze the request's identity and choice until admission is confirmed. A dropped
+    // connection retries the same delivery rather than starting another build.
+    if (!pendingSend.current || pendingSend.current.text !== text) pendingSend.current = { text, key: crypto.randomUUID(), selection: choice };
+    const pending = pendingSend.current;
+    await sendMessage(text, { idempotencyKey: pending.key });
+    pendingSend.current = null;
+  }, [sendMessage, inferenceReady, savingInference]);
   const firstInFlight = useRef(false);
   const [failedFirst, setFailedFirst] = useState<string | null>(null);
   useEffect(() => {
@@ -112,7 +159,7 @@ export function ChatView({
     setFailedFirst(null);
   }, [projectId]);
   useEffect(() => {
-    if (!historyReady || firstInFlight.current) {
+    if (!historyReady || !inferenceReady || savingInference || firstInFlight.current) {
       return;
     }
     let first: string | null = null;
@@ -123,7 +170,7 @@ export function ChatView({
     }
     if (first) {
       firstInFlight.current = true;
-      sendMessage(first)
+      sendSelected(first)
         .then(() => {
           try {
             sessionStorage.removeItem(firstMessageKey(projectId));
@@ -133,7 +180,7 @@ export function ChatView({
         })
         .catch(() => setFailedFirst(first));
     }
-  }, [historyReady, projectId, sendMessage]);
+  }, [historyReady, projectId, sendSelected, inferenceReady, savingInference]);
 
   // Credits go down while the agent works; read them again when it finishes.
   const [wasBusy, setWasBusy] = useState(false);
@@ -149,13 +196,13 @@ export function ChatView({
   return (
     <ChatScreen
       busy={busy}
-      error={agent.error?.message ?? null}
+      error={inferenceError ?? agent.error?.message ?? null}
       messages={visible}
       onRecover={
         failedFirst
           ? async () => {
               try {
-                await sendMessage(failedFirst);
+                await sendSelected(failedFirst);
                 try {
                   sessionStorage.removeItem(firstMessageKey(projectId));
                 } catch {
@@ -168,7 +215,6 @@ export function ChatView({
             }
           : agent.refresh
       }
-      onSend={(text) => agent.sendMessage(text)}
       onStop={
         client
           ? async () => {
@@ -177,9 +223,11 @@ export function ChatView({
             }
           : undefined
       }
+      onSend={sendSelected}
       pair={pair}
       projectId={projectId}
-      ready={agent.historyReady}
+      ready={agent.historyReady && inferenceReady && !savingInference}
+      inferenceControls={<InferencePicker value={inference} onChange={chooseInference} onReady={setInferenceReady} running={busy} />}
       title={title}
     />
   );
@@ -197,6 +245,7 @@ export function ChatScreen({
   onSend,
   onRecover,
   onStop,
+  inferenceControls,
 }: {
   title: string;
   projectId: string;
@@ -208,6 +257,7 @@ export function ChatScreen({
   onSend: (text: string) => unknown | Promise<unknown>;
   onRecover?: () => void;
   onStop?: () => Promise<unknown>;
+  inferenceControls?: React.ReactNode;
 }) {
   const [draft, setDraft] = useState({ projectId, text: "" });
   const [stopping, setStopping] = useState(false);
@@ -328,6 +378,7 @@ export function ChatScreen({
             <ConversationScrollButton />
           </Conversation>
           <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+            {inferenceControls && <div className="mb-3">{inferenceControls}</div>}
             <Composer
               busy={busy}
               disabled={!ready}
@@ -392,6 +443,8 @@ export function Turn({
       <MessageContent>
         <div className="chat-speaker">
           {message.role === "user" ? "You" : "StudPilot"}
+          {message.role === 'assistant' && (message.metadata?.inference as { route?: string } | undefined)?.route === 'studpilot'
+            ? <span>{INFERENCE_ROUTES[0].label}</span> : null}
           {live && message.role === "assistant" ? <span>Working</span> : null}
         </div>
         {message.parts.map((part, i) => (
@@ -430,6 +483,17 @@ function Part({
   user: boolean;
   live: boolean;
 }) {
+  if (part.type === 'data-inference') {
+    const data = part.data as { selection?: InferenceSelection; decisions?: { modelId: string; modelName?: string; provider: string; producer?: string; hostedBy?: string; connectionName?: string; reason: string }[]; usage?: { inputTokens: number; outputTokens: number } };
+    const route = INFERENCE_ROUTES.find((route) => route.id === data.selection?.route);
+    const decision = data.decisions?.at(-1);
+    return <div className="ai-provider-identity ai-muted" aria-label="AI used for this run">
+      {decision && <BrandMark brand={decision.provider} />}
+      {decision?.producer && <BrandMark brand={decision.producer} />}
+      <span>{route?.label ?? 'AI route'}{decision ? ` · ${decision.modelName ?? decision.modelId} via ${decision.hostedBy ?? decision.provider}${decision.connectionName ? ` · ${decision.connectionName}` : ''}` : ' · selected for this run'}
+        {decision?.reason ? ` · ${decision.reason}` : ''}</span>
+    </div>;
+  }
   if (part.type === "text") {
     if (!part.text) {
       return null;

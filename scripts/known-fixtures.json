@@ -52,6 +52,11 @@
       "value_sha256": "a824beda7d5cf543a2222e63a7d3d584619fe98f31658fa418e8b4981476744c"
     },
     {
+      "path": "apps/worker/tests/ai-connections.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "df8bad2b40d0a7432e4c67add348c5da11b37de8536224dcf3151f527c7f2883"
+    },
+    {
       "path": "apps/worker/tests/billing-webhook-authority.test.mjs",
       "pattern": "Assigned secret literal",
       "value_sha256": "1a4fa2b28975a84ce3b8b28d8d12b9c763d0dcb140a81f8227e4c81306486d4b"

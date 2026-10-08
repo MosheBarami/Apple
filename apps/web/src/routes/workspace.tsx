@@ -9,6 +9,9 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { ProductModel } from '@studpilot/shared';
+import type { InferenceSelection } from '@studpilot/shared';
+import { InferencePicker } from '../components/ai/inference-picker';
+import { fetchInferenceSelection, saveInferenceSelection } from '../lib/api';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { formatSettings, shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -209,6 +212,24 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   );
   // One engine (V3 gate G01): every message is sent as StudPilot, on every plan.
   const productModel: ProductModel = 'apple';
+  const [inference, setInference] = useState<InferenceSelection | null>(null);
+  const [inferenceReady, setInferenceReady] = useState(false);
+  const [inferenceError, setInferenceError] = useState('');
+  useEffect(() => {
+    let live = true;
+    if (MOCK_MODE) { setInference({ route: 'studpilot' }); return; }
+    setInference(null); setInferenceReady(false); setInferenceError('');
+    void fetchInferenceSelection(projectId).then((result) => { if (live) setInference(result.selection); })
+      .catch(() => { if (live) setInferenceError('Your saved AI choice could not be loaded. Choose a route again.'); });
+    return () => { live = false; };
+  }, [projectId]);
+  const chooseInference = async (next: InferenceSelection | null) => {
+    setInference(next); setInferenceReady(false); setInferenceError('');
+    if (next) {
+      try { if (!MOCK_MODE) await saveInferenceSelection(next, projectId); }
+      catch { setInference(null); throw new Error('Your AI choice could not be saved. Try choosing it again.'); }
+    }
+  };
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
   // Kept beside the label rather than inside the form element so clearing both after a save is one
@@ -463,8 +484,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     if (running || !chatAllowed) return;
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
-    editAndResend(lastUser.id, lastUser.content, productModel);
-  }, [messages, running, editAndResend, productModel, chatAllowed]);
+    if (!inference || !inferenceReady) { toast('Choose an available AI route first.', 'error'); return; }
+    editAndResend(lastUser.id, lastUser.content, productModel, inference);
+  }, [messages, running, editAndResend, productModel, chatAllowed, inference, inferenceReady]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -762,6 +784,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // The toast said the send had been refused while the box had already been emptied, so the one
   // thing the user needed to recover — what they had typed — was gone by the time they read why.
   const send = (text: string, attachments: ChatAttachment[] = []): boolean => {
+    if (!inference || !inferenceReady) { toast('Choose an available AI route first. Your draft is kept.', 'error'); return false; }
     if (!chatAllowed) {
       toast(`${chatWhy ?? 'You cannot send messages in this project.'} Your draft is kept.`, 'error');
       return false;
@@ -769,7 +792,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     void conversation.current?.scrollToBottom();
     setSeed(undefined);
-    if (!sendChat(text, attachments, productModel)) {
+    if (!sendChat(text, attachments, productModel, inference)) {
       toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
       return false;
     }
@@ -1159,6 +1182,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
 
       {/* ------------------------------------------------------ composer -- */}
       <div className="gx-compose-region">
+        <InferencePicker value={inference} onChange={chooseInference} onReady={setInferenceReady} running={running} />
+        {inferenceError && <p className="gx-conn-note" role="status">{inferenceError}</p>}
         {/* The settled reply, said once. Empty while a run is in flight, which is silence rather
             than an announcement of silence. */}
         <span className="gx-sr" aria-live="polite" aria-atomic="true">
@@ -1194,7 +1219,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           // A refused file says so where every other refusal in this workspace says so.
           onNotice={(m) => toast(m, 'error')}
           running={running}
-          disabled={conn !== 'open' || !chatAllowed}
+          disabled={conn !== 'open' || !chatAllowed || (!running && !inferenceReady)}
           // G03: nothing is typed or sent until the paired place is open in a connected Studio; a
           // run Studio walked away from waits for Continue, offered once the place is back.
           locked={composerLocked(studio)}
@@ -1304,7 +1329,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               toast(`${chatWhy ?? 'You cannot edit messages in this project.'} Your edit is kept.`, 'error');
               return;
             }
-            editAndResend(editing.id, text, productModel);
+            if (!inference || !inferenceReady) { toast('Choose an available AI route first. Your edit is kept.', 'error'); return; }
+            editAndResend(editing.id, text, productModel, inference);
             setEditing(null);
           }}
         />

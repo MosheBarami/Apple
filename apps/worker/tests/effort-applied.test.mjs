@@ -118,7 +118,10 @@ test('SessionDO omits the claim instead of downgrading it, and clears the replay
   const src = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   // The claim is the adapter's answer. It may be NARROWED to false (a customer-key step sends no
   // effort at all, see gateway.ts) but never forced true by anything else.
-  assert.match(src, /const effortApplied = (?:[\w.]+ \? false : )?await reasoningEffortApplies\(this\.env, gatewayModel\);/);
+  const applied = /const effortApplied = ([\s\S]*?);/.exec(src)?.[1] ?? '';
+  assert.match(applied, /await reasoningEffortApplies\(this\.env, gatewayModel\)/);
+  assert.doesNotMatch(applied, /\|\|\s*true/, 'the adapter verdict cannot be forced true');
+  assert.match(applied, /selection\.route === 'studpilot'/, 'external routes must not claim a Workers AI effort knob');
   // Omitted from the broadcast...
   assert.match(src, /\.\.\.\(effortApplied \? \{ effort: choice\.effort, effortReason: choice\.reason \} : \{\}\)/);
   // ...and cleared from the run state, which `runSnapshot` replays on a refresh. Leaving it there

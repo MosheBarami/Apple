@@ -37,7 +37,7 @@ test('the composer draws no mode switch and no Autonomous toggle, and takes no m
 test('the workspace holds no mode or Autonomous state and ignores a legacy mode in a handoff', () => {
   const ws = code('routes/workspace.tsx');
   assert.doesNotMatch(ws, /setMode|setAutonomous|PRODUCT_MODES|onBuildPlan|\bautonomous\b/);
-  assert.match(ws, /sendChat\(text, attachments, productModel\)/);
+  assert.match(ws, /sendChat\(text, attachments, productModel(?:, inference)?\)/);
   assert.match(ws, /location\.state as \{ seed\?: unknown \} \| null/, 'the roadmap handoff reads only the seed');
 });
 

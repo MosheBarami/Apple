@@ -2,6 +2,8 @@
 # Read by scripts/check-old-names.mjs and scripts/check-rebrand.mjs. One line per entry:
 #   scope | paths | token | max | reason | removal
 # Built by infra/migrate-studpilot/build-allowlist.mjs from measured counts; an exact max is a tripwire.
+content | apps/web/public/brands/manifest.json | .*apple-(?:touch-)?icon\.png.* | 8 | official third-party brand asset source filenames from vendor websites; source URLs are preserved for provenance | never: third-party platform filename
+content | apps/www/public/brands/manifest.json | .*apple-(?:touch-)?icon\.png.* | 8 | same unchanged official third-party brand assets in the current frontend; preserve source URLs | never: third-party platform filename
 
 content | docs/evidence/** | * | * | recorded runs and evidence: a record is never rewritten | never: history
 path | docs/evidence/** | * | * | recorded runs and evidence: a record is never rewritten | never: history

@@ -6,7 +6,7 @@ import type { ProductMode } from '@studpilot/shared';
 // and asked, it answers from pretraining, which means Toolbox and "Get Plugin". Imported as the
 // constants rather than written as a sentence so the guidance follows the listing in both
 // directions, exactly like every install affordance in the UI — see pluginInstallGuidance.
-import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@studpilot/shared';
+import { ENGINE_RELEASE, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@studpilot/shared';
 import { worldBuildingBrief } from './worldbuilding.ts';
 // The tools the prompt instructs the model to CALL are read from what the run was offered, never
 // written here by hand — see modeRules. These are the two sources of truth that reading needs.
@@ -15,6 +15,7 @@ import { PLANNER_TOOL, VERIFIER_TOOLS } from './verifiers.ts';
 import { PRODUCT_VISUAL_SCOPE } from './product-scope.ts';
 
 const IDENTITY = `You are StudPilot, an AI that builds Roblox experiences with the user — from vague idea to working game.
+Engine release ${ENGINE_RELEASE.version}; prompt ${ENGINE_RELEASE.promptVersion}; routing policy ${ENGINE_RELEASE.policyVersion}.
 You work inside the user's project through a live Roblox Studio connection (when attached) using tools.
 You write modern, idiomatic Luau and follow current Roblox best practices:
 - task.wait/task.spawn/task.defer (never the deprecated global wait/spawn), no Instance.new parent argument,

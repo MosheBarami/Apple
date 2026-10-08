@@ -58,6 +58,10 @@ import {
 } from './erasure';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
+import { aiConnectionRoutes } from './ai-connection-routes';
+import { inferencePreferenceKey, savedInferenceSelection } from './inference-runs';
+import { parseInferenceSelection } from '@studpilot/shared';
+import { getAiConnection } from './ai-connections';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
@@ -739,6 +743,24 @@ app.use('/api/*', async (c, next) => {
  * PKCE, an IP limit) in roblox-oauth.ts. `ipLimited` is handed in because it lives here.
  */
 app.route('/auth/roblox', robloxOAuthRoutes(ipLimited, ipSpent));
+app.route('/api/me/ai', aiConnectionRoutes);
+app.get('/api/projects/:id/ai-selection', async (c) => {
+  const access = await sharedAccess(c, c.req.param('id'), 'read');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  return c.json({ selection: await savedInferenceSelection(c.env, c.get('user').userId, access.ctx.project.id) });
+});
+app.put('/api/projects/:id/ai-selection', async (c) => {
+  const access = await sharedAccess(c, c.req.param('id'), 'build');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  const body = await c.req.json().catch(() => null), selection = parseInferenceSelection(body?.selection);
+  if (!selection) return c.json({ error: 'invalid_selection' }, 400);
+  if (selection.route === 'byok') {
+    const connection = await getAiConnection(c.env, c.get('user').userId, selection.connectionId);
+    if (!connection || connection.view.provider !== selection.provider) return c.json({ error: 'connection_not_found' }, 404);
+  }
+  await c.env.KV.put(inferencePreferenceKey(c.get('user').userId, access.ctx.project.id), JSON.stringify(selection));
+  return c.json({ selection });
+});
 
 /**
  * Compare two secrets without leaking their contents through timing.
@@ -1005,6 +1027,46 @@ async function studioGrantedStub(env: Env, projectId: string): Promise<DurableOb
  * spends credits) for a project holding a live grant, and the session checkpoints before the first write.
  */
 export class StudioGate extends WorkerEntrypoint<Env> {
+  /** Authenticated admission freezes a private choice before Flue accepts the creator's delivery. */
+  async prepareInference(jwt: string, projectId: string, selection: unknown,
+    identity?: { conversation: string; requestKey: string; inputHash: string }): Promise<Record<string, unknown>> {
+    const user = await verifyJwt(this.env, jwt);
+    const ctx = user ? await withOwnedProject({ env: this.env, get: () => user }, projectId) : null;
+    if (!ctx || !buildApproved(this.env, ctx.project.owner_id)) throw new Error('This account cannot start Studio inference.');
+    await grantStudio(this.env, ctx.project.id, ctx.project.owner_id);
+    const allowance = await this.canSpend(projectId);
+    if (!allowance.ok) throw new Error(allowance.message);
+    const response = await ctx.stub.fetch('https://do/studio-inference/prepare', { method: 'POST',
+      body: JSON.stringify({ ownerId: user!.userId, selection, identity }) });
+    if (!response.ok) throw new Error('The selected AI route was not admitted. Test its connection or choose a supported model.');
+    return response.json() as Promise<Record<string, unknown>>;
+  }
+
+  /** Only the bound Studio service reaches this entrypoint; browser routes cannot supply an actor. */
+  async fetch(request: Request): Promise<Response> {
+    const match = /^\/inference\/([0-9a-f-]{36})\/([0-9a-f-]{36})$/.exec(new URL(request.url).pathname);
+    if (request.method !== 'POST' || !match) return new Response('Not found', { status: 404 });
+    const projectId = match[1]!, runRef = match[2]!;
+    const owner = await studioGrantOwner(this.env, projectId);
+    const stub = owner ? await studioGrantedStub(this.env, projectId) : null;
+    if (!stub) return new Response('This Studio project is not authorized.', { status: 401 });
+    const input = await request.text();
+    if (input.length > 450000) return new Response('Input limit exceeded', { status: 413 });
+    let payload;
+    try { payload = JSON.parse(input); } catch { return new Response('Invalid inference input', { status: 400 }); }
+    return stub.fetch(new Request('https://do/studio-inference/invoke', { method: 'POST',
+      body: JSON.stringify({ ownerId: owner, runRef, input: payload.input, task: payload.task }), signal: request.signal }));
+  }
+
+  async inferenceEvidence(projectId: string, runRef: string): Promise<Record<string, unknown>> {
+    const owner = await studioGrantOwner(this.env, projectId);
+    const stub = owner ? await studioGrantedStub(this.env, projectId) : null;
+    if (!stub) throw new Error('This Studio project is not authorized.');
+    const response = await stub.fetch('https://do/studio-inference/evidence', { method: 'POST', body: JSON.stringify({ ownerId: owner, runRef }) });
+    if (!response.ok) throw new Error('The inference evidence is no longer available.');
+    return response.json() as Promise<Record<string, unknown>>;
+  }
+
   async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string; canBuild: boolean } | { ok: false }> {
     const user = await verifyJwt(this.env, jwt);
     if (!user) return { ok: false };
@@ -4721,9 +4783,12 @@ app.get('/api/admin/session-info/:id', async (c) => {
  * takes exactly the path a chat message takes, so it measures the real agent.
  */
 app.post('/api/admin/agent-run/:id', async (c) => {
+  const input = await c.req.json();
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/agent-run', {
     method: 'POST',
-    body: JSON.stringify(await c.req.json()),
+    // A shared admin key is not the owner of a customer's private provider connection.
+    // This identity comes only from the admin gate's verified JWT, never the request body.
+    body: JSON.stringify({ ...input, inferenceActorId: c.get('adminActorId') ?? null }),
   });
   return c.json(await res.json(), res.status as 200);
 });

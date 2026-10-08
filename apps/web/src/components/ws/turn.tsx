@@ -9,7 +9,7 @@
 // genuinely benefits — a render, a sound — and those come from the typed component registry, never
 // from free-form model output.
 import { Suspense, lazy, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { creditsText, type PlaytestRun, type StudioFrame } from '@studpilot/shared';
+import { ENGINE_RELEASE, INFERENCE_ROUTES, creditsText, type PlaytestRun, type StudioFrame } from '@studpilot/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
@@ -379,6 +379,10 @@ export function Turn({
       onContextMenu={menu.onContextMenu}
     >
       <MessageContent className="w-full gap-3">
+        {item.inference && <p className="text-xs text-muted-foreground" data-inference-route={item.inference.route}>
+          {INFERENCE_ROUTES.find((route) => route.id === item.inference?.route)?.label ?? ENGINE_RELEASE.label}
+          {item.routing ? ` · ${item.routing.provider} · ${item.routing.modelId}` : ''}
+        </p>}
         {/* WHAT IT THOUGHT AND DID (owner, 2026-10-01): each step's reasoning as an AI Elements
             Reasoning — open and shimmering while it streams, "Thought for N seconds" once the step
             ends or a tool starts — with that step's tools after it as one Task. */}
@@ -497,7 +501,8 @@ export function Turn({
             <span className="border-border border-s ps-3 tabular-nums">
               {/* The settled figure rolls in on a turn that was watched arriving (picks/chat/rolling-number).
                   `creditsSpent` is in ledger units, the worker's unit; a person reads credits with two decimals. */}
-              <strong className="font-normal text-foreground/80"><RollingNumber value={creditsText(item.creditsSpent)} rollIn={arrivedLive} /></strong> Credits
+              <strong className="font-normal text-foreground/80"><RollingNumber value={creditsText(item.creditsSpent)} rollIn={arrivedLive} /></strong>{' '}
+              {item.inference && item.inference.route !== 'studpilot' ? 'service Credits' : 'Credits'}
             </span>
           )}
         </p>

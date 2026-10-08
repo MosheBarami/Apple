@@ -29,6 +29,11 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
    '--outfile=' + out], { stdio: 'pipe', cwd: WORKER });
 const { tokensForEffort, tokensAfterCuts, MAX_CONSECUTIVE_CUTS } = await import(out);
 
+const gatewayOut = out.replace('reasoning.mjs', 'gateway.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'gateway.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + gatewayOut],
+  { stdio: 'pipe', cwd: WORKER });
+const { DEFAULT_MODELS } = await import(gatewayOut);
 const GATEWAY = readFileSync(join(WORKER, 'src', 'gateway.ts'), 'utf8');
 const SESSION = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
 
@@ -44,7 +49,7 @@ function modeBases() {
 
 /** Every configured model ceiling, read from gateway.ts for the same reason. */
 function ceilings() {
-  const found = [...GATEWAY.matchAll(/maxTokens:\s*([0-9_]+)/g)].map((x) => Number(x[1].replace(/_/g, '')));
+  const found = Object.values(DEFAULT_MODELS).map((config) => config.maxTokens);
   assert.ok(found.length >= 2, `only ${found.length} model ceiling(s) found in gateway.ts`);
   return found;
 }

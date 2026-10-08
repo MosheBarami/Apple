@@ -132,7 +132,7 @@ test('retry goes through edit_resend rather than a second re-run path', () => {
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
   // RESTATED 2026-09-29 (V3 G01): there is no mode or Autonomous grant to carry any more, so the
   // retry is the prompt and the engine, and nothing else.
-  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, productModel\)/);
+  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, productModel(?:, inference)?\)/);
 });
 
 test('it resends the last USER message, not the failed assistant turn', () => {
