@@ -17,7 +17,7 @@ lower grade counts and only A/B reach the build model. Not yet uploaded (waits o
 | 8 | UI art: icons in 10+ families | 8,000 + 500 | 13,551 items: icons A 5,421 / B 4,030 / C 2,201, frames A 649 / B 1,198 / C 9, plus 43 kit icons | 27 families; after the L4 overrides; not uploaded yet (O-GROUP) |
 | 9 | Fonts | all | 120 (19 / 81 / 20) | every Roblox font family (29 built-in, 91 Creator Store); graded by two critics from specimen boards rendered in Studio; mood-tagged; A: Fredoka One, Luckiest Guy, Bangers, Builder Sans, Creepster, Press Start 2P and 13 more |
 | 10 | VFX | 2,000 | 665 (153 / 310 / 202) | Kenney Particle Pack, Smoke Particles, Splat Pack and Light Masks (CC0) as textures for ParticleEmitters, Beams and Decals; Creator Store effects wait on O-KEY; not uploaded yet (O-GROUP) |
-| 11 | SFX | 30,000 indexed | 657 (219 / 436 / 2) | Kenney's 9 CC0 sound packs; Creator Store audio (by ID, no upload) waits on O-KEY; not uploaded yet (O-GROUP) |
+| 11 | SFX | 30,000 indexed | 9,712 (1,882 / 5,938 / 1,892) | Kenney's 9 CC0 sound packs and the first 749 of 1,486 OpenGameArt sound submissions (CC0, CC-BY); Creator Store audio (by ID) waits on O-KEY; not uploaded yet (O-GROUP) |
 | 12 | Music | 10,000 indexed | 85 (0 / 85 / 0) | Kenney Music Jingles (CC0); the APM library is used by ID inside Roblox (O-KEY) |
 | 13 | Animations | 1,000 | 47 (0 / 2 / 45) | 3 OpenGameArt rigs graded as models; clips not yet split out |
 | 14 | Code modules | 300 | 404 (29 / 296 / 79) | 68 of 70 repos (charm and ripple ship TypeScript); 392 MIT, 12 Apache; L4: 315 clean static scans; the 89 flagged reviewed by two reviewers each: 65 safe, 18 restricted (purchases, web, teleport: only when the game asks), 6 unsafe and kept out |
@@ -89,6 +89,14 @@ ffprobe and ffmpeg (length, rate, channels, peak and mean level). Two critics pe
 levels on each tile: they cannot listen, so the grade covers name clarity, waveform shape (onset, silence, clipping) and
 level, and an owner listening check belongs in the SFX board. A 219, B 521, C 2; three 'kill him/her/it' announcer lines
 set to maturity Mild. OpenGameArt music (about 8,700 submissions) is not taken: grading music needs listening.
+
+OpenGameArt sounds (2026-10-08, first half): the ledger (`planning/library/ledger/oga-audio.jsonl`, written by
+`tools/list-oga.mjs` from OGA's advanced search) holds 1,486 sound submissions: CC0 896, CC-BY 3.0 469, CC-BY 4.0 120,
+one in OGA's AI-assisted collection (never fetched). From the first 749: 9,055 sounds (205 byte-identical copies, 12
+unreadable files left out), each credited to its author with the page's attribution notice. Two critics per waveform
+board of 40: A 1,663, B 5,502, C 1,890 (C: names that tell nothing, near-silent, clipped or truncated files, montages).
+L4: 113 set to Mild (realistic gunfire, realistic human screams or deaths, four violent voice lines); the one trademark
+line was already C. The other 737 submissions are being fetched.
 
 Search (L7): the 3,670 A and B items are embedded (Workers AI bge-small, 384 dimensions, card text and tags) in the
 Vectorize index `studpilot-library` (cosine; metadata indexes on kind, grade and family). C items are never embedded.
