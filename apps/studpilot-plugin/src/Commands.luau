@@ -4468,7 +4468,9 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	-- critique surface; StudioCaptureService contributes what the person is actually seeing in the
 	-- active 3D viewport. Failure here must not erase a valid software observation.
 	if self.capture and type(self.capture.capture) == "function" then
-		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(w :: number, h :: number, stillCurrent) end)
+		-- The native frame is asked for at up to 640x480 whatever the software views' size: it is the one the agent's model
+		-- reads closely (StudioCapture.luau keeps the viewport's aspect and never upscales).
+		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(math.max(w :: number, 640), math.max(h :: number, 480), stillCurrent) end)
 		if nativeOk and type(native) == "table" and type(native.rgbBase64) == "string" and #native.rgbBase64 > 0 then
 			result.studioViewport = {
 				rgbBase64 = native.rgbBase64,

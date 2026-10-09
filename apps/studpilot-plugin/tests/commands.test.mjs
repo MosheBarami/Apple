@@ -1584,7 +1584,9 @@ spec("render_view adds the real Studio viewport PNG without replacing software c
     eq(r.data.views[1].rgbBase64, "AAAA", "software render remains available for calibrated critique")
     eq(r.data.studioViewport.rgbBase64, "iVBORw0KGgo=")
     eq(r.data.studioViewport.encoding, "png"); eq(r.data.studioViewport.source, "studio_viewport")
-    eq(r.data.studioViewport.width, 160); eq(r.data.studioViewport.height, 100)
+    -- The native frame is asked for at the 640x480 inspection box, not the software views' size: it is the one the
+    -- agent's model reads (handoff 2026-10-09 section 9). StudioCapture keeps the viewport aspect and never upscales.
+    eq(r.data.studioViewport.width, 640); eq(r.data.studioViewport.height, 480)
     eq(r.data.studioViewport.view, "viewport"); eq(r.data.studioViewport.subject, "game.Workspace")
     c:destroy()
 end)
