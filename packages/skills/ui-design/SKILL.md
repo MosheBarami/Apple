@@ -112,8 +112,8 @@ over 100%). Treat warnings like defects.
 ## 7. The build_ui schema
 
 ```
-build_ui({ name, children: [Node...], insets?: "safe"|"device"|"none", enabled?, displayOrder?,
-           replaceScripts?, viewports? })
+build_ui({ name, children: [Node...], styles?: {name: fields}, insets?: "safe"|"device"|"none", enabled?,
+           displayOrder?, replaceScripts?, viewports? })
 ```
 
 `name` is the ScreenGui in StarterGui. Calling build_ui again with the same name REPLACES that screen
@@ -160,6 +160,16 @@ and near-black over the nearest filled background), `textT`, `alignX` left|cente
 `truncate`, `rich`, `lineHeight`. Text on a filled box gets breathing room automatically (`pad: 0` turns it
 off).
 
+**Write it once (styles and each).** Every token you write is paid for, so never repeat a look or a row:
+- `styles: { "card": { "bg": "#16181d", "radius": 8 }, "btn": { "type": "button", "h": 32, "fontSize": 14 } }`
+  at the top level; a node takes `style: "card"` or `style: ["btn", "danger"]`. A style may hold any node
+  field except `name` and `children` (including `type`). Later styles win; the node's own fields win over all.
+- A child with `each: [...]` is repeated once per item. A string item sets `text`; an object item sets that
+  copy's fields (`{ "text": "Ban", "style": "danger" }`). A template with `{key}` placeholders anywhere in
+  it (nested children, names) takes the items as values instead: `"text": "{price} coins"`,
+  `"name": "Row_{id}"`. A fixed template `name` gets the item's number (Tab1, Tab2, ...).
+- Change one element after a build with `set_properties` on its path; rebuild only for structural changes.
+
 **Behaviour** is a LocalScript you write with `edit_script` in `StarterPlayerScripts`, finding the screen
 with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It survives rebuilds.
 
@@ -168,9 +178,10 @@ with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It s
 1. Load this skill; decide job, kind, primary action, worst-case content (section 1).
 2. Choose the scales and colours (sections 2-3) for this request; write them down in your reasoning.
 3. Write the tree: one outer panel or a few edge-anchored HUD groups, stacks inside, names on everything
-   a script needs.
-4. Call build_ui. Read `layout.defects` and `warnings`. Fix each by changing the design (section 6), and
-   call build_ui again with the same name. Repeat until `verdict: "pass"`, or explain any defect you keep
+   a script needs. Put every repeated look in `styles` and every list in `each`.
+4. Call build_ui. Read `layout.defects` and `warnings`. Fix each by changing the design (section 6): one or
+   two properties with `set_properties` then `check_ui`; a structural change by calling build_ui again with
+   the same name. Repeat until `verdict: "pass"`, or explain any defect you keep
    on purpose (a truncated long username in a list is acceptable; a cut-off price is not).
 5. Wire behaviour (edit_script), then prove it with play_check.
 6. For UI built by other means, run check_ui.
@@ -180,19 +191,24 @@ with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It s
 **A moderation panel** (tool UI: dense, neutral, one accent, destructive colour only on destructive actions)
 
 ```json
-{ "name": "ModPanel", "children": [
+{ "name": "ModPanel",
+  "styles": {
+    "ink": { "color": "#e8eaf0" },
+    "act": { "type": "button", "w": 72, "h": 32, "fontSize": 14, "bg": "#2a2e37", "radius": 6, "color": "#e8eaf0" },
+    "danger": { "bg": "#b4232c", "color": "#ffffff" } },
+  "children": [
   { "type": "stack", "name": "Panel", "at": "center", "w": "94%", "maxW": 620, "h": "86%", "maxH": 520,
     "bg": "#16181d", "radius": 8, "stroke": { "color": "#2b2f38" }, "pad": 16, "gap": 12, "children": [
     { "type": "frame", "name": "Header", "dir": "h", "h": 32, "align": "center", "gap": 8, "children": [
-      { "type": "text", "name": "Title", "text": "Players", "font": "Montserrat:SemiBold", "fontSize": 18, "w": "fill", "color": "#e8eaf0" },
-      { "type": "button", "name": "Close", "text": "Close", "w": "auto", "h": 32, "fontSize": 14, "bg": "#23262e", "radius": 6, "color": "#c9ccd4" } ] },
-    { "type": "stack", "name": "Search", "dir": "h", "h": 40, "gap": 8, "children": [
-      { "type": "input", "name": "Query", "placeholder": "Search by name", "bg": "#0f1115", "radius": 6, "stroke": { "color": "#2b2f38" }, "color": "#e8eaf0", "placeholderColor": "#7b8090" } ] },
+      { "type": "text", "name": "Title", "style": "ink", "text": "Players", "font": "Montserrat:SemiBold", "fontSize": 18, "w": "fill" },
+      { "style": "act", "name": "Close", "text": "Close", "w": "auto", "bg": "#23262e" } ] },
+    { "type": "input", "name": "Query", "style": "ink", "h": 40, "placeholder": "Search by name", "bg": "#0f1115", "radius": 6, "stroke": { "color": "#2b2f38" }, "placeholderColor": "#7b8090" },
     { "type": "scroll", "name": "List", "gap": 4, "barColor": "#3a3f4b", "children": [
-      { "type": "frame", "name": "Row1", "dir": "h", "h": 44, "pad": [0, 10], "gap": 8, "align": "center", "bg": "#1d2027", "radius": 6, "children": [
-        { "type": "text", "name": "PlayerName", "text": "builderman", "w": "fill", "truncate": true, "color": "#e8eaf0" },
-        { "type": "button", "name": "Mute", "text": "Mute", "w": 72, "h": 32, "fontSize": 14, "bg": "#2a2e37", "radius": 6, "color": "#e8eaf0" },
-        { "type": "button", "name": "Kick", "text": "Kick", "w": 72, "h": 32, "fontSize": 14, "bg": "#b4232c", "radius": 6, "color": "#ffffff" } ] } ] } ] } ] }
+      { "type": "frame", "name": "Row_{id}", "dir": "h", "h": 44, "pad": [0, 10], "gap": 8, "align": "center", "bg": "#1d2027", "radius": 6, "children": [
+        { "type": "text", "name": "PlayerName", "style": "ink", "text": "{id}", "w": "fill", "truncate": true },
+        { "style": "act", "name": "Mute", "text": "Mute" },
+        { "style": ["act", "danger"], "name": "Kick", "text": "Kick" } ],
+        "each": [{ "id": "builderman" }, { "id": "Roblox" }] } ] } ] } ] }
 ```
 
 **A game shop** (game UI: loud, on-theme, chunky; here a candy world)
@@ -214,10 +230,12 @@ with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It s
 **A minimal HUD** (peripheral, translucent, glanceable)
 
 ```json
-{ "name": "Hud", "children": [
+{ "name": "Hud",
+  "styles": { "chip": { "type": "text", "w": "auto", "h": 40, "font": "BuilderSans:Bold", "fontSize": 20, "bg": "#000000", "bgT": 0.45, "radius": "pill", "pad": [0, 14] } },
+  "children": [
   { "type": "stack", "name": "Stats", "at": "top-left", "offset": [12, 12], "dir": "h", "w": "auto", "h": 40, "gap": 8, "children": [
-    { "type": "text", "name": "Coins", "text": "1,250", "w": "auto", "h": 40, "font": "BuilderSans:Bold", "fontSize": 20, "bg": "#000000", "bgT": 0.45, "radius": "pill", "pad": [0, 14], "color": "#ffd34d" },
-    { "type": "text", "name": "Level", "text": "Lv 7", "w": "auto", "h": 40, "font": "BuilderSans:Bold", "fontSize": 20, "bg": "#000000", "bgT": 0.45, "radius": "pill", "pad": [0, 14], "color": "#ffffff" } ] } ] }
+    { "style": "chip", "name": "Coins", "text": "1,250", "color": "#ffd34d" },
+    { "style": "chip", "name": "Level", "text": "Lv 7", "color": "#ffffff" } ] } ] }
 ```
 
 Each of these is one way to answer one request. A different request (a sci-fi upgrade bay, a cosy farm

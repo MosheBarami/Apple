@@ -383,3 +383,17 @@ test('a Creator Store image is a library icon: accepted by the component and set
   assert.equal(out.ids[hit.image], String(hit.imageId));
   assert.equal(uploads.length, 0);
 });
+
+// Rebuild 2026-10-08: the Studio agent designs everything itself (owner: "no kits"), so its calls (ctx.freeHand, set by
+// SessionDO /studio-tool) are not held to the library rules above.
+test('the Studio agent (freeHand) may make and restyle UI by hand in every writer', async () => {
+  const items = [{ className: 'ScreenGui', name: 'Hud', parent: 'game.StarterGui', children: [{ className: 'ImageLabel', name: 'Icon' }] }];
+  const s = studio({ created: ['game.StarterGui.Hud'] });
+  s.ctx.freeHand = true;
+  assert.ok(!refused(await T.TOOLS.create_instances.run(s.ctx, { items })));
+  assert.ok(!refused(await T.TOOLS.run_luau.run(s.ctx, { code: 'local i = Instance.new("ImageLabel")\ni.Parent = workspace' })));
+  assert.ok(!refused(await T.TOOLS.set_properties.run(s.ctx, { path: 'game.StarterGui.Hud.Icon', props: { BackgroundColor3: { t: 'Color3', v: [1, 0, 0] } } })));
+  assert.ok(s.calls.length > 0, 'the writes reach Studio');
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /ctx\.offeredTools = new Set\(STUDIO_TOOLS\);\s*\/\/[^\n]*\n\s*ctx\.freeHand = true;/);
+});

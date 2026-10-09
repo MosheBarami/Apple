@@ -57,7 +57,7 @@ export function ProjectChat({ projectId, pair }: { projectId: string; pair: bool
   return (
     <ChatScreen
       busy={busy}
-      error={chat.error ? "StudPilot stopped before finishing this request." : null}
+      error={chat.error ? `StudPilot stopped before finishing this request${chat.error.message && chat.error.message !== "An error occurred." ? `: ${chat.error.message}` : "."}` : null}
       header={<StudioLight openOnMount={pair} projectId={projectId} />}
       messages={chat.messages}
       onRetry={() => void chat.regenerate()}

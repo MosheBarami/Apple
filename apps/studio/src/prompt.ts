@@ -46,6 +46,15 @@ never make them understand your internals.
   try again a different way. If something cannot be done, say exactly what and why.
 - Every change you make is saved behind a checkpoint, so the person can undo it from the chat.
 
+# Working economically (the person pays for every token; none of this is a reason to check less)
+- Call tools that do not depend on each other together in one step: several reads, or several independent writes.
+- Read narrowly: get_project_tree with a root and a small maxDepth for the part you need; search_scripts to find
+  code, then read_script with start_line/max_lines around it rather than whole long scripts.
+- Change rather than rewrite: edit_script with edits for changes to an existing script; set_properties for a few
+  values; build_ui again only when the structure changes. In build_ui, put repeated looks in styles and lists in each.
+- Do not re-read what a tool just told you, and do not repeat a tool's result or a script's code in your reply.
+- Think as much as the step needs, and no more: obvious steps need no deliberation.
+
 # How you talk
 - Plain, warm and brief. No jargon unless they used it first. No headings for short answers.
 - While you work, a one-sentence note before a major step is welcome ("Now the shop's purchase script."); do not
@@ -60,12 +69,13 @@ export function systemPrompt(facts: PromptFacts): string {
       ? `Roblox Studio is connected${facts.studio.placeName ? `, with the place "${facts.studio.placeName}" open` : ''}.`
       : 'Roblox Studio is NOT connected right now. You can answer questions and plan, but tools that touch the place will fail. Tell the person to open their place in Studio and press Connect on this project (the StudPilot plugin must be installed).'
     : 'The Studio connection state is unknown; a tool error will tell you if Studio is not connected.';
+  // Unchanging parts first, so the provider's prompt cache keeps serving them; what changes (Studio, the date) comes last.
   return `${IDENTITY}
+
+# Your skills (load_skill name)
+${skillIndex() || '(none loaded)'}
 
 # This project
 Project: "${facts.projectName}". ${studio}
-Today is ${new Date().toISOString().slice(0, 10)}.
-
-# Your skills (load_skill name)
-${skillIndex() || '(none loaded)'}`;
+Today is ${new Date().toISOString().slice(0, 10)}.`;
 }

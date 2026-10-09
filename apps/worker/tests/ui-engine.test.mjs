@@ -393,3 +393,71 @@ test('every example in the ui-design skill compiles cleanly with build_ui', () =
     assert.deepEqual(out.warnings, [], `${example.name} warns: ${out.warnings.join(' | ')}`);
   }
 });
+
+/* --------------------------------------------------------- styles and repeats (token saver) --- */
+
+test('styles: a node takes its named looks, later styles over earlier, its own fields over both', () => {
+  const out = E.compileScreen({
+    name: 'Styled',
+    styles: { card: { bg: '#1e2430', radius: 12, pad: 16 }, warm: { bg: '#402020' }, label: { type: 'text', font: 'Montserrat:Bold', color: '#c9d1e0' } },
+    children: [{ type: 'stack', name: 'A', style: ['card', 'warm'], children: [{ style: 'label', name: 'T', text: 'Hi', color: '#ffffff' }] }],
+  });
+  assert.ok(!out.error, out.error);
+  const a = find(out.item, 'A');
+  assert.deepEqual(a.props.BackgroundColor3.v, [0.251, 0.1255, 0.1255]);
+  assert.ok(a.children.some((c) => c.className === 'UICorner'));
+  const t = find(out.item, 'T');
+  assert.equal(t.className, 'TextLabel');
+  assert.deepEqual(t.props.FontFace.v, ['Montserrat', 'Bold', 'Normal']);
+  assert.deepEqual(t.props.TextColor3.v, [1, 1, 1]);
+});
+
+test('styles: an unknown style name or a style with children is refused before anything is sent', () => {
+  const missing = E.compileScreen({ name: 'S', children: [{ type: 'frame', style: 'nope' }] });
+  assert.match(missing.error, /not one of the screen's styles/);
+  const kids = E.compileScreen({ name: 'S', styles: { x: { children: [] } }, children: [{ type: 'frame', style: 'x' }] });
+  assert.match(kids.error, /cannot set/);
+});
+
+test('each: string items set text, object items set fields, and fixed names stay unique', () => {
+  const out = E.compileScreen({
+    name: 'Tabs',
+    styles: { tab: { type: 'button', w: 120, bg: '#222831', radius: 8 } },
+    children: [{ type: 'stack', name: 'Bar', dir: 'h', w: 400, h: 44, children: [
+      { style: 'tab', name: 'Tab', each: ['Kick', 'Ban', { text: 'Mute', bg: '#552222' }] },
+    ] }],
+  });
+  assert.ok(!out.error, out.error);
+  const bar = find(out.item, 'Bar');
+  const tabs = bar.children.filter((c) => c.className === 'TextButton');
+  assert.deepEqual(tabs.map((t) => t.name), ['Tab1', 'Tab2', 'Tab3']);
+  assert.deepEqual(tabs.map((t) => t.props.Text.v), ['Kick', 'Ban', 'Mute']);
+  assert.deepEqual(tabs[2].props.BackgroundColor3.v, [0.3333, 0.1333, 0.1333]);
+  assert.deepEqual(tabs.map((t) => t.props.LayoutOrder.v), [1, 2, 3]);
+});
+
+test('each with {key} placeholders fills nested children and names', () => {
+  const out = E.compileScreen({
+    name: 'Shop',
+    children: [{ type: 'scroll', name: 'List', w: 300, h: 300, children: [
+      { type: 'stack', name: 'Row_{id}', dir: 'h', children: [{ type: 'text', name: 'N', text: '{n}' }, { type: 'text', name: 'P', text: '{p} coins', w: 80 }],
+        each: [{ id: 'sword', n: 'Sword', p: 100 }, { id: 'bow', n: 'Bow', p: 250 }] },
+    ] }],
+  });
+  assert.ok(!out.error, out.error);
+  assert.equal(find(out.item, 'Row_sword').children.find((c) => c.name === 'N').props.Text.v, 'Sword');
+  assert.equal(find(out.item, 'Row_bow').children.find((c) => c.name === 'P').props.Text.v, '250 coins');
+});
+
+test('each is bounded', () => {
+  const out = E.compileScreen({ name: 'S', children: [{ type: 'stack', children: [{ type: 'text', each: [] }] }] });
+  assert.match(out.error, /each must list/);
+});
+
+test('a free frame whose children have no placement warns that they overlap, and points at stack', () => {
+  const out = E.compileScreen({ name: 'S', children: [{ type: 'frame', name: 'P', w: 300, h: 300, children: [{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }] }] });
+  assert.ok(out.warnings.some((w) => /on top of each other/.test(w) && /stack/.test(w)), out.warnings.join(' | '));
+  const placed = E.compileScreen({ name: 'S', children: [{ type: 'frame', name: 'P', w: 300, h: 300, children: [{ type: 'text', text: 'a', at: 'top' }, { type: 'text', text: 'b', at: 'bottom' }] }] });
+  assert.deepEqual(placed.warnings, []);
+  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'frame', gap: 4, children: [] }] }).error, /use type "stack"/);
+});

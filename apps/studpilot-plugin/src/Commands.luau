@@ -23,6 +23,9 @@ local MAX_PATH = 320
 local MAX_NAME = 96
 local MAX_QUERY = 256
 local MAX_SOURCE = 240000
+-- Reading is not writing: a place may hold a far larger script (a bundled library), and one such script must not fail
+-- every listing, search or read. The worker pages what it reads.
+local MAX_READ_SOURCE = 4000000
 local MAX_DUMP_CHARS = 1000000
 local MAX_SCRIPTS = 240
 local MAX_TREE_DEPTH = 12
@@ -879,7 +882,7 @@ local function resolvePath(gameRef: any, services: any, path: any, write: boolea
 	if #parts == 1 then return gameRef, "game" end
 	local scopeRemedy = if write then "choose_allowed_target" else nil
 	local serviceName = firstService(parts)
-	if not serviceName then return nil, nil, "path names a service outside StudPilot's allowlist", "refused", scopeRemedy end
+	if not serviceName then return nil, nil, "path names a service outside StudPilot's allowlist; use one of game." .. table.concat(PLACE_SERVICES, ", game."), "refused", scopeRemedy end
 	if write and not WRITE_SERVICES[serviceName] then return nil, nil, "write target is outside StudPilot's place scope", "refused", scopeRemedy end
 	local current = serviceFrom(gameRef, services, serviceName)
 	if not current then return nil, nil, ("service %s is unavailable"):format(serviceName), "not_found" end
@@ -940,7 +943,7 @@ local function resolveOrdinalPath(gameRef: any, services: any, path: any, ordina
 	if not parts then return nil, parseErr end
 	if type(ordinals) ~= "table" or #ordinals ~= #parts - 2 then return nil, "instance reference ordinals do not match its path" end
 	local serviceName = firstService(parts)
-	if not serviceName then return nil, "path names a service outside StudPilot's allowlist" end
+	if not serviceName then return nil, "path names a service outside StudPilot's allowlist; use one of game." .. table.concat(PLACE_SERVICES, ", game.") end
 	local current = serviceFrom(gameRef, services, serviceName)
 	if not current then return nil, ("service %s is unavailable"):format(serviceName) end
 	for index = 3, #parts do
@@ -1374,6 +1377,13 @@ local function scriptSourceWithin(editor: any, inst: any, label: string): (strin
 	local source, err = editorSource(editor, inst)
 	if not source then return nil, err end
 	if #source > MAX_SOURCE then return nil, ("%s exceeds the %d character source limit"):format(label, MAX_SOURCE) end
+	return source
+end
+
+local function scriptSourceForReading(editor: any, inst: any): (string?, string?)
+	local source, err = editorSource(editor, inst)
+	if not source then return nil, err end
+	if #source > MAX_READ_SOURCE then return nil, ("script source is over %d characters"):format(MAX_READ_SOURCE) end
 	return source
 end
 
@@ -2763,11 +2773,10 @@ local function handleListScripts(self: any, op: any): (any?, string?, string?)
 	local scripts = {}
 	local truncated = false
 	local function visit(inst: any): (boolean?, string?)
-		local source, sourceErr = scriptSourceWithin(self.editor, inst, "script source")
-		if not source then return nil, sourceErr end
+		local source = scriptSourceForReading(self.editor, inst)
 		local path = fullPath(self.game, inst)
 		if not path then return nil, "could not determine script path" end
-		table.insert(scripts, { path = path, class = classNameOf(inst), lines = linesIn(source), chars = #source })
+		table.insert(scripts, { path = path, class = classNameOf(inst), lines = if source then linesIn(source) else nil, chars = if source then #source else nil })
 		if #scripts >= maxScripts then truncated = true; return true end
 		return false
 	end
@@ -2780,7 +2789,7 @@ local function handleReadScript(self: any, op: any): (any?, string?, string?)
 	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false, self)
 	if not inst then return nil, pathKind or "not_found", err end
 	if not isScript(inst) then return nil, "invalid", "target is not a script" end
-	local source, sourceErr = scriptSourceWithin(self.editor, inst, "script source")
+	local source, sourceErr = scriptSourceForReading(self.editor, inst)
 	if not source then return nil, "invalid", sourceErr end
 	return { path = canonical, class = classNameOf(inst), source = source, baseHash = hashSource(source), lines = linesIn(source) }, nil
 end
@@ -2796,8 +2805,9 @@ local function handleDumpScripts(self: any, op: any): (any?, string?, string?)
 	local chars = 0
 	local truncated = false
 	local function visit(inst: any): (boolean?, string?)
-		local source, sourceErr = scriptSourceWithin(self.editor, inst, "script source")
-		if not source then return nil, sourceErr end
+		local source = scriptSourceForReading(self.editor, inst)
+		-- One unreadable or oversized script is skipped, not a failed dump.
+		if not source or #source > MAX_SOURCE then truncated = true; return false end
 		local path = fullPath(self.game, inst)
 		if not path then return nil, "could not determine script path" end
 		if chars + #source > maxChars then truncated = true; return true end
@@ -2822,8 +2832,8 @@ local function handleSearchScripts(self: any, op: any): (any?, string?, string?)
 	local matches = {}
 	local truncated = false
 	local function visit(inst: any): (boolean?, string?)
-		local source, sourceErr = scriptSourceWithin(self.editor, inst, "script source")
-		if not source then return nil, sourceErr end
+		local source = scriptSourceForReading(self.editor, inst)
+		if not source then return false end
 		local path = fullPath(self.game, inst)
 		if not path then return nil, "could not determine script path" end
 		local lineNumber = 1

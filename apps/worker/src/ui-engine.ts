@@ -173,6 +173,82 @@ const KNOWN_KEYS = new Set(['type', 'name', 'children', 'w', 'h', 'minW', 'maxW'
   'text', 'font', 'fontSize', 'scale', 'color', 'textT', 'alignX', 'alignY', 'truncate', 'rich', 'lineHeight',
   'placeholder', 'placeholderColor', 'multiline', 'image', 'fit', 'tint', 'imageT', 'thickness']);
 
+/* ------------------------------------------------------------ styles and repeats --- */
+// Token saver: a screen's look is written once (`styles`) and a list once (`each`), instead of the model writing the
+// same colours, fonts and radii into every node. Both expand to plain nodes before compiling, so nothing below changes.
+
+const MAX_STYLES = 40;
+const MAX_EACH = 32;
+const VAR = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+const HAS_VAR = /\{[A-Za-z_][A-Za-z0-9_]*\}/;
+
+function styleMap(raw: unknown): Record<string, Args> {
+  if (raw === undefined) return {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) fail('styles must be an object of named styles, e.g. {"card": {"bg": "#1e2430", "radius": 12}}.');
+  const out: Record<string, Args> = {};
+  const entries = Object.entries(raw as Args);
+  if (entries.length > MAX_STYLES) fail(`styles may define at most ${MAX_STYLES} styles.`);
+  for (const [name, s] of entries) {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) fail(`styles.${name} must be an object of node fields.`);
+    const bad = Object.keys(s as Args).filter((k) => !KNOWN_KEYS.has(k) || k === 'name' || k === 'children');
+    if (bad.length) fail(`styles.${name} has field(s) ${bad.join(', ')} a style cannot set (no name or children; only node fields).`);
+    out[name] = s as Args;
+  }
+  return out;
+}
+
+/** `{key}` in any string of a repeated template takes the item's value; a string that is only `{key}` takes it as is. */
+function fill(v: unknown, vars: Args): unknown {
+  if (typeof v === 'string') {
+    const whole = /^\{([A-Za-z_][A-Za-z0-9_]*)\}$/.exec(v);
+    if (whole && whole[1]! in vars) return vars[whole[1]!];
+    return v.replace(VAR, (m, k: string) => (k in vars ? String(vars[k]) : m));
+  }
+  if (Array.isArray(v)) return v.map((x) => fill(x, vars));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v as Args).map(([k, x]) => [k, fill(x, vars)]));
+  return v;
+}
+
+function expandNode(raw: unknown, styles: Record<string, Args>, path: string): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const { style, ...own } = raw as Args;
+  let n: Args = own;
+  if (style !== undefined) {
+    const names = Array.isArray(style) ? style : [style];
+    const base: Args = {};
+    for (const s of names) {
+      if (typeof s !== 'string' || !(s in styles)) fail(`${path}.style ${JSON.stringify(s)} is not one of the screen's styles (${Object.keys(styles).join(', ') || 'none defined'}).`);
+      Object.assign(base, styles[s as string]);
+    }
+    // The node's own fields win over its styles; later styles win over earlier ones.
+    n = { ...base, ...own };
+  }
+  if (Array.isArray(n.children)) n.children = expandList(n.children, styles, `${path}.children`);
+  return n;
+}
+
+/** A child with `each` becomes one copy per item: its `{key}` placeholders take the item's values or, with none, the item's fields override the template's top node. A string item means {text}. */
+function expandList(list: unknown[], styles: Record<string, Args>, path: string): unknown[] {
+  const out: unknown[] = [];
+  list.forEach((raw, i) => {
+    const at = `${path}[${i}]`;
+    if (!raw || typeof raw !== 'object' || !('each' in (raw as Args))) { out.push(expandNode(raw, styles, at)); return; }
+    const { each, ...template } = raw as Args;
+    if (!Array.isArray(each) || each.length === 0 || each.length > MAX_EACH) fail(`${at}.each must list 1-${MAX_EACH} items (objects, or strings used as text).`);
+    // A template with {key} placeholders takes the items as values; one without takes them as fields of its top node.
+    const usesVars = HAS_VAR.test(JSON.stringify(template));
+    (each as unknown[]).forEach((item, j) => {
+      const vars: Args = typeof item === 'string' || typeof item === 'number' ? { text: String(item) } : item && typeof item === 'object' && !Array.isArray(item) ? item as Args : fail(`${at}.each[${j}] must be an object or a string.`);
+      const copy = fill(template, vars) as Args;
+      if (!usesVars) for (const [k, v] of Object.entries(vars)) if (KNOWN_KEYS.has(k) || k === 'style') copy[k] = v;
+      // A fixed template name gets the item's number, so the copies stay unique siblings.
+      if (typeof template.name === 'string' && !HAS_VAR.test(template.name) && !('name' in vars)) copy.name = `${template.name}${j + 1}`;
+      out.push(expandNode(copy, styles, `${at}.each[${j}]`));
+    });
+  });
+  return out;
+}
+
 function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build: Build, auto: string, parentPath: string): Compiled {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) fail(`${path} must be an object with a type.`);
   const n = raw as UiNode & Args;
@@ -306,8 +382,10 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
       p.Rotation = num(g.rotation);
     }
     if (g.t !== undefined) {
-      if (!Array.isArray(g.t) || g.t.length !== 2) fail(`${where}.gradient.t must be [start, end] transparency.`);
-      p.Transparency = { t: 'NumberSequence', v: [[0, unit(g.t[0], `${where}.gradient.t[0]`), 0], [1, unit(g.t[1], `${where}.gradient.t[1]`), 0]] } as PropValue;
+      // One number means the same transparency at both ends.
+      const gt = typeof g.t === 'number' ? [g.t, g.t] : g.t;
+      if (!Array.isArray(gt) || gt.length !== 2) fail(`${where}.gradient.t must be [start, end] transparency (or one number for both).`);
+      p.Transparency = { t: 'NumberSequence', v: [[0, unit(gt[0], `${where}.gradient.t[0]`), 0], [1, unit(gt[1], `${where}.gradient.t[1]`), 0]] } as PropValue;
     }
     dec('UIGradient', p);
   }
@@ -422,7 +500,7 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
     if (n.align) gp.HorizontalAlignment = en('HorizontalAlignment', { start: 'Left', center: 'Center', end: 'Right' }[oneOf(n.align, ['start', 'center', 'end'] as const, `${where}.align`)]);
     dec('UIGridLayout', gp);
   } else if (n.gap !== undefined || n.align !== undefined || n.justify !== undefined) {
-    fail(`${where}: gap/align/justify need a layout (a stack, grid, scroll, or a frame/button with dir).`);
+    fail(`${where}: gap/align/justify need a layout: for children in a column or row use type "stack" (or add dir "v"/"h" to this ${kind}); a frame without dir places children only by their at/offset.`);
   }
   if (kind === 'scroll') {
     const dirH = ownLayout === 'h';
@@ -466,6 +544,10 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
     const pct = kids.reduce((sum, k) => { const m = /^(\d+(?:\.\d+)?)%$/.exec(String(k?.[key] ?? '')); return sum + (m ? Number(m[1]) : 0); }, 0);
     if (pct > 100 || (pct === 100 && (n.gap ?? 0) > 0)) build.warnings.push(`${where}: its children's ${key} percents add up to ${pct}% plus gaps, so they overflow; use "fill" (with grow for weights).`);
   }
+  if (ownLayout === 'free') {
+    const unplaced = kids.filter((k) => k && typeof k === 'object' && k.at === undefined && k.offset === undefined);
+    if (unplaced.length > 1) build.warnings.push(`${where} places children freely and ${unplaced.length} of them have no at/offset, so they sit on top of each other at the top-left; make ${where} a stack (or give it dir) to lay them out in order.`);
+  }
   if (kind === 'button' || kind === 'input') build.interactive.push(namePath);
 
   return { spec: { className, name, props, ...(decor.length || childSpecs.length ? { children: [...decor, ...childSpecs] } : {}) }, count };
@@ -481,7 +563,7 @@ export function compileScreen(a: Args): CompiledScreen | Refusal {
     const name = typeof a.name === 'string' ? a.name : '';
     if (!NAME.test(name)) fail('name must be the ScreenGui name: letters, digits and _, starting with a letter (e.g. "AdminPanel").');
     if (!Array.isArray(a.children) || a.children.length === 0) fail('children must list the top-level nodes of the screen (1-12).');
-    const top = a.children as unknown[];
+    const top = expandList(a.children as unknown[], styleMap(a.styles), 'children');
     if (top.length > 12) fail('children may list at most 12 top-level nodes.');
     const insets = oneOf(a.insets ?? 'safe', Object.keys(INSETS) as (keyof typeof INSETS)[], 'insets');
     const props: P = {
@@ -561,12 +643,15 @@ export const buildUi = {
       'Look: bg "#hex", bgT 0-1, radius px|"pill", stroke {color, width, t}, gradient {colors, rotation, t:[a,b]}, clip. ' +
       `Text (text, button, input): text, font "Family" or "Family:Weight" (${UI_FONT_FAMILIES.slice(0, 8).join(', ')}, ...), fontSize px or scale [min,max], color, alignX, alignY, truncate, rich, lineHeight. ` +
       'input: placeholder, placeholderColor, multiline. image/icon: image "rbxassetid://N", fit fit|crop|stretch, tint. divider: color, thickness. ' +
+      'Write less: define each look once in `styles` ({"card":{"bg":"#1e2430","radius":12},"label":{"type":"text","font":"Montserrat:Medium","color":"#c9d1e0"}}) and give nodes style:"card" or ["card","label"] (the node\'s own fields win). ' +
+      'Repeat a child with each: [...]: {"type":"button","style":"tab","each":["Kick","Ban"]} makes one per item (a string sets text; an object sets fields), or use {key} placeholders: {"type":"stack","dir":"h","children":[{"type":"text","text":"{n}"},{"type":"text","text":"{p}"}],"each":[{"n":"Sword","p":"100"}]}. ' +
       'Behaviour goes in a LocalScript you write with edit_script in StarterPlayerScripts (it survives a rebuild), finding the screen with PlayerGui:WaitForChild(name).',
     parameters: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'the ScreenGui name, e.g. "AdminPanel"; an existing screen of this name is replaced' },
         children: { type: 'array', items: { type: 'object' }, maxItems: 12, description: 'top-level nodes, placed freely with at/offset' },
+        styles: { type: 'object', description: 'named looks used by nodes\' style field: {"name": {node fields except name/children}}' },
         insets: { type: 'string', enum: Object.keys(INSETS), description: 'safe (default): keep clear of the top bar and notches; device: only notches; none: the whole screen' },
         enabled: { type: 'boolean', description: 'false for a screen a script opens later (default true)' },
         displayOrder: { type: 'integer', description: 'which screen draws on top (higher)' },
@@ -617,7 +702,7 @@ export const buildUi = {
         ? 'The screen is built but its layout was NOT measured; say so rather than calling it correct.'
         : check.verdict === 'pass'
           ? 'Built and measured clean at every size. Wire behaviour with a LocalScript (edit_script), then prove it with play_check.'
-          : 'Fix every defect (resize, pad, wrap or shorten text, move, use fill/grow, raise z) and call build_ui again with the same name.',
+          : 'Fix every defect (resize, pad, wrap or shorten text, move, use fill/grow, raise z): a few values with set_properties then check_ui, or a structural change with build_ui again under the same name.',
       ...(made && typeof made === 'object' && 'propIssues' in (made as object) ? { propIssues: (made as Args).propIssues } : {}),
     };
   },

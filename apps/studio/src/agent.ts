@@ -19,15 +19,32 @@ import {
   type LanguageModelUsage,
 } from 'ai';
 import { createWorkersAI } from 'workers-ai-provider';
-import { meteredAi } from './metering.ts';
+import { type Holds, meteredAi, releaseAll, settleNext } from './metering.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
+import { compactHistory, TurnReadCache, unwrapQuotedToolInput } from './token-saver.ts';
 
 /** Measured 2026-10-08 (scripts/model-probe.mjs): first token in 1.0s and first tool call in 2.1s, against 3.6s/6.1s for
  * DeepSeek V4 Pro (which then reasoned for 113s) and 9.9s for GLM 5.3 Flash. */
 export const DEFAULT_MODEL = '@cf/moonshotai/kimi-k2.7-code';
 /** A long request (a whole game screen with its scripts and checks) fits; a loop that never ends does not. */
 const MAX_STEPS = 60;
+
+/**
+ * What the person sees when a step fails. Errors from the model binding and over RPC are not always Error instances in
+ * this isolate, and showing a generic line for them hid every real cause (owner, 2026-10-09), so any shape is read.
+ */
+export function describeError(e: unknown): string {
+  const o = e as { message?: unknown; error?: unknown; cause?: unknown; name?: unknown } | null;
+  const text =
+    typeof e === 'string' ? e
+      : o && typeof o.message === 'string' && o.message ? o.message
+        : o && typeof o.error === 'string' ? o.error
+          : o && o.cause ? describeError(o.cause)
+            : (() => { try { return JSON.stringify(e); } catch { return String(e); } })();
+  console.error('StudPilot agent error:', text, o && typeof o.name === 'string' ? o.name : typeof e);
+  return text && text !== '{}' ? text.slice(0, 600) : 'StudPilot hit an error it could not describe and stopped.';
+}
 
 interface ProjectInfo {
   name: string;
@@ -51,7 +68,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
 
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
-        onError: (e) => (e instanceof Error ? e.message : 'StudPilot hit an error and stopped.'),
+        onError: describeError,
         execute: async ({ writer }) => {
           if (!project.canBuild) {
             writer.write({ type: 'error', errorText: 'StudPilot is in private pre-launch: building is open to approved accounts only.' });
@@ -65,19 +82,25 @@ export class StudPilotAgent extends AIChatAgent<Env> {
           const status = await this.env.GATE.projectStatus(projectId).catch(() => null);
           if (status?.credits) writer.write({ type: 'data-credits', data: status.credits, transient: true });
 
+          const holds: Holds = { model, pending: [] };
           const workersai = createWorkersAI({
-            binding: meteredAi(this.env),
+            binding: meteredAi(this.env, holds),
             gateway: { id: this.env.AI_GATEWAY_ID },
           });
-          const messages = pruneMessages({
-            messages: await convertToModelMessages(this.messages),
-            reasoning: 'before-last-message',
-            toolCalls: 'before-last-2-messages',
-            emptyMessages: 'remove',
-          });
+          // Token saver: reasoning only for the latest exchange; earlier turns keep their tool calls and results, shortened
+          // (token-saver.ts), so the agent remembers what it built.
+          const messages = compactHistory(
+            pruneMessages({
+              messages: await convertToModelMessages(this.messages),
+              reasoning: 'before-last-message',
+              emptyMessages: 'remove',
+            }),
+          );
 
           const charge = async (usage: LanguageModelUsage) => {
             const cached = usage.inputTokenDetails?.cacheReadTokens ?? 0;
+            // The shared budget gets the step's real usage, not its reservation (metering.ts).
+            await settleNext(this.env, holds, { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 });
             await this.env.GATE.chargeUsage(projectId, model, {
               inputTokens: usage.inputTokens ?? 0,
               outputTokens: usage.outputTokens ?? 0,
@@ -92,13 +115,23 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             model: workersai(model, { reasoning_effort: 'low', sessionAffinity: projectId }),
             system: systemPrompt({ projectName: project.name, studio: status?.studio ?? null }),
             messages,
-            tools: { ...studioTools(this.env, projectId), ...knowledgeTools(this.env, writer) },
+            tools: { ...studioTools(this.env, projectId, new TurnReadCache()), ...knowledgeTools(this.env, writer) },
             stopWhen: isStepCount(MAX_STEPS),
+            experimental_repairToolCall: unwrapQuotedToolInput,
             maxOutputTokens: 16_000,
             abortSignal: options?.abortSignal,
             experimental_transform: smoothStream({ chunking: 'word' }),
             onStepFinish: async ({ usage }) => {
               await charge(usage);
+            },
+            onFinish: async () => {
+              await releaseAll(this.env, holds);
+            },
+            onAbort: async () => {
+              await releaseAll(this.env, holds);
+            },
+            onError: async () => {
+              await releaseAll(this.env, holds);
             },
           });
           writer.merge(
@@ -106,7 +139,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
               sendReasoning: true,
               sendSources: true,
               // The person sees why a turn stopped (a spending limit, a model failure), not a silent end.
-              onError: (e) => (e instanceof Error ? e.message : 'StudPilot hit an error and stopped.'),
+              onError: describeError,
             }),
           );
         },

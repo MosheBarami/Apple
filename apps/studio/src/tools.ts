@@ -9,6 +9,10 @@ import { formatCreatorStoreResult, searchCreatorStore } from './knowledge/creato
 import { readDoc, searchDocs } from './knowledge/docs.ts';
 import { SKILLS } from './skills.generated.ts';
 import { STUDIO_TOOL_SPECS } from './tools/generated.ts';
+import { clampToolOutput, TtlCache, type TurnReadCache } from './token-saver.ts';
+
+/** Knowledge lookups change rarely: ten minutes in this agent's memory saves repeat queries and their latency. */
+const KNOWLEDGE_CACHE = new TtlCache<unknown>(10 * 60_000);
 
 /**
  * Descriptions that differ from the worker's: the worker's text still names tools this agent does not have (the old
@@ -30,7 +34,7 @@ const DESCRIPTIONS: Record<string, string> = {
 /** Tool names whose results the chat shows as steps; the UI labels them. */
 export type StudioToolName = (typeof STUDIO_TOOL_SPECS)[number]['name'];
 
-export function studioTools(env: Env, projectId: string): ToolSet {
+export function studioTools(env: Env, projectId: string, reads?: TurnReadCache): ToolSet {
   const tools: ToolSet = {};
   for (const spec of STUDIO_TOOL_SPECS) {
     const description = DESCRIPTIONS[spec.name] ?? spec.description;
@@ -40,9 +44,16 @@ export function studioTools(env: Env, projectId: string): ToolSet {
       description: text,
       inputSchema: jsonSchema(spec.parameters as Parameters<typeof jsonSchema>[0]),
       execute: async (args) => {
+        // A read repeated with nothing written since costs one line, not the whole result again.
+        if (!spec.writes) {
+          const again = reads?.repeat(spec.name, args);
+          if (again) return again;
+        }
         const out = await env.GATE.callTool(projectId, spec.name, (args ?? {}) as Record<string, unknown>);
-        if (!out.ok) throw new Error(out.text);
-        return out.text;
+        if (spec.writes) reads?.invalidate();
+        if (!out.ok) throw new Error(clampToolOutput(out.text));
+        if (!spec.writes) reads?.remember(spec.name, args);
+        return clampToolOutput(out.text);
       },
     });
   }
@@ -69,7 +80,7 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
         source: z.enum(['roblox', 'luau', 'all']).optional().describe('Default all.'),
       }),
       execute: async ({ query, source }) => {
-        const hits = await searchDocs(env.DOCS, query, { limit: 6, source: source ?? 'all' });
+        const hits = (await KNOWLEDGE_CACHE.get(`docs:${source ?? 'all'}:${query.toLowerCase().trim()}`, () => searchDocs(env.DOCS, query, { limit: 6, source: source ?? 'all' }))) as Awaited<ReturnType<typeof searchDocs>>;
         for (const h of hits.slice(0, 3)) cite(h.url, h.heading && h.heading !== h.title ? `${h.title}: ${h.heading}` : h.title);
         return hits.map((h) => ({ title: h.heading && h.heading !== h.title ? `${h.title} › ${h.heading}` : h.title, url: h.url, source: h.source, snippet: h.snippet }));
       },
@@ -78,7 +89,7 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
       description: 'Read a documentation page or API member in full, by the URL search_docs gave you (create.roblox.com/docs or luau.org).',
       inputSchema: z.object({ url: z.string() }),
       execute: async ({ url }) => {
-        const page = await readDoc(env.DOCS, url);
+        const page = (await KNOWLEDGE_CACHE.get(`doc:${url}`, () => readDoc(env.DOCS, url))) as Awaited<ReturnType<typeof readDoc>>;
         if (!page) throw new Error(`${url} is not a Roblox or Luau documentation page.`);
         cite(page.url, page.title || page.url);
         return page;
@@ -92,7 +103,9 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
         category: z.enum(['model', 'mesh', 'decal', 'audio', 'animation', 'video']).optional().describe('Default model.'),
         limit: z.number().int().min(1).max(20).optional(),
       }),
-      execute: async ({ query, category, limit }) => formatCreatorStoreResult(await searchCreatorStore({ query, category: category ?? 'model', limit: limit ?? 8 })),
+      execute: async ({ query, category, limit }) =>
+        (await KNOWLEDGE_CACHE.get(`store:${category ?? 'model'}:${limit ?? 8}:${query.toLowerCase().trim()}`, async () =>
+          formatCreatorStoreResult(await searchCreatorStore({ query, category: category ?? 'model', limit: limit ?? 8 })))) as string,
     }),
     load_skill: tool({
       description:
@@ -101,7 +114,8 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
       execute: async ({ name, file }) => {
         const skill = SKILLS.find((s) => s.name === name);
         if (!skill) throw new Error(`No skill named ${name}. Skills: ${SKILLS.map((s) => s.name).join(', ')}`);
-        if (!file) return { name, body: skill.body, files: Object.keys(skill.files) };
+        // The body itself, also when the model names the skill's own file (SKILL.md, <name>.md) instead of leaving `file` out.
+        if (!file || file === 'SKILL.md' || file === `${name}.md` || file === name) return { name, body: skill.body, files: Object.keys(skill.files) };
         const text = skill.files[file];
         if (text === undefined) throw new Error(`${name} has no file ${file}. Files: ${Object.keys(skill.files).join(', ')}`);
         return { name, file, body: text };

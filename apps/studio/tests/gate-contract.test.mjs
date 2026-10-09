@@ -88,8 +88,11 @@ test('every model call is reserved against the shared budget first, and settled 
   assert.ok(reserve > 0 && call > reserve);
   assert.match(metering, /if \(!hold\.ok\) throw/);
   assert.match(metering, /GATE\.settleModel\(/);
+  // A stream is settled at the step's real usage, never at its reservation.
+  assert.match(agent, /await settleNext\(this\.env, holds,/);
+  assert.match(agent, /releaseAll\(this\.env, holds\)/);
   assert.match(metering, /catch \(e\) \{\s*await env\.GATE\.releaseModel\(/);
-  assert.match(agent, /binding: meteredAi\(this\.env\)/);
+  assert.match(agent, /binding: meteredAi\(this\.env, holds\)/);
 });
 
 test('Credits are charged from each step\'s real usage and streamed to the chat', () => {
