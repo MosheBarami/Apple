@@ -2185,6 +2185,11 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   //     input is a bounded numeric Roblox asset id; the route asks a fixed Roblox thumbnail host,
   //     returns only a verified tr.rbxcdn.com redirect, and rate-limits each address. It never
   //     reads a project, token or stored customer data.
+  //   /api/studio/pixels/:id — the Studio plugin downloads the pixels of a picture make_image just drew,
+  //     and the plugin holds no account JWT. The middleware exempts only a well-formed UUID path; the
+  //     id is random (122 bits), written by the tool a moment earlier and deleted right after the
+  //     plugin's download, so it is a single-use capability. The route reads one R2 object under
+  //     studio-pixels/<id> and nothing else: no project, no user, no token (index.ts).
   //
   // ADDING A LINE HERE IS THE REVIEW. The three entries above were added by other lanes and this
   // assertion is what forced them to be read rather than noticed later — which is the entire
@@ -2200,6 +2205,7 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
       '/api/recovery-request',
       '/api/studio/announce',
       '/api/studio/claim',
+      '/api/studio/pixels/:id',
       '/api/studio/poll',
       '/api/studio/release',
     ],
