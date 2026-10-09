@@ -44,3 +44,25 @@ test('a tool call quoted as a JSON string is unwrapped; anything else is left to
   assert.equal(await S.unwrapQuotedToolInput({ toolCall: { input: '{"name":1}' } }), null);
   assert.equal(await S.unwrapQuotedToolInput({ toolCall: { input: 'not json' } }), null);
 });
+
+test('earlier turns keep their tool calls and results, shortened; the current turn is whole', () => {
+  const big = { name: 'Shop', children: Array.from({ length: 20 }, (_, i) => ({ type: 'text', name: `T${i}`, text: 'y'.repeat(500) })) };
+  const msgs = [
+    { role: 'user', content: 'make a shop' },
+    { role: 'assistant', content: [{ type: 'tool-call', toolCallId: 'a', toolName: 'build_ui', input: big }] },
+    { role: 'tool', content: [{ type: 'tool-result', toolCallId: 'a', toolName: 'build_ui', output: { type: 'json', value: { built: 'game.StarterGui.Shop', pad: 'z'.repeat(5000) } } }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'Built the shop.' }] },
+    { role: 'user', content: 'continue' },
+    { role: 'assistant', content: [{ type: 'tool-call', toolCallId: 'b', toolName: 'build_ui', input: big }] },
+  ];
+  const out = compactHistory(msgs);
+  const call = out[1].content[0];
+  assert.equal(call.toolName, 'build_ui');
+  assert.equal(call.input.name, 'Shop');
+  assert.equal(call.input.children[0].name, 'T0');
+  assert.ok(JSON.stringify(call.input).length < 3_000);
+  const result = out[2].content[0].output;
+  assert.match(result.value, /game\.StarterGui\.Shop/);
+  assert.ok(result.value.length < 900);
+  assert.deepEqual(out[5].content[0].input, big);
+});

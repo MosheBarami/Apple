@@ -75,22 +75,55 @@ export class TtlCache<V> {
 const OLD_TEXT_CHARS = 1_500;
 /** Messages at the end of the conversation that are always sent whole. */
 const RECENT_MESSAGES = 16;
+/** What an earlier turn's tool result keeps: enough to know what was built and where, not the whole payload. */
+const OLD_RESULT_CHARS = 700;
 
 /**
- * Compacts history before it is sent: the recent window goes whole; older messages keep their words, shortened, and lose
- * tool calls, tool results and reasoning (pruneMessages has already removed those past the last two messages).
+ * Compacts history before it is sent. The current turn (everything after the person's latest message) goes whole.
+ * Earlier turns keep every tool call and result, shortened (the agent must remember what it built and where, or a
+ * "continue" rebuilds or changes finished work: owner, 2026-10-09), and their words, shortened outside the recent window.
+ * Compaction is deterministic, so an earlier turn compacts the same way every time and the prompt cache still serves it.
  */
 export function compactHistory(messages: ModelMessage[]): ModelMessage[] {
   const cut = Math.max(0, messages.length - RECENT_MESSAGES);
+  let turnStart = messages.length;
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i]!.role === 'user') { turnStart = i; break; }
   return messages.map((m, i) => {
-    if (i >= cut || m.role === 'system') return m;
-    if (typeof m.content === 'string') return { ...m, content: shorten(m.content) } as ModelMessage;
-    if (m.role === 'tool') return m;
-    const parts = (m.content as Array<{ type: string; text?: string }>).map((p) =>
-      p.type === 'text' && typeof p.text === 'string' ? { ...p, text: shorten(p.text) } : p,
-    );
+    if (i >= turnStart || m.role === 'system') return m;
+    const oldText = i < cut;
+    if (typeof m.content === 'string') return oldText ? ({ ...m, content: shorten(m.content) } as ModelMessage) : m;
+    const parts = (m.content as Array<Record<string, unknown>>).map((p) => {
+      if (p.type === 'text' && typeof p.text === 'string') return oldText ? { ...p, text: shorten(p.text) } : p;
+      if (p.type === 'tool-call') return { ...p, input: clipValue(p.input, 0) };
+      if (p.type === 'tool-result') return { ...p, output: clipOutput(p.output) };
+      return p;
+    });
     return { ...m, content: parts } as ModelMessage;
   });
+}
+
+/** A tool call's arguments with long strings and lists cut, keeping their shape (names, paths, the top of each list). */
+export function clipValue(v: unknown, depth: number): unknown {
+  if (typeof v === 'string') return v.length <= 200 ? v : `${v.slice(0, 160)}…[${v.length} chars]`;
+  if (Array.isArray(v)) {
+    if (depth >= 5) return `[${v.length} items]`;
+    const head = v.slice(0, 8).map((x) => clipValue(x, depth + 1));
+    return v.length > 8 ? [...head, `…[${v.length - 8} more]`] : head;
+  }
+  if (v && typeof v === 'object') {
+    if (depth >= 5) return '{…}';
+    return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, clipValue(x, depth + 1)]));
+  }
+  return v;
+}
+
+function clipOutput(out: unknown): unknown {
+  const o = out as { type?: string; value?: unknown } | null;
+  if (!o || typeof o !== 'object' || typeof o.type !== 'string') return out;
+  const text = typeof o.value === 'string' ? o.value : JSON.stringify(o.value ?? null);
+  if (text.length <= OLD_RESULT_CHARS) return out;
+  const short = `${text.slice(0, OLD_RESULT_CHARS)}…[earlier result shortened; read the place again if you need the rest]`;
+  return { type: o.type.startsWith('error') ? 'error-text' : 'text', value: short };
 }
 
 function shorten(text: string): string {

@@ -308,6 +308,11 @@ export interface AgentCtx {
    */
   offeredTools?: ReadonlySet<string>;
   /**
+   * The Studio agent (rebuild 2026-10-08, owner: "no kits", "without any limits"): it makes UI, models, sounds and effects
+   * itself, so the old library rules (D-UIONLY-1, D-FXLIB-1, D-MODELLIB-2) do not apply to its calls. Safety checks stay.
+   */
+  freeHand?: boolean;
+  /**
    * How `propose_plan` has fared so far in this run. The run loop carries it across steps (it
    * rebuilds this context every step) and reads it back after each call. See PlanState.
    */
@@ -2662,7 +2667,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
       // D-MODELLIB-2 also applies to scripts that create visual props at runtime: a Model assembled from Parts in a
       // script is held to the same order as one made by create_instances.
-      const handMadeModel = refuseNewHandMadeModelLuau(
+      const handMadeModel = ctx.freeHand ? null : refuseNewHandMadeModelLuau(
         luauScanVariants(after), before === null ? undefined : luauScanVariants(before), libraryOrder(ctx),
       );
       if (handMadeModel) {
@@ -2670,10 +2675,10 @@ export const TOOLS: Record<string, ToolImpl> = {
         return handMadeModel;
       }
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
-      const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
+      const handMadeUi = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeUi) return handMadeUi;
       // D-FXLIB-1: the same for Sounds and particle effects, which come from insert_sound / insert_vfx.
-      const handMadeFx = refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
+      const handMadeFx = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeFx) return handMadeFx;
       // G13/G14: no runtime dependence on StudPilot, no fabricated purchase ids.
       const gameRule = refuseGameScript(luauScanVariants(after), before === null ? undefined : luauScanVariants(before));
@@ -2935,10 +2940,10 @@ export const TOOLS: Record<string, ToolImpl> = {
       // as a problem with the list's length rather than with its absence.
       if (!Array.isArray(a.items)) return Promise.resolve({ error: 'items was missing or not an array, so nothing was sent. Send items: [{className, name, parent, props?, children?}, ...].' });
       // D-UIONLY-1: UI classes come from insert_ui_component only.
-      const handMadeUi = refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
+      const handMadeUi = ctx.freeHand ? null : refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
       // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
-      const handMadeFx = refuseLibraryItems(a.items, FX_RULE);
+      const handMadeFx = ctx.freeHand ? null : refuseLibraryItems(a.items, FX_RULE);
       if (handMadeFx) return Promise.resolve(handMadeFx);
       // An AudioPlayer's Asset is held to the same rule as a Sound's SoundId: an id that does not exist plays silence without an error.
       const silentAsset = firstUnknownSoundId(a.items, ctx.discoveredAssetIds);
@@ -2961,7 +2966,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-MODELLIB-2 is an ORDER (model-rule.ts): a Model of Parts waits until the run has tried the library,
       // at most twice, and never when the library is not on offer. A mesh cannot be created at all.
       const order = libraryOrder(ctx);
-      const handMadeModel = refuseHandMadeModel(a.items, order);
+      const handMadeModel = ctx.freeHand ? null : refuseHandMadeModel(a.items, order);
       if (handMadeModel) {
         if (handMadeModel.ordered) noteOrderRefusal(ctx);
         return Promise.resolve(handMadeModel);
@@ -3022,7 +3027,7 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       // The same gate as create_instances, for the same reason: `set_properties` writes straight
       // into the place, so an untagged value here is a failed op in the customer's log too.
-      const restyle = refuseUiLook(props, prior?.class);
+      const restyle = ctx.freeHand ? null : refuseUiLook(props, prior?.class);
       if (restyle) return restyle;
       const silent = refuseSoundId(props, ctx.discoveredAssetIds);
       if (silent) return silent;
@@ -3511,12 +3516,12 @@ export const TOOLS: Record<string, ToolImpl> = {
       // already had their chance to run, so there is no useful check on the far side of this.
       // The ingress gate is handed to admission rather than called beside it: sandbox.ts REFUSES
       // Luau bound for Studio that arrives without one, so this cannot be forgotten later.
-      const handMadeUi = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), UI_RULE);
+      const handMadeUi = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), UI_RULE);
       if (handMadeUi) return handMadeUi;
-      const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
+      const handMadeFx = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
       if (handMadeFx) return handMadeFx;
       // D-MODELLIB-2: run_luau does not assemble props either.
-      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')), libraryOrder(ctx));
+      const handMadeModel = ctx.freeHand ? null : refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')), libraryOrder(ctx));
       if (handMadeModel) {
         if (handMadeModel.ordered) noteOrderRefusal(ctx);
         return handMadeModel;

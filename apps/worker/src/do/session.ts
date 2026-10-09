@@ -2756,6 +2756,8 @@ export class SessionDO extends DurableObject<Env> {
       let checkpointNote: string | null = null;
       // The Studio agent is offered exactly STUDIO_TOOLS: no library tool, so no library-order gate holds its builds back.
       ctx.offeredTools = new Set(STUDIO_TOOLS);
+      // It designs and makes everything itself: the old library-only rules are not its rules (tools.ts, freeHand).
+      ctx.freeHand = true;
       if (isStudioWriteTool(tool)) {
         const bind = await this.bind();
         if (!bind || !buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);

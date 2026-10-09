@@ -382,8 +382,10 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
       p.Rotation = num(g.rotation);
     }
     if (g.t !== undefined) {
-      if (!Array.isArray(g.t) || g.t.length !== 2) fail(`${where}.gradient.t must be [start, end] transparency.`);
-      p.Transparency = { t: 'NumberSequence', v: [[0, unit(g.t[0], `${where}.gradient.t[0]`), 0], [1, unit(g.t[1], `${where}.gradient.t[1]`), 0]] } as PropValue;
+      // One number means the same transparency at both ends.
+      const gt = typeof g.t === 'number' ? [g.t, g.t] : g.t;
+      if (!Array.isArray(gt) || gt.length !== 2) fail(`${where}.gradient.t must be [start, end] transparency (or one number for both).`);
+      p.Transparency = { t: 'NumberSequence', v: [[0, unit(gt[0], `${where}.gradient.t[0]`), 0], [1, unit(gt[1], `${where}.gradient.t[1]`), 0]] } as PropValue;
     }
     dec('UIGradient', p);
   }
