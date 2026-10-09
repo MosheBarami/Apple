@@ -2,7 +2,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from '/home/user/Apple/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/index.mjs';
+import { chromium } from '@playwright/test';
 import { FPS } from './timeline.js';
 
 const root = path.dirname(new URL(import.meta.url).pathname);
