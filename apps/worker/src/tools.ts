@@ -3,7 +3,8 @@
 import { searchLibraryCode, insertPlan, aliasFor, treeOps, header, audit } from './library-code';
 import { searchLibrarySkills, readLibrarySkill, LIBRARY_SKILL_PREFIX } from './library-skills';
 import { embed, release as releaseImageBudget, reserve as reserveImageBudget, settle as settleImageBudget } from './gateway';
-import { finishImage, IMAGE_KINDS, planImage, suggestSlice, toBase64, type ImageKind } from './image-gen';
+import { encodeRgbaPng, finishImage, IMAGE_KINDS, planImage, suggestSlice, toBase64, type ImageKind } from './image-gen';
+import { getUploadStatus, uploadAsset as uploadToOwnAccount } from './creator-dashboard';
 import { IMAGE_MODEL, imageNeurons } from './pricing';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
@@ -1175,6 +1176,20 @@ async function renameAndAudit(ctx: AgentCtx, path: string, name: string): Promis
   if (!stale.length) return res;
   return { ...(res as object), staleReferences: stale.map((m) => `${m.path}:${m.line}  ${m.text.trim()}`),
     warning: `These scripts still name "${old}" and no longer find it: update each with edit_script to "${name}" before you claim the mechanic works.` };
+}
+
+/** make_image's second route: an Image uploaded with the person's own Open Cloud key, waited on until Roblox names it. */
+async function uploadImageWithOwnKey(ctx: AgentCtx, userId: string, png: Uint8Array, name: string): Promise<{ assetId: string | number } | { error: string }> {
+  const up = await uploadToOwnAccount(ctx.env as never, userId, { file: png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) as ArrayBuffer, contentType: 'image/png', displayName: name, description: 'Made with StudPilot', type: 'Image' });
+  if (!up.ok) return { error: up.error };
+  if (up.data.assetId !== null) return { assetId: up.data.assetId };
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const st = await getUploadStatus(ctx.env as never, userId, up.data.operationId);
+    if (st.ok && st.data.assetId !== null) return { assetId: st.data.assetId };
+    if (!st.ok) return { error: `uploaded, but its status could not be read (${st.error}); operation ${up.data.operationId}` };
+  }
+  return { error: `Roblox is still processing the upload (operation ${up.data.operationId}); try again in a moment` };
 }
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
@@ -2922,8 +2937,22 @@ export const TOOLS: Record<string, ToolImpl> = {
       const name = (typeof a.name === 'string' && a.name.trim() ? a.name.trim() : `StudPilot ${plan.kind}`).slice(0, 50);
       const made = await op(ctx, { op: 'create_image_asset', url: `https://studpilot.app/api/studio/pixels/${id}`, width: img.width, height: img.height, name }, 120_000);
       await ctx.env.MEDIA!.delete(`studio-pixels/${id}`).catch(() => undefined);
-      const assetId = (made as { assetId?: unknown })?.assetId;
-      if (typeof assetId !== 'number' && typeof assetId !== 'string') return { ...(made as object), neurons, note: 'The picture was drawn but not uploaded; nothing in the place changed.' };
+      let assetId = (made as { assetId?: unknown })?.assetId;
+      // Studio may refuse the plugin upload ("CreateAssetAsync ... not available yet", measured 2026-10-09). Then the
+      // picture goes up through Open Cloud with the person's OWN key (Settings), never a platform key.
+      let cloudNote = '';
+      if (typeof assetId !== 'number' && typeof assetId !== 'string') {
+        const cloud = ctx.userId ? await uploadImageWithOwnKey(ctx, ctx.userId, await encodeRgbaPng(img), name) : { error: 'no signed-in owner' };
+        if ('assetId' in cloud) assetId = cloud.assetId;
+        else cloudNote = cloud.error;
+      }
+      if (typeof assetId !== 'number' && typeof assetId !== 'string') {
+        return {
+          error: `The picture was drawn but could not be uploaded to Roblox. Studio said: ${String((made as { error?: unknown })?.error ?? 'no answer')}. Open Cloud: ${cloudNote}`,
+          neurons,
+          fix: 'Tell the person once: to use drawn art, connect a Roblox Open Cloud key with asset:read and asset:write in StudPilot Settings (or enable asset uploads for plugins in Studio). Meanwhile build the look in-engine: pattern with Roblox\'s stud map rbxassetid://10509831729, gradients, textStroke, depth. Do not call make_image again this turn.',
+        };
+      }
       // A panel's rim is thicker than its corner curve: never slice inside it.
       const rim = plan.kind === 'panel' ? Math.round(Math.min(img.width, img.height) * 0.12) : 0;
       const slice = plan.kind === 'panel' || plan.kind === 'button' || plan.kind === 'banner' ? suggestSlice(img).map((v) => Math.max(v, rim)) : null;

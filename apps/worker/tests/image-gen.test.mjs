@@ -82,3 +82,16 @@ test('base64 round-trips bytes for the plugin download', () => {
   const bytes = new Uint8Array([0, 1, 2, 250, 255, 128, 64]);
   assert.deepEqual([...Uint8Array.from(atob(G.toBase64(bytes)), (c) => c.charCodeAt(0))], [...bytes]);
 });
+
+test('the PNG for an Open Cloud upload decodes back to the same pixels', async () => {
+  const { inflateSync } = await import('node:zlib');
+  const img = { width: 3, height: 2, data: new Uint8Array([255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) };
+  const png = Buffer.from(await G.encodeRgbaPng(img));
+  assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(png.readUInt32BE(16), 3);
+  assert.equal(png.readUInt32BE(20), 2);
+  const idatLen = png.readUInt32BE(33);
+  const raw = inflateSync(png.subarray(41, 41 + idatLen));
+  assert.deepEqual([...raw.subarray(1, 13)], [...img.data.subarray(0, 12)]);
+  assert.deepEqual([...raw.subarray(14, 26)], [...img.data.subarray(12, 24)]);
+});

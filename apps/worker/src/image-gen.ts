@@ -224,3 +224,30 @@ export function finishImage(jpegBase64: string, plan: ImagePlan): Rgba | { error
   }
   return resizeTo(img, plan.outW, plan.outH, plan.kind === 'texture');
 }
+
+/** PNG bytes of an RGBA image (for an Open Cloud upload): zlib-deflated scanlines with filter 0, CRC32 per chunk. */
+export async function encodeRgbaPng(img: Rgba): Promise<Uint8Array> {
+  const { width: w, height: h, data } = img;
+  const raw = new Uint8Array((w * 4 + 1) * h);
+  for (let y = 0; y < h; y++) raw.set(data.subarray(y * w * 4, (y + 1) * w * 4), y * (w * 4 + 1) + 1);
+  const idat = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+  const crcTable = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (bytes: Uint8Array) => { let c = 0xffffffff; for (const b of bytes) c = crcTable[(c ^ b) & 0xff]! ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type: string, body: Uint8Array) => {
+    const out = new Uint8Array(12 + body.length);
+    const v = new DataView(out.buffer);
+    v.setUint32(0, body.length);
+    out.set(new TextEncoder().encode(type), 4);
+    out.set(body, 8);
+    v.setUint32(8 + body.length, crc(out.subarray(4, 8 + body.length)));
+    return out;
+  };
+  const ihdr = new Uint8Array(13);
+  const hv = new DataView(ihdr.buffer);
+  hv.setUint32(0, w); hv.setUint32(4, h); ihdr[8] = 8; ihdr[9] = 6;
+  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', new Uint8Array(0))];
+  const png = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) { png.set(p, o); o += p.length; }
+  return png;
+}

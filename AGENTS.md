@@ -3,6 +3,9 @@
 You are almost certainly an agent. This file is the map. Read it before the first edit, together
 with `.claude/skills/rbxai-working-rules/SKILL.md`, which is the **method** and loads automatically.
 
+> **The live system in one document: `docs/STUDPILOT-SYSTEM.md`** (2026-10-09): the agent, its model, prompt,
+> tools, skills and token saver; the plugin; the UI and image engines; the pipelines; money; tests; open problems.
+
 > **START HERE: `GOAL.md`.** It points at the current goal, `planning/STUDPILOT-FINAL-PLAN.md` (what StudPilot
 > is, the quality bar, the milestone table M0 to M7). The build order is `planning/STUDPILOT-HANDOFF.md`. Proof of
 > each milestone goes to `planning/proof/<milestone>/`; the newest folder there shows where the work stands. The
