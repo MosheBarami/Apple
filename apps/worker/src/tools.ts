@@ -2938,10 +2938,15 @@ export const TOOLS: Record<string, ToolImpl> = {
         const draw = (p: string) => (ctx.env.AI.run as (m: string, i: unknown) => Promise<unknown>)(IMAGE_MODEL, {
           prompt: p, width: plan.genW, height: plan.genH, steps: plan.steps, ...(Number.isInteger(a.seed) ? { seed: a.seed } : {}),
         });
-        // The model's filter reads UI words as bodies ("pink button skin" was refused as NSFW, 2026-10-09): retry once without them.
+        // The model's filter reads game words as bodies ("pink button skin" and "studs texture" were refused as NSFW,
+        // 2026-10-09): retry once with them said another way.
         const out = (await draw(plan.prompt).catch((e: unknown) => {
           if (!/NSFW|3030/.test(String(e))) throw e;
-          return draw(plan.prompt.replace(/\bskins?\b/gi, 'graphic').replace(/\b(flesh|nude|bare|naked)\b/gi, ''));
+          return draw(plan.prompt
+            .replace(/\bskins?\b/gi, 'graphic')
+            .replace(/\bstudded\b/gi, 'covered in round raised bumps')
+            .replace(/\bstuds?\b/gi, 'round raised bumps')
+            .replace(/\b(flesh|nude|bare|naked|sexy|hot)\b/gi, ''));
         })) as { image?: unknown };
         if (typeof out?.image !== 'string') throw new Error('the image model returned no image');
         jpegB64 = out.image;
