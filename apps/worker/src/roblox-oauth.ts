@@ -59,6 +59,8 @@ import { keyedId, openSecret, sealSecret } from './user-credentials';
 const OAUTH = 'https://apis.roblox.com/oauth/v1';
 /** Sign-in asks for identity only. The asset scopes arrive with uploads (M5c), with their own consent. */
 const SIGNIN_SCOPE = 'openid profile';
+/** "Connect Roblox for uploads": a signed-in person lets StudPilot put the pictures it makes into their own Roblox account. */
+const UPLOAD_SCOPE = 'openid profile asset:read asset:write';
 const STATE_PREFIX = 'roblox-oauth:state:';
 const STATE_TTL_SECONDS = 600;
 const STATE_COOKIE = 'rbx_oauth_state';
@@ -690,7 +692,7 @@ interface StateRecord {
    * again. It asked Roblox for a fresh login, it never makes an account, and a success records the time on the server.
    * A record without the field (one stored before it existed) is an ordinary sign-in.
    */
-  purpose: 'signin' | 'reauth' | 'link';
+  purpose: 'signin' | 'reauth' | 'link' | 'uploads';
 }
 
 async function start(req: Request, env: Env): Promise<Response> {
@@ -710,13 +712,13 @@ async function start(req: Request, env: Env): Promise<Response> {
   // `link=<ticket>`: a signed-in person linking their Roblox account (so Connect can find the Studio they are signed into on
   // any network). The ticket is one-time and names the account; a missing or used ticket is refused, never a sign-in.
   const ticket = url.searchParams.get('link');
-  let link: { userId: string; returnTo: string } | null = null;
+  let link: { userId: string; returnTo: string; uploads: boolean } | null = null;
   if (ticket !== null) {
     const raw = FLOW_TOKEN.test(ticket) ? await env.KV.get(LINK_TICKET_PREFIX + ticket) : null;
     if (raw !== null) await env.KV.delete(LINK_TICKET_PREFIX + ticket);
     try {
-      const t = raw ? (JSON.parse(raw) as { userId?: unknown; returnTo?: unknown }) : null;
-      if (t && typeof t.userId === 'string') link = { userId: t.userId, returnTo: allowedReturn(t.returnTo) };
+      const t = raw ? (JSON.parse(raw) as { userId?: unknown; returnTo?: unknown; uploads?: unknown }) : null;
+      if (t && typeof t.userId === 'string') link = { userId: t.userId, returnTo: allowedReturn(t.returnTo), uploads: t.uploads === true };
     } catch {
       link = null;
     }
@@ -726,7 +728,7 @@ async function start(req: Request, env: Env): Promise<Response> {
     verifier,
     returnTo: link ? link.returnTo : action ? `/settings?resume=${action}` : allowedReturn(url.searchParams.get('return')),
     redirectUri: `${origin}${CALLBACK_PATH}`,
-    purpose: link ? 'link' : action ? 'reauth' : 'signin',
+    purpose: link ? (link.uploads ? 'uploads' : 'link') : action ? 'reauth' : 'signin',
     ...(link ? { linkUserId: link.userId } : {}),
   };
   await env.KV.put(STATE_PREFIX + state, JSON.stringify(record), { expirationTtl: STATE_TTL_SECONDS });
@@ -734,7 +736,7 @@ async function start(req: Request, env: Env): Promise<Response> {
     response_type: 'code',
     client_id: cfg.clientId,
     redirect_uri: record.redirectUri,
-    scope: SIGNIN_SCOPE,
+    scope: record.purpose === 'uploads' ? UPLOAD_SCOPE : SIGNIN_SCOPE,
     state,
     code_challenge: await s256(verifier),
     code_challenge_method: 'S256',
@@ -752,8 +754,8 @@ function parseRecord(raw: string | null): StateRecord | null {
   try {
     const r = JSON.parse(raw) as Partial<StateRecord>;
     return r.verifier && r.redirectUri && typeof r.returnTo === 'string'
-      ? r.purpose === 'link'
-        ? (typeof r.linkUserId === 'string' ? { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: 'link', linkUserId: r.linkUserId } : null)
+      ? r.purpose === 'link' || r.purpose === 'uploads'
+        ? (typeof r.linkUserId === 'string' ? { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: r.purpose, linkUserId: r.linkUserId } : null)
         : { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: r.purpose === 'reauth' ? 'reauth' : 'signin' }
       : null;
   } catch {
@@ -840,13 +842,21 @@ async function callback(req: Request, env: Env, strays: Strays): Promise<Respons
   // LINKING: the person is already signed in to StudPilot and proves which Roblox account they use in Studio. It is recorded apart
   // from sign-in (a Roblox account may also be the sign-in of another StudPilot account the same person holds): nothing signs
   // anyone in, no token is kept, and Connect matches the Studio this Roblox account is signed into.
-  if (record.purpose === 'link' && record.linkUserId) {
+  if ((record.purpose === 'link' || record.purpose === 'uploads') && record.linkUserId) {
+    // UPLOADS: the same link, and this time the grant is kept (sealed), so make_image can upload into this Roblox account.
+    // A person who unticked the asset permission on Roblox's screen gets a grant without it: say so instead of storing it.
+    const uploads = record.purpose === 'uploads';
+    if (uploads && (!tokens.refreshToken || !hasUploadScope(tokens.scope))) {
+      if (tokens.refreshToken) await revokeAtRoblox(cfg, tokens.refreshToken);
+      return redirect(record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=uploads-refused', clear);
+    }
     try {
       await ensureStudioRobloxTable(env);
       await env.CORPUS.prepare(
         'insert into studio_roblox_accounts(user_id, roblox_sub, username, created_at) values (?, ?, ?, ?) on conflict(user_id, roblox_sub) do update set username = excluded.username',
       ).bind(record.linkUserId, who.sub, who.username, new Date().toISOString()).run();
-      const back = record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=linked';
+      if (uploads) await storeSealedRefresh(env, record.linkUserId, who.sub, tokens.scope, await sealSecret(env, tokens.refreshToken!));
+      const back = record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + (uploads ? 'roblox=uploads' : 'roblox=linked');
       return redirect(back, clear);
     } catch {
       return fail(502, 'link storage');
@@ -881,7 +891,13 @@ async function callback(req: Request, env: Env, strays: Strays): Promise<Respons
       // empty account without noticing, and think their projects were gone.
       waiting = { pending: { sub: who.sub, username: who.username, sealedRefresh: sealed, scope: tokens.scope }, next: record.returnTo };
     } else {
-      await storeSealedRefresh(env, known.userId, who.sub, tokens.scope, sealed);
+      // A sign-in asks only for identity: it must not replace an uploads grant for the same Roblox account with a narrower one.
+      const kept = await env.CORPUS.prepare('select scopes, sub from roblox_oauth_tokens where user_id = ?').bind(known.userId).first<{ scopes: string; sub: string }>();
+      if (kept && kept.sub === who.sub && hasUploadScope(kept.scopes) && !hasUploadScope(tokens.scope)) {
+        if (tokens.refreshToken) await revokeAtRoblox(cfg, tokens.refreshToken);
+      } else {
+        await storeSealedRefresh(env, known.userId, who.sub, tokens.scope, sealed);
+      }
       const hashed = await signInTokenFor(env, cfg, known.userId, known.email);
       if (!hashed) return fail(502, 'sign-in token');
       // The server's own record that this person confirmed it is them, written only once the whole sign-in has worked.
@@ -1322,7 +1338,7 @@ async function scrubRobloxFromAccount(env: Env, userId: string, sub: string, nam
  * compare-and-swap on that same `version`, so a sign-in or a disconnect that landed in between wins and the
  * stale replacement is discarded and revoked.
  *
- * Nothing calls this yet: it is the building block for uploads into the person's own account (M5c).
+ * make_image calls it (through `robloxUploadAccess`) to upload into the person's own account.
  */
 export async function refreshRobloxAccessToken(env: Env, userId: string, now = Date.now()): Promise<RefreshResult> {
   const cfg = configOf(env);
@@ -1383,6 +1399,36 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   if (accessTokens.size >= ACCESS_TOKEN_CACHE_MAX) accessTokens.delete(accessTokens.keys().next().value as string);
   accessTokens.set(userId, { accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1, generation: row.generation, until: now + tokens.expiresIn * 1000 - ACCESS_TOKEN_MARGIN_MS });
   return { ok: true, accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1 };
+}
+
+const hasUploadScope = (scope: string): boolean => scope.split(/\s+/).includes('asset:write');
+
+/**
+ * What make_image uploads with: a fresh access token from this person's stored grant, and the Roblox user it belongs to (the
+ * account the asset is created in). Null with a reason a person can act on when there is no grant with `asset:write`.
+ */
+export async function robloxUploadAccess(env: Env, userId: string): Promise<{ ok: true; accessToken: string; robloxUserId: string } | { ok: false; error: string }> {
+  const r = await refreshRobloxAccessToken(env, userId);
+  if (!r.ok) {
+    return { ok: false, error: r.reason === 'not_connected' || r.lost
+      ? 'Roblox uploads are not connected: in StudPilot Settings, press "Connect Roblox for uploads"'
+      : r.reason === 'busy' ? 'the Roblox connection is busy; try again in a moment' : `Roblox refused the connection (${r.reason}); reconnect Roblox uploads in Settings` };
+  }
+  if (!hasUploadScope(r.scope)) return { ok: false, error: 'Roblox is connected for sign-in only: in StudPilot Settings, press "Connect Roblox for uploads" to allow uploads' };
+  const row = await env.CORPUS.prepare('select sub from roblox_oauth_tokens where user_id = ?').bind(userId).first<{ sub: string }>();
+  if (!row?.sub) return { ok: false, error: 'Roblox uploads are not connected' };
+  return { ok: true, accessToken: r.accessToken, robloxUserId: row.sub };
+}
+
+/** Whether this person has a grant that allows uploads, without spending a refresh. */
+export async function robloxUploadsConnected(env: Env, userId: string): Promise<{ connected: boolean; username: string | null }> {
+  await ensureRobloxOAuthTables(env);
+  await ensureStudioRobloxTable(env);
+  const row = await env.CORPUS.prepare(
+    `select t.scopes as scopes, coalesce((select username from studio_roblox_accounts s where s.user_id = t.user_id and s.roblox_sub = t.sub), (select username from roblox_identities i where i.user_id = t.user_id)) as username
+     from roblox_oauth_tokens t where t.user_id = ?`,
+  ).bind(userId).first<{ scopes: string; username: string | null }>();
+  return row && hasUploadScope(row.scopes) ? { connected: true, username: row.username } : { connected: false, username: null };
 }
 
 // ---------------------------------------------------------------------------------------------

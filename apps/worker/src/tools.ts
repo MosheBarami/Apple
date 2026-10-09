@@ -5,6 +5,8 @@ import { searchLibrarySkills, readLibrarySkill, LIBRARY_SKILL_PREFIX } from './l
 import { embed, release as releaseImageBudget, reserve as reserveImageBudget, settle as settleImageBudget } from './gateway';
 import { encodeRgbaPng, finishImage, IMAGE_KINDS, planImage, suggestSlice, toBase64, type ImageKind } from './image-gen';
 import { getUploadStatus, uploadAsset as uploadToOwnAccount } from './creator-dashboard';
+import { pollOperation, uploadAsset as postAssetWithGrant } from './roblox-upload';
+import { robloxUploadAccess } from './roblox-oauth';
 import { IMAGE_MODEL, imageNeurons } from './pricing';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
@@ -1178,10 +1180,25 @@ async function renameAndAudit(ctx: AgentCtx, path: string, name: string): Promis
     warning: `These scripts still name "${old}" and no longer find it: update each with edit_script to "${name}" before you claim the mechanic works.` };
 }
 
-/** make_image's second route: an Image uploaded with the person's own Open Cloud key, waited on until Roblox names it. */
+/**
+ * make_image's second route: an Image uploaded into the person's OWN Roblox account, waited on until Roblox names it. First
+ * with their "Connect Roblox for uploads" grant (OAuth, asset:write), else with an Open Cloud key they saved; never a platform key.
+ */
 async function uploadImageWithOwnKey(ctx: AgentCtx, userId: string, png: Uint8Array, name: string): Promise<{ assetId: string | number } | { error: string }> {
+  const file = png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) as ArrayBuffer;
+  const grant = await robloxUploadAccess(ctx.env as never, userId).catch((e: unknown) => ({ ok: false as const, error: String(e) }));
+  if (grant.ok) {
+    const account = { ROBLOX_BEARER: grant.accessToken, ROBLOX_CREATOR_USER_ID: grant.robloxUserId, ROBLOX_UPLOAD_AUTHORISED_FOR: grant.robloxUserId };
+    let up = await postAssetWithGrant(account, { file, contentType: 'image/png', displayName: name, description: 'Made with StudPilot', type: 'Image', expectedPrice: 0 });
+    for (let i = 0; i < 10 && up.ok && !up.done; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      up = await pollOperation(account, up.operationId);
+    }
+    if (up.ok && up.done) return { assetId: up.assetId };
+    return { error: up.ok ? `Roblox is still processing the upload (operation ${up.operationId}); try again in a moment` : up.error };
+  }
   const up = await uploadToOwnAccount(ctx.env as never, userId, { file: png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) as ArrayBuffer, contentType: 'image/png', displayName: name, description: 'Made with StudPilot', type: 'Image' });
-  if (!up.ok) return { error: up.error };
+  if (!up.ok) return { error: `${grant.error}. ${up.error}` };
   if (up.data.assetId !== null) return { assetId: up.data.assetId };
   for (let i = 0; i < 10; i++) {
     await new Promise((r) => setTimeout(r, 1500));
@@ -2950,7 +2967,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         return {
           error: `The picture was drawn but could not be uploaded to Roblox. Studio said: ${String((made as { error?: unknown })?.error ?? 'no answer')}. Open Cloud: ${cloudNote}`,
           neurons,
-          fix: 'Tell the person once: to use drawn art, connect a Roblox Open Cloud key with asset:read and asset:write in StudPilot Settings (or enable asset uploads for plugins in Studio). Meanwhile build the look in-engine: pattern with Roblox\'s stud map rbxassetid://10509831729, gradients, textStroke, depth. Do not call make_image again this turn.',
+          fix: 'Tell the person once: to use drawn art, open StudPilot Settings and press "Connect Roblox for uploads" (it signs in with Roblox and allows uploads into their own account). Meanwhile build the look in-engine: pattern with Roblox\'s stud map rbxassetid://10509831729, gradients, textStroke, depth. Do not call make_image again this turn.',
         };
       }
       // A panel's rim is thicker than its corner curve: never slice inside it.

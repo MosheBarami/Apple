@@ -5,7 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
-import { allowedReturn, checkRobloxGrants, ensureStudioRobloxTable, describeGrantCheck, describeRobloxConnection, disconnectRoblox, LINK_TICKET_PREFIX, randomToken, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
+import { allowedReturn, checkRobloxGrants, ensureStudioRobloxTable, describeGrantCheck, describeRobloxConnection, disconnectRoblox, LINK_TICKET_PREFIX, randomToken, robloxOAuthRoutes, robloxReauthRefusal, robloxUploadsConnected } from './roblox-oauth';
 import { Hono } from 'hono';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { STUDIO_TOOLS } from './studio-surface';
@@ -2382,9 +2382,10 @@ async function foreignRobloxIds(env: Env, userId: string, ids: string[]): Promis
 app.post('/api/roblox/link-ticket', async (c) => {
   const user = await verifyJwt(c.env, (c.req.header('Authorization') ?? '').replace(/^Bearer /, ''));
   if (!user) return c.json({ error: 'unauthorized' }, 401);
-  const body = await c.req.json<{ returnTo?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ returnTo?: unknown; uploads?: unknown }>().catch(() => null);
   const ticket = randomToken(32);
-  await c.env.KV.put(LINK_TICKET_PREFIX + ticket, JSON.stringify({ userId: user.userId, returnTo: allowedReturn(body?.returnTo) }), { expirationTtl: 300 });
+  // `uploads: true` also asks Roblox for asset:read and asset:write, so make_image can upload into this person's own account.
+  await c.env.KV.put(LINK_TICKET_PREFIX + ticket, JSON.stringify({ userId: user.userId, returnTo: allowedReturn(body?.returnTo), uploads: body?.uploads === true }), { expirationTtl: 300 });
   return c.json({ url: `/auth/roblox/start?link=${ticket}` });
 });
 
@@ -2397,6 +2398,13 @@ app.get('/api/roblox/link', async (c) => {
     'select username from studio_roblox_accounts where user_id = ? union all select username from roblox_identities where user_id = ? limit 1',
   ).bind(user.userId, user.userId).first<{ username: string }>().catch(() => null);
   return c.json({ linked: !!row, username: row?.username ?? null });
+});
+
+/** Whether Roblox uploads are connected for this account (Settings). */
+app.get('/api/roblox/uploads', async (c) => {
+  const user = await verifyJwt(c.env, (c.req.header('Authorization') ?? '').replace(/^Bearer /, ''));
+  if (!user) return c.json({ error: 'unauthorized' }, 401);
+  return c.json(await robloxUploadsConnected(c.env, user.userId).catch(() => ({ connected: false, username: null })));
 });
 
 app.post('/api/projects/:id/connect', async (c) => {

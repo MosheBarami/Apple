@@ -217,33 +217,22 @@ export async function fetchCredits(): Promise<Credits | null> {
   };
 }
 
-/** The person's own Roblox Open Cloud key (make_image uploads drawn art with it when Studio cannot). */
-export interface RobloxKey {
-  robloxCreatorId: string;
-  creatorType: "user" | "group";
-  hint: string;
-  scopes: string[];
-}
-
-export async function getRobloxKey(): Promise<RobloxKey | null> {
-  const res = await fetch("/api/me/roblox-key", { headers: await authHeaders(), signal: AbortSignal.timeout(15_000) }).catch(() => null);
+/** Whether Roblox uploads are connected (make_image puts drawn art into the person's own Roblox account with it). */
+export async function robloxUploads(): Promise<{ connected: boolean; username: string | null } | null> {
+  const res = await fetch("/api/roblox/uploads", { headers: await authHeaders(), signal: AbortSignal.timeout(15_000) }).catch(() => null);
   if (!res?.ok) return null;
-  return ((await res.json()) as { credential: RobloxKey | null }).credential;
+  return (await res.json()) as { connected: boolean; username: string | null };
 }
 
-export async function putRobloxKey(apiKey: string, robloxCreatorId: string, creatorType: "user" | "group"): Promise<RobloxKey> {
-  const res = await fetch("/api/me/roblox-key", {
-    method: "PUT",
+/** Where to send the browser to allow uploads with Roblox; it comes back to `returnTo` with ?roblox=uploads. */
+export async function robloxUploadsUrl(returnTo: string): Promise<string> {
+  const res = await fetch("/api/roblox/link-ticket", {
+    method: "POST",
     headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey, robloxCreatorId, creatorType, scopes: ["asset:read", "asset:write"] }),
+    body: JSON.stringify({ returnTo, uploads: true }),
     signal: AbortSignal.timeout(15_000),
   });
-  const body = (await res.json().catch(() => ({}))) as { credential?: RobloxKey; error?: string };
-  if (!res.ok || !body.credential) throw new Error(body.error ?? `could not save the key (${res.status})`);
-  return body.credential;
-}
-
-export async function deleteRobloxKey(): Promise<void> {
-  const res = await fetch("/api/me/roblox-key", { method: "DELETE", headers: await authHeaders(), signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`could not disconnect the key (${res.status})`);
+  const body = (await res.json().catch(() => ({}))) as { url?: string };
+  if (!res.ok || !body.url) throw new Error("Could not open Roblox. Please try again.");
+  return body.url;
 }

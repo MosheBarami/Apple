@@ -267,3 +267,20 @@ test('and consent alone is not enough — every other refusal still applies', ()
   assert.match(U.preflight({ ...consented, ROBLOX_API_KEY: 'k' }, 0, 'Image') ?? '', /empty/);
   assert.match(U.preflight({ ...consented, ROBLOX_API_KEY: 'k' }, 10, null) ?? '', /Models are excluded/);
 });
+
+test('a Roblox sign-in grant uploads as a bearer, into the account it belongs to, with no Open Cloud key', async () => {
+  const seen = [];
+  const fetchImpl = async (url, init) => {
+    seen.push({ url, init });
+    return new Response(JSON.stringify(String(url).includes('/operations/') ? { done: true, response: { assetId: '4242' } } : { path: 'operations/op-1' }), { status: 200 });
+  };
+  const env = { ROBLOX_BEARER: 'access-token', ROBLOX_CREATOR_USER_ID: '77', ROBLOX_UPLOAD_AUTHORISED_FOR: '77' };
+  const up = await U.uploadAsset(env, { file: new Uint8Array([1, 2, 3]).buffer, contentType: 'image/png', displayName: 'x', description: '', type: 'Image', expectedPrice: 0 }, fetchImpl);
+  assert.equal(up.ok, true);
+  assert.equal(seen[0].init.headers.Authorization, 'Bearer access-token');
+  assert.equal(seen[0].init.headers['x-api-key'], undefined);
+  assert.equal(JSON.parse(seen[0].init.body.get('request')).creationContext.creator.userId, '77');
+  const polled = await U.pollOperation(env, 'op-1', fetchImpl);
+  assert.equal(polled.assetId, 4242);
+  assert.equal(seen[1].init.headers.Authorization, 'Bearer access-token');
+});
