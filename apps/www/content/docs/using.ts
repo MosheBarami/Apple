@@ -214,7 +214,7 @@ You can disconnect it in the same place. Until uploads are allowed, the agent bu
 - **Uploads are permanent.** Roblox does not let anyone delete an uploaded image; it stays in your inventory even if the agent stops using it.
 - **Roblox moderates them.** A new picture or sound can show as blank or silent for a few minutes while Roblox reviews it, and Roblox's filter sometimes refuses an innocent picture. The agent rewords and tries once more, then tells you.
 - **Pictures cost credits.** Each picture is charged by the image model's usage; sound effects cost nothing to make. See [Credits and limits](/docs/credits-and-limits).
-- **The agent checks its work.** It looks at what it built with its own render of your place and fixes what does not fit, so ask it to change any piece you do not like.
+- **The agent checks its work.** It looks at what it built with its own render of your place and fixes what does not fit, so ask it to change anything you do not like.
 `,
   },
   {
