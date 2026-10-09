@@ -199,7 +199,8 @@ function RobloxUploadsSection() {
       toast.success("Roblox uploads connected");
     }
     if (back === "uploads-refused") {
-      toast.error("Roblox didn't allow uploads. Tick the asset permission on Roblox's screen and try again.");
+      const granted = new URLSearchParams(window.location.search).get("granted");
+      toast.error(`Roblox didn't allow uploads${granted ? ` (it granted only: ${granted})` : ""}. Tick the asset permission on Roblox's screen and try again.`);
     }
   }, []);
   const connect = async () => {

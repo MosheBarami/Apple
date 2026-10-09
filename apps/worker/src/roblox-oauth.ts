@@ -846,9 +846,12 @@ async function callback(req: Request, env: Env, strays: Strays): Promise<Respons
     // UPLOADS: the same link, and this time the grant is kept (sealed), so make_image can upload into this Roblox account.
     // A person who unticked the asset permission on Roblox's screen gets a grant without it: say so instead of storing it.
     const uploads = record.purpose === 'uploads';
+    // The token answer may leave `scope` out (tokensFrom then assumes sign-in only): ask Roblox what this token really holds.
+    if (uploads && !hasUploadScope(tokens.scope)) tokens.scope = (await grantedScope(cfg, tokens.accessToken)) ?? tokens.scope;
     if (uploads && (!tokens.refreshToken || !hasUploadScope(tokens.scope))) {
+      note(`uploads refused: granted "${tokens.scope}", refresh token ${tokens.refreshToken ? 'present' : 'missing'}`);
       if (tokens.refreshToken) await revokeAtRoblox(cfg, tokens.refreshToken);
-      return redirect(record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=uploads-refused', clear);
+      return redirect(record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=uploads-refused&granted=' + encodeURIComponent(tokens.scope.slice(0, 200)), clear);
     }
     try {
       await ensureStudioRobloxTable(env);
@@ -1401,7 +1404,14 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   return { ok: true, accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1 };
 }
 
-const hasUploadScope = (scope: string): boolean => scope.split(/\s+/).includes('asset:write');
+const hasUploadScope = (scope: string): boolean => scope.split(/[\s,+]+/).includes('asset:write');
+
+/** The scopes one access token holds, by Roblox's own introspection (RFC 7662 `scope`); null when it does not say. */
+async function grantedScope(cfg: Config, accessToken: string): Promise<string | null> {
+  const res = await postToRoblox('/token/introspect', { token: accessToken, client_id: cfg.clientId, client_secret: cfg.clientSecret });
+  const body = res?.ok ? await jsonOf(res) : null;
+  return body?.active === true && str(body.scope) ? str(body.scope) : null;
+}
 
 /**
  * What make_image uploads with: a fresh access token from this person's stored grant, and the Roblox user it belongs to (the
