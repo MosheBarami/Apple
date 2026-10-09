@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>StudPilot Showreel</title>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+<style>
+  :root { --violet: #a67cff; --violet-2: #bfa2ff; --blue: #5b8cff; --ink: #f5f5f5; --ink-2: #d4d4d4; --muted: #9a9aa3; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+  body { font-family: 'Inter', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #gl { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+  .layer { position: absolute; inset: 0; display: none; }
+  .mono { font-family: 'DejaVu Sans Mono', monospace; }
+  .disp { font-family: 'Inter Display', 'Inter', sans-serif; }
+
+  /* liquid glass: refracting rim (SVG displacement, set per element in JS), frost, bevel highlights, specular sheen */
+  .glass {
+    position: absolute;
+    border-radius: var(--r, 36px);
+    background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.05) 38%, rgba(255,255,255,.02) 62%, rgba(255,255,255,.08));
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,.55),
+      inset 0 -1px 0 rgba(255,255,255,.12),
+      inset 1px 0 0 rgba(255,255,255,.18),
+      inset -1px 0 0 rgba(255,255,255,.08),
+      inset 0 0 0 1px rgba(255,255,255,.10),
+      inset 0 18px 40px -20px rgba(255,255,255,.25),
+      inset 0 -30px 50px -30px rgba(166,124,255,.35),
+      0 40px 90px -20px rgba(0,0,0,.65),
+      0 12px 30px -10px rgba(0,0,0,.5);
+    overflow: hidden;
+  }
+  .glass::before { /* moving specular sweep */
+    content: ''; position: absolute; inset: -40%;
+    background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.22) 49%, rgba(255,255,255,.05) 53%, transparent 60%);
+    transform: translateX(var(--sheen, -60%));
+    pointer-events: none;
+  }
+  .glass::after { /* top-edge caustic */
+    content: ''; position: absolute; left: 6%; right: 6%; top: 0; height: 40%;
+    background: radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,.18), transparent 70%);
+    pointer-events: none;
+  }
+  .grad-text { background: linear-gradient(92deg, #e9ddff, #a67cff 45%, #7aa2ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* cold open */
+  #cold .line { position: absolute; left: 50%; top: 540px; height: 2px; width: 0; transform: translateX(-50%); background: linear-gradient(90deg, transparent, var(--violet), #fff, var(--violet), transparent); box-shadow: 0 0 24px var(--violet), 0 0 60px rgba(166,124,255,.6); }
+  #cold .typed { position: absolute; left: 0; right: 0; top: 490px; text-align: center; font-size: 68px; text-shadow: 0 0 30px rgba(166,124,255,.35); letter-spacing: -.01em; color: #eaeaea; white-space: pre; }
+  #cold .prompt { color: var(--violet); }
+  #cold .caret { display: inline-block; width: 34px; height: 74px; vertical-align: -10px; background: var(--violet); box-shadow: 0 0 18px var(--violet); margin-left: 4px; }
+
+  /* ask */
+  #ask .composer { left: 410px; top: 400px; width: 1100px; height: 280px; --r: 44px; }
+  #ask .hdr { position: absolute; left: 44px; top: 34px; font-size: 22px; color: var(--muted); letter-spacing: .02em; display: flex; gap: 12px; align-items: center; }
+  #ask .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 14px var(--violet); }
+  #ask .q { position: absolute; left: 44px; top: 86px; font-size: 64px; font-weight: 600; letter-spacing: -.035em; white-space: nowrap; height: 84px; }
+  #ask .slot { position: relative; text-shadow: 0 0 30px rgba(166,124,255,.45); display: inline-block; min-width: 10px; height: 84px; vertical-align: top; }
+  #ask .slot .ph { position: absolute; left: 0; top: 0; white-space: pre; }
+  #ask .slot .ph span { display: inline-block; }
+  #ask .caret { position: absolute; top: 94px; width: 4px; height: 70px; background: var(--violet-2); box-shadow: 0 0 12px var(--violet); }
+  #ask .foot { position: absolute; left: 44px; bottom: 30px; display: flex; gap: 12px; }
+  .pill { height: 44px; padding: 0 18px; border-radius: 22px; display: inline-flex; align-items: center; gap: 10px; font-size: 20px; color: var(--ink-2); background: rgba(255,255,255,.06); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.1); }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 10px var(--violet); }
+  #ask .orb { position: absolute; right: 36px; bottom: 28px; width: 92px; height: 92px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 28%, #fff 0, #e4d6ff 10%, #a67cff 42%, #5b2fd0 80%, #2a1070 100%);
+    box-shadow: inset 0 3px 6px rgba(255,255,255,.8), inset 0 -10px 20px rgba(20,0,60,.6), 0 0 40px rgba(166,124,255,.7), 0 16px 30px rgba(0,0,0,.5); display: grid; place-items: center; }
+  #ask .orb svg { width: 40px; height: 40px; }
+  #ask .ring { position: absolute; border-radius: 50%; border: 3px solid rgba(200,170,255,.9); box-shadow: 0 0 30px var(--violet), inset 0 0 30px var(--violet); }
+  #ask .chip { --r: 26px; height: 64px; padding: 0 26px; display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 500; color: var(--ink); white-space: nowrap; }
+  #ask .chip b { font-weight: 600; color: var(--violet-2); font-family: 'DejaVu Sans Mono', monospace; font-size: 19px; }
+  #ask .cursor { position: absolute; width: 34px; height: 34px; }
+
+  /* pair */
+  #pair .label { position: absolute; left: 0; right: 0; top: 300px; text-align: center; font-size: 22px; letter-spacing: .5em; color: var(--muted); }
+  #pair .tile { --r: 28px; width: 150px; height: 196px; top: 360px; display: grid; place-items: center; font-size: 118px; font-weight: 600; perspective: 600px; }
+  #pair .tile .ch { display: block; transform-origin: 50% 50%; }
+  #pair .tile .seam { position: absolute; left: 10px; right: 10px; top: 97px; height: 2px; background: rgba(0,0,0,.35); box-shadow: 0 1px 0 rgba(255,255,255,.12); }
+  #pair .node { --r: 30px; height: 92px; padding: 0 30px; display: flex; align-items: center; gap: 16px; font-size: 28px; font-weight: 600; top: 700px; }
+  #pair .node small { display: block; font-size: 17px; font-weight: 400; color: var(--muted); }
+  #pair .node .ic { width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(145deg, #bfa2ff, #6a3fe0); box-shadow: inset 0 2px 0 rgba(255,255,255,.6), 0 6px 18px rgba(106,63,224,.6); }
+  #pair .beam { position: absolute; top: 745px; height: 3px; background: linear-gradient(90deg, rgba(166,124,255,.2), #fff, rgba(166,124,255,.2)); box-shadow: 0 0 18px var(--violet), 0 0 50px rgba(166,124,255,.6); transform-origin: 0 50%; }
+  #pair .pkt { position: absolute; top: 739px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 0 16px #fff, 0 0 40px var(--violet); }
+  #pair .status { left: 810px; top: 860px; width: 300px; --r: 26px; height: 56px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 22px; }
+
+  /* tunnel hud */
+  #hud .bar { left: 560px; top: 900px; width: 800px; height: 96px; --r: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; }
+  #hud .stage { height: 60px; width: 240px; border-radius: 30px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 26px; font-weight: 600; color: rgba(255,255,255,.45); }
+  #hud .stage.on { color: #fff; background: linear-gradient(180deg, rgba(166,124,255,.65), rgba(110,70,230,.45)); box-shadow: inset 0 1.5px 0 rgba(255,255,255,.6), inset 0 -8px 16px rgba(40,10,120,.4), 0 0 40px rgba(166,124,255,.7); }
+  #hud .cap { position: absolute; left: 80px; top: 70px; font-size: 20px; color: var(--ink-2); letter-spacing: .08em; }
+  #hud .count { position: absolute; right: 80px; top: 52px; text-align: right; }
+  #hud .count .n { font-size: 84px; font-weight: 600; letter-spacing: -.04em; line-height: 1; }
+  #hud .count .l { font-size: 18px; letter-spacing: .3em; color: var(--muted); margin-top: 6px; }
+
+  /* shop ui over the build */
+  #shop .panel { left: 1240px; top: 150px; width: 560px; height: 740px; --r: 44px; }
+  #shop .ttl { position: absolute; left: 40px; top: 34px; font-size: 40px; font-weight: 700; letter-spacing: -.03em; }
+  #shop .coins { position: absolute; right: 36px; top: 34px; height: 48px; padding: 0 18px; border-radius: 24px; display: flex; gap: 10px; align-items: center; font-size: 24px; font-weight: 600; background: rgba(255,200,80,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 1px rgba(255,200,80,.25); }
+  .coin { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c8, #ffc84a 40%, #c98a10); box-shadow: 0 0 10px rgba(255,200,80,.6), inset 0 -2px 3px rgba(120,60,0,.5); }
+  #shop .item { position: absolute; left: 30px; width: 500px; height: 170px; border-radius: 30px; background: rgba(255,255,255,.07); box-shadow: inset 0 1.5px 0 rgba(255,255,255,.4), inset 0 0 0 1px rgba(255,255,255,.1), 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; padding: 0 26px; gap: 24px; }
+  #shop .egg { width: 96px; height: 120px; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; box-shadow: inset -10px -14px 24px rgba(0,0,0,.45), inset 8px 10px 18px rgba(255,255,255,.55), 0 10px 26px rgba(0,0,0,.4); }
+  #shop .nm { font-size: 30px; font-weight: 650; letter-spacing: -.02em; }
+  #shop .rt { font-size: 18px; color: var(--muted); margin-top: 4px; letter-spacing: .12em; }
+  #shop .buy { margin-left: auto; height: 60px; padding: 0 22px; border-radius: 30px; display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 700; background: linear-gradient(180deg, #b896ff, #7a4ff0); box-shadow: inset 0 2px 0 rgba(255,255,255,.6), inset 0 -6px 12px rgba(40,10,120,.45), 0 8px 24px rgba(122,79,240,.55); }
+
+  /* checks */
+  #checks .card { width: 500px; height: 330px; top: 360px; --r: 40px; padding: 40px; }
+  #checks .ic { width: 84px; height: 84px; border-radius: 26px; display: grid; place-items: center; background: linear-gradient(145deg, rgba(191,162,255,.9), rgba(106,63,224,.9)); box-shadow: inset 0 2px 0 rgba(255,255,255,.7), inset 0 -10px 16px rgba(30,0,90,.45), 0 0 40px rgba(166,124,255,.6); }
+  #checks .ic svg { width: 48px; height: 48px; }
+  #checks .t { margin-top: 34px; font-size: 44px; font-weight: 650; letter-spacing: -.03em; }
+  #checks .v { margin-top: 12px; font-size: 23px; color: var(--ink-2); }
+  #checks .v b { color: #fff; font-weight: 600; }
+  #checks .laser { position: absolute; top: 300px; width: 6px; height: 470px; border-radius: 3px; background: #fff; box-shadow: 0 0 20px #fff, 0 0 50px var(--violet), 0 0 120px var(--violet); }
+  #checks .tag { position: absolute; left: 0; right: 0; top: 440px; text-align: center; font-size: 132px; font-weight: 700; letter-spacing: -.055em; white-space: nowrap; }
+  #checks .tag span { display: inline-block; margin: 0 .12em; }
+
+  /* logo */
+  #logo .word { position: absolute; left: 0; right: 0; top: 640px; text-align: center; font-size: 150px; font-weight: 650; white-space: nowrap; }
+  #logo .word span { display: inline-block; }
+  #logo .tagl { text-shadow: 0 2px 20px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.6); position: absolute; left: 0; right: 0; top: 830px; text-align: center; font-size: 40px; color: var(--ink-2); letter-spacing: -.01em; }
+  #logo .url { left: 810px; top: 920px; width: 300px; height: 70px; --r: 35px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 28px; font-weight: 600; }
+</style>
+</head>
+<body>
+<canvas id="gl" width="1920" height="1080"></canvas>
+<svg id="filters" width="0" height="0" style="position:absolute"></svg>
+
+<div id="cold" class="layer">
+  <div class="line"></div>
+  <div class="typed mono"><span class="prompt">&gt; </span><span class="tx"></span><span class="caret"></span></div>
+</div>
+
+<div id="ask" class="layer">
+  <div class="chips"></div>
+  <div class="glass composer">
+    <div class="hdr"><span class="dot"></span>New request · Shop place</div>
+    <div class="q disp">Build me <span class="slot"></span></div>
+    <div class="caret"></div>
+    <div class="foot"><span class="pill"><i></i>Studio paired</span><span class="pill">Blocks · reviewed</span></div>
+    <div class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+  </div>
+  <div class="ring"></div>
+  <svg class="cursor" viewBox="0 0 24 24"><path d="M3 2l7.5 19 2.6-7.6L21 10.8z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="pair" class="layer">
+  <div class="label mono">PAIRING CODE</div>
+  <div class="tiles"></div>
+  <div class="beam"></div>
+  <div class="pkts"></div>
+  <div class="glass node n1"><div class="ic"><svg width="30" height="30" viewBox="0 0 32 32"><path fill="#fff" fill-rule="evenodd" d="M12 3H27.8Q29 3 29 4.2V20A9 9 0 0 1 20 29H12A9 9 0 0 1 3 20V12A9 9 0 0 1 12 3ZM20 17a4.6 4.6 0 1 0-9.2 0 4.6 4.6 0 0 0 9.2 0Z"/></svg></div><div>studpilot.app<small>web app</small></div></div>
+  <div class="glass node n2"><div class="ic"><svg width="28" height="28" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="#fff" stroke-width="2.4" transform="rotate(14 12 12)"/><rect x="10" y="10" width="4" height="4" fill="#fff" transform="rotate(14 12 12)"/></svg></div><div>Roblox Studio<small>plugin</small></div></div>
+  <div class="glass status"><span class="pill" style="background:none;box-shadow:none;padding:0"><i></i></span>Paired · live</div>
+</div>
+
+<div id="hud" class="layer">
+  <div class="cap mono">AGENT LOOP · TYPED OPS → YOUR OPEN PLACE</div>
+  <div class="count"><div class="n disp">000</div><div class="l mono">OPS APPLIED</div></div>
+  <div class="glass bar">
+    <div class="stage s0">Plan</div><div class="stage s1">Build</div><div class="stage s2">Check</div>
+  </div>
+</div>
+
+<div id="shop" class="layer">
+  <div class="glass panel">
+    <div class="ttl disp">Egg Shop</div>
+    <div class="coins"><span class="coin"></span>3,240</div>
+    <div class="items"></div>
+  </div>
+</div>
+
+<div id="checks" class="layer">
+  <div class="cards"></div>
+  <div class="laser"></div>
+  <div class="tag disp"></div>
+</div>
+
+<div id="logo" class="layer">
+  <div class="word disp"></div>
+  <div class="tagl">Build it in the place you already have open.</div>
+  <div class="glass url"><span class="pill" style="background:none;box-shadow:none;padding:0"><i></i></span>studpilot.app</div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
