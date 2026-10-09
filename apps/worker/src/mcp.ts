@@ -204,6 +204,10 @@ export const MCP_TOOLS: readonly McpToolEntry[] = [
   { tool: 'list_scripts', scope: 'projects:read', needsProject: true },
   { tool: 'read_script', scope: 'projects:read', needsProject: true },
   { tool: 'search_scripts', scope: 'projects:read', needsProject: true },
+  // Plugin 2.0 readers (ops/Search.luau, ops/Serialize.luau): each issues one read-only op.
+  { tool: 'grep', scope: 'projects:read', needsProject: true },
+  { tool: 'glob', scope: 'projects:read', needsProject: true },
+  { tool: 'read_instance', scope: 'projects:read', needsProject: true },
   { tool: 'find_symbol', scope: 'projects:read', needsProject: true },
   { tool: 'review_scripts', scope: 'projects:read', needsProject: true },
   { tool: 'get_instance', scope: 'projects:read', needsProject: true },
@@ -239,6 +243,9 @@ export const MCP_READ_ONLY_STUDIO_OPS: readonly string[] = [
   'read_script',
   'dump_scripts',
   'search_scripts',
+  'grep',
+  'glob',
+  'serialize',
   'get_instance',
   'get_selection',
   'viewport_info',
@@ -256,6 +263,7 @@ export const MCP_READ_ONLY_STUDIO_OPS: readonly string[] = [
  */
 export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   // ---- writes into the customer's place -------------------------------------------------
+  run_tests: 'Starts a Studio Test session and inserts (then removes) a temporary runner script. A play session driven by a program nobody watched is not a read.',
   edit_script: 'Writes script source into the place. Script changes go through an agent run, which checkpoints first and reviews after.',
   format_script: 'Rewrites a script in place. Harmless-looking and still a write: a formatter run by a program nobody watched is a diff the owner did not ask for.',
   create_instances: 'Creates instances in the place. A build belongs to an agent run, where a checkpoint exists to undo it.',
@@ -276,6 +284,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   remove_effect: 'Strips emitters off instances in the place, destroying work an agent run or a person put there.',
   install_module: 'Writes a ModuleScript into the place and wires it up: a code change made by a program nobody was watching.',
   library_code: 'Installs third-party packages (and their dependencies) into the place: a code change made by a program nobody was watching, on the same rule as install_module.',
+  make_image: 'Paid image generation that uploads into the Studio user\'s Roblox account; it runs inside an agent turn, metered and with Studio open.',
   insert_from_store: 'Brings third-party content into the place; inside an agent run it is checkpointed and script-scanned, a direct caller would skip both.',
   insert_asset: 'Brings third-party content into the place. It passes an asset policy and a post-insertion script scan inside an agent run; a direct caller would be the one path around them.',
   generate_model: 'Creates geometry and parents it into the place, and spends on generation to do it.',

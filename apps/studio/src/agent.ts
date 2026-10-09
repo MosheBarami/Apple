@@ -20,15 +20,32 @@ import {
 } from 'ai';
 import { createWorkersAI } from 'workers-ai-provider';
 import { type Holds, meteredAi, releaseAll, settleNext } from './metering.ts';
+import { dumpStorage } from './legacy.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
-import { compactHistory, TurnReadCache } from './token-saver.ts';
+import { compactHistory, TurnReadCache, repairToolInput } from './token-saver.ts';
 
 /** Measured 2026-10-08 (scripts/model-probe.mjs): first token in 1.0s and first tool call in 2.1s, against 3.6s/6.1s for
  * DeepSeek V4 Pro (which then reasoned for 113s) and 9.9s for GLM 5.3 Flash. */
 export const DEFAULT_MODEL = '@cf/moonshotai/kimi-k2.7-code';
 /** A long request (a whole game screen with its scripts and checks) fits; a loop that never ends does not. */
 const MAX_STEPS = 60;
+
+/**
+ * What the person sees when a step fails. Errors from the model binding and over RPC are not always Error instances in
+ * this isolate, and showing a generic line for them hid every real cause (owner, 2026-10-09), so any shape is read.
+ */
+export function describeError(e: unknown): string {
+  const o = e as { message?: unknown; error?: unknown; cause?: unknown; name?: unknown } | null;
+  const text =
+    typeof e === 'string' ? e
+      : o && typeof o.message === 'string' && o.message ? o.message
+        : o && typeof o.error === 'string' ? o.error
+          : o && o.cause ? describeError(o.cause)
+            : (() => { try { return JSON.stringify(e); } catch { return String(e); } })();
+  console.error('StudPilot agent error:', text, o && typeof o.name === 'string' ? o.name : typeof e);
+  return text && text !== '{}' ? text.slice(0, 600) : 'StudPilot hit an error it could not describe and stopped.';
+}
 
 interface ProjectInfo {
   name: string;
@@ -39,6 +56,16 @@ export class StudPilotAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 400;
   /** A second message while one is running waits its turn; a person's words are never dropped. */
   messageConcurrency = 'queue' as const;
+
+  /** The whole stored conversation, for the operator's admin export (server.ts /studio/api/admin/history). */
+  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[] }> {
+    return { project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null, messages: this.messages };
+  }
+
+  /** The raw storage (every table), for the operator's export by object id (server.ts). */
+  async dumpStorage() {
+    return dumpStorage(this.ctx.storage);
+  }
 
   /** Called by the router after the owner check: the project's name and whether its owner may build. */
   async setProject(info: ProjectInfo): Promise<void> {
@@ -52,7 +79,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
 
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
-        onError: (e) => (e instanceof Error ? e.message : 'StudPilot hit an error and stopped.'),
+        onError: describeError,
         execute: async ({ writer }) => {
           if (!project.canBuild) {
             writer.write({ type: 'error', errorText: 'StudPilot is in private pre-launch: building is open to approved accounts only.' });
@@ -71,12 +98,12 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             binding: meteredAi(this.env, holds),
             gateway: { id: this.env.AI_GATEWAY_ID },
           });
-          // Token saver: reasoning and tool traffic only for the latest exchange, older words shortened (token-saver.ts).
+          // Token saver: reasoning only for the latest exchange; earlier turns keep their tool calls and results, shortened
+          // (token-saver.ts), so the agent remembers what it built.
           const messages = compactHistory(
             pruneMessages({
               messages: await convertToModelMessages(this.messages),
               reasoning: 'before-last-message',
-              toolCalls: 'before-last-2-messages',
               emptyMessages: 'remove',
             }),
           );
@@ -101,6 +128,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             messages,
             tools: { ...studioTools(this.env, projectId, new TurnReadCache()), ...knowledgeTools(this.env, writer) },
             stopWhen: isStepCount(MAX_STEPS),
+            experimental_repairToolCall: repairToolInput,
             maxOutputTokens: 16_000,
             abortSignal: options?.abortSignal,
             experimental_transform: smoothStream({ chunking: 'word' }),
@@ -122,7 +150,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
               sendReasoning: true,
               sendSources: true,
               // The person sees why a turn stopped (a spending limit, a model failure), not a silent end.
-              onError: (e) => (e instanceof Error ? e.message : 'StudPilot hit an error and stopped.'),
+              onError: describeError,
             }),
           );
         },

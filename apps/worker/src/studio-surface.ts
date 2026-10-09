@@ -4,12 +4,15 @@
 // checkpoint (SessionDO `/studio-tool`), so the user can put the place back. Not here: uploads to the owner's Roblox
 // account and anything that spends beyond the model.
 // apps/studio/scripts/gen-tools.mjs builds the agent's tools from this list.
+// Plugin 2.0 (2026-10-08): read_instance (every writable property, from the API dump) replaced get_instance, glob
+// (instances by path shape and class) replaced list_scripts, and grep (text or Lua pattern, context, path globs)
+// replaced search_scripts. run_tests rides on play_check (tests:true): the surface is at its 25-tool cap.
 export const STUDIO_READ_TOOLS = [
   'get_project_tree',
-  'get_instance',
-  'list_scripts',
+  'read_instance',
+  'glob',
   'read_script',
-  'search_scripts',
+  'grep',
   'get_output_logs',
   'model_anatomy',
   'check_ui',
@@ -30,6 +33,7 @@ export const STUDIO_WRITE_TOOLS = [
   'run_luau',
   'edit_terrain',
   'insert_from_store',
+  'make_image',
   'animate_model',
   'play_check',
 ] as const;

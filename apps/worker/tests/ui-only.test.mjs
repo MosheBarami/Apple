@@ -22,6 +22,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -199,13 +200,10 @@ function tableKeys(source, head) {
   return new Set([...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true\b/g)].map((m) => m[1]));
 }
 const COMMANDS = readFileSync(join(PLUGIN_SRC, 'Commands.luau'), 'utf8');
-const ALLOW = { classes: tableKeys(COMMANDS, 'local CREATE_CLASSES = {'), props: tableKeys(COMMANDS, 'local PROPERTY_ALLOW = {'), enums: tableKeys(COMMANDS, 'local ENUM_ALLOW = {') };
-for (const file of readdirSync(join(PLUGIN_SRC, 'ops')).filter((f) => f.endsWith('.luau') && f !== 'init.luau')) {
-  const src = readFileSync(join(PLUGIN_SRC, 'ops', file), 'utf8');
-  for (const [key, head] of [['classes', 'createClasses = {'], ['props', 'propertyAllow = {'], ['enums', 'enumAllow = {']]) {
-    for (const name of tableKeys(src, head) ?? []) ALLOW[key].add(name);
-  }
-}
+// Plugin 2.0 (owner, 2026-10-08): no allowlists. The plugin creates what Roblox's API dump calls creatable and
+// writes what it calls plugin-writable, minus a short deny list; read the same way here (scripts/api-dump.mjs).
+const PERMS = pluginPermissions();
+const ALLOW = { classes: new Set(PERMS.creatableNames), props: new Set(PERMS.writableNames), enums: new Set(PERMS.enums) };
 const VALUE_TYPES = new Set([...COMMANDS.matchAll(/\bt == "([A-Za-z0-9]+)"/g)].map((m) => m[1]));
 
 /** Every (component, skin, colour) the catalogue offers. */
@@ -384,4 +382,18 @@ test('a Creator Store image is a library icon: accepted by the component and set
   const out = await U.uiImageResolver({}, 'u1', { upload: async () => { uploads.push(1); return { ok: false, error: 'no' }; } })([hit.image]);
   assert.equal(out.ids[hit.image], String(hit.imageId));
   assert.equal(uploads.length, 0);
+});
+
+// Rebuild 2026-10-08: the Studio agent designs everything itself (owner: "no kits"), so its calls (ctx.freeHand, set by
+// SessionDO /studio-tool) are not held to the library rules above.
+test('the Studio agent (freeHand) may make and restyle UI by hand in every writer', async () => {
+  const items = [{ className: 'ScreenGui', name: 'Hud', parent: 'game.StarterGui', children: [{ className: 'ImageLabel', name: 'Icon' }] }];
+  const s = studio({ created: ['game.StarterGui.Hud'] });
+  s.ctx.freeHand = true;
+  assert.ok(!refused(await T.TOOLS.create_instances.run(s.ctx, { items })));
+  assert.ok(!refused(await T.TOOLS.run_luau.run(s.ctx, { code: 'local i = Instance.new("ImageLabel")\ni.Parent = workspace' })));
+  assert.ok(!refused(await T.TOOLS.set_properties.run(s.ctx, { path: 'game.StarterGui.Hud.Icon', props: { BackgroundColor3: { t: 'Color3', v: [1, 0, 0] } } })));
+  assert.ok(s.calls.length > 0, 'the writes reach Studio');
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /ctx\.offeredTools = new Set\(STUDIO_TOOLS\);\s*\/\/[^\n]*\n\s*ctx\.freeHand = true;/);
 });

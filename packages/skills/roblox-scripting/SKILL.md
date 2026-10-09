@@ -151,7 +151,7 @@ The stack trace names the script and line: `read_script` that line before changi
 
 ## 11. Working method with the tools
 
-1. `get_project_tree` / `list_scripts` / `search_scripts` to learn the existing structure before adding code.
+1. `get_project_tree` / `glob` / `grep` to learn the existing structure before adding code.
 2. Plan the pieces in `update_plan`: modules, remotes, server scripts, client scripts.
 3. Create scripts with `create_instances` (class `Script`/`LocalScript`/`ModuleScript`, `Source`) or change them with
    `edit_script`. Keep each script focused; shared constants in one ReplicatedStorage module.

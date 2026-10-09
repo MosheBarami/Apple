@@ -216,23 +216,18 @@ test('KEPT INSTANCES: reset puts every one of them back, of every recorded kind,
   assert.equal(out['kept-state-after'], 'true 0 false Plastic inf nil stone nil bronze nil nil 0.5 0.5 2 1 50 0.27 0');
 });
 
-test('KEPT INSTANCES: the property list is the plugin\'s write allowlist, read from Commands.luau, and the script holds no copy of it', () => {
+test('KEPT INSTANCES: the property list is what the plugin may write (its API dump rule), and the script holds no copy of it', () => {
   const names = propertyAllowNames();
   assert.ok(names.length > 200, `only ${names.length} names were read: this test would check nothing`);
-  for (const n of ['Anchored', 'CanCollide', 'Locked', 'Transparency', 'Size', 'CFrame', 'Enabled', 'ClockTime', 'Contrast', 'Density', 'TonemapperPreset', 'AmbientReverb']) assert.ok(names.includes(n), `${n} is on the plugin's allowlist and must be tracked`);
-  // the parser understood the WHOLE table: every line inside it is a comment, blank, or a `Name = true,` entry
-  const src = readFileSync(COMMANDS_PATH, 'utf8');
-  const start = src.indexOf('local PROPERTY_ALLOW = {');
-  const table = src.slice(start, src.indexOf('\n}', start)).split('\n').slice(1);
-  const unread = table.filter((l) => l.trim() && !/^\s*--/.test(l) && !/^\s*[A-Za-z][A-Za-z0-9_]* = true,\s*(--.*)?$/.test(l));
-  assert.deepEqual(unread, [], 'a line of PROPERTY_ALLOW was not understood by the reader');
-  assert.equal(table.filter((l) => /^\s*[A-Za-z][A-Za-z0-9_]* = true,/.test(l) && !/^\s*--/.test(l)).length >= names.length, true);
+  for (const n of ['Anchored', 'CanCollide', 'Locked', 'Transparency', 'Size', 'CFrame', 'Enabled', 'ClockTime', 'Contrast', 'Density', 'TonemapperPreset', 'AmbientReverb']) assert.ok(names.includes(n), `${n} is writable by the plugin and must be tracked`);
+  // plugin 2.0 keeps no allowlist table to drift from: the deny list stays out of the tracked names
+  for (const denied of ['Source', 'Parent']) assert.equal(names.includes(denied), false, `${denied} is on the deny list`);
+  assert.ok(readFileSync(COMMANDS_PATH, 'utf8').includes('local PROPERTY_ALLOW = setmetatable('), 'the plugin grew an allowlist table back');
   // no hand-written copy in the script: the allowlist's common names must not appear as string literals there
   const code = SCRIPT.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n'); // comments first: the header documents the injected list
   for (const n of ['Anchored', 'CanCollide', 'Transparency', 'Reflectance', 'ClockTime', 'Contrast']) assert.equal(code.includes(`"${n}"`), false, `${n} is typed into world-state.luau: derive it from Commands.luau`);
   // an unreadable list is an error, never an empty list
-  assert.throws(() => propertyAllowNames('local OTHER = {}'), /no `local PROPERTY_ALLOW = \{` table/);
-  assert.throws(() => propertyAllowNames('local PROPERTY_ALLOW = {\n\tA = true,\n}\n'), /only 1 property names/);
+  assert.throws(() => propertyAllowNames({ writableNames: new Set(['A']) }), /only 1 property names/);
 });
 
 test('the Luau the runner sends (mode, baseline and property list in front of the script) is valid Luau in every mode', () => {

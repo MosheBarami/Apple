@@ -31,6 +31,7 @@ local function newCommands(options)
     local opts = options or {}
     opts.game = game
     if opts.opFamilies == nil then opts.opFamilies = OP_FAMILIES_UNDER_TEST end
+    if opts.permissions == nil then opts.permissions = PERMISSIONS_UNDER_TEST end
     return Commands.new(opts)
 end
 local function run(c, id, op, allow) return c:execute(id, op, allow == true) end

@@ -31,7 +31,7 @@ Enum.ParticleFlipbookMode = { OneShot = "Enum.ParticleFlipbookMode.OneShot", Loo
 `;
 
 const SPEC = String.raw`
-local c = Commands.new({ game = game, opFamilies = OP_FAMILIES_UNDER_TEST })
+local c = Commands.new({ game = game, opFamilies = OP_FAMILIES_UNDER_TEST, permissions = PERMISSIONS_UNDER_TEST })
 local function byOp(report, wanted) for _, item in report.operations do if item.op == wanted then return item end end end
 local function count(root) return #root:GetDescendants() end
 
@@ -78,8 +78,11 @@ spec("an effect preset's flipbook, squash and engine texture are writable on a P
     local smoke = host:FindFirstChild("Smoke")
     eq(smoke.Texture, "rbxasset://textures/particles/smoke_main.dds")
     eq(smoke.FlipbookLayout, "Enum.ParticleFlipbookLayout.Grid4x4"); eq(smoke.FlipbookFramerate.Max, 16); eq(smoke.Squash.Keypoints[2].Value, 2)
-    local offList = c:execute("fx2", { op = "set_props", path = "game.Workspace.FxHost.Smoke", props = { Texture = { t = "string", v = "rbxasset://textures/face.png" } } }, true)
-    eq(offList.ok, false, "a texture off the engine list is refused"); eq(smoke.Texture, "rbxasset://textures/particles/smoke_main.dds")
+    -- 2.0: any engine texture or asset id is content; a web URL is not, and leaves the texture as it was.
+    local engine = c:execute("fx2", { op = "set_props", path = "game.Workspace.FxHost.Smoke", props = { Texture = { t = "string", v = "rbxasset://textures/face.png" } } }, true)
+    eq(engine.ok, true, tostring(engine.error)); eq(smoke.Texture, "rbxasset://textures/face.png")
+    local web = c:execute("fx3", { op = "set_props", path = "game.Workspace.FxHost.Smoke", props = { Texture = { t = "string", v = "https://example.com/smoke.png" } } }, true)
+    eq(web.ok, false, "a web URL is refused"); eq(smoke.Texture, "rbxasset://textures/face.png")
     host:Destroy()
 end)
 
@@ -111,8 +114,8 @@ const BREAKS = [
   { why: 'preview_sound takes the consent gate', family: 'Fx.luau', anchor: 'consentOnly = { preview_sound = true },', with: '' },
   { why: 'preview_sound refuses anything but an audio id', family: 'Fx.luau',
     anchor: 'if scheme ~= "rbxassetid" or digits == nil or #digits > 20 then', with: 'if false then' },
-  { why: 'an engine texture must be on the list', commands: true,
-    anchor: 'if engineScheme == "rbxasset" and allowed[file] == true then contentText = typed.v end', with: 'contentText = typed.v' },
+  { why: 'a content property takes a Roblox content id and nothing else', commands: true,
+    anchor: 'if allowContent ~= true and not perms.contentAllowed(text) then', with: 'if false then' },
 ];
 
 test('each Fx safety mechanism is load-bearing (red-first falsification)', { skip }, () => {

@@ -216,3 +216,34 @@ export async function fetchCredits(): Promise<Credits | null> {
     unmetered: q.unmetered === true,
   };
 }
+
+/** The person's own Roblox Open Cloud key (make_image uploads drawn art with it when Studio cannot). */
+export interface RobloxKey {
+  robloxCreatorId: string;
+  creatorType: "user" | "group";
+  hint: string;
+  scopes: string[];
+}
+
+export async function getRobloxKey(): Promise<RobloxKey | null> {
+  const res = await fetch("/api/me/roblox-key", { headers: await authHeaders(), signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  if (!res?.ok) return null;
+  return ((await res.json()) as { credential: RobloxKey | null }).credential;
+}
+
+export async function putRobloxKey(apiKey: string, robloxCreatorId: string, creatorType: "user" | "group"): Promise<RobloxKey> {
+  const res = await fetch("/api/me/roblox-key", {
+    method: "PUT",
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+    body: JSON.stringify({ apiKey, robloxCreatorId, creatorType, scopes: ["asset:read", "asset:write"] }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const body = (await res.json().catch(() => ({}))) as { credential?: RobloxKey; error?: string };
+  if (!res.ok || !body.credential) throw new Error(body.error ?? `could not save the key (${res.status})`);
+  return body.credential;
+}
+
+export async function deleteRobloxKey(): Promise<void> {
+  const res = await fetch("/api/me/roblox-key", { method: "DELETE", headers: await authHeaders(), signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`could not disconnect the key (${res.status})`);
+}

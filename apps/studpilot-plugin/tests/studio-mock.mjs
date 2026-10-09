@@ -12,7 +12,7 @@
  */
 import { readdirSync, readFileSync } from 'node:fs';
 
-export const PRELUDE = String.raw`--!nocheck
+const PRELUDE_BASE = String.raw`--!nocheck
 local function typeofMock(v)
     if type(v) == "table" and rawget(v, "__type") then return v.__type end
     if type(v) == "table" and rawget(v, "__class") then return "Instance" end
@@ -403,3 +403,17 @@ export function opFamiliesChunk() {
   const bodies = Object.values(opFamilySources()).map((src) => `(function()\n${src}\nend)()`);
   return `local OP_FAMILIES_UNDER_TEST = {\n${bodies.join(',\n')}\n}\n`;
 }
+
+/**
+ * The 2.0 permission model as the plugin builds it in Studio (Commands.new): Permissions.luau built
+ * over the generated ApiDump.luau, both embedded byte-for-byte. A suite passes it as
+ * `Commands.new({ permissions = PERMISSIONS_UNDER_TEST })`; PRELUDE defines it, so every suite has it.
+ */
+export function permissionsChunk() {
+  const permissions = readFileSync(new URL('../src/Permissions.luau', import.meta.url), 'utf8');
+  const dump = readFileSync(new URL('../src/ApiDump.luau', import.meta.url), 'utf8');
+  return `local PERMISSIONS_UNDER_TEST = (function()\n${permissions}\nend)().build((function()\n${dump}\nend)())\n`;
+}
+
+// Every suite gets the permission model with the mock (PRELUDE_BASE + PERMISSIONS_UNDER_TEST).
+export const PRELUDE = `${PRELUDE_BASE}\n${permissionsChunk()}`;

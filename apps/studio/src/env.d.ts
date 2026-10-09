@@ -15,9 +15,12 @@ interface Env {
   GATE: Fetcher & StudioGate;
   DOCS: D1Database;
   StudPilotAgent: DurableObjectNamespace<import('./agent.ts').StudPilotAgent>;
+  FLUE_STUDPILOT: DurableObjectNamespace<import('./legacy.ts').FlueStudPilotAgent>;
   SUPABASE_URL: string;
   AI_GATEWAY_ID: string;
   /** The Workers AI model the agent runs on. */
   AGENT_MODEL?: string;
   BUILD_SHA?: string;
+  /** Secret: the operator key for the conversation export (server.ts). Unset means the route does not exist. */
+  ADMIN_KEY?: string;
 }

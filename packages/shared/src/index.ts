@@ -85,6 +85,21 @@ export type StudioOp =
       baseHash?: string;
     }
   | { op: 'search_scripts'; query: string; root?: string; maxResults?: number }
+  /**
+   * Plugin 2.0 (src/ops/Search.luau). `grep`: text (or a Lua pattern) over script sources with context
+   * lines and slash path globs ("ServerScriptService/**"). `glob`: instance paths matching a slash glob
+   * ("Workspace/**\/Door*"), optionally one class (IsA). `list`: one instance's children with counts.
+   */
+  | { op: 'grep'; query: string; pattern?: boolean; caseSensitive?: boolean; context?: number; include?: string | string[]; exclude?: string | string[]; maxResults?: number }
+  | { op: 'glob'; pattern: string; className?: string; caseSensitive?: boolean; maxResults?: number }
+  | { op: 'list'; path?: string; maxResults?: number }
+  /** Plugin 2.0 (src/ops/Serialize.luau): a subtree as JSON with every plugin-writable property, and back. */
+  | { op: 'serialize'; path: string; maxDepth?: number; maxNodes?: number; includeSource?: boolean }
+  | { op: 'deserialize'; parent: string; node?: unknown; nodes?: unknown[] }
+  /** Plugin 2.0 (src/ops/Tests.luau): the place's TestEZ *.spec modules, run in a solo Test session. */
+  | { op: 'run_tests'; roots?: string[]; timeoutSeconds?: number }
+  /** 2026-10-09 (src/ops/Image.luau): generated pixels from StudPilot's pixel route, uploaded as an Image into the Studio user's account. */
+  | { op: 'create_image_asset'; url: string; width: number; height: number; name?: string }
   | { op: 'create_instances'; items: InstanceSpec[] }
   | { op: 'set_props'; path: string; props?: Record<string, PropValue>; attributes?: Record<string, PropValue> }
   | {
@@ -917,6 +932,10 @@ export function phaseForTool(tool: string): AgentPhase {
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
     // announcing "building" while they run tells the user work is happening that is not.
     case 'get_instance':
+    // Plugin 2.0 readers: code search, instance search, and a full-property read.
+    case 'grep':
+    case 'glob':
+    case 'read_instance':
     case 'get_selection':
     case 'viewport_info':
     // The web-facing tools. Every one of these READS something outside the place — a page, a
@@ -980,6 +999,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'generate_model':
     case 'generate_model_external':
     case 'generate_image':
+    case 'make_image':
     case 'generate_ui_image_hf':
     // Puts a library PNG into the user's Roblox account and nothing into the place, the same act
     // as the generators beside it: an asset is produced for the build to use.
@@ -1053,6 +1073,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'run_and_check':
     case 'play_check':
     case 'play_check_ui':
+    // TestEZ specs in a Test session: the same verifying stage as a play check.
+    case 'run_tests':
       return 'playtesting';
     case 'get_output_logs':
       return 'debugging';
@@ -2946,6 +2968,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'remove_effect',
     label: 'Remove StudPilot effects',
     why: 'Deletes presentation effects that StudPilot previously attached to project objects.',
+    group: 'changes',
+  },
+  {
+    name: 'make_image',
+    label: 'Make game art',
+    why: 'Draws a picture (a button, panel, icon, banner, texture or background) with the image model and uploads it to your Roblox account as an Image.',
     group: 'changes',
   },
   {

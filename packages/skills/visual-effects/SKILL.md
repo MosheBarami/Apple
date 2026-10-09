@@ -56,7 +56,7 @@ Parent to a BasePart (emits from its volume/surface by `Shape`) or an `Attachmen
 - Make sequences with `NumberSequence.new({ NumberSequenceKeypoint.new(time0to1, value, envelope?) })` and
   `ColorSequence.new({ ColorSequenceKeypoint.new(t, Color3) })` — first keypoint at 0, last at 1.
 - Textures: the default (`rbxasset://textures/particles/sparkles_main.dds`) works for most glows; other built-in
-  sprites live under `rbxasset://textures/particles/` (check one exists with `get_instance` on a fresh emitter or
+  sprites live under `rbxasset://textures/particles/` (check one exists with `read_instance` on a fresh emitter or
   the docs before relying on a name). For a specific look (slash, ring, shockwave,
   leaf, snowflake), `search_creator_store` with category `decal` and a sprite-style query ("smoke particle texture",
   "ring shockwave"), then use the returned id. Never invent ids. A soft round white texture tinted by `Color` covers
@@ -115,7 +115,7 @@ Parent to a BasePart (emits from its volume/surface by `Shape`) or an `Attachmen
 
 ## 8. Verification
 
-- After creating, `get_instance` the emitter to confirm properties took (sequences, texture).
+- After creating, `read_instance` the emitter to confirm properties took (sequences, texture).
 - `play_check` while triggering the effect (or with `Enabled = true` temporarily) and read the screen description;
   check client errors.
 - Ask: does it read at gameplay distance? Does it obscure the player or UI? Does it end cleanly? Then tune one

@@ -2,7 +2,10 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import { searchLibraryCode, insertPlan, aliasFor, treeOps, header, audit } from './library-code';
 import { searchLibrarySkills, readLibrarySkill, LIBRARY_SKILL_PREFIX } from './library-skills';
-import { embed } from './gateway';
+import { embed, release as releaseImageBudget, reserve as reserveImageBudget, settle as settleImageBudget } from './gateway';
+import { encodeRgbaPng, finishImage, IMAGE_KINDS, planImage, suggestSlice, toBase64, type ImageKind } from './image-gen';
+import { getUploadStatus, uploadAsset as uploadToOwnAccount } from './creator-dashboard';
+import { IMAGE_MODEL, imageNeurons } from './pricing';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
@@ -307,6 +310,11 @@ export interface AgentCtx {
    * honest answer when nothing narrowed anything.
    */
   offeredTools?: ReadonlySet<string>;
+  /**
+   * The Studio agent (rebuild 2026-10-08, owner: "no kits", "without any limits"): it makes UI, models, sounds and effects
+   * itself, so the old library rules (D-UIONLY-1, D-FXLIB-1, D-MODELLIB-2) do not apply to its calls. Safety checks stay.
+   */
+  freeHand?: boolean;
   /**
    * How `propose_plan` has fared so far in this run. The run loop carries it across steps (it
    * rebuilds this context every step) and reads it back after each call. See PlanState.
@@ -1052,6 +1060,34 @@ function displayTagged(value: unknown): string {
   return String(decoded);
 }
 
+/** One node of the plugin's `serialize` op (apps/studpilot-plugin/src/ops/Serialize.luau). */
+interface SerializedNode {
+  class?: string;
+  name?: string;
+  props?: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
+  tags?: string[];
+  source?: string;
+  childCount?: number;
+  children?: SerializedNode[];
+}
+
+/** A serialized node as text a model can quote: each value displayed, a reference shown as its path. */
+function readableNode(node: SerializedNode): Record<string, unknown> {
+  const show = (v: unknown): string => {
+    const t = v as { t?: string; v?: unknown } | null;
+    return t && typeof t === 'object' && t.t === 'Instance' && typeof t.v === 'string' ? t.v : displayTagged(v);
+  };
+  const out: Record<string, unknown> = { class: node.class, name: node.name };
+  out.props = Object.fromEntries(Object.entries(node.props ?? {}).sort(([x], [y]) => x.localeCompare(y)).map(([k, v]) => [k, show(v)]));
+  if (node.attributes && Object.keys(node.attributes).length) out.attributes = Object.fromEntries(Object.entries(node.attributes).map(([k, v]) => [k, show(v)]));
+  if (node.tags?.length) out.tags = node.tags;
+  if (typeof node.source === 'string') out.source = node.source;
+  if (node.children?.length) out.children = node.children.map(readableNode);
+  else if (node.childCount) out.childCount = node.childCount;
+  return out;
+}
+
 /** Two decimals, without the trailing zeros that make a property panel read like a spreadsheet. */
 function round2(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
@@ -1140,6 +1176,20 @@ async function renameAndAudit(ctx: AgentCtx, path: string, name: string): Promis
   if (!stale.length) return res;
   return { ...(res as object), staleReferences: stale.map((m) => `${m.path}:${m.line}  ${m.text.trim()}`),
     warning: `These scripts still name "${old}" and no longer find it: update each with edit_script to "${name}" before you claim the mechanic works.` };
+}
+
+/** make_image's second route: an Image uploaded with the person's own Open Cloud key, waited on until Roblox names it. */
+async function uploadImageWithOwnKey(ctx: AgentCtx, userId: string, png: Uint8Array, name: string): Promise<{ assetId: string | number } | { error: string }> {
+  const up = await uploadToOwnAccount(ctx.env as never, userId, { file: png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) as ArrayBuffer, contentType: 'image/png', displayName: name, description: 'Made with StudPilot', type: 'Image' });
+  if (!up.ok) return { error: up.error };
+  if (up.data.assetId !== null) return { assetId: up.data.assetId };
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const st = await getUploadStatus(ctx.env as never, userId, up.data.operationId);
+    if (st.ok && st.data.assetId !== null) return { assetId: st.data.assetId };
+    if (!st.ok) return { error: `uploaded, but its status could not be read (${st.error}); operation ${up.data.operationId}` };
+  }
+  return { error: `Roblox is still processing the upload (operation ${up.data.operationId}); try again in a moment` };
 }
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
@@ -2662,7 +2712,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
       // D-MODELLIB-2 also applies to scripts that create visual props at runtime: a Model assembled from Parts in a
       // script is held to the same order as one made by create_instances.
-      const handMadeModel = refuseNewHandMadeModelLuau(
+      const handMadeModel = ctx.freeHand ? null : refuseNewHandMadeModelLuau(
         luauScanVariants(after), before === null ? undefined : luauScanVariants(before), libraryOrder(ctx),
       );
       if (handMadeModel) {
@@ -2670,10 +2720,10 @@ export const TOOLS: Record<string, ToolImpl> = {
         return handMadeModel;
       }
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
-      const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
+      const handMadeUi = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeUi) return handMadeUi;
       // D-FXLIB-1: the same for Sounds and particle effects, which come from insert_sound / insert_vfx.
-      const handMadeFx = refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
+      const handMadeFx = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeFx) return handMadeFx;
       // G13/G14: no runtime dependence on StudPilot, no fabricated purchase ids.
       const gameRule = refuseGameScript(luauScanVariants(after), before === null ? undefined : luauScanVariants(before));
@@ -2731,6 +2781,195 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['search_scripts'],
     run: (ctx, a) => op(ctx, { op: 'search_scripts', query: String(a.query ?? ''), maxResults: 40 }),
+  },
+  /** Plugin 2.0 (ops/Search.luau): the Studio agent's code search. Replaces search_scripts on that surface. */
+  grep: {
+    def: {
+      name: 'grep',
+      description:
+        'Search every script source for text, or a Lua pattern with pattern:true. Case-insensitive unless case_sensitive. Returns path, line number and the line, with `context` lines before and after (0-5). Narrow with include/exclude slash globs over script paths, e.g. include:"ServerScriptService/**", exclude:["ReplicatedStorage/Packages/**"]. Paths come back in the game.X.Y form read_script and edit_script take.',
+      parameters: S({
+        query: { type: 'string' },
+        pattern: { type: 'boolean', description: 'Treat query as a Lua pattern (%d, %a, .-, ^ $), not plain text.' },
+        case_sensitive: { type: 'boolean' },
+        context: { type: 'number', description: '0-5 lines of context around each match. Default 0.' },
+        include: { type: 'array', items: { type: 'string' }, description: 'Slash globs a script path must match (* within a name, ** across names).' },
+        exclude: { type: 'array', items: { type: 'string' }, description: 'Slash globs that drop a script.' },
+        max_results: { type: 'number', description: 'Default 100, at most 500.' },
+      }, ['query']),
+    },
+    studio: true,
+    studioOps: ['grep'],
+    run: (ctx, a) => {
+      const list = (v: unknown): string[] | undefined => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 20) : undefined);
+      const context = Math.min(5, Math.max(0, Math.round(Number(a.context) || 0)));
+      const maxResults = Math.min(500, Math.max(1, Math.round(Number(a.max_results) || 100)));
+      return op(ctx, {
+        op: 'grep', query: String(a.query ?? ''), pattern: a.pattern === true, caseSensitive: a.case_sensitive === true, context, maxResults,
+        ...(list(a.include)?.length ? { include: list(a.include) } : {}), ...(list(a.exclude)?.length ? { exclude: list(a.exclude) } : {}),
+      });
+    },
+  },
+  /** Plugin 2.0 (ops/Search.luau): find instances by path shape. Replaces list_scripts on the Studio agent's surface. */
+  glob: {
+    def: {
+      name: 'glob',
+      description:
+        'Find instances by path: a slash glob from the service down, * within one name, ? one character, ** across any number of names. E.g. "Workspace/**/Door*", "ServerScriptService/**" with class_name:"LuaSourceContainer" to list every script, "ReplicatedStorage/**/*.spec". class_name keeps only instances that are that class or inherit from it (BasePart, GuiObject, Script). Returns each path (game.X.Y form), class and child count.',
+      parameters: S({
+        pattern: { type: 'string' },
+        class_name: { type: 'string' },
+        max_results: { type: 'number', description: 'Default 200, at most 500.' },
+      }, ['pattern']),
+    },
+    studio: true,
+    studioOps: ['glob'],
+    run: (ctx, a) => op(ctx, {
+      op: 'glob', pattern: String(a.pattern ?? ''), maxResults: Math.min(500, Math.max(1, Math.round(Number(a.max_results) || 200))),
+      ...(typeof a.class_name === 'string' && a.class_name ? { className: a.class_name } : {}),
+    }),
+  },
+  /**
+   * Plugin 2.0 (ops/Serialize.luau): one instance, or a subtree, with EVERY property a plugin can write (Roblox's API
+   * dump), not the dozen get_instance shows. Replaces get_instance on the Studio agent's surface. Values are shown as
+   * text the model can quote; `typed` keeps the {t,v} values for a create_instances / set_properties round trip.
+   */
+  read_instance: {
+    def: {
+      name: 'read_instance',
+      description:
+        'Read an instance back with every property a plugin can set (all of them, from the Roblox API dump), its attributes and tags, and optionally its descendants (depth) and script source. Use it to VERIFY a change and quote what you saw, or to learn exactly how something you inserted is built before changing it. Values equal to a new instance\'s defaults are included. typed:true returns {t,v} values you can pass straight back to create_instances / set_properties.',
+      parameters: S({
+        path: { type: 'string', description: 'Full path, e.g. game.Workspace.Lobby.Floor (or a readRef from get_project_tree)' },
+        depth: { type: 'number', description: 'Levels of descendants to include, 0-6. Default 0 (just this instance; children are counted).' },
+        include_source: { type: 'boolean', description: 'Include script source for scripts in the subtree. Default false (use read_script).' },
+        typed: { type: 'boolean' },
+      }, ['path']),
+    },
+    studio: true,
+    studioOps: ['serialize'],
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      if (!path) return { error: 'path is required' };
+      const depth = Math.min(6, Math.max(0, Math.round(Number(a.depth) || 0)));
+      const res = await op(ctx, { op: 'serialize', path, maxDepth: depth, maxNodes: depth === 0 ? 1 : 300, includeSource: a.include_source === true });
+      if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
+      const data = res as { path?: string; root?: SerializedNode; truncated?: boolean; notes?: string[] };
+      if (a.typed === true || !data.root) return data;
+      return { path: data.path, ...readableNode(data.root), ...(data.truncated ? { truncated: true } : {}), ...(data.notes?.length ? { notes: data.notes } : {}) };
+    },
+  },
+  /** Plugin 2.0 (ops/Tests.luau + PlayCheck.runTests): the place's TestEZ specs in a solo Test session. */
+  run_tests: {
+    def: {
+      name: 'run_tests',
+      description:
+        'Run the place\'s TestEZ unit tests: every ModuleScript named *.spec under `roots` (default: ReplicatedStorage, ServerScriptService, ServerStorage, StarterPlayer, ReplicatedFirst) runs in a solo Studio Test session on a copy of the place, and you get passed / failed / skipped counts with each failure\'s name and message. TestEZ must be in the place as a ModuleScript named TestEZ. The session always ends by timeout_seconds (5-50, default 40); a timeout returns what had finished.',
+      parameters: S({
+        roots: { type: 'array', items: { type: 'string' }, description: 'Paths to search for *.spec modules, e.g. ["game.ReplicatedStorage.Shared"].' },
+        timeout_seconds: { type: 'number' },
+      }),
+    },
+    studio: true,
+    studioOps: ['run_tests'],
+    run: async (ctx, a) => {
+      const roots = Array.isArray(a.roots) ? a.roots.filter((r): r is string => typeof r === 'string').slice(0, 10) : undefined;
+      const timeoutSeconds = Math.min(50, Math.max(5, Math.round(Number(a.timeout_seconds) || 40)));
+      return op(ctx, { op: 'run_tests', timeoutSeconds, ...(roots?.length ? { roots } : {}) }, (timeoutSeconds + 40) * 1000);
+    },
+  },
+  /**
+   * Game art from Lucid Origin (owner, 2026-10-09: "only him generates all of the UI/GUI/assets"). image-gen.ts makes the
+   * picture (cut-out, cropped, sized); the plugin uploads it into the Studio user's own account (ops/Image.luau) and the
+   * id comes back for build_ui (image, skin, pattern) or any Image property. Metered on the shared budget per image.
+   */
+  make_image: {
+    def: {
+      name: 'make_image',
+      description:
+        'Make a picture for the game with the image model and upload it to the person\'s Roblox account; returns its rbxassetid and size. ' +
+        'Use it for every piece of art a screen or world needs: button and panel skins, title banners, icons, item pictures, textures, backgrounds, decals. ' +
+        'kind: icon | button | panel | banner | sprite (cut out on a transparent background and cropped) | texture (seamless tile) | background (full frame). ' +
+        'Describe the subject and look in prompt; pass the SAME style string for every image of one screen so they match. ' +
+        'Text is drawn only when quoted in the prompt ("SHOP"); live text (names, numbers, labels) stays in build_ui. About $0.03 per image: make what the request needs.',
+      parameters: S({
+        prompt: { type: 'string', description: 'What to draw: subject, shape, colours, material, mood. e.g. "a chunky red glossy plastic button with a thick black outline"' },
+        kind: { type: 'string', enum: [...IMAGE_KINDS] },
+        style: { type: 'string', description: 'The shared art style of this screen, e.g. "bright cartoon simulator style, thick black outlines, glossy plastic, LEGO studs"' },
+        name: { type: 'string', description: 'Asset name in the person\'s inventory' },
+        size: { type: 'array', items: { type: 'number' }, description: '[w, h] box to fit the result in, at most 1024; defaults by kind' },
+        seed: { type: 'integer' },
+      }, ['prompt', 'kind']),
+    },
+    studio: true,
+    studioOps: ['create_image_asset'],
+    run: async (ctx, a) => {
+      const prompt = typeof a.prompt === 'string' ? a.prompt.trim() : '';
+      if (prompt.length < 3 || prompt.length > 1200) return { error: 'prompt must describe the picture in 3-1200 characters.' };
+      if (!(IMAGE_KINDS as readonly string[]).includes(String(a.kind))) return { error: `kind must be one of ${IMAGE_KINDS.join(', ')}.` };
+      const size = Array.isArray(a.size) && a.size.length === 2 && a.size.every((v) => typeof v === 'number' && v >= 16 && v <= 1024) ? [Math.round(a.size[0] as number), Math.round(a.size[1] as number)] as [number, number] : undefined;
+      const plan = planImage({ prompt, kind: a.kind as ImageKind, style: typeof a.style === 'string' ? a.style.slice(0, 400) : undefined, size });
+      const neurons = imageNeurons(plan.genW, plan.genH, plan.steps);
+      let reserved: number;
+      try {
+        reserved = await reserveImageBudget(ctx.env, IMAGE_MODEL, neurons);
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : 'StudPilot could not check its capacity, so nothing was drawn.' };
+      }
+      let jpegB64: string;
+      try {
+        const out = (await (ctx.env.AI.run as (m: string, i: unknown) => Promise<unknown>)(IMAGE_MODEL, {
+          prompt: plan.prompt, width: plan.genW, height: plan.genH, steps: plan.steps, ...(Number.isInteger(a.seed) ? { seed: a.seed } : {}),
+        })) as { image?: unknown };
+        if (typeof out?.image !== 'string') throw new Error('the image model returned no image');
+        jpegB64 = out.image;
+      } catch (e) {
+        await releaseImageBudget(ctx.env, reserved, IMAGE_MODEL);
+        return { error: `The image model failed: ${e instanceof Error ? e.message : String(e)}. Try again, or simplify the prompt.` };
+      }
+      await settleImageBudget(ctx.env, reserved, neurons, IMAGE_MODEL, 'studio_image');
+      if (!ctx.env.MEDIA) return { error: 'Image storage is not configured, so the picture cannot reach Studio.' };
+      const img = finishImage(jpegB64, plan);
+      if ('error' in img) return { error: img.error, neurons };
+      // The pixels wait in R2 for the plugin's one download (index.ts /api/studio/pixels/:id), then are deleted.
+      const id = crypto.randomUUID();
+      await ctx.env.MEDIA!.put(`studio-pixels/${id}`, toBase64(img.data), { customMetadata: { createdAt: String(Date.now()), projectId: ctx.projectId ?? '' } });
+      const name = (typeof a.name === 'string' && a.name.trim() ? a.name.trim() : `StudPilot ${plan.kind}`).slice(0, 50);
+      const made = await op(ctx, { op: 'create_image_asset', url: `https://studpilot.app/api/studio/pixels/${id}`, width: img.width, height: img.height, name }, 120_000);
+      await ctx.env.MEDIA!.delete(`studio-pixels/${id}`).catch(() => undefined);
+      let assetId = (made as { assetId?: unknown })?.assetId;
+      // Studio may refuse the plugin upload ("CreateAssetAsync ... not available yet", measured 2026-10-09). Then the
+      // picture goes up through Open Cloud with the person's OWN key (Settings), never a platform key.
+      let cloudNote = '';
+      if (typeof assetId !== 'number' && typeof assetId !== 'string') {
+        const cloud = ctx.userId ? await uploadImageWithOwnKey(ctx, ctx.userId, await encodeRgbaPng(img), name) : { error: 'no signed-in owner' };
+        if ('assetId' in cloud) assetId = cloud.assetId;
+        else cloudNote = cloud.error;
+      }
+      if (typeof assetId !== 'number' && typeof assetId !== 'string') {
+        return {
+          error: `The picture was drawn but could not be uploaded to Roblox. Studio said: ${String((made as { error?: unknown })?.error ?? 'no answer')}. Open Cloud: ${cloudNote}`,
+          neurons,
+          fix: 'Tell the person once: to use drawn art, connect a Roblox Open Cloud key with asset:read and asset:write in StudPilot Settings (or enable asset uploads for plugins in Studio). Meanwhile build the look in-engine: pattern with Roblox\'s stud map rbxassetid://10509831729, gradients, textStroke, depth. Do not call make_image again this turn.',
+        };
+      }
+      // A panel's rim is thicker than its corner curve: never slice inside it.
+      const rim = plan.kind === 'panel' ? Math.round(Math.min(img.width, img.height) * 0.12) : 0;
+      const slice = plan.kind === 'panel' || plan.kind === 'button' || plan.kind === 'banner' ? suggestSlice(img).map((v) => Math.max(v, rim)) : null;
+      return {
+        image: `rbxassetid://${assetId}`,
+        width: img.width,
+        height: img.height,
+        kind: plan.kind,
+        neurons,
+        ...(slice ? { slice } : {}),
+        use: plan.kind === 'texture'
+          ? 'Tile it: build_ui pattern {image, tile} or a Texture on a part.'
+          : slice
+            ? `Use it as a skin exactly so: skin {image: "rbxassetid://${assetId}", size: [${img.width}, ${img.height}], slice: [${slice.join(', ')}]} (measured from its corners, so it stretches to any size cleanly; tint recolours it).`
+            : 'Use it in build_ui (an image or icon node with fit "fit") or on an Image/Decal property.',
+      };
+    },
   },
   review_scripts: {
     def: {
@@ -2894,7 +3133,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'create_instances',
       description:
-        'Create instances (parts, models, lights...). Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. A propIssues result means the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you. Also creates AudioPlayer (Asset: a library sound id), AudioEmitter, Wire (SourceInstance/TargetInstance: paths of existing instances), the Audio effects, Animator, Animation, IKControl and Explosion (BlastPressure and DestroyJointRadiusPercent default to 0).',      parameters: S({
+        'Create instances: any class Roblox lets a plugin create, with any property a plugin can write on it (scripts are made with edit_script). Content properties (Image, SoundId, Texture, TextureID, Asset, AnimationId...) take any rbxassetid://<digits> (Creator Store / Toolbox ids included), rbxasset:// or rbxthumb:// value. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem (full name, or just the item name/number),BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Font,Faces,Axes,PhysicalProperties,Instance,nil. A propIssues result means the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you. Also creates AudioPlayer (Asset: an audio id), AudioEmitter, Wire (SourceInstance/TargetInstance: paths of existing instances), the Audio effects, Animator, Animation, IKControl and Explosion (BlastPressure and DestroyJointRadiusPercent default to 0).',      parameters: S({
         items: {
           type: 'array',
           minItems: 1,
@@ -2935,10 +3174,10 @@ export const TOOLS: Record<string, ToolImpl> = {
       // as a problem with the list's length rather than with its absence.
       if (!Array.isArray(a.items)) return Promise.resolve({ error: 'items was missing or not an array, so nothing was sent. Send items: [{className, name, parent, props?, children?}, ...].' });
       // D-UIONLY-1: UI classes come from insert_ui_component only.
-      const handMadeUi = refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
+      const handMadeUi = ctx.freeHand ? null : refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
       // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
-      const handMadeFx = refuseLibraryItems(a.items, FX_RULE);
+      const handMadeFx = ctx.freeHand ? null : refuseLibraryItems(a.items, FX_RULE);
       if (handMadeFx) return Promise.resolve(handMadeFx);
       // An AudioPlayer's Asset is held to the same rule as a Sound's SoundId: an id that does not exist plays silence without an error.
       const silentAsset = firstUnknownSoundId(a.items, ctx.discoveredAssetIds);
@@ -2961,7 +3200,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-MODELLIB-2 is an ORDER (model-rule.ts): a Model of Parts waits until the run has tried the library,
       // at most twice, and never when the library is not on offer. A mesh cannot be created at all.
       const order = libraryOrder(ctx);
-      const handMadeModel = refuseHandMadeModel(a.items, order);
+      const handMadeModel = ctx.freeHand ? null : refuseHandMadeModel(a.items, order);
       if (handMadeModel) {
         if (handMadeModel.ordered) noteOrderRefusal(ctx);
         return Promise.resolve(handMadeModel);
@@ -3022,7 +3261,7 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       // The same gate as create_instances, for the same reason: `set_properties` writes straight
       // into the place, so an untagged value here is a failed op in the customer's log too.
-      const restyle = refuseUiLook(props, prior?.class);
+      const restyle = ctx.freeHand ? null : refuseUiLook(props, prior?.class);
       if (restyle) return restyle;
       const silent = refuseSoundId(props, ctx.discoveredAssetIds);
       if (silent) return silent;
@@ -3511,12 +3750,12 @@ export const TOOLS: Record<string, ToolImpl> = {
       // already had their chance to run, so there is no useful check on the far side of this.
       // The ingress gate is handed to admission rather than called beside it: sandbox.ts REFUSES
       // Luau bound for Studio that arrives without one, so this cannot be forgotten later.
-      const handMadeUi = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), UI_RULE);
+      const handMadeUi = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), UI_RULE);
       if (handMadeUi) return handMadeUi;
-      const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
+      const handMadeFx = ctx.freeHand ? null : refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
       if (handMadeFx) return handMadeFx;
       // D-MODELLIB-2: run_luau does not assemble props either.
-      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')), libraryOrder(ctx));
+      const handMadeModel = ctx.freeHand ? null : refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')), libraryOrder(ctx));
       if (handMadeModel) {
         if (handMadeModel.ordered) noteOrderRefusal(ctx);
         return handMadeModel;
@@ -3719,8 +3958,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'play_check',
       description:
-        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. It does not press buttons: to prove a button flow (Shop → Buy) use play_check_ui, which clicks each button and reports what the click changed. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute.",
+        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. It does not press buttons: to prove a button flow (Shop → Buy) use play_check_ui, which clicks each button and reports what the click changed. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute. tests:true instead runs the place's TestEZ unit tests (every ModuleScript named *.spec; TestEZ must be in the place) in a Test session and reports passed/failed/skipped with each failure.",
       parameters: S({
+        tests: { type: 'boolean', description: 'Run the TestEZ *.spec modules instead of the player check (same as run_tests).' },
         seconds: { type: 'number', description: '3-15, default 5: how long the player stays in before the touches and the screen read' },
         touch: {
           type: 'array',
@@ -3732,6 +3972,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['play_check'],
     run: async (ctx, a) => {
+      // Plugin 2.0: the Studio agent's surface is capped at 25 tools, so its unit-test runner rides on play_check.
+      if (a.tests === true) return TOOLS.run_tests!.run(ctx, {});
       const seconds = Math.min(15, Math.max(3, Math.round(Number(a.seconds) || 5)));
       const rawTouch = a.touch === undefined ? [] : a.touch;
       if (!Array.isArray(rawTouch) || rawTouch.length > 5 || rawTouch.some((p) => typeof p !== 'string' || p.length > 320)) {

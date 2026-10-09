@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { studioLink } from "@/lib/api";
+import { deleteRobloxKey, getRobloxKey, putRobloxKey, type RobloxKey, studioLink } from "@/lib/api";
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
@@ -45,6 +45,7 @@ export function SettingsPage() {
           <AccountSection />
           <AppearanceSection />
           <StudioSection />
+          <RobloxUploadsSection />
           <CreditsSection />
           <DataSection />
         </div>
@@ -179,6 +180,87 @@ function StudioSection() {
             </li>
           ))}
         </ul>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * The person's own Roblox Open Cloud key. StudPilot draws game art with its image model and uploads it to the person's
+ * Roblox account; when Studio cannot upload from the plugin, it uses this key (asset:read + asset:write) instead.
+ */
+function RobloxUploadsSection() {
+  const [key, setKey] = useState<RobloxKey | null | undefined>(undefined);
+  const [apiKey, setApiKey] = useState("");
+  const [creatorId, setCreatorId] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    getRobloxKey().then(setKey).catch(() => setKey(null));
+  }, []);
+
+  return (
+    <Section
+      description="StudPilot draws your game's art (buttons, panels, icons, textures) and uploads each picture to your own Roblox account. If Studio can't upload it, StudPilot uses this key instead."
+      title="Roblox uploads"
+    >
+      {key === undefined ? (
+        <Skeleton className="h-12 w-full" />
+      ) : key ? (
+        <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm">Key ending {key.hint}</p>
+            <p className="truncate text-muted-foreground text-xs">
+              Roblox {key.creatorType} {key.robloxCreatorId} · {key.scopes.join(", ")}
+            </p>
+          </div>
+          <Button
+            onClick={async () => {
+              try {
+                await deleteRobloxKey();
+                setKey(null);
+                toast.success("Key disconnected");
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+            size="sm"
+            variant="outline"
+          >
+            Disconnect
+          </Button>
+        </div>
+      ) : (
+        <form
+          className="grid gap-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setSaving(true);
+            try {
+              setKey(await putRobloxKey(apiKey.trim(), creatorId.trim(), "user"));
+              setApiKey("");
+              toast.success("Key connected");
+            } catch (err) {
+              toast.error((err as Error).message);
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <p className="text-muted-foreground text-sm">
+            Create a key at{" "}
+            <a className="underline" href="https://create.roblox.com/dashboard/credentials" rel="noreferrer" target="_blank">
+              create.roblox.com/dashboard/credentials
+            </a>{" "}
+            with the Assets API (read and write) for your account, then paste it here with your Roblox user id.
+          </p>
+          <Input aria-label="Open Cloud API key" autoComplete="off" onChange={(e) => setApiKey(e.target.value)} placeholder="Open Cloud API key" type="password" value={apiKey} />
+          <Input aria-label="Roblox user id" inputMode="numeric" onChange={(e) => setCreatorId(e.target.value)} placeholder="Your Roblox user id (numbers)" value={creatorId} />
+          <div>
+            <Button disabled={saving || apiKey.trim().length < 24 || !/^\d+$/.test(creatorId.trim())} size="sm" type="submit">
+              {saving ? "Connecting…" : "Connect key"}
+            </Button>
+          </div>
+        </form>
       )}
     </Section>
   );

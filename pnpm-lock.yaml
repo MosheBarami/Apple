@@ -62,6 +62,9 @@ importers:
       ai:
         specifier: 7.0.15
         version: 7.0.15(zod@4.6.5)
+      jsonrepair:
+        specifier: ^3.15.0
+        version: 3.15.0
       workers-ai-provider:
         specifier: 4.0.0
         version: 4.0.0(@ai-sdk/provider@4.0.2)(ai@7.0.15(zod@4.6.5))
@@ -216,6 +219,9 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+      jpeg-js:
+        specifier: 0.4.4
+        version: 0.4.4
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.20260830.1
@@ -4186,6 +4192,9 @@ packages:
   jose@6.2.12:
     resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
+
   js-base64@3.9.4:
     resolution: {integrity: sha512-PtOMXpEGuP0RRiRXsjzHzl44dMHxSu2CPvAhinupR1tBa88me+1DPqsobl7eupn5UukjLkln1ZnAOAOXOrYG0Q==}
 
@@ -4223,6 +4232,10 @@ packages:
 
   jsonc-parser@3.3.1:
     resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
+
+  jsonrepair@3.15.0:
+    resolution: {integrity: sha512-wy8OTjwsJwQRnQJkKnMJJ9vcytRdBPAgIF/Hy6+s1dAj42BHMKiyL8JzEieIl3JY7idt8eyHwBWTO8mh/+mtwA==}
+    hasBin: true
 
   katex@0.16.47:
     resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
@@ -9597,6 +9610,8 @@ snapshots:
 
   jose@6.2.12: {}
 
+  jpeg-js@0.4.4: {}
+
   js-base64@3.9.4: {}
 
   js-tokens@10.0.0: {}
@@ -9620,6 +9635,8 @@ snapshots:
   jsonc-parser@2.3.1: {}
 
   jsonc-parser@3.3.1: {}
+
+  jsonrepair@3.15.0: {}
 
   katex@0.16.47:
     dependencies:

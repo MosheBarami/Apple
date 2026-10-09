@@ -7,6 +7,24 @@ import { chromium } from '@playwright/test';
 
 const [file, prefix] = process.argv.slice(2);
 const root = JSON.parse(readFileSync(file, 'utf8'));
+// rbxassetid images are drawn from Roblox's public thumbnail of the asset (decals included).
+const ids = [...new Set(JSON.stringify(root).match(/rbxassetid:\/\/(\d+)/g) ?? [])].map((x) => x.split('//')[1]).filter((x) => x !== '0' && !x.startsWith('9000'));
+const imageUrl = {};
+const imageSize = {};
+// Pictures a probe generated (ui-probe.mjs make_image): <dir>/assets.json maps stand-in ids to local PNGs.
+try {
+  const local = JSON.parse(readFileSync(file.replace(/[^/]*$/, 'assets.json'), 'utf8'));
+  for (const [id, path] of Object.entries(local)) {
+    const bytes = readFileSync(path);
+    imageUrl[id] = `data:image/png;base64,${bytes.toString('base64')}`;
+    imageSize[id] = [bytes.readUInt32BE(16), bytes.readUInt32BE(20)];
+  }
+} catch { /* no local pictures */ }
+if (ids.length) {
+  const res = await fetch(`https://thumbnails.roblox.com/v1/assets?assetIds=${ids.join(',')}&size=420x420&format=Png`).then((x) => x.json()).catch(() => ({ data: [] }));
+  for (const d of res.data ?? []) if (d.imageUrl) imageUrl[String(d.targetId)] = d.imageUrl;
+}
+const family = (f) => ({ BuilderSans: 'Nunito Sans', BuilderExtended: 'Nunito Sans', GothamSSm: 'Montserrat', SourceSansPro: 'Source Sans 3' }[f] ?? f.replace(/([a-z])([A-Z0-9])/g, '$1 $2'));
 const v = (n, k) => n.props?.[k]?.v;
 const kid = (n, cls) => (n.children ?? []).find((c) => c.className === cls);
 const rgb = (c, t = 0) => (c ? `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${1 - (t ?? 0)})` : 'transparent');
@@ -27,8 +45,12 @@ function node(n, inLayout) {
   const w = autoX ? (size[1] ? `max-content` : 'max-content') : `calc(${size[0] * 100}% + ${size[1]}px)`;
   const h = autoY ? 'max-content' : `calc(${size[2] * 100}% + ${size[3]}px)`;
   if (n.className !== 'ScreenGui') {
-    if (autoX) st.push(`min-width:${size[1]}px`); else st.push(`width:${w}`);
-    if (autoY) st.push(`min-height:${size[3]}px`); else st.push(`height:${h}`);
+    // A grid's cell decides its children's size (UIGridLayout ignores their Size).
+    if (inLayout === 'grid') st.push('width:100%', 'height:100%');
+    else {
+      if (autoX) st.push(`min-width:${size[1]}px`); else st.push(`width:${w}`);
+      if (autoY) st.push(`min-height:${size[3]}px`); else st.push(`height:${h}`);
+    }
     if (fill) st.push('flex:1 1 0', inLayout === 'row' ? 'width:auto' : 'height:auto');
     if (!inLayout) {
       const p = v(n, 'Position') ?? [0, 0, 0, 0];
@@ -36,14 +58,21 @@ function node(n, inLayout) {
       st.push('position:absolute', `left:calc(${p[0] * 100}% + ${p[1]}px)`, `top:calc(${p[2] * 100}% + ${p[3]}px)`, `transform:translate(${-a[0] * 100}%,${-a[1] * 100}%)`);
     } else st.push('position:relative', 'flex-shrink:0');
     const t = v(n, 'BackgroundTransparency') ?? 0;
-    if (!['TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton'].includes(n.className) || t < 1) st.push(`background:${rgb(v(n, 'BackgroundColor3') ?? [1, 1, 1], t)}`);
+    const grad = kid(n, 'UIGradient');
+    const bgc = v(n, 'BackgroundColor3') ?? [1, 1, 1];
+    if (grad && t < 1) {
+      // Roblox multiplies the gradient by the background colour; rotation 0 runs left to right.
+      const stops = (v(grad, 'Color') ?? []).map(([at, c]) => `${rgb(c.map((x, i) => x * bgc[i]), t)} ${at * 100}%`);
+      st.push(`background:linear-gradient(${(v(grad, 'Rotation') ?? 0) + 90}deg,${stops.join(',')})`);
+    } else if (!['TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton'].includes(n.className) || t < 1) st.push(`background:${rgb(bgc, t)}`);
     if (v(n, 'ClipsDescendants') || n.className === 'ScrollingFrame') st.push(n.className === 'ScrollingFrame' ? 'overflow:auto' : 'overflow:hidden');
     if (v(n, 'ZIndex')) st.push(`z-index:${v(n, 'ZIndex')}`);
   } else st.push('position:absolute', 'inset:0');
   const corner = kid(n, 'UICorner');
   if (corner) { const r = v(corner, 'CornerRadius') ?? [0, 8]; st.push(`border-radius:${r[0] ? `${r[0] * 100}%` : `${r[1]}px`}`); }
-  const stroke = kid(n, 'UIStroke');
-  if (stroke) st.push(`box-shadow:inset 0 0 0 ${v(stroke, 'Thickness') ?? 1}px ${rgb(v(stroke, 'Color') ?? [0, 0, 0], v(stroke, 'Transparency') ?? 0)}`);
+  const stroke = (n.children ?? []).find((c) => c.className === 'UIStroke' && enumName(v(c, 'ApplyStrokeMode')) !== 'Contextual');
+  // A Roblox border stroke is drawn outside the object's bounds.
+  if (stroke) st.push(`box-shadow:0 0 0 ${v(stroke, 'Thickness') ?? 1}px ${rgb(v(stroke, 'Color') ?? [0, 0, 0], v(stroke, 'Transparency') ?? 0)}`);
   const pad = kid(n, 'UIPadding');
   if (pad) st.push(`padding:${['PaddingTop', 'PaddingRight', 'PaddingBottom', 'PaddingLeft'].map((k) => `${(v(pad, k) ?? [0, 0])[1]}px`).join(' ')}`, 'box-sizing:border-box');
   else st.push('box-sizing:border-box');
@@ -68,17 +97,48 @@ function node(n, inLayout) {
     st.push('display:grid', `grid-template-columns:repeat(auto-fill, calc(${cell[0] * 100}% + ${cell[1]}px))`, `grid-auto-rows:calc(${cell[2] * 100}% + ${cell[3]}px)`, `gap:${gp[3]}px ${gp[1]}px`);
   }
   let inner = '';
+  const img = String(v(n, 'Image') ?? '').match(/rbxassetid:\/\/(\d+)/)?.[1];
+  if (img && ['ImageLabel', 'ImageButton'].includes(n.className)) {
+    const scale = enumName(v(n, 'ScaleType'));
+    const tile = scale === 'Tile' ? v(n, 'TileSize') : null;
+    const rect = scale === 'Slice' ? v(n, 'SliceCenter') : null;
+    const url = imageUrl[img];
+    const tint = v(n, 'ImageColor3');
+    const opacity = 1 - (v(n, 'ImageTransparency') ?? 0);
+    let geometry;
+    if (url && rect) {
+      // 9-slice: CSS border-image with the same four insets as SliceCenter.
+      const [W, H] = imageSize[img] ?? [rect[2] + rect[0], rect[3] + rect[1]];
+      const [l, t, r, b] = [rect[0], rect[1], W - rect[2], H - rect[3]];
+      geometry = { css: `border-style:solid;border-width:${t}px ${r}px ${b}px ${l}px;border-image:url('${url}') ${t} ${r} ${b} ${l} fill stretch`, mask: `-webkit-mask-box-image:url('${url}') ${t} ${r} ${b} ${l} stretch;border-style:solid;border-color:transparent;border-width:${t}px ${r}px ${b}px ${l}px` };
+    } else if (url) {
+      const size = tile ? `${tile[1]}px ${tile[3]}px` : scale === 'Stretch' ? '100% 100%' : scale === 'Crop' ? 'cover' : 'contain';
+      const rep = tile ? 'repeat' : 'no-repeat';
+      geometry = { css: `background-image:url('${url}');background-repeat:${rep};background-size:${size};background-position:center`, mask: `-webkit-mask-image:url('${url}');-webkit-mask-repeat:${rep};-webkit-mask-size:${size};-webkit-mask-position:center` };
+    }
+    const layer = 'position:absolute;inset:0;pointer-events:none;border-radius:inherit;box-sizing:border-box';
+    if (geometry) {
+      inner += `<div style="${layer};opacity:${opacity};${geometry.css}"></div>`;
+      // Roblox multiplies the picture by ImageColor3.
+      if (tint && tint.some((c) => c < 0.999)) inner += `<div style="${layer};opacity:${opacity};background-color:${rgb(tint)};mix-blend-mode:multiply;${geometry.mask}"></div>`;
+    } else {
+      inner += `<div style="${layer};opacity:${opacity};background:repeating-linear-gradient(45deg,rgba(255,255,255,.25) 0 6px,transparent 6px 12px)"></div>`;
+    }
+    if (inLayout) st.push('position:relative');
+  }
   if (['TextLabel', 'TextButton', 'TextBox'].includes(n.className)) {
     const f = v(n, 'FontFace');
-    if (f) fonts.add(f[0]);
+    if (f) fonts.add(family(f[0]));
     const weight = { Thin: 100, ExtraLight: 200, Light: 300, Regular: 400, Medium: 500, SemiBold: 600, Bold: 700, ExtraBold: 800, Heavy: 900 }[f?.[1]] ?? 400;
     const xa = { Left: 'flex-start', Center: 'center', Right: 'flex-end' }[enumName(v(n, 'TextXAlignment')) ?? 'Center'];
     const ya = { Top: 'flex-start', Center: 'center', Bottom: 'flex-end' }[enumName(v(n, 'TextYAlignment')) ?? 'Center'];
     if (!layout) st.push('display:flex', `justify-content:${xa}`, `align-items:${ya}`);
-    st.push(`font-family:'${f?.[0] ?? 'Builder Sans'}',sans-serif`, `font-weight:${weight}`, `font-size:${v(n, 'TextSize') ?? 14}px`, `color:${rgb(v(n, 'TextColor3') ?? [0, 0, 0], v(n, 'TextTransparency') ?? 0)}`, `text-align:${enumName(v(n, 'TextXAlignment'))?.toLowerCase() ?? 'center'}`);
+    const outline = (n.children ?? []).find((c) => c.className === 'UIStroke' && enumName(v(c, 'ApplyStrokeMode')) === 'Contextual');
+    if (outline) st.push(`-webkit-text-stroke:${(v(outline, 'Thickness') ?? 1) * 2}px ${rgb(v(outline, 'Color') ?? [0, 0, 0], v(outline, 'Transparency') ?? 0)}`, 'paint-order:stroke fill');
+    st.push(`font-family:'${family(f?.[0] ?? 'BuilderSans')}',sans-serif`, `font-weight:${weight}`, `font-size:${v(n, 'TextSize') ?? 14}px`, `color:${rgb(v(n, 'TextColor3') ?? [0, 0, 0], v(n, 'TextTransparency') ?? 0)}`, `text-align:${enumName(v(n, 'TextXAlignment'))?.toLowerCase() ?? 'center'}`);
     if (enumName(v(n, 'TextTruncate')) === 'AtEnd') st.push('white-space:nowrap', 'text-overflow:ellipsis');
     const text = n.className === 'TextBox' && !v(n, 'Text') ? `<span style="color:${rgb(v(n, 'PlaceholderColor3') ?? [0.5, 0.5, 0.5])}">${esc(v(n, 'PlaceholderText'))}</span>` : esc(v(n, 'Text'));
-    inner += `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${text}</span>`;
+    inner += `<span style="position:relative;min-width:0;overflow:hidden;text-overflow:ellipsis">${text}</span>`;
   }
   const kids = (n.children ?? []).filter((c) => !UI.has(c.className));
   if (list || grid) kids.sort((a, b) => (v(a, 'LayoutOrder') ?? 0) - (v(b, 'LayoutOrder') ?? 0));

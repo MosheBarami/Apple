@@ -16,15 +16,15 @@ Write down (to yourself) four things, then design from them:
 1. **Job.** What does the player or operator do here, in one sentence? ("Find a player and kick, mute or
    ban them." "Pick an item and buy it." "Glance at health and coins mid-fight.")
 2. **Kind.** It sets density, tone and motion:
-   - **Tool / admin / moderation / settings**: dense, calm, precise. Neutral surfaces, one accent colour
-     used only for the primary action and selection, a destructive colour reserved for destructive
-     actions. Left-aligned text, clear columns, compact rows (36-48 px), small radii (4-8 px), thin 1 px
-     strokes or none, a sans family at Regular/Medium/SemiBold. It should look like a deliberately
-     designed internal tool, not a toy.
-   - **Game UI (shop, inventory, rewards, menus)**: expressive and on-theme. Bigger type, chunky
-     buttons (48-64 px tall), generous radii, gradients, outlines, a display font for headings, colour
-     that belongs to the game's world (a candy simulator and a horror game must not share a palette).
-     Rewards and prices are the loudest things on the screen.
+   - **Game UI (the default for anything inside a Roblox game, admin panels included)**: expressive,
+     loud, on-theme, built with the craft in section 10. A player-facing admin panel, shop, inventory,
+     reward or menu in a simulator, obby or tycoon looks like the game: chunky outlined buttons, display
+     fonts with black outlines, saturated gradients, thick dark borders, textures. Rewards and prices are
+     the loudest things on the screen. "Cool", "cooler", "awesome", "studded", "colourful", "like a
+     simulator" all mean this, turned up (section 10's ladder).
+   - **Tool UI (only when asked for clean, minimal, professional or a developer tool)**: dense, calm,
+     precise. Neutral surfaces, one accent, left-aligned text, compact rows (36-48 px), small radii,
+     thin strokes, a sans family.
    - **HUD**: minimal and peripheral. Pin to corners and edges, never the centre; small footprint;
      translucent backing (bgT 0.3-0.5) so the world shows through; numbers big enough to read in one
      glance; nothing pressable under the player's thumbs on phone unless it must be.
@@ -57,7 +57,8 @@ Write down (to yourself) four things, then design from them:
   accent, and semantic colours only if needed (danger for destructive, success for confirmations).
 - Text must reach 4.5:1 against what is behind it (3:1 for text 18 px and up). The checker measures it.
 - Coloured buttons: the label colour is whichever of near-white or near-black reads on that button.
-- Gradients: two close hues (same family, 10-20% lightness apart) read as polish; rainbow reads as noise.
+- Gradients: in tool UI two close hues read as polish. In game UI a button's gradient runs from a lighter
+  top to a deeper bottom of ONE saturated hue (rotation 90), and a title strip may run through 3-5 hues.
 - Transparency on a backing (bgT 0.2-0.5) helps HUDs; on a panel full of text it hurts contrast.
 
 ## 4. States and feedback
@@ -112,8 +113,8 @@ over 100%). Treat warnings like defects.
 ## 7. The build_ui schema
 
 ```
-build_ui({ name, children: [Node...], insets?: "safe"|"device"|"none", enabled?, displayOrder?,
-           replaceScripts?, viewports? })
+build_ui({ name, children: [Node...], styles?: {name: fields}, insets?: "safe"|"device"|"none", enabled?,
+           displayOrder?, replaceScripts?, viewports? })
 ```
 
 `name` is the ScreenGui in StarterGui. Calling build_ui again with the same name REPLACES that screen
@@ -160,6 +161,16 @@ and near-black over the nearest filled background), `textT`, `alignX` left|cente
 `truncate`, `rich`, `lineHeight`. Text on a filled box gets breathing room automatically (`pad: 0` turns it
 off).
 
+**Write it once (styles and each).** Every token you write is paid for, so never repeat a look or a row:
+- `styles: { "card": { "bg": "#16181d", "radius": 8 }, "btn": { "type": "button", "h": 32, "fontSize": 14 } }`
+  at the top level; a node takes `style: "card"` or `style: ["btn", "danger"]`. A style may hold any node
+  field except `name` and `children` (including `type`). Later styles win; the node's own fields win over all.
+- A child with `each: [...]` is repeated once per item. A string item sets `text`; an object item sets that
+  copy's fields (`{ "text": "Ban", "style": "danger" }`). A template with `{key}` placeholders anywhere in
+  it (nested children, names) takes the items as values instead: `"text": "{price} coins"`,
+  `"name": "Row_{id}"`. A fixed template `name` gets the item's number (Tab1, Tab2, ...).
+- Change one element after a build with `set_properties` on its path; rebuild only for structural changes.
+
 **Behaviour** is a LocalScript you write with `edit_script` in `StarterPlayerScripts`, finding the screen
 with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It survives rebuilds.
 
@@ -168,31 +179,141 @@ with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It s
 1. Load this skill; decide job, kind, primary action, worst-case content (section 1).
 2. Choose the scales and colours (sections 2-3) for this request; write them down in your reasoning.
 3. Write the tree: one outer panel or a few edge-anchored HUD groups, stacks inside, names on everything
-   a script needs.
-4. Call build_ui. Read `layout.defects` and `warnings`. Fix each by changing the design (section 6), and
-   call build_ui again with the same name. Repeat until `verdict: "pass"`, or explain any defect you keep
+   a script needs. Put every repeated look in `styles` and every list in `each`.
+4. Call build_ui. Read `layout.defects` and `warnings`. Fix each by changing the design (section 6): one or
+   two properties with `set_properties` then `check_ui`; a structural change by calling build_ui again with
+   the same name. Repeat until `verdict: "pass"`, or explain any defect you keep
    on purpose (a truncated long username in a list is acceptable; a cut-off price is not).
 5. Wire behaviour (edit_script), then prove it with play_check.
 6. For UI built by other means, run check_ui.
 
-## 9. Three different screens (illustrations of the schema, not templates)
+## 10. Roblox game-UI craft (what "cool" is made of)
+
+Measured from top Roblox games' UI. These are techniques with numbers; the colours and the composition are
+still yours, chosen for the game.
+
+**Anatomy of the chunky cartoon/simulator style** (the most common "cool" on Roblox):
+- **Frame**: panel body a dark neutral (#2b2e33-ish) with a 3-4 px near-black border (`stroke`), square or
+  small radius (0-6 px). Inner groups are inset wells: a darker surface (#1f2226) with a 3 px dark border.
+- **Title strip**: full-width bar on top, its own bright multi-hue gradient (rotation 0), a texture over
+  it (`pattern`, t 0.75-0.85), the title in a display font (FredokaOne, LuckiestGuy, Bangers) 36-44 px,
+  white, `textStroke` black 3 px. A square close button at its right end: red gradient, white "X", outlined.
+- **Buttons**: each action its own saturated hue (red, orange, magenta, yellow, green, cyan, purple); a
+  vertical gradient from ~20% lighter at the top to the hue at the bottom; the same texture (t ~0.8); a
+  3 px border in a near-black or a much darker shade of the hue; white display-font text 22-28 px with a
+  2-3 px black `textStroke`; `depth` 4-6 px in a dark shade of the hue for a pressable plastic edge.
+  In a grid: 2-3 columns, 6-10 px gaps, inside a scrolling well.
+- **Primary action**: one full-width bar at the bottom, the biggest and greenest (or the game's accent).
+- **Identity**: avatar headshot in a circle with a dark border, name in bold display font with outline,
+  @handle smaller and muted.
+- **Bars** (stamina, health, XP): a dark track with a 3 px border, the fill a vivid gradient with a light
+  top band, texture over the fill, value text outlined on top; the fill tweens, it never jumps.
+
+**Art.** Every picture (button and panel skins, banners, icons, textures, backgrounds) comes from
+`make_image`: load the game-art skill. A drawn button skin, tinted per colour, with outlined live text on top is
+the strongest single upgrade from flat UI.
+
+**Textures.** "Studded", "Roblox classic" or "LEGO" means a stud texture tiled over surfaces (`pattern`,
+tile 16-32 px): Roblox's classic stud map rbxassetid://10509831729, or a `texture` from make_image. Stripes,
+noise, wood or metal come from make_image the same way.
+
+**The "make it cooler" ladder.** Apply in order, as far as the request asks ("1000x" = all of it):
+1. display font + black `textStroke` on every label; 2. drawn skins from make_image (or a saturated hue per
+element with a light-top gradient); 3. thick dark borders and inset wells; 4. `depth` edges on buttons and the panel; 5. a theme
+texture (`pattern`); 6. a bright title strip; 7. motion in a LocalScript: buttons shrink to 0.94 on press
+and lift on hover (UIScale + TweenService, 0.08 s), bars tween, the primary button shimmers (a UIGradient
+Offset tween); 8. a click sound. Keep the layout measured clean at every step.
+
+## 9. Example screens (illustrations of the schema, not templates)
+
+**A simulator-style admin panel** (game UI, chunky cartoon craft from section 10; replace rbxassetid://0
+with a real stud texture id)
+
+```json
+{ "name": "AdminPanel",
+  "styles": {
+    "studs": { "pattern": { "image": "rbxassetid://0", "tile": 20, "t": 0.8 } },
+    "loud": { "font": "FredokaOne", "color": "#ffffff", "textStroke": { "color": "#000000", "width": 3 } },
+    "cmd": { "type": "button", "fontSize": 26, "stroke": { "color": "#1a1a1a", "width": 3 }, "depth": { "color": "#000000", "px": 4 } },
+    "well": { "bg": "#1f2226", "stroke": { "color": "#141618", "width": 3 } } },
+  "children": [
+  { "type": "stack", "name": "Panel", "at": "center", "w": "92%", "maxW": 720, "h": "86%", "maxH": 700,
+    "bg": "#2b2e33", "stroke": { "color": "#111111", "width": 4 }, "children": [
+    { "type": "stack", "name": "TitleBar", "dir": "h", "h": 88, "children": [
+      { "type": "frame", "name": "Title", "w": "fill", "h": "fill", "style": "studs", "bg": "#ffffff",
+        "gradient": { "colors": ["#5ff2ff", "#c8f75a", "#ffe23d"], "rotation": 0 }, "children": [
+        { "type": "text", "style": "loud", "text": "Admin Panel", "fontSize": 44, "at": "left", "offset": [18, 0] } ] },
+      { "style": ["cmd", "loud", "studs"], "name": "Close", "text": "X", "w": 88, "h": "fill", "fontSize": 40, "bg": "#ffffff",
+        "gradient": { "colors": ["#ff6a3d", "#e4141b"], "rotation": 90 }, "depth": { "color": "#7a0a0a", "px": 4 } } ] },
+    { "type": "stack", "name": "Body", "h": "fill", "pad": 18, "gap": 14, "children": [
+      { "type": "frame", "name": "Target", "style": "well", "dir": "h", "h": 92, "pad": [10, 10], "gap": 12, "align": "center", "children": [
+        { "type": "image", "name": "Avatar", "image": "rbxassetid://0", "w": 70, "h": 70, "radius": "pill", "stroke": { "color": "#111111", "width": 3 } },
+        { "type": "stack", "name": "Who", "w": "fill", "gap": 2, "children": [
+          { "type": "text", "name": "DisplayName", "style": "loud", "text": "OnlyTwentyCharacters", "fontSize": 26, "truncate": true, "w": "fill" },
+          { "type": "text", "name": "Handle", "text": "@OnlyTwentyCharacters", "font": "FredokaOne", "fontSize": 18, "color": "#c9cdd4", "truncate": true, "w": "fill" } ] },
+        { "style": ["cmd", "loud", "studs"], "name": "Change", "text": "Change", "w": 170, "h": 66, "bg": "#ffffff",
+          "gradient": { "colors": ["#fff36b", "#ffb300"], "rotation": 90 }, "depth": { "color": "#8a5a00", "px": 4 } } ] },
+      { "type": "scroll", "name": "Commands", "style": "well", "cols": 2, "cell": [0, 70], "gap": 10, "pad": 12, "children": [
+        { "style": ["cmd", "loud", "studs"], "name": "{n}", "text": "{t}", "bg": "#ffffff",
+          "gradient": { "colors": ["{top}", "{hue}"], "rotation": 90 },
+          "each": [
+            { "n": "Kill", "t": "Kill", "top": "#ff6a3d", "hue": "#e8200f" }, { "n": "Fling", "t": "Fling", "top": "#ffb347", "hue": "#ff7a00" },
+            { "n": "GiveItem", "t": "Give Item", "top": "#ff6bff", "hue": "#e600d6" }, { "n": "Blind", "t": "Blind", "top": "#fff36b", "hue": "#ffc400" },
+            { "n": "Jumpscare", "t": "Jumpscare", "top": "#f08a3c", "hue": "#b84d00" }, { "n": "Fly", "t": "Fly", "top": "#9dff4a", "hue": "#2fd400" },
+            { "n": "Teleport", "t": "Teleport", "top": "#d36bff", "hue": "#8a00d4" }, { "n": "Freeze", "t": "Freeze", "top": "#6be6ff", "hue": "#00a8e8" } ] } ] },
+      { "style": ["cmd", "loud", "studs"], "name": "Confirm", "text": "Confirm Command", "h": 72, "fontSize": 32, "bg": "#ffffff",
+        "gradient": { "colors": ["#a6ff4d", "#1fd400"], "rotation": 90 }, "depth": { "color": "#0b5e00", "px": 5 } } ] } ] } ] }
+```
+(The avatar is an `rbxthumb://` headshot set by a LocalScript at runtime, so it is a placeholder here.)
+
+**A "1000x cooler", studded stamina bar** (game HUD: chunky, outlined, textured, a badge, a bar that tweens).
+The rbxassetid://0 ids stand for make_image results (a LIGHT grey panel skin, so its tint shows as purple, and a
+lightning icon); the studs are Roblox's classic stud map, tinted a deeper shade of the fill so they read as raised
+studs instead of washing the colour out. A LocalScript tweens Fill's Size X scale and Value's text, and pulses Badge when stamina is low.
+
+```json
+{ "name": "StaminaHud",
+  "styles": {
+    "loud": { "font": "LuckiestGuy", "color": "#ffffff", "textStroke": { "color": "#000000", "width": 3 } },
+    "studs": { "pattern": { "image": "rbxassetid://10509831729", "tile": 18, "t": 0.45, "tint": "#1f9e3c" } } },
+  "children": [
+  { "type": "stack", "name": "Stamina", "at": "bottom", "offset": [0, 28], "dir": "h", "w": "60%", "maxW": 620, "h": 96,
+    "gap": 10, "align": "center", "pad": [10, 14],
+    "skin": { "image": "rbxassetid://0", "size": [512, 512], "slice": [62, 62, 62, 62], "tint": "#3b2a6b" }, "children": [
+    { "type": "frame", "name": "Badge", "w": 72, "h": 72, "bg": "#ffffff", "radius": "pill", "stroke": { "color": "#000000", "width": 4 },
+      "gradient": { "colors": ["#fff36b", "#ffb300"], "rotation": 90 }, "depth": { "color": "#a36a00", "px": 5 }, "children": [
+      { "type": "image", "name": "Bolt", "image": "rbxassetid://0", "w": 48, "h": 48, "at": "center" } ] },
+    { "type": "stack", "name": "Body", "w": "fill", "h": "fill", "gap": 4, "children": [
+      { "type": "frame", "name": "Labels", "dir": "h", "h": 30, "align": "center", "children": [
+        { "type": "text", "name": "Title", "style": "loud", "text": "STAMINA", "fontSize": 26, "w": "fill" },
+        { "type": "text", "name": "Value", "style": "loud", "text": "100%", "fontSize": 24, "w": "auto", "color": "#7dff5a" } ] },
+      { "type": "frame", "name": "Track", "h": "fill", "bg": "#14101f", "radius": 12, "stroke": { "color": "#000000", "width": 4 }, "clip": true, "children": [
+        { "type": "frame", "name": "Fill", "at": "left", "w": "100%", "h": "100%", "bg": "#ffffff", "radius": 12, "style": "studs",
+          "gradient": { "colors": ["#2dff5a", "#a6ff00", "#ffe600"], "rotation": 0 }, "children": [
+          { "type": "frame", "name": "Shine", "at": "top", "w": "100%", "h": "38%", "bg": "#ffffff", "bgT": 0.65, "radius": 12 } ] } ] } ] } ] } ] }
+```
 
 **A moderation panel** (tool UI: dense, neutral, one accent, destructive colour only on destructive actions)
 
 ```json
-{ "name": "ModPanel", "children": [
+{ "name": "ModPanel",
+  "styles": {
+    "ink": { "color": "#e8eaf0" },
+    "act": { "type": "button", "w": 72, "h": 32, "fontSize": 14, "bg": "#2a2e37", "radius": 6, "color": "#e8eaf0" },
+    "danger": { "bg": "#b4232c", "color": "#ffffff" } },
+  "children": [
   { "type": "stack", "name": "Panel", "at": "center", "w": "94%", "maxW": 620, "h": "86%", "maxH": 520,
     "bg": "#16181d", "radius": 8, "stroke": { "color": "#2b2f38" }, "pad": 16, "gap": 12, "children": [
     { "type": "frame", "name": "Header", "dir": "h", "h": 32, "align": "center", "gap": 8, "children": [
-      { "type": "text", "name": "Title", "text": "Players", "font": "Montserrat:SemiBold", "fontSize": 18, "w": "fill", "color": "#e8eaf0" },
-      { "type": "button", "name": "Close", "text": "Close", "w": "auto", "h": 32, "fontSize": 14, "bg": "#23262e", "radius": 6, "color": "#c9ccd4" } ] },
-    { "type": "stack", "name": "Search", "dir": "h", "h": 40, "gap": 8, "children": [
-      { "type": "input", "name": "Query", "placeholder": "Search by name", "bg": "#0f1115", "radius": 6, "stroke": { "color": "#2b2f38" }, "color": "#e8eaf0", "placeholderColor": "#7b8090" } ] },
+      { "type": "text", "name": "Title", "style": "ink", "text": "Players", "font": "Montserrat:SemiBold", "fontSize": 18, "w": "fill" },
+      { "style": "act", "name": "Close", "text": "Close", "w": "auto", "bg": "#23262e" } ] },
+    { "type": "input", "name": "Query", "style": "ink", "h": 40, "placeholder": "Search by name", "bg": "#0f1115", "radius": 6, "stroke": { "color": "#2b2f38" }, "placeholderColor": "#7b8090" },
     { "type": "scroll", "name": "List", "gap": 4, "barColor": "#3a3f4b", "children": [
-      { "type": "frame", "name": "Row1", "dir": "h", "h": 44, "pad": [0, 10], "gap": 8, "align": "center", "bg": "#1d2027", "radius": 6, "children": [
-        { "type": "text", "name": "PlayerName", "text": "builderman", "w": "fill", "truncate": true, "color": "#e8eaf0" },
-        { "type": "button", "name": "Mute", "text": "Mute", "w": 72, "h": 32, "fontSize": 14, "bg": "#2a2e37", "radius": 6, "color": "#e8eaf0" },
-        { "type": "button", "name": "Kick", "text": "Kick", "w": 72, "h": 32, "fontSize": 14, "bg": "#b4232c", "radius": 6, "color": "#ffffff" } ] } ] } ] } ] }
+      { "type": "frame", "name": "Row_{id}", "dir": "h", "h": 44, "pad": [0, 10], "gap": 8, "align": "center", "bg": "#1d2027", "radius": 6, "children": [
+        { "type": "text", "name": "PlayerName", "style": "ink", "text": "{id}", "w": "fill", "truncate": true },
+        { "style": "act", "name": "Mute", "text": "Mute" },
+        { "style": ["act", "danger"], "name": "Kick", "text": "Kick" } ],
+        "each": [{ "id": "builderman" }, { "id": "Roblox" }] } ] } ] } ] }
 ```
 
 **A game shop** (game UI: loud, on-theme, chunky; here a candy world)
@@ -214,10 +335,12 @@ with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It s
 **A minimal HUD** (peripheral, translucent, glanceable)
 
 ```json
-{ "name": "Hud", "children": [
+{ "name": "Hud",
+  "styles": { "chip": { "type": "text", "w": "auto", "h": 40, "font": "BuilderSans:Bold", "fontSize": 20, "bg": "#000000", "bgT": 0.45, "radius": "pill", "pad": [0, 14] } },
+  "children": [
   { "type": "stack", "name": "Stats", "at": "top-left", "offset": [12, 12], "dir": "h", "w": "auto", "h": 40, "gap": 8, "children": [
-    { "type": "text", "name": "Coins", "text": "1,250", "w": "auto", "h": 40, "font": "BuilderSans:Bold", "fontSize": 20, "bg": "#000000", "bgT": 0.45, "radius": "pill", "pad": [0, 14], "color": "#ffd34d" },
-    { "type": "text", "name": "Level", "text": "Lv 7", "w": "auto", "h": 40, "font": "BuilderSans:Bold", "fontSize": 20, "bg": "#000000", "bgT": 0.45, "radius": "pill", "pad": [0, 14], "color": "#ffffff" } ] } ] }
+    { "style": "chip", "name": "Coins", "text": "1,250", "color": "#ffd34d" },
+    { "style": "chip", "name": "Level", "text": "Lv 7", "color": "#ffffff" } ] } ] }
 ```
 
 Each of these is one way to answer one request. A different request (a sci-fi upgrade bay, a cosy farm

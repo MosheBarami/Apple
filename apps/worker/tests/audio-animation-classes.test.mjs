@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const temp = mkdtempSync(join(tmpdir(), 'audio-anim-'));
@@ -71,10 +72,9 @@ test('every new class is accepted by create_instances and forwarded to the plugi
   }
 });
 
-test('every new class is on the plugin create allowlist this worker is talking to', () => {
-  const m = COMMANDS.match(/local CREATE_CLASSES = \{([\s\S]*?)\n\}/);
-  assert.ok(m, 'CREATE_CLASSES not found');
-  const allowed = new Set([...m[1].matchAll(/([A-Za-z0-9_]+)\s*=\s*true/g)].map((x) => x[1]));
+test('every new class is one the plugin this worker is talking to will create', () => {
+  // Plugin 2.0: the API dump decides (apps/studpilot-plugin/scripts/api-dump.mjs).
+  const allowed = pluginPermissions().creatableNames;
   assert.deepEqual(NEW_CLASSES.filter((c) => !allowed.has(c)), [], 'the worker offers a class the plugin refuses');
 });
 
@@ -122,26 +122,27 @@ test('every reference property the plugin added is read as a reference, and plai
     assert.deepEqual(r.props[name], { t: 'Instance', v: 'game.Workspace.Rig.Hand' }, name);
     assert.equal(r.refusals.length, 0, name);
   }
-  // the plugin's own reference list holds these names; the worker must not invent one the plugin cannot resolve
-  const m = COMMANDS.match(/local INSTANCE_REF_PROPERTY = \{([\s\S]*?)\n\}/);
-  const plugin = new Set([...m[1].matchAll(/([A-Za-z0-9_]+)\s*=\s*true/g)].map((x) => x[1]));
-  for (const name of ['SourceInstance', 'TargetInstance', 'PositionInstance', 'EndEffector', 'ChainRoot', 'Target', 'Pole']) assert.ok(plugin.has(name), `${name} is not a plugin reference property`);
+  // the plugin types these as references (an Instance-valued property in the API dump); the worker must not invent one
+  const PERM = pluginPermissions();
+  const refClass = { SourceInstance: 'Wire', TargetInstance: 'Wire', PositionInstance: 'AudioEmitter', EndEffector: 'IKControl', ChainRoot: 'IKControl', Target: 'IKControl', Pole: 'IKControl' };
+  for (const [name, cls] of Object.entries(refClass)) assert.equal(PERM.propertyType(cls, name), 'Instance', `${cls}.${name} is not a plugin reference property`);
   // Value is an ObjectValue reference but also a StringValue's text: it must stay a plain string here
   assert.deepEqual(P.normaliseProps({ Value: 'Workspace.Thing' }).props.Value, { t: 'string', v: 'Workspace.Thing' });
   // an enum item or an empty string in a reference slot is not turned into a path
   assert.deepEqual(P.normaliseProps({ Target: 'Enum.Material.Neon' }).props.Target, { t: 'EnumItem', v: 'Enum.Material.Neon' });
 });
 
-test('an AudioPlayer.Asset must be a library sound id or one a search returned, and nothing is sent otherwise', async () => {
+// Plugin 2.0 (owner, 2026-10-08): any Roblox audio id is accepted; what is no Roblox content id at all is refused.
+test('an AudioPlayer.Asset must be a Roblox audio id, and nothing is sent otherwise', async () => {
   const bad = await ctxWith();
-  const refused = await run(bad.ctx, { items: [{ className: 'AudioPlayer', name: 'Music', parent: 'game.Workspace', props: { Asset: { t: 'string', v: 'rbxassetid://1' } } }] });
-  assert.match(refused.data.error, /D-FXLIB-1/);
+  const refused = await run(bad.ctx, { items: [{ className: 'AudioPlayer', name: 'Music', parent: 'game.Workspace', props: { Asset: { t: 'string', v: 'https://example.com/a.mp3' } } }] });
+  assert.match(refused.data.error, /not a Roblox audio id/);
   assert.match(refused.data.error, /Asset/);
   assert.equal(bad.ops.length, 0, 'nothing may reach Studio');
 
   const nested = await ctxWith();
-  const refusedChild = await run(nested.ctx, { items: [{ className: 'Part', name: 'P', parent: 'game.Workspace', children: [{ className: 'AudioPlayer', name: 'Music', props: { Asset: 'rbxassetid://2' } }] }] });
-  assert.match(refusedChild.data.error, /D-FXLIB-1/, 'a nested AudioPlayer is held to the same rule');
+  const refusedChild = await run(nested.ctx, { items: [{ className: 'Part', name: 'P', parent: 'game.Workspace', children: [{ className: 'AudioPlayer', name: 'Music', props: { Asset: 'https://example.com/a.mp3' } }] }] });
+  assert.match(refusedChild.data.error, /not a Roblox audio id/, 'a nested AudioPlayer is held to the same rule');
   assert.equal(nested.ops.length, 0);
 
   const good = ctxWith();

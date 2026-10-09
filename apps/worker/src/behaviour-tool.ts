@@ -331,7 +331,7 @@ export async function readBehaviour(c: Ctx, raw: unknown, index: number): Promis
       const value = obj(soundIdProp).v ?? soundIdProp;
       if (typeof value !== 'string' || !value) return { error: `${at}.sound: that Sound has no SoundId, so it would play nothing` };
       const refused = c.stored ? null : refuseSoundId({ SoundId: value }, c.ctx.discoveredAssetIds);
-      if (refused) return { error: `${at}.sound: its SoundId is not from StudPilot's library. ${refused.error}` };
+      if (refused) return { error: `${at}.sound: ${refused.error}` };
     }
   }
 

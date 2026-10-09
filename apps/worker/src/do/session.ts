@@ -2756,9 +2756,13 @@ export class SessionDO extends DurableObject<Env> {
       let checkpointNote: string | null = null;
       // The Studio agent is offered exactly STUDIO_TOOLS: no library tool, so no library-order gate holds its builds back.
       ctx.offeredTools = new Set(STUDIO_TOOLS);
+      // It designs and makes everything itself: the old library-only rules are not its rules (tools.ts, freeHand).
+      ctx.freeHand = true;
       if (isStudioWriteTool(tool)) {
         const bind = await this.bind();
         if (!bind || !buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
+        // Whose account a write acts for (make_image's Open Cloud fallback uploads with the owner's own key).
+        ctx.userId = bind.ownerId;
         // No "already building" refusal here (owner, 2026-10-08): the old loop's run state is not this agent's, and a run left
         // stuck from before the rebuild blocked every edit for good. The agent itself queues one turn at a time.
         const last = (await this.ctx.storage.get<number>('studioCheckpointAt')) ?? 0;

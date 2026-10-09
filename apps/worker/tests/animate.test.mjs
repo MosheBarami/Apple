@@ -33,7 +33,8 @@ test('clips: what would break the player is refused with a reason', () => {
     [{ x: { ...press, keys: [{ t: 0, ease: 'Wobbly', Key: { move: [0, 0, 0] } }, press.keys[1]] } }, /ease must be/],
     [{ x: { ...press, keys: [{ t: 0 }, press.keys[1]] } }, /names no joint/],
     [{ 'bad name!': press }, /plain name/],
-    [{ x: { ...press, sound: 'rbxassetid://1' } }, /not a sound from StudPilot's library/],
+    // 2.0: any Roblox audio id is accepted; a web URL is not one.
+    [{ x: { ...press, sound: 'https://example.com/a.mp3' } }, /not a Roblox audio id/],
   ];
   for (const [clips, why] of bad) {
     const r = A.readClips(clips);
