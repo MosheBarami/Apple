@@ -7,8 +7,15 @@
  * each step at its worst case (up to 32,000 neurons) and used up the whole day's shared budget in about ten steps.
  */
 export interface Holds {
-  model: string;
-  pending: number[];
+  /** One entry per streamed call, oldest first, each with the model it was reserved for (a fallback model keeps its own price). */
+  pending: { model: string; reserved: number }[];
+}
+
+/** The token counts a settlement needs. `cachedInputTokens` is the part of the input served from the prompt cache. */
+export interface StepUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
 }
 
 export function meteredAi(env: Env, holds?: Holds): Ai {
@@ -19,12 +26,15 @@ export function meteredAi(env: Env, holds?: Holds): Ai {
     if (!hold.ok) throw new Error(hold.message);
     try {
       const result = await (env.AI.run as (m: string, i: unknown, o?: unknown) => Promise<unknown>)(model, inputs, options);
-      const usage = (result as { usage?: { prompt_tokens?: number; completion_tokens?: number } } | null)?.usage;
+      const usage = (result as { usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } } | null)?.usage;
       if (usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {
-        await env.GATE.settleModel(model, hold.reserved, { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens });
+        await env.GATE.settleModel(model, hold.reserved, {
+          inputTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
+          cachedInputTokens: usage.prompt_tokens_details?.cached_tokens ?? 0,
+        });
       } else if (holds) {
-        holds.model = model;
-        holds.pending.push(hold.reserved);
+        holds.pending.push({ model, reserved: hold.reserved });
       } else {
         await env.GATE.settleModel(model, hold.reserved, null);
       }
@@ -44,13 +54,13 @@ export function meteredAi(env: Env, holds?: Holds): Ai {
   });
 }
 
-/** Settles the oldest held reservation at a step's real token usage. */
-export async function settleNext(env: Env, holds: Holds, usage: { inputTokens: number; outputTokens: number }): Promise<void> {
-  const reserved = holds.pending.shift();
-  if (reserved !== undefined) await env.GATE.settleModel(holds.model, reserved, usage).catch(() => undefined);
+/** Settles the oldest held reservation at a step's real token usage, cached input at its cached rate. */
+export async function settleNext(env: Env, holds: Holds, usage: StepUsage): Promise<void> {
+  const hold = holds.pending.shift();
+  if (hold) await env.GATE.settleModel(hold.model, hold.reserved, usage).catch(() => undefined);
 }
 
 /** Gives back reservations no step settled (an aborted or failed turn). */
 export async function releaseAll(env: Env, holds: Holds): Promise<void> {
-  for (const reserved of holds.pending.splice(0)) await env.GATE.releaseModel(holds.model, reserved).catch(() => undefined);
+  for (const hold of holds.pending.splice(0)) await env.GATE.releaseModel(hold.model, hold.reserved).catch(() => undefined);
 }

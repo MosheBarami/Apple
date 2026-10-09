@@ -24,6 +24,7 @@ import { dumpStorage } from './legacy.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
 import { compactHistory, TurnReadCache, repairToolInput } from './token-saver.ts';
+import { openUiDefects, stopNote, terminalReason } from './terminal.ts';
 
 /** Measured 2026-10-08 (scripts/model-probe.mjs): first token in 1.0s and first tool call in 2.1s, against 3.6s/6.1s for
  * DeepSeek V4 Pro (which then reasoned for 113s) and 9.9s for GLM 5.3 Flash. */
@@ -58,10 +59,11 @@ export class StudPilotAgent extends AIChatAgent<Env> {
   messageConcurrency = 'queue' as const;
 
   /** The whole stored conversation, for the operator's admin export (server.ts /studio/api/admin/history). */
-  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[]; lastBadToolInput: unknown }> {
+  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[]; lastBadToolInput: unknown; lastTerminal: unknown }> {
     return {
       project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null,
       messages: this.messages,
+      lastTerminal: (await this.ctx.storage.get('lastTerminal')) ?? null,
       lastBadToolInput: (await this.ctx.storage.get('lastBadToolInput')) ?? null,
     };
   }
@@ -97,7 +99,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
           const status = await this.env.GATE.projectStatus(projectId).catch(() => null);
           if (status?.credits) writer.write({ type: 'data-credits', data: status.credits, transient: true });
 
-          const holds: Holds = { model, pending: [] };
+          const holds: Holds = { pending: [] };
           const workersai = createWorkersAI({
             binding: meteredAi(this.env, holds),
             gateway: { id: this.env.AI_GATEWAY_ID },
@@ -115,7 +117,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
           const charge = async (usage: LanguageModelUsage) => {
             const cached = usage.inputTokenDetails?.cacheReadTokens ?? 0;
             // The shared budget gets the step's real usage, not its reservation (metering.ts).
-            await settleNext(this.env, holds, { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 });
+            await settleNext(this.env, holds, { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0, cachedInputTokens: cached });
             await this.env.GATE.chargeUsage(projectId, model, {
               inputTokens: usage.inputTokens ?? 0,
               outputTokens: usage.outputTokens ?? 0,
@@ -164,6 +166,17 @@ export class StudPilotAgent extends AIChatAgent<Env> {
               onError: describeError,
             }),
           );
+          // The turn's end, recorded and, unless it simply finished, said. An error already reached the person through
+          // onError, so a rejected result is not described twice.
+          const ended = await Promise.all([result.finishReason, result.steps]).catch(() => null);
+          if (ended) {
+            const [finishReason, steps] = ended;
+            const openDefects = openUiDefects(steps);
+            const reason = terminalReason(finishReason, steps.length, MAX_STEPS, openDefects);
+            await this.ctx.storage.put('lastTerminal', { at: new Date().toISOString(), reason, finishReason, steps: steps.length, openDefects }).catch(() => undefined);
+            const note = stopNote(reason, steps.length, openDefects);
+            if (note) writer.write({ type: 'data-stop', data: { reason, steps: steps.length, note } });
+          }
         },
       }),
     });

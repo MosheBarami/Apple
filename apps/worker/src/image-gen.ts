@@ -14,8 +14,8 @@ export interface Rgba { width: number; height: number; data: Uint8Array }
 /** What each kind is generated at, what it is delivered at (the box it is fitted into), and whether it is cut out. */
 const KIND: Record<ImageKind, { gen: [number, number]; out: [number, number]; cut: boolean; words: string }> = {
   icon: { gen: [1024, 1024], out: [256, 256], cut: true, words: 'a single game icon, bold readable silhouette, centered with a generous empty margin around it' },
-  button: { gen: [1024, 512], out: [512, 256], cut: true, words: 'a single wide game UI button seen straight on, no text, no letters, centered with an empty margin around it' },
-  panel: { gen: [1024, 1024], out: [512, 512], cut: true, words: 'an empty game UI window panel frame seen straight on, no text, plain empty middle area, the frame fills most of the image' },
+  button: { gen: [1024, 512], out: [512, 256], cut: true, words: 'a single wide game UI button seen straight on, no text, no letters, plain even edges with no ornaments, sparkles or stars, centered with an empty margin around it' },
+  panel: { gen: [1024, 1024], out: [512, 512], cut: true, words: 'an empty game UI window panel frame seen straight on, no text, plain empty middle area, plain even edges with no ornaments, sparkles or stars, the frame fills most of the image' },
   banner: { gen: [1536, 512], out: [768, 256], cut: true, words: 'a game UI title banner or ribbon seen straight on, centered with an empty margin around it' },
   texture: { gen: [512, 512], out: [256, 256], cut: false, words: 'a seamless tileable texture that fills the entire frame edge to edge, even flat lighting, no border, no vignette, no text' },
   background: { gen: [1536, 864], out: [1024, 576], cut: false, words: 'a full-frame illustration, no text, no UI elements' },

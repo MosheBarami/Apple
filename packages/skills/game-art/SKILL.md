@@ -40,6 +40,12 @@ changes at runtime. (3D models are not pictures: build them or take them from th
 | `texture` | seamless square tile, 256 | "classic Roblox brick top, rows of round raised LEGO bumps, light grey plastic, top-down" |
 | `background` | full frame, 1024x576 | "a sunny cartoon island with palm trees, soft blurred, for a menu backdrop" + style |
 
+- Skins (button, panel) are plain: one shape, an even outline, flat colour or a soft top highlight. Add "plain, no
+  ornaments, no sparkles, no stars, no rivets" to the prompt: 9-slicing stretches the middle and edges, so anything
+  drawn on them smears (the admin panel of 2026-10-09 got sparkle-tipped buttons and a smeared panel bottom).
+- Studs asked for ("studded", "brick", "LEGO") means a `texture` tile of round raised bumps, tiled with `pattern` over
+  panels and buttons. A skin cannot carry studs: slicing stretches them. A studded request with no studs on screen
+  is not done.
 - Text is drawn only when the prompt quotes it ("\"SHOP\""). Keep quoted text short (1-3 words): titles and logos.
 - Say colours, materials, outline weight and lighting. Never ask for a background colour on cut-out kinds: the tool
   handles the background and removes it.

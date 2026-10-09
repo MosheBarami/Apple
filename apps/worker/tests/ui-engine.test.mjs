@@ -549,6 +549,15 @@ test('outlined text is not a low-contrast defect: white with a black stroke on a
   assert.deepEqual(out.layout.defects.map((d) => d.path), ['game.StarterGui.P.Note'], 'the outlined label is dropped, the plain faint text is kept');
 });
 
+test('an overflow defect carries the fix that keeps the content (scroll or smaller), not clipping (admin panel 2026-10-09)', async () => {
+  const spill = { defects: [{ kind: 'overflows_parent', path: 'game.StarterGui.P.Col.Poll', detail: 'spills 98 px past the bottom edge of Col' }], viewports: [] };
+  const out = await T.TOOLS.build_ui.run(studio(replies({ measure: spill })).ctx, { name: 'P', children: [{ type: 'text', name: 'T', text: 'hi' }] });
+  assert.match(out.layout.overflowFix, /scroll/);
+  assert.match(out.layout.overflowFix, /not a fix/);
+  const clean = await T.TOOLS.build_ui.run(studio(replies({ measure: { defects: [], viewports: [] } })).ctx, { name: 'P', children: [{ type: 'text', name: 'T', text: 'hi' }] });
+  assert.equal(clean.layout.overflowFix, undefined);
+});
+
 test('rotation turns a node\'s drawing (vertical tab text) and is range-checked', () => {
   const out = E.compileScreen({ name: 'R', children: [{ type: 'text', name: 'Tab', text: 'More...', rotation: 90 }] });
   assert.equal(out.item.children.find((c) => c.name === 'Tab').props.Rotation.v, 90);
