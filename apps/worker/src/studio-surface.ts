@@ -36,6 +36,8 @@ export const STUDIO_WRITE_TOOLS = [
   'edit_terrain',
   'insert_from_store',
   'make_image',
+  // Sound effects: synthesised from a catalogue (no model), uploaded into the person's own account with upload:true.
+  'generate_sound',
   'animate_model',
   'play_check',
 ] as const;

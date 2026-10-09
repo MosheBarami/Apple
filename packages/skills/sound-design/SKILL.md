@@ -20,7 +20,7 @@ Give each bucket a `SoundGroup` so the mix (and a player volume setting) is cont
 
 | Property | Notes |
 |---|---|
-| `SoundId` | `"rbxassetid://<id>"` from the store search. Never invent ids. |
+| `SoundId` | `"rbxassetid://<id>"` from the store search, or from `generate_sound` with `upload: true` (an original effect from its catalogue, uploaded to the person's own account). Never invent ids. |
 | `Volume` | 0-10, default 0.5. Most sounds sit 0.2-1; reserve > 1 for rare loud events. |
 | `PlaybackSpeed` | 1 = normal; also shifts pitch. Randomise 0.9-1.1 on repeated sounds (footsteps, hits) to avoid fatigue. (`Pitch` is deprecated.) |
 | `Looped` | for ambience/music. |

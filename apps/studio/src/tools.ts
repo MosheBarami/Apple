@@ -31,6 +31,9 @@ const DESCRIPTIONS: Record<string, string> = {
     "Play-test as a player: starts a real Studio test session with one player, waits `seconds`, optionally walks the character onto `touch` parts, then reports what the player's screen shows (every ScreenGui and its visible text), leaderstats before and after, and errors from the client and the server. Use it before you say a script, counter, HUD or button works. tests:true instead runs the place's TestEZ unit tests (ModuleScripts named *.spec; TestEZ must be in the place) and reports passed/failed/skipped with each failure.",
 };
 
+const SOUND_INTRO =
+  'Make an original sound effect from a catalogue recipe (synthesised, no model, free; same seed, same take) and, with upload:true, put it in the person\'s own Roblox account as Audio: you get a soundId (rbxassetid://...) for a Sound\'s SoundId. Pick the closest preset, adjust with semitones and seconds, parent the Sound where it plays (a part for 3D sound, SoundService or the UI for 2D), then check it loads with play_check. Without upload the person can only hear it in the chat. Prefer a fitting Creator Store sound (search_creator_store, audio) when the request names something the catalogue does not have.';
+
 /** Tool names whose results the chat shows as steps; the UI labels them. */
 export type StudioToolName = (typeof STUDIO_TOOL_SPECS)[number]['name'];
 
@@ -40,7 +43,9 @@ export function studioTools(env: Env, projectId: string, reads?: TurnReadCache, 
   for (const spec of STUDIO_TOOL_SPECS) {
     const description = DESCRIPTIONS[spec.name] ?? spec.description;
     // The worker's edit_terrain text mentions a consent step that no longer exists.
-    const text = description.replace(/Needs Studio edit consent; /g, '');
+    let text = description.replace(/Needs Studio edit consent; /g, '');
+    // The worker's generate_sound text predates upload:true; its catalogue (after the first paragraph) stays.
+    if (spec.name === 'generate_sound') text = `${SOUND_INTRO}${text.slice(text.indexOf('\n\nCatalogue:'))}`;
     tools[spec.name] = tool({
       description: text,
       inputSchema: jsonSchema(spec.parameters as Parameters<typeof jsonSchema>[0]),

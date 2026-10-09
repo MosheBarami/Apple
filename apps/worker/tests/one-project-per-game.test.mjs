@@ -30,12 +30,14 @@ const env = { SUPABASE_URL: 'https://sb.example', SUPABASE_ANON_KEY: 'anon' };
 test('the other project for a game is found as the person, excluding this one', async () => {
   const real = globalThis.fetch;
   let asked;
-  globalThis.fetch = async (url, init) => { asked = { url: String(url), init }; return Response.json([{ id: 'p-old', name: 'My Obby' }]); };
+  globalThis.fetch = async (url, init) => { asked = { url: String(url), init }; return Response.json([{ id: 'p-old', name: 'My Obby', place_id: 12345 }]); };
   try {
     const found = await projectForPlace(env, 'Bearer user-jwt', 'u1', 12345, 'p-new');
     assert.deepEqual(found, { id: 'p-old', name: 'My Obby' });
     assert.match(asked.url, /owner_id=eq\.u1&place_id=eq\.12345&id=neq\.p-new/);
     assert.equal(asked.init.headers.Authorization, 'Bearer user-jwt', 'read with the person\'s own token (RLS)');
+    globalThis.fetch = async () => Response.json([{ id: 'p-old', name: 'X', place_id: 999 }]);
+    assert.equal(await projectForPlace(env, 'Bearer x', 'u1', 12345, 'p-new'), null, 'a row for another game is not this game\'s project');
     globalThis.fetch = async () => Response.json([]);
     assert.equal(await projectForPlace(env, 'Bearer x', 'u1', 12345, 'p-new'), null);
     globalThis.fetch = async () => new Response('no', { status: 500 });

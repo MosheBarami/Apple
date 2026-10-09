@@ -2424,12 +2424,14 @@ app.get('/api/roblox/uploads', async (c) => {
 /** This person's other project already bound to `placeId` (projects.place_id, mirrored by the SessionDO), read as them. */
 export async function projectForPlace(env: Env, auth: string, userId: string, placeId: number, notId: string): Promise<{ id: string; name: string } | null> {
   try {
-    const q = `owner_id=eq.${encodeURIComponent(userId)}&place_id=eq.${Math.floor(placeId)}&id=neq.${encodeURIComponent(notId)}&select=id,name&order=updated_at.desc&limit=1`;
+    const q = `owner_id=eq.${encodeURIComponent(userId)}&place_id=eq.${Math.floor(placeId)}&id=neq.${encodeURIComponent(notId)}&select=id,name,place_id&order=updated_at.desc&limit=1`;
     const res = await fetch(`${env.SUPABASE_URL}/rest/v1/projects?${q}`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth } });
     if (!res.ok) return null;
-    const rows = (await res.json()) as Array<{ id?: unknown; name?: unknown }>;
-    const row = rows[0];
-    return row && typeof row.id === 'string' ? { id: row.id, name: typeof row.name === 'string' ? row.name : 'Untitled' } : null;
+    const rows = (await res.json()) as Array<{ id?: unknown; name?: unknown; place_id?: unknown }>;
+    // Only a row that really is this game's and another project counts: sending the person away on anything less would
+    // move their Studio to the wrong project.
+    const row = rows.find((r) => typeof r.id === 'string' && r.id !== notId && Number(r.place_id) === Math.floor(placeId));
+    return row ? { id: row.id as string, name: typeof row.name === 'string' ? row.name : 'Untitled' } : null;
   } catch {
     return null;
   }
