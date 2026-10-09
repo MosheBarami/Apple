@@ -40,7 +40,9 @@ local POLL_PATH = "/api/studio/poll"
 -- 2.0.0 (2026-10-08, owner decision "i accept the reduced safety"): allow by default from Roblox's API dump with a
 -- short deny list (Permissions.luau), any Roblox content id, checkpoints that hold what they cannot recreate,
 -- serialize/deserialize, grep/glob/list, run_tests, and every payload sent is made valid UTF-8 first.
-local PLUGIN_VERSION = "2.0.0"
+-- 2.1.0 (2026-10-09): native viewport PNG up to 640x480 for the agent's own inspection, sceneRev (Studio edits made outside
+-- StudPilot), outlined text no longer flagged as low contrast.
+local PLUGIN_VERSION = "2.1.0"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails
