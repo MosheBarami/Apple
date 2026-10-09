@@ -56,6 +56,11 @@ export class StudPilotAgent extends AIChatAgent<Env> {
   /** A second message while one is running waits its turn; a person's words are never dropped. */
   messageConcurrency = 'queue' as const;
 
+  /** The whole stored conversation, for the operator's admin export (server.ts /studio/api/admin/history). */
+  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[] }> {
+    return { project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null, messages: this.messages };
+  }
+
   /** Called by the router after the owner check: the project's name and whether its owner may build. */
   async setProject(info: ProjectInfo): Promise<void> {
     await this.ctx.storage.put('project', info);
