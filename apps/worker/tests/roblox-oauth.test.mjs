@@ -3701,3 +3701,9 @@ test('LINKING: a Roblox account that signs in another account can still be linke
   assert.deepEqual(rowsOf(t.db, 'select user_id from studio_roblox_accounts where roblox_sub = ?', '777').map((r) => r.user_id), ['user-b']);
   t.db.close();
 });
+
+baseTest("Roblox's compact scope answer counts as an uploads grant (measured live 2026-10-09: \"asset:read,write openid profile\")", () => {
+  assert.deepEqual(R.scopeList('asset:read,write openid profile'), ['asset:read', 'asset:write', 'openid', 'profile']);
+  assert.deepEqual(R.scopeList('openid profile asset:read asset:write'), ['openid', 'profile', 'asset:read', 'asset:write']);
+  assert.ok(!R.scopeList('openid profile').includes('asset:write'));
+});

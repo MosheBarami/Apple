@@ -1404,7 +1404,13 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   return { ok: true, accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1 };
 }
 
-const hasUploadScope = (scope: string): boolean => scope.split(/[\s,+]+/).includes('asset:write');
+/** Roblox writes granted scopes compactly ("asset:read,write openid profile"): expand each `name:a,b` to name:a and name:b. */
+export const scopeList = (scope: string): string[] =>
+  scope.split(/[\s+]+/).filter(Boolean).flatMap((t) => {
+    const at = t.indexOf(':');
+    return at < 0 ? t.split(',') : t.slice(at + 1).split(',').map((v) => `${t.slice(0, at)}:${v}`);
+  });
+const hasUploadScope = (scope: string): boolean => scopeList(scope).includes('asset:write');
 
 /** The scopes one access token holds, by Roblox's own introspection (RFC 7662 `scope`); null when it does not say. */
 async function grantedScope(cfg: Config, accessToken: string): Promise<string | null> {
