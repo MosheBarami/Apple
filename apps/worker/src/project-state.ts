@@ -26,6 +26,7 @@ export const STORAGE_KEYS = {
   pluginSelection: 'reset',
   opQueue: 'reset',
   studioCheckpointAt: 'reset', // when the Studio agent last checkpointed; a fresh start makes its next write checkpoint again
+  agentSceneRev: 'reset', // the plugin scene revision the Studio agent last saw; a fresh start forgets it (no false "changed" note)
   bind: 'keep',
   pluginClient: 'keep',
   pluginLastSeen: 'keep',

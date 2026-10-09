@@ -56,7 +56,8 @@ export function studioTools(env: Env, projectId: string, reads?: TurnReadCache, 
           if (again) return again;
         }
         const out = await env.GATE.callTool(projectId, spec.name, (args ?? {}) as Record<string, unknown>, turnId);
-        if (spec.writes) reads?.invalidate();
+        // A write, or an edit in Studio outside StudPilot, makes every earlier read stale.
+        if (spec.writes || out.sceneChanged) reads?.invalidate();
         if (!out.ok) throw new Error(clampToolOutput(out.text));
         if (out.images?.length) saw?.(out.images);
         if (!spec.writes) reads?.remember(spec.name, args);

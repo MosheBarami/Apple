@@ -2788,7 +2788,17 @@ export class SessionDO extends DurableObject<Env> {
       // A render's frames go back to the agent as images its model reads (evidence-images.ts), not only to a screen.
       const frames: StudioFrame[] = [];
       if (tool === 'render_view') ctx.emitFrame = (frame) => { frames.push(frame); };
+      // Edited in Studio by hand since the agent's last call? Then its earlier reads are stale (plugin sceneRev).
+      const revBefore = (await this.ctx.storage.get<StudioEventState>('pluginState'))?.sceneRev;
+      const seenRev = await this.ctx.storage.get<number>('agentSceneRev');
+      const sceneChanged = typeof revBefore === 'number' && typeof seenRev === 'number' && revBefore !== seenRev;
       const out = await runTool(ctx, tool, JSON.stringify(args ?? {}));
+      const revAfter = (await this.ctx.storage.get<StudioEventState>('pluginState'))?.sceneRev;
+      if (typeof revAfter === 'number') await this.ctx.storage.put('agentSceneRev', revAfter);
+      if (sceneChanged) {
+        if (out && typeof out === 'object') (out as { sceneChanged?: boolean }).sceneChanged = true;
+        checkpointNote = `${checkpointNote ? `${checkpointNote}\n` : ''}The place was changed in Studio outside StudPilot since your last call (by the person or another plugin). Anything you read before may be out of date: read again what you are about to change.`;
+      }
       const images = frames.length ? await framesToImages(frames) : [];
       if (images.length && out && typeof out === 'object') (out as { images?: unknown }).images = images;
       if (this.lateResults.length) {

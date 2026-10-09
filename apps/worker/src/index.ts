@@ -1104,7 +1104,7 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     await releaseBudget(this.env, reserved, model);
   }
 
-  async callTool(projectId: string, name: string, args: Record<string, unknown>, turnId?: string): Promise<{ ok: boolean; text: string; images?: EvidenceImage[] }> {
+  async callTool(projectId: string, name: string, args: Record<string, unknown>, turnId?: string): Promise<{ ok: boolean; text: string; images?: EvidenceImage[]; sceneChanged?: boolean }> {
     if (!STUDIO_TOOLS.includes(name)) return { ok: false, text: `Unknown tool '${name}'.` };
     const stub = await studioGrantedStub(this.env, projectId);
     if (!stub) return { ok: false, text: 'This project is not open in StudPilot Studio. Reload the page.' };
@@ -1112,11 +1112,11 @@ export class StudioGate extends WorkerEntrypoint<Env> {
       method: 'POST',
       body: JSON.stringify({ tool: name, args, ...(turnId ? { turnId } : {}) }),
     });
-    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string; images?: EvidenceImage[] };
+    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string; images?: EvidenceImage[]; sceneChanged?: boolean };
     if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };
     // A generated picture is paid per image, not per token: its neurons are charged to the owner's Credits here.
     if (name === 'make_image') await this.chargeImage(projectId, out.resultForLlm).catch(() => undefined);
-    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}', ...(out.images?.length ? { images: out.images } : {}) };
+    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}', ...(out.images?.length ? { images: out.images } : {}), ...(out.sceneChanged ? { sceneChanged: true } : {}) };
   }
 
   /** The person stopped the agent's turn: its ops still queued for Studio are discarded (SessionDO `/studio-cancel`). */

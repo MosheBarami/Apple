@@ -666,6 +666,8 @@ export interface StudioEventState {
   isRunMode: boolean;
   selectionCount: number;
   pluginVersion: string;
+  /** Changes made in Studio outside StudPilot's own ops since the plugin started. Absent from plugins before 2026-10-09. */
+  sceneRev?: number;
 }
 /** One instance in the Studio selection, as the companion mirrors it. */
 export interface SelectionItem {

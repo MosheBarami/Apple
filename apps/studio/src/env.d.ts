@@ -11,7 +11,7 @@ interface EvidenceImage {
 interface StudioGate {
   openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string; canBuild: boolean } | { ok: false }>;
   projectStatus(projectId: string): Promise<{ studio: { connected: boolean; placeName: string | null; placeId: number | null }; credits: { remaining: number; unmetered: boolean } | null }>;
-  callTool(projectId: string, name: string, args: Record<string, unknown>, turnId?: string): Promise<{ ok: boolean; text: string; images?: EvidenceImage[] }>;
+  callTool(projectId: string, name: string, args: Record<string, unknown>, turnId?: string): Promise<{ ok: boolean; text: string; images?: EvidenceImage[]; sceneChanged?: boolean }>;
   cancelTurn(projectId: string, turnId: string): Promise<{ dropped: number }>;
   reserveModel(model: string, inputChars: number, maxOutputTokens: number): Promise<{ ok: true; reserved: number } | { ok: false; message: string }>;
   settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number; cachedInputTokens?: number } | null): Promise<void>;
