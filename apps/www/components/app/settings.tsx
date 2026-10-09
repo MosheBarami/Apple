@@ -198,6 +198,9 @@ function RobloxUploadsSection() {
     if (back === "uploads") {
       toast.success("Roblox uploads connected");
     }
+    if (back === "uploads-no-account") {
+      toast.error("No account was selected on Roblox's page. Press Connect again, press Select next to your account under \"Your Accounts\", then Confirm.", { duration: 15_000 });
+    }
     if (back === "uploads-refused") {
       const granted = new URLSearchParams(window.location.search).get("granted");
       toast.error(`Roblox didn't allow uploads${granted ? ` (it granted only: ${granted})` : ""}. Tick the asset permission on Roblox's screen and try again.`);

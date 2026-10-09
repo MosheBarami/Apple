@@ -188,6 +188,11 @@ function makeWorld() {
       const rec = roblox.refresh.get(token);
       return json(200, rec ? { active: rec.state === 'live', ...(rec.state === 'live' ? { sub: rec.sub, scope: 'openid profile' } : {}) } : { active: roblox.access.has(token) });
     }
+    // The accounts ticked under "Your Accounts" (live answer 2026-10-09 with none ticked: creator ids []).
+    if (url.pathname === '/oauth/v1/token/resources' && method === 'POST') {
+      if (!roblox.access.has(form.get('token'))) return json(401, { error: 'invalid_token' });
+      return json(200, { resource_infos: [{ owner: { id: SUB_A, type: 'User' }, resources: { creator: { ids: roblox.creatorIds ?? ['U'] } } }] });
+    }
     if (url.pathname === '/oauth/v1/token/revoke' && method === 'POST') {
       roblox.revokeCalls.push(form.get('token'));
       if (roblox.failRevoke) {
@@ -3718,5 +3723,18 @@ test('UPLOADS AT ONCE: four pictures drawn together all get an upload token; the
   assert.equal(results[0].robloxUserId, SUB_A);
   assert.equal(s.world.roblox.tokenCalls.length - before, 1, 'one refresh at Roblox, shared by all four');
   assert.equal(s.world.roblox.burned, false);
+  s.db.close();
+});
+
+test('UPLOADS WITHOUT AN ACCOUNT: a grant whose "Your Accounts" had nothing selected is refused with the fix, not sent to Roblox to fail', async () => {
+  const s = await connected();
+  s.db.raw.prepare("update roblox_oauth_tokens set scopes = 'asset:read,write openid profile' where user_id = ?").run(s.userId);
+  s.world.roblox.scope = 'asset:read,write openid profile';
+  s.world.roblox.creatorIds = [];
+  const none = await R.robloxUploadAccess(s.env, s.userId);
+  assert.equal(none.ok, false);
+  assert.match(none.error, /Select next to your account/);
+  s.world.roblox.creatorIds = ['U'];
+  assert.equal((await R.robloxUploadAccess(s.env, s.userId)).ok, true, 'POSITIVE CONTROL: with the account selected it is served');
   s.db.close();
 });
