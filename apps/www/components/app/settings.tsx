@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteRobloxKey, getRobloxKey, putRobloxKey, type RobloxKey, studioLink } from "@/lib/api";
+import { robloxUploads, robloxUploadsUrl, studioLink } from "@/lib/api";
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
@@ -186,81 +186,51 @@ function StudioSection() {
 }
 
 /**
- * The person's own Roblox Open Cloud key. StudPilot draws game art with its image model and uploads it to the person's
- * Roblox account; when Studio cannot upload from the plugin, it uses this key (asset:read + asset:write) instead.
+ * Roblox uploads: StudPilot draws game art and uploads each picture into the person's own Roblox account. They allow it
+ * once by signing in with Roblox (asset:read + asset:write); no key to create or paste.
  */
 function RobloxUploadsSection() {
-  const [key, setKey] = useState<RobloxKey | null | undefined>(undefined);
-  const [apiKey, setApiKey] = useState("");
-  const [creatorId, setCreatorId] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<{ connected: boolean; username: string | null } | null | undefined>(undefined);
+  const [going, setGoing] = useState(false);
   useEffect(() => {
-    getRobloxKey().then(setKey).catch(() => setKey(null));
+    robloxUploads().then(setState).catch(() => setState(null));
+    const back = new URLSearchParams(window.location.search).get("roblox");
+    if (back === "uploads") {
+      toast.success("Roblox uploads connected");
+    }
+    if (back === "uploads-refused") {
+      toast.error("Roblox didn't allow uploads. Tick the asset permission on Roblox's screen and try again.");
+    }
   }, []);
+  const connect = async () => {
+    setGoing(true);
+    try {
+      window.location.assign(await robloxUploadsUrl("/app/settings"));
+    } catch (e) {
+      toast.error((e as Error).message);
+      setGoing(false);
+    }
+  };
 
   return (
     <Section
-      description="StudPilot draws your game's art (buttons, panels, icons, textures) and uploads each picture to your own Roblox account. If Studio can't upload it, StudPilot uses this key instead."
+      description="StudPilot draws your game's art (buttons, panels, icons, textures) and uploads each picture to your own Roblox account. Allow it once with your Roblox account."
       title="Roblox uploads"
     >
-      {key === undefined ? (
+      {state === undefined ? (
         <Skeleton className="h-12 w-full" />
-      ) : key ? (
+      ) : (
         <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3">
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-sm">Key ending {key.hint}</p>
+            <p className="font-medium text-sm">{state?.connected ? `Connected${state.username ? ` as ${state.username}` : ""}` : "Not connected"}</p>
             <p className="truncate text-muted-foreground text-xs">
-              Roblox {key.creatorType} {key.robloxCreatorId} · {key.scopes.join(", ")}
+              {state?.connected ? "Pictures StudPilot draws go into your Roblox inventory." : "Without it, StudPilot can't put drawn art into your game."}
             </p>
           </div>
-          <Button
-            onClick={async () => {
-              try {
-                await deleteRobloxKey();
-                setKey(null);
-                toast.success("Key disconnected");
-              } catch (e) {
-                toast.error((e as Error).message);
-              }
-            }}
-            size="sm"
-            variant="outline"
-          >
-            Disconnect
+          <Button disabled={going} onClick={connect} size="sm" variant={state?.connected ? "outline" : "default"}>
+            {going ? "Opening Roblox…" : state?.connected ? "Reconnect" : "Connect Roblox for uploads"}
           </Button>
         </div>
-      ) : (
-        <form
-          className="grid gap-3"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setSaving(true);
-            try {
-              setKey(await putRobloxKey(apiKey.trim(), creatorId.trim(), "user"));
-              setApiKey("");
-              toast.success("Key connected");
-            } catch (err) {
-              toast.error((err as Error).message);
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          <p className="text-muted-foreground text-sm">
-            Create a key at{" "}
-            <a className="underline" href="https://create.roblox.com/dashboard/credentials" rel="noreferrer" target="_blank">
-              create.roblox.com/dashboard/credentials
-            </a>{" "}
-            with the Assets API (read and write) for your account, then paste it here with your Roblox user id.
-          </p>
-          <Input aria-label="Open Cloud API key" autoComplete="off" onChange={(e) => setApiKey(e.target.value)} placeholder="Open Cloud API key" type="password" value={apiKey} />
-          <Input aria-label="Roblox user id" inputMode="numeric" onChange={(e) => setCreatorId(e.target.value)} placeholder="Your Roblox user id (numbers)" value={creatorId} />
-          <div>
-            <Button disabled={saving || apiKey.trim().length < 24 || !/^\d+$/.test(creatorId.trim())} size="sm" type="submit">
-              {saving ? "Connecting…" : "Connect key"}
-            </Button>
-          </div>
-        </form>
       )}
     </Section>
   );

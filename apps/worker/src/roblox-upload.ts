@@ -86,6 +86,8 @@ export function assetTypeForContentType(contentType: string): RobloxUploadType |
 export interface UploadEnv {
   /** Open Cloud key. Uploading needs the `asset:write` scope; reading the Creator Store does not. */
   ROBLOX_API_KEY?: string;
+  /** Or a Roblox OAuth access token with `asset:write` (the person's own "Connect Roblox for uploads" grant). */
+  ROBLOX_BEARER?: string;
   /** The Roblox user or group the assets are created under. One of the two, never both. */
   ROBLOX_CREATOR_USER_ID?: string;
   ROBLOX_CREATOR_GROUP_ID?: string;
@@ -116,7 +118,7 @@ export type UploadResult =
 
 /** Every reason an upload can be refused before a byte is sent, as a sentence rather than a code. */
 export function preflight(env: UploadEnv, bytes: number, type: RobloxUploadType | null): string | null {
-  if (!env.ROBLOX_API_KEY) return 'ROBLOX_API_KEY is not set — uploading needs an Open Cloud key with the asset:write scope';
+  if (!env.ROBLOX_API_KEY && !env.ROBLOX_BEARER) return 'ROBLOX_API_KEY is not set — uploading needs an Open Cloud key or a Roblox sign-in with the asset:write scope';
   const hasUser = !!env.ROBLOX_CREATOR_USER_ID;
   const hasGroup = !!env.ROBLOX_CREATOR_GROUP_ID;
   // Both set is an ambiguity, not a preference. Roblox would take one and the audit row would
@@ -214,7 +216,7 @@ export async function uploadAsset(
     method: 'POST',
     // No content-type header: it must carry the multipart boundary, which FormData sets itself.
     // Setting it by hand here is the classic way to get a 400 that reads like a schema error.
-    headers: { 'x-api-key': env.ROBLOX_API_KEY! },
+    headers: authHeaders(env),
     body: form,
   });
 
@@ -241,15 +243,20 @@ export async function uploadAsset(
     : { ok: true, done: false, operationId, status: res.status };
 }
 
+/** An OAuth token goes as a bearer; an Open Cloud key as x-api-key. */
+function authHeaders(env: UploadEnv): Record<string, string> {
+  return env.ROBLOX_BEARER ? { Authorization: `Bearer ${env.ROBLOX_BEARER}` } : { 'x-api-key': env.ROBLOX_API_KEY! };
+}
+
 /** Poll one operation. Same three-state result, for the same reason. */
 export async function pollOperation(
   env: UploadEnv,
   operationId: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<UploadResult> {
-  if (!env.ROBLOX_API_KEY) return { ok: false, status: 0, error: 'ROBLOX_API_KEY is not set', operationId };
+  if (!env.ROBLOX_API_KEY && !env.ROBLOX_BEARER) return { ok: false, status: 0, error: 'ROBLOX_API_KEY is not set', operationId };
   const res = await fetchImpl(`${OPERATIONS_ENDPOINT}/${encodeURIComponent(operationId)}`, {
-    headers: { 'x-api-key': env.ROBLOX_API_KEY },
+    headers: authHeaders(env),
   });
   const text = await res.text();
   if (!res.ok) return { ok: false, status: res.status, error: providerError(text, res.status), operationId };
