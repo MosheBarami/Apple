@@ -360,7 +360,7 @@ function updateBuild(t) {
 // ---------------------------------------------------------------- scene: glass logo
 const lg = { scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 300) };
 function buildLogo() {
-  const S = lg.scene; S.environment = envTex; S.environmentIntensity = 1.2;
+  const S = lg.scene; S.environment = envTex; S.environmentIntensity = 0.55; S.environmentRotation = new THREE.Euler(0.4, 1.1, 0);
   lg.bg = bgMesh('#2a1466', '#0b2257', '#a67cff'); lg.bg.material.uniforms.uI.value = 0.9; S.add(lg.bg);
   const sh = new THREE.Shape();
   sh.moveTo(12, 29); sh.lineTo(27.8, 29); sh.quadraticCurveTo(29, 29, 29, 27.8); sh.lineTo(29, 12);
@@ -369,12 +369,12 @@ function buildLogo() {
   const hole = new THREE.Path(); hole.absarc(15.4, 15, 4.6, 0, Math.PI * 2, false); sh.holes.push(hole);
   const geo = new THREE.ExtrudeGeometry(sh, { depth: 4, bevelEnabled: true, bevelThickness: 1.6, bevelSize: 1.1, bevelSegments: 12, curveSegments: 64 });
   geo.translate(-16, -16, -2); geo.scale(0.16, 0.16, 0.16);
-  lg.mat = new THREE.MeshPhysicalMaterial({ color: 0xbfa2ff, roughness: 0.06, transmission: 1, thickness: 3, ior: 1.5, iridescence: 1, iridescenceIOR: 1.3, iridescenceThicknessRange: [200, 900], clearcoat: 1, clearcoatRoughness: 0.04, attenuationColor: new THREE.Color(0x8a5cff), attenuationDistance: 1.3, specularIntensity: 1, envMapIntensity: 1.8, dispersion: 4 });
+  lg.mat = new THREE.MeshPhysicalMaterial({ color: 0xbfa2ff, roughness: 0.06, transmission: 1, thickness: 3, ior: 1.5, iridescence: 1, iridescenceIOR: 1.3, iridescenceThicknessRange: [200, 900], clearcoat: 0.5, clearcoatRoughness: 0.08, attenuationColor: new THREE.Color(0x8a5cff), attenuationDistance: 1.3, specularIntensity: 0.6, envMapIntensity: 0.9, dispersion: 4 });
   lg.logo = new THREE.Mesh(geo, lg.mat); lg.group = new THREE.Group(); lg.group.add(lg.logo); S.add(lg.group);
   // light bars behind it, which the glass bends
   lg.bars = [];
   const barCol = [new THREE.Color(0.8, 0.55, 1.6), new THREE.Color(0.4, 0.55, 1.5), new THREE.Color(1.1, 1.1, 1.1)];
-  for (let i = 0; i < 5; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.06, 30, 0.06), new THREE.MeshBasicMaterial({ color: barCol[i % 3], toneMapped: false })); b.position.set(-9 + i * 4.2, 0, -9); b.rotation.z = 0.6; S.add(b); lg.bars.push(b); }
+  for (let i = 0; i < 5; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.06, 30, 0.06), new THREE.MeshBasicMaterial({ color: barCol[i % 3], toneMapped: false })); b.position.set(-9 + i * 4.2, 0, -9); b.rotation.z = 0.6; b.userData.c = barCol[i % 3].clone(); S.add(b); lg.bars.push(b); }
   lg.ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.03, 8, 160), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3, 7), transparent: true, toneMapped: false, blending: THREE.AdditiveBlending }));
   S.add(lg.ring);
   const R = rng(5), N = 900, p = new Float32Array(N * 3); lg.pd = [];
@@ -382,7 +382,7 @@ function buildLogo() {
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(p, 3));
   lg.parts = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.09, map: tun.glowTex, color: new THREE.Color(2.5, 2, 4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
   S.add(lg.parts);
-  const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(4, 6, 8); S.add(key);
+  const key = new THREE.DirectionalLight(0xffffff, 0.5); key.position.set(6, 8, 3); S.add(key);
 }
 function updateLogo(t) {
   lg.bg.material.uniforms.uT.value = t;
@@ -393,14 +393,14 @@ function updateLogo(t) {
   const s = lerp(0.05, 1, eOutBack(seg(t, 22, 23.0), 1.3)) * lerp(1, 0.52, settle);
   lg.group.scale.setScalar(s);
   lg.group.position.set(0, settle * 1.6 + Math.sin(t * 1.2) * 0.05, 0);
-  lg.bars.forEach((b, i) => { b.position.x = -12 + ((i * 4.8 + t * 2.2) % 24); });
+  lg.bars.forEach((b, i) => { b.position.x = -12 + ((i * 4.8 + t * 2.2) % 24); const k = clamp((Math.abs(b.position.x + 1.2) - 1.5) / 4.5); b.material.color.copy(b.userData.c).multiplyScalar(0.12 + 0.88 * k * k); });
   const ru = seg(t, 22, 23.2); lg.ring.scale.setScalar(0.5 + eOutExpo(ru) * 14); lg.ring.material.opacity = (1 - ru) * 0.9;
   const ru2 = seg(t, 28, 29.2); if (t >= 28) { lg.ring.scale.setScalar(1 + eOutExpo(ru2) * 12); lg.ring.material.opacity = (1 - ru2) * 0.7; lg.ring.position.y = 1.6; } else lg.ring.position.y = 0;
   const pa = lg.parts.geometry.attributes.position; const pin = 1 - eOutExpo(seg(t, 22, 24.5));
   lg.pd.forEach((d, i) => { const a = d.a + t * 0.25 * d.s + pin * 3; const r = d.r * (0.4 + 0.6 * (1 - pin)) + pin * 10; pa.setXYZ(i, Math.cos(a) * r, d.y + Math.sin(t * d.s + i) * 0.3, Math.sin(a) * r * 0.5 + d.z - 3); });
   pa.needsUpdate = true;
   const cam = lg.cam; cam.position.set(Math.sin(t * 0.3) * 0.4, 0.1, 12 - (1 - eOutExpo(seg(t, 22, 24))) * -10 - (t - 22) * 0.06); cam.lookAt(0, 0.3, 0);
-  bloom.strength = 0.7 + 1.2 * Math.exp(-(t - 22) * 2.5) + (t > 28 ? 0.6 * Math.exp(-(t - 28) * 3) : 0); bloom.radius = 0.7; bloom.threshold = 0.7;
+  bloom.strength = 0.7 + 1.2 * Math.exp(-(t - 22) * 2.5) + (t > 28 ? 0.6 * Math.exp(-(t - 28) * 3) : 0); bloom.radius = 0.6; bloom.threshold = 0.92;
 }
 
 // ---------------------------------------------------------------- DOM scenes

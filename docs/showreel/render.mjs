@@ -20,7 +20,7 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.error('[page]', m.text()); });
 page.on('pageerror', (e) => console.error('[pageerror]', e.message));
 await page.goto(`http://127.0.0.1:${port}/index.html`);
-await page.waitForFunction(() => window.ready === true, null, { timeout: 180000 });
+await page.waitForFunction(() => window.ready === true, null, { timeout: 900000 });
 
 let frames = [];
 if (spec.startsWith('times=')) frames = spec.slice(6).split(',').map((s) => ({ t: +s, name: `t${(+s).toFixed(2)}` }));
