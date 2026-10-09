@@ -110,6 +110,7 @@ const EVERYTHING = {
     { type: 'stack', name: 'Chunky', at: 'top-right', w: 240, h: 120, gap: 6, depth: { color: '#3a0000', px: 6 }, pattern: { image: 'rbxassetid://9', tile: 24, t: 0.6, tint: '#ffffff' }, bg: '#ff3030', children: [
       { type: 'button', name: 'Go', text: 'GO', w: 'fill', h: 48, bg: '#30ff30', stroke: { color: '#000000', width: 3 }, textStroke: { color: '#000000', width: 2 }, depth: { color: '#106010' }, pattern: { image: 'rbxassetid://9' } },
       { type: 'text', text: 'Outlined', textStroke: { color: '#000000', width: 3, t: 0.1 } },
+      { type: 'button', name: 'Skinned', text: 'Buy', h: 60, skin: { image: 'rbxassetid://7', size: [512, 200], slice: [40, 30, 40, 30], t: 0.1, tint: '#ffeeee' }, textStroke: { color: '#000000' } },
     ] },
     { type: 'stack', name: 'Column', at: 'bottom', w: 300, h: 300, justify: 'end', align: 'end', children: [
       { type: 'input', placeholder: 'Message', placeholderColor: '#777777', multiline: true, maxW: 400, maxH: 200 },
@@ -515,5 +516,22 @@ test('pattern tiles an image across the object (studs, stripes) under its childr
   assert.equal(b.className, 'ImageButton');
   assert.equal(b.props.Text, undefined);
   assert.equal(kids(b, 'TextLabel')[0].props.Text.v, 'Go');
-  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'text', text: 'x', pattern: { image: 'rbxassetid://1' } }] }).error, /pattern and depth go on/);
+  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'text', text: 'x', pattern: { image: 'rbxassetid://1' } }] }).error, /pattern, skin and depth go on/);
+});
+
+test('skin draws generated art as the object, 9-sliced from its size so it stretches cleanly', () => {
+  const out = E.compileScreen({ name: 'S', children: [{ type: 'stack', w: 300, h: 200, children: [
+    { type: 'button', name: 'Buy', text: 'BUY', h: 64, skin: { image: 'rbxassetid://55', size: [512, 214], slice: 48 }, font: 'FredokaOne', textStroke: { color: '#000000', width: 3 } },
+    { type: 'frame', name: 'Card', h: 100, skin: { image: 'rbxassetid://56' } },
+  ] }] });
+  assert.ok(!out.error, out.error);
+  const buy = find(out.item, 'Buy');
+  assert.equal(buy.className, 'ImageButton');
+  assert.equal(buy.props.ScaleType.v, 'Enum.ScaleType.Slice');
+  assert.deepEqual(buy.props.SliceCenter, { t: 'Rect', v: [48, 48, 464, 166] });
+  assert.equal(buy.props.BackgroundTransparency.v, 1);
+  assert.equal(kids(buy, 'TextLabel')[0].props.Text.v, 'BUY');
+  assert.equal(find(out.item, 'Card').props.ScaleType.v, 'Enum.ScaleType.Stretch');
+  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'frame', skin: { image: 'rbxassetid://1', slice: 10 } }] }).error, /slice needs size/);
+  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'frame', skin: { image: 'rbxassetid://1' }, pattern: { image: 'rbxassetid://2' } }] }).error, /one image per object/);
 });

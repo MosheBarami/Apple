@@ -15,7 +15,8 @@
     "@studpilot/evals": "workspace:*",
     "@studpilot/shared": "workspace:*",
     "hono": "^4.13.12",
-    "jose": "^6.2.12"
+    "jose": "^6.2.12",
+    "jpeg-js": "0.4.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260830.1",

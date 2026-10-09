@@ -98,6 +98,7 @@ function currentAuthoringReport() {
     ...PHASE_A_OPS,
     // Plugin 2.0 families (ops/Search.luau, ops/Serialize.luau, ops/Tests.luau).
     'grep', 'glob', 'list', 'serialize', 'deserialize', 'run_tests',
+    'create_image_asset',
   ];
   return {
     schema: C.PLUGIN_CAPABILITY_SCHEMA,

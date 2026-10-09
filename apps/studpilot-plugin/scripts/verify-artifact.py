@@ -102,6 +102,8 @@ REQUIRED = {
 # the guard as the defect.
 ALLOWED_GETOBJECTS_ARGS = b'"rbxassetid://" .. string.format("%d", assetId))'
 ALLOWED_GETOBJECTS = b"gameRef:GetObjects(" + ALLOWED_GETOBJECTS_ARGS
+ALLOWED_UPLOAD_ARGS = b'editable, Enum.AssetType.Image, { Name = name, Description = "Made with StudPilot" })'
+ALLOWED_UPLOAD = b"AssetService:CreateAssetAsync(" + ALLOWED_UPLOAD_ARGS
 FORBIDDEN = [
     (rb"loadstring\s*\(", "dynamic source compilation"),
     (rb"pcall\s*\(\s*require\s*,", "requiring a constructed ModuleScript — the legacy run_code pattern"),
@@ -111,7 +113,9 @@ FORBIDDEN = [
     # Asset." - measured in Studio on 2026-10-04), so that single call, built from a validated whole
     # number and followed by the detached-tree script scan, is allowed and counted below.
     (rb":\s*GetObjects\s*\((?!" + re.escape(ALLOWED_GETOBJECTS_ARGS) + rb")", "remote object loading other than the one id-only loader"),
-    (rb"CreateAssetAsync\s*\(", "asset upload"),
+    # Uploading is refused in every shape but ONE (owner, 2026-10-09: generated UI art): ops/Image.luau uploads an
+    # EditableImage it drew from StudPilot's own pixel route, as an Image, into the signed-in Studio user's account.
+    (rb"CreateAssetAsync\s*\((?!" + re.escape(ALLOWED_UPLOAD_ARGS) + rb")", "asset upload other than the one generated-image upload"),
 ]
 
 
@@ -156,6 +160,10 @@ def main() -> int:
     loaders = len(re.findall(re.escape(ALLOWED_GETOBJECTS), blob))
     if loaders != 1:
         failures.append(f"the build holds {loaders} copies of the id-only GetObjects loader; it must hold exactly 1")
+
+    uploads = len(re.findall(re.escape(ALLOWED_UPLOAD), blob))
+    if uploads != 1:
+        failures.append(f"the build holds {uploads} copies of the generated-image upload; it must hold exactly 1")
 
     for pattern, why in FORBIDDEN:
         hit = re.search(pattern, blob)

@@ -4954,7 +4954,7 @@ function OP_FAMILIES.api(): any
 		contentProperty = CONTENT_PROPERTY, scriptClasses = SCRIPT_CLASSES, readServices = READ_SERVICES, writeServices = WRITE_SERVICES,
 		-- 2.0: the permission model, script source reads/writes and the written-source refusal (ops/Serialize, ops/Search).
 		permissions = function() return PERMS.mod end,
-		scriptSource = function(self: any, inst: any): string? return (scriptSourceWithin(self.editor, inst, "script source")) end,
+		scriptSource = function(self: any, inst: any): string? return (scriptSourceForReading(self.editor, inst)) end,
 		sourceDanger = sourceDanger, sourceWrite = sourceWrite, hashSource = hashSource,
 		limits = {
 			items = MAX_ITEMS, createNodes = MAX_CREATE_NODES, terrainVoxels = MAX_TERRAIN_VOXELS, terrainResolution = TERRAIN_RESOLUTION,

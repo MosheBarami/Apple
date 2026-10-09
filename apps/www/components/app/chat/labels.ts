@@ -42,6 +42,7 @@ const LABELS: Record<string, (input: Input) => string> = {
   insert_asset: (i) => `Inserting ${str(i, "name", "title") ?? "a model"}`,
   list_scripts: () => "Listing scripts",
   load_skill: (i) => `Reading notes on ${(str(i, "name", "skill") ?? "a topic").replaceAll("-", " ")}`,
+  make_image: (i) => `Drawing ${str(i, "name") ?? `a ${str(i, "kind") ?? "picture"}`}`,
   measure_ui: () => "Checking the layout on phone and desktop",
   move_instances: () => "Moving objects",
   play_check: () => "Play-testing",
@@ -52,7 +53,8 @@ const LABELS: Record<string, (input: Input) => string> = {
   rename_instance: () => "Renaming an object",
   search_assets: (i) => `Searching the Creator Store${suffix(str(i, "query", "keyword"))}`,
   search_creator_store: (i) => `Searching the Creator Store${suffix(str(i, "query", "keyword"))}`,
-  search_docs: (i) => `Searching Roblox docs${suffix(str(i, "query", "q"))}`,
+  search_docs: (i) =>
+    str(i, "url") ? `Reading ${leaf(str(i, "url")) ?? "a docs page"}` : `Searching Roblox docs${suffix(str(i, "query", "q"))}`,
   search_scripts: (i) => `Searching scripts${suffix(str(i, "query", "pattern"))}`,
   set_properties: () => "Adjusting properties",
 };

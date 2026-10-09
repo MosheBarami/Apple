@@ -123,6 +123,7 @@ export interface UiNode {
   textStroke?: { color: string; width?: number; t?: number };
   depth?: { color: string; px?: number };
   pattern?: { image: string; tile?: number; t?: number; tint?: string };
+  skin?: { image: string; size?: [number, number]; slice?: number | [number, number, number, number]; t?: number; tint?: string };
 }
 type Size = number | 'fill' | 'auto' | `${number}%`;
 
@@ -175,7 +176,7 @@ const inward = (anchor: number, d: number) => (anchor === 1 ? -d : d);
 const KNOWN_KEYS = new Set(['type', 'name', 'children', 'w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'aspect', 'grow', 'at', 'offset', 'z', 'visible',
   'dir', 'gap', 'pad', 'align', 'justify', 'wrap', 'cols', 'cell', 'bar', 'barColor', 'bg', 'bgT', 'radius', 'clip', 'stroke', 'gradient',
   'text', 'font', 'fontSize', 'scale', 'color', 'textT', 'alignX', 'alignY', 'truncate', 'rich', 'lineHeight',
-  'placeholder', 'placeholderColor', 'multiline', 'image', 'fit', 'tint', 'imageT', 'thickness', 'textStroke', 'depth', 'pattern']);
+  'placeholder', 'placeholderColor', 'multiline', 'image', 'fit', 'tint', 'imageT', 'thickness', 'textStroke', 'depth', 'pattern', 'skin']);
 
 /* ------------------------------------------------------------ styles and repeats --- */
 // Token saver: a screen's look is written once (`styles`) and a list once (`each`), instead of the model writing the
@@ -289,7 +290,7 @@ function dress(d: Dress): { spec: Spec; added: number } {
   // A button's text moves into a label of its own when the button carries anything else that draws (a texture, a base
   // edge) or the text needs an outline: a button's own UIStroke is its border.
   let label: Spec | null = null;
-  if (kind === 'button' && d.takesText && !d.childSpecs.length && (n.textStroke !== undefined || n.pattern !== undefined || n.depth !== undefined)) {
+  if (kind === 'button' && d.takesText && !d.childSpecs.length && (n.textStroke !== undefined || n.pattern !== undefined || n.skin !== undefined || n.depth !== undefined)) {
     const lp: P = { BackgroundTransparency: num(1), BorderSizePixel: num(0) };
     for (const k of TEXT_PROP_KEYS) if (props[k] !== undefined) { lp[k] = props[k]!; delete props[k]; }
     const ax = autoAxes.has('X'), ay = autoAxes.has('Y');
@@ -315,6 +316,28 @@ function dress(d: Dress): { spec: Spec; added: number } {
     props.TileSize = udim2(0, tile, 0, tile);
     props.ImageTransparency = num(pt.t === undefined ? 0.7 : unit(pt.t, `${where}.pattern.t`));
     if (pt.tint !== undefined) props.ImageColor3 = colour(pt.tint, `${where}.pattern.tint`);
+  }
+
+  // A skin is generated or found art drawn as the object itself; with slice it is 9-sliced so it stretches cleanly.
+  if (n.skin !== undefined) {
+    const sk = n.skin as { image?: unknown; size?: unknown; slice?: unknown; t?: unknown; tint?: unknown };
+    if (!sk || typeof sk !== 'object' || !ASSET.test(String(sk.image))) fail(`${where}.skin must be {image: "rbxassetid://N", size?: [w, h], slice?: px or [l, t, r, b], t?, tint?}.`);
+    if (className === 'TextButton') { className = 'ImageButton'; for (const k of TEXT_PROP_KEYS) delete props[k]; }
+    else if (className === 'Frame') className = 'ImageLabel';
+    props.Image = str(String(sk.image));
+    if (sk.slice !== undefined) {
+      const size = Array.isArray(sk.size) && sk.size.length === 2 ? sk.size.map((v, i) => px(v, `${where}.skin.size[${i}]`, 1)) : fail(`${where}.skin: slice needs size: [imageWidth, imageHeight] (make_image returns it).`);
+      const sl = typeof sk.slice === 'number' ? [sk.slice, sk.slice, sk.slice, sk.slice] : Array.isArray(sk.slice) && sk.slice.length === 4 ? sk.slice : fail(`${where}.skin.slice must be px or [left, top, right, bottom].`);
+      const [l, t, rr, b] = (sl as unknown[]).map((v, i) => px(v, `${where}.skin.slice[${i}]`));
+      if (l! + rr! >= size![0]! || t! + b! >= size![1]!) fail(`${where}.skin.slice leaves no middle in a ${size![0]}x${size![1]} image.`);
+      props.ScaleType = en('ScaleType', 'Slice');
+      props.SliceCenter = { t: 'Rect', v: [l!, t!, size![0]! - rr!, size![1]! - b!] } as PropValue;
+    } else {
+      props.ScaleType = en('ScaleType', 'Stretch');
+    }
+    if (sk.t !== undefined) props.ImageTransparency = num(unit(sk.t, `${where}.skin.t`));
+    if (sk.tint !== undefined) props.ImageColor3 = colour(sk.tint, `${where}.skin.tint`);
+    if (n.bg === undefined) props.BackgroundTransparency = num(1);
   }
 
   if (n.depth === undefined) {
@@ -652,8 +675,9 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
   if (kind === 'button' || kind === 'input') build.interactive.push(namePath);
 
   if (n.textStroke !== undefined && !takesText) fail(`${where}: textStroke outlines text; put it on a text, button or input.`);
-  if (n.pattern !== undefined || n.depth !== undefined) {
-    if (kind !== 'frame' && kind !== 'stack' && kind !== 'grid' && kind !== 'button') fail(`${where}: pattern and depth go on a frame, stack, grid or button.`);
+  if (n.pattern !== undefined || n.depth !== undefined || n.skin !== undefined) {
+    if (kind !== 'frame' && kind !== 'stack' && kind !== 'grid' && kind !== 'button') fail(`${where}: pattern, skin and depth go on a frame, stack, grid or button.`);
+    if (n.pattern !== undefined && n.skin !== undefined) fail(`${where}: one image per object: use pattern or skin, not both (nest a frame for the other).`);
     if (className === 'ImageButton') fail(`${where}: an image-only button already shows an image; put pattern or depth on a frame around it.`);
   }
   const dressed = dress({ n, kind, className, name, props, decor, childSpecs, where, autoAxes, takesText });
@@ -750,6 +774,7 @@ export const buildUi = {
       'Look: bg "#hex", bgT 0-1, radius px|"pill", stroke {color, width, t}, gradient {colors, rotation, t:[a,b]}, clip. ' +
       `Text (text, button, input): text, font "Family" or "Family:Weight" (${UI_FONT_FAMILIES.slice(0, 8).join(', ')}, ...), fontSize px or scale [min,max], color, alignX, alignY, truncate, rich, lineHeight. ` +
       'input: placeholder, placeholderColor, multiline. image/icon: image "rbxassetid://N", fit fit|crop|stretch, tint. divider: color, thickness. ' +
+      'Art: skin {image, size:[w,h], slice} draws a picture (from make_image) as the object itself, 9-sliced so it stretches; text sits on top. ' +
       'Game-UI depth: textStroke {color,width,t} outlines text (also on bordered buttons); depth {color,px} puts a darker base edge under a button or panel (needs non-auto w/h; the content sits in a child named Face); pattern {image,tile,t,tint} tiles a texture such as studs across a frame, stack, grid or button. ' +
       'Write less: define each look once in `styles` ({"card":{"bg":"#1e2430","radius":12},"label":{"type":"text","font":"Montserrat:Medium","color":"#c9d1e0"}}) and give nodes style:"card" or ["card","label"] (the node\'s own fields win). ' +
       'Repeat a child with each: [...]: {"type":"button","style":"tab","each":["Kick","Ban"]} makes one per item (a string sets text; an object sets fields), or use {key} placeholders: {"type":"stack","dir":"h","children":[{"type":"text","text":"{n}"},{"type":"text","text":"{p}"}],"each":[{"n":"Sword","p":"100"}]}. ' +

@@ -914,6 +914,7 @@ const TOOL_ARGS = {
   transform_instances: { paths: ['game.Workspace.A'], move: [0, 1, 0] },
   apply_surface: { paths: ['game.Workspace.A'], surface: 'studs' },
   insert_from_store: { assetId: 18717544 },
+  make_image: { prompt: 'a red glossy button', kind: 'button' },
   rename_instance: { path: 'game.Workspace.A', name: 'B' },
   set_locked: { paths: ['game.Workspace.A'], locked: true },
   set_visible: { paths: ['game.Workspace.A'], visible: false },

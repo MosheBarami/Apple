@@ -1107,9 +1107,35 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     });
     const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
     if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };
+    // A generated picture is paid per image, not per token: its neurons are charged to the owner's Credits here.
+    if (name === 'make_image') await this.chargeImage(projectId, out.resultForLlm).catch(() => undefined);
     return { ok: out.ok !== false, text: out.resultForLlm ?? '{}' };
   }
+
+  private async chargeImage(projectId: string, resultText: string | undefined): Promise<void> {
+    const neurons = Number((JSON.parse(resultText ?? '{}') as { neurons?: unknown }).neurons);
+    if (!Number.isFinite(neurons) || neurons <= 0) return;
+    const owner = await studioGrantOwner(this.env, projectId);
+    if (!owner) return;
+    await this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(owner)).fetch('https://do/spend', {
+      method: 'POST',
+      body: JSON.stringify({ credits: creditsForNeurons(neurons), kind: 'usage_studio_image', upTo: true }),
+    });
+  }
 }
+
+/**
+ * Pixels for the plugin's make_image upload (tools.ts make_image, plugin ops/Image.luau): base64 RGBA, held in R2 under a
+ * random id only for the seconds between generation and the plugin's download, then deleted by the tool. The id is the
+ * capability (122 random bits, single use, never shown to anyone but the plugin it was queued for).
+ */
+app.get('/api/studio/pixels/:id', async (c) => {
+  const id = c.req.param('id');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) || !c.env.MEDIA) return c.text('not found', 404);
+  const obj = await c.env.MEDIA.get(`studio-pixels/${id}`);
+  if (!obj) return c.text('not found', 404);
+  return new Response(obj.body, { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
+});
 
 app.get('/api/projects/:id/ws', async (c) => {
   if (c.req.header('Upgrade')?.toLowerCase() !== 'websocket') return c.json({ error: 'expected websocket' }, 426);

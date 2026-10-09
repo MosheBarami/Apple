@@ -2,7 +2,9 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import { searchLibraryCode, insertPlan, aliasFor, treeOps, header, audit } from './library-code';
 import { searchLibrarySkills, readLibrarySkill, LIBRARY_SKILL_PREFIX } from './library-skills';
-import { embed } from './gateway';
+import { embed, release as releaseImageBudget, reserve as reserveImageBudget, settle as settleImageBudget } from './gateway';
+import { finishImage, IMAGE_KINDS, planImage, toBase64, type ImageKind } from './image-gen';
+import { IMAGE_MODEL, imageNeurons } from './pricing';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
@@ -2859,6 +2861,81 @@ export const TOOLS: Record<string, ToolImpl> = {
       const roots = Array.isArray(a.roots) ? a.roots.filter((r): r is string => typeof r === 'string').slice(0, 10) : undefined;
       const timeoutSeconds = Math.min(50, Math.max(5, Math.round(Number(a.timeout_seconds) || 40)));
       return op(ctx, { op: 'run_tests', timeoutSeconds, ...(roots?.length ? { roots } : {}) }, (timeoutSeconds + 40) * 1000);
+    },
+  },
+  /**
+   * Game art from Lucid Origin (owner, 2026-10-09: "only him generates all of the UI/GUI/assets"). image-gen.ts makes the
+   * picture (cut-out, cropped, sized); the plugin uploads it into the Studio user's own account (ops/Image.luau) and the
+   * id comes back for build_ui (image, skin, pattern) or any Image property. Metered on the shared budget per image.
+   */
+  make_image: {
+    def: {
+      name: 'make_image',
+      description:
+        'Make a picture for the game with the image model and upload it to the person\'s Roblox account; returns its rbxassetid and size. ' +
+        'Use it for every piece of art a screen or world needs: button and panel skins, title banners, icons, item pictures, textures, backgrounds, decals. ' +
+        'kind: icon | button | panel | banner | sprite (cut out on a transparent background and cropped) | texture (seamless tile) | background (full frame). ' +
+        'Describe the subject and look in prompt; pass the SAME style string for every image of one screen so they match. ' +
+        'Text is drawn only when quoted in the prompt ("SHOP"); live text (names, numbers, labels) stays in build_ui. About $0.03 per image: make what the request needs.',
+      parameters: S({
+        prompt: { type: 'string', description: 'What to draw: subject, shape, colours, material, mood. e.g. "a chunky red glossy plastic button with a thick black outline"' },
+        kind: { type: 'string', enum: [...IMAGE_KINDS] },
+        style: { type: 'string', description: 'The shared art style of this screen, e.g. "bright cartoon simulator style, thick black outlines, glossy plastic, LEGO studs"' },
+        name: { type: 'string', description: 'Asset name in the person\'s inventory' },
+        size: { type: 'array', items: { type: 'number' }, description: '[w, h] box to fit the result in, at most 1024; defaults by kind' },
+        seed: { type: 'integer' },
+      }, ['prompt', 'kind']),
+    },
+    studio: true,
+    studioOps: ['create_image_asset'],
+    run: async (ctx, a) => {
+      const prompt = typeof a.prompt === 'string' ? a.prompt.trim() : '';
+      if (prompt.length < 3 || prompt.length > 1200) return { error: 'prompt must describe the picture in 3-1200 characters.' };
+      if (!(IMAGE_KINDS as readonly string[]).includes(String(a.kind))) return { error: `kind must be one of ${IMAGE_KINDS.join(', ')}.` };
+      const size = Array.isArray(a.size) && a.size.length === 2 && a.size.every((v) => typeof v === 'number' && v >= 16 && v <= 1024) ? [Math.round(a.size[0] as number), Math.round(a.size[1] as number)] as [number, number] : undefined;
+      const plan = planImage({ prompt, kind: a.kind as ImageKind, style: typeof a.style === 'string' ? a.style.slice(0, 400) : undefined, size });
+      const neurons = imageNeurons(plan.genW, plan.genH, plan.steps);
+      let reserved: number;
+      try {
+        reserved = await reserveImageBudget(ctx.env, IMAGE_MODEL, neurons);
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : 'StudPilot could not check its capacity, so nothing was drawn.' };
+      }
+      let jpegB64: string;
+      try {
+        const out = (await (ctx.env.AI.run as (m: string, i: unknown) => Promise<unknown>)(IMAGE_MODEL, {
+          prompt: plan.prompt, width: plan.genW, height: plan.genH, steps: plan.steps, ...(Number.isInteger(a.seed) ? { seed: a.seed } : {}),
+        })) as { image?: unknown };
+        if (typeof out?.image !== 'string') throw new Error('the image model returned no image');
+        jpegB64 = out.image;
+      } catch (e) {
+        await releaseImageBudget(ctx.env, reserved, IMAGE_MODEL);
+        return { error: `The image model failed: ${e instanceof Error ? e.message : String(e)}. Try again, or simplify the prompt.` };
+      }
+      await settleImageBudget(ctx.env, reserved, neurons, IMAGE_MODEL, 'studio_image');
+      if (!ctx.env.MEDIA) return { error: 'Image storage is not configured, so the picture cannot reach Studio.' };
+      const img = finishImage(jpegB64, plan);
+      if ('error' in img) return { error: img.error, neurons };
+      // The pixels wait in R2 for the plugin's one download (index.ts /api/studio/pixels/:id), then are deleted.
+      const id = crypto.randomUUID();
+      await ctx.env.MEDIA!.put(`studio-pixels/${id}`, toBase64(img.data), { customMetadata: { createdAt: String(Date.now()), projectId: ctx.projectId ?? '' } });
+      const name = (typeof a.name === 'string' && a.name.trim() ? a.name.trim() : `StudPilot ${plan.kind}`).slice(0, 50);
+      const made = await op(ctx, { op: 'create_image_asset', url: `https://studpilot.app/api/studio/pixels/${id}`, width: img.width, height: img.height, name }, 120_000);
+      await ctx.env.MEDIA!.delete(`studio-pixels/${id}`).catch(() => undefined);
+      const assetId = (made as { assetId?: unknown })?.assetId;
+      if (typeof assetId !== 'number' && typeof assetId !== 'string') return { ...(made as object), neurons, note: 'The picture was drawn but not uploaded; nothing in the place changed.' };
+      return {
+        image: `rbxassetid://${assetId}`,
+        width: img.width,
+        height: img.height,
+        kind: plan.kind,
+        neurons,
+        use: plan.kind === 'texture'
+          ? 'Tile it: build_ui pattern {image, tile} or a Texture on a part.'
+          : plan.kind === 'panel' || plan.kind === 'button'
+            ? `Use it as a skin in build_ui: skin {image, size: [${img.width}, ${img.height}], slice: <border px>} so it stretches without distorting its corners.`
+            : 'Use it in build_ui (an image or icon node, or a skin) or on an Image/Decal property.',
+      };
     },
   },
   review_scripts: {

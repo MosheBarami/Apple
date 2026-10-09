@@ -316,6 +316,16 @@ test('the shipped plugin refuses the pattern the removed Creator Store asset con
     const raw = readFileSync(join(HERE, '..', 'src', name), 'utf8');
     let src = raw.replace(/--\[\[[\s\S]*?\]\]/g, ' ').replace(/--[^\n]*/g, ' ');
     assert.ok(src.length > 200, `${name}: comment stripping ate the source — this test would check nothing`);
+    // THE ONE UPLOAD (owner, 2026-10-09: generated UI art). ops/Image.luau draws pixels fetched from StudPilot's own
+    // pixel route into an EditableImage and uploads that, as an Image, into the signed-in Studio user's account.
+    const ALLOWED_UPLOAD = 'AssetService:CreateAssetAsync(editable, Enum.AssetType.Image, { Name = name, Description = "Made with StudPilot" })';
+    if (name === 'ops/Image.luau') {
+      assert.equal(src.split(ALLOWED_UPLOAD).length - 1, 1, 'ops/Image.luau must hold exactly one upload, of the allowed shape');
+      assert.match(src, /Image\.URL_PREFIX = "https:\/\/studpilot\.app\/api\/studio\/pixels\/"/, 'the pixels come only from StudPilot');
+      const check = src.indexOf('Image.URL_PREFIX) ~= Image.URL_PREFIX');
+      assert.ok(check > 0 && check < src.indexOf('RequestAsync'), 'the url is checked before it is fetched');
+      src = src.replace(ALLOWED_UPLOAD, ' ');
+    }
     if (name === 'Commands.luau') {
       assert.equal(src.split(ALLOWED_LOADER).length - 1, 1, 'Commands.luau must hold exactly one GetObjects call, of the allowed shape');
       src = src.replace(ALLOWED_LOADER, ' ');

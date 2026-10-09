@@ -59,6 +59,8 @@ export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName
   'preview_sound',
   // Plugin 2.0: search, serialize and TestEZ families (ops/Search.luau, ops/Serialize.luau, ops/Tests.luau).
   'grep', 'glob', 'list', 'serialize', 'deserialize', 'run_tests',
+  // 2026-10-09: generated art uploaded into the Studio user's account (ops/Image.luau).
+  'create_image_asset',
 ]);
 const NOT_REPORTED = 'the connected Studio plugin does not report this operation';
 

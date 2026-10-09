@@ -29,5 +29,6 @@ load(function() return require(script.Upright) end)
 load(function() return require(script.Search) end)
 load(function() return require(script.Serialize) end)
 load(function() return require(script.Tests) end)
+load(function() return require(script.Image) end)
 
 return families

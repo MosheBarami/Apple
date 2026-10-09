@@ -33,6 +33,7 @@ export const STUDIO_WRITE_TOOLS = [
   'run_luau',
   'edit_terrain',
   'insert_from_store',
+  'make_image',
   'animate_model',
   'play_check',
 ] as const;

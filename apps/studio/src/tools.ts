@@ -74,25 +74,26 @@ export function knowledgeTools(env: Env, writer: UIMessageStreamWriter): ToolSet
   return {
     search_docs: tool({
       description:
-        'Search the official Roblox Creator Docs (guides and the full Engine API reference) and the Luau docs. Returns the best matching sections with their live URLs. Use it whenever you are not certain of a class, property, method, event, enum or best practice, and cite the URLs you relied on in your reply as markdown links.',
+        'Search the official Roblox Creator Docs (guides and the full Engine API reference) and the Luau docs, or read one page in full. ' +
+        'With query: the best matching sections with their live URLs. With url (one search_docs gave you): that page or API member in full. ' +
+        'Use it whenever you are not certain of a class, property, method, event, enum or best practice, and cite the URLs you relied on in your reply as markdown links.',
       inputSchema: z.object({
-        query: z.string().describe('What to look up, e.g. "UIListLayout padding" or "DataStore UpdateAsync retries".'),
+        query: z.string().optional().describe('What to look up, e.g. "UIListLayout padding" or "DataStore UpdateAsync retries".'),
+        url: z.string().optional().describe('A create.roblox.com/docs or luau.org URL to read in full.'),
         source: z.enum(['roblox', 'luau', 'all']).optional().describe('Default all.'),
       }),
-      execute: async ({ query, source }) => {
+      execute: async ({ query, url, source }) => {
+        // One tool for search and read: the agent's surface is capped at 25 tools (make_image took read_doc's place).
+        if (url) {
+          const page = (await KNOWLEDGE_CACHE.get(`doc:${url}`, () => readDoc(env.DOCS, url))) as Awaited<ReturnType<typeof readDoc>>;
+          if (!page) throw new Error(`${url} is not a Roblox or Luau documentation page.`);
+          cite(page.url, page.title || page.url);
+          return page;
+        }
+        if (!query) throw new Error('Pass query to search, or url to read a page.');
         const hits = (await KNOWLEDGE_CACHE.get(`docs:${source ?? 'all'}:${query.toLowerCase().trim()}`, () => searchDocs(env.DOCS, query, { limit: 6, source: source ?? 'all' }))) as Awaited<ReturnType<typeof searchDocs>>;
         for (const h of hits.slice(0, 3)) cite(h.url, h.heading && h.heading !== h.title ? `${h.title}: ${h.heading}` : h.title);
         return hits.map((h) => ({ title: h.heading && h.heading !== h.title ? `${h.title} › ${h.heading}` : h.title, url: h.url, source: h.source, snippet: h.snippet }));
-      },
-    }),
-    read_doc: tool({
-      description: 'Read a documentation page or API member in full, by the URL search_docs gave you (create.roblox.com/docs or luau.org).',
-      inputSchema: z.object({ url: z.string() }),
-      execute: async ({ url }) => {
-        const page = (await KNOWLEDGE_CACHE.get(`doc:${url}`, () => readDoc(env.DOCS, url))) as Awaited<ReturnType<typeof readDoc>>;
-        if (!page) throw new Error(`${url} is not a Roblox or Luau documentation page.`);
-        cite(page.url, page.title || page.url);
-        return page;
       },
     }),
     search_creator_store: tool({

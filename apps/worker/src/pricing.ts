@@ -190,7 +190,20 @@ export const MAX_NEURONS_PER_REQUEST = 1_200;
  */
 export const AGENT_STEP_CAPS: Record<string, number> = {
   '@cf/moonshotai/kimi-k2.7-code': 32_000,
+  // One generated image (make_image): at most 4 tiles of 1024x1024 at 30 steps is about 2,900 neurons.
+  '@cf/leonardo/lucid-origin': 8_000,
 };
+
+/** The image model (owner, 2026-10-09: "only him generates all of the UI art"). Workers AI catalogue, 2026-10-09. */
+export const IMAGE_MODEL = '@cf/leonardo/lucid-origin';
+const IMAGE_USD_PER_TILE = 0.007; // per 512x512 tile
+const IMAGE_USD_PER_STEP = 0.000132;
+
+/** Neurons one Lucid Origin image costs at this size and step count. */
+export function imageNeurons(width: number, height: number, steps: number): number {
+  const tiles = Math.ceil(width / 512) * Math.ceil(height / 512);
+  return Math.ceil((tiles * IMAGE_USD_PER_TILE + steps * IMAGE_USD_PER_STEP) / USD_PER_NEURON);
+}
 
 /** The per-call reservation cap for a provider model id. */
 export function maxNeuronsPerStepFor(modelId: string): number {

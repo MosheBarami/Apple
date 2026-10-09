@@ -98,6 +98,8 @@ export type StudioOp =
   | { op: 'deserialize'; parent: string; node?: unknown; nodes?: unknown[] }
   /** Plugin 2.0 (src/ops/Tests.luau): the place's TestEZ *.spec modules, run in a solo Test session. */
   | { op: 'run_tests'; roots?: string[]; timeoutSeconds?: number }
+  /** 2026-10-09 (src/ops/Image.luau): generated pixels from StudPilot's pixel route, uploaded as an Image into the Studio user's account. */
+  | { op: 'create_image_asset'; url: string; width: number; height: number; name?: string }
   | { op: 'create_instances'; items: InstanceSpec[] }
   | { op: 'set_props'; path: string; props?: Record<string, PropValue>; attributes?: Record<string, PropValue> }
   | {
@@ -997,6 +999,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'generate_model':
     case 'generate_model_external':
     case 'generate_image':
+    case 'make_image':
     case 'generate_ui_image_hf':
     // Puts a library PNG into the user's Roblox account and nothing into the place, the same act
     // as the generators beside it: an asset is produced for the build to use.
@@ -2965,6 +2968,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'remove_effect',
     label: 'Remove StudPilot effects',
     why: 'Deletes presentation effects that StudPilot previously attached to project objects.',
+    group: 'changes',
+  },
+  {
+    name: 'make_image',
+    label: 'Make game art',
+    why: 'Draws a picture (a button, panel, icon, banner, texture or background) with the image model and uploads it to your Roblox account as an Image.',
     group: 'changes',
   },
   {

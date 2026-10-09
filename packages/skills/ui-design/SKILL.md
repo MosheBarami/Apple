@@ -209,14 +209,17 @@ still yours, chosen for the game.
 - **Bars** (stamina, health, XP): a dark track with a 3 px border, the fill a vivid gradient with a light
   top band, texture over the fill, value text outlined on top; the fill tweens, it never jumps.
 
+**Art.** Every picture (button and panel skins, banners, icons, textures, backgrounds) comes from
+`make_image`: load the game-art skill. A drawn button skin, tinted per colour, with outlined live text on top is
+the strongest single upgrade from flat UI.
+
 **Textures.** "Studded", "Roblox classic" or "LEGO" means a stud texture tiled over surfaces (`pattern`,
-tile 16-32 px). Get one: `search_creator_store` category decal ("stud texture"), `insert_from_store` it,
-read the Decal's `Texture` with `get_instance` (that rbxassetid is the image), use it in `pattern`, then
-delete the inserted holder. Do the same for stripes, noise, grids or any surface a theme needs.
+tile 16-32 px): Roblox's classic stud map rbxassetid://10509831729, or a `texture` from make_image. Stripes,
+noise, wood or metal come from make_image the same way.
 
 **The "make it cooler" ladder.** Apply in order, as far as the request asks ("1000x" = all of it):
-1. display font + black `textStroke` on every label; 2. a saturated hue per element with a light-top
-gradient; 3. thick dark borders and inset wells; 4. `depth` edges on buttons and the panel; 5. a theme
+1. display font + black `textStroke` on every label; 2. drawn skins from make_image (or a saturated hue per
+element with a light-top gradient); 3. thick dark borders and inset wells; 4. `depth` edges on buttons and the panel; 5. a theme
 texture (`pattern`); 6. a bright title strip; 7. motion in a LocalScript: buttons shrink to 0.94 on press
 and lift on hover (UIScale + TweenService, 0.08 s), bars tween, the primary button shimmers (a UIGradient
 Offset tween); 8. a click sound. Keep the layout measured clean at every step.
