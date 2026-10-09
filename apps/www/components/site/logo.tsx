@@ -1,12 +1,19 @@
 import { cn } from "@/lib/utils";
 
-/** The mark: an ink tile with one accent stud in its corner. Drawn in code, no image. */
+/**
+ * The mark (2026-10-09): a brick seen from above, three studs in place and one orange stud being placed, lifted out of
+ * its slot (its shadow stays behind). Studs are what Roblox builds with; the lifted one is the pilot at work. The tile
+ * takes the text colour, so it is ink on paper and paper on ink. Drawn in code, no image. Same geometry as app/icon.svg.
+ */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg aria-hidden className={cn("size-[22px] shrink-0", className)} viewBox="0 0 24 24">
-      <rect fill="currentColor" height="24" rx="6" width="24" />
-      <path d="M7 15.5c0 1.4 1.6 2.5 5 2.5s5-1 5-2.6c0-3.6-9.6-1.8-9.6-5.4C7.4 8.6 9 7 12 7s4.6 1.1 4.6 2.6" fill="none" stroke="var(--background)" strokeLinecap="round" strokeWidth="2.1" />
-      <rect fill="var(--brand)" height="5" rx="1.5" width="5" x="16" y="3" />
+    <svg aria-hidden className={cn("size-[22px] shrink-0", className)} viewBox="0 0 64 64">
+      <rect fill="currentColor" height="64" rx="15" width="64" />
+      <circle cx="21" cy="43" fill="var(--background)" r="8.5" />
+      <circle cx="43" cy="43" fill="var(--background)" r="8.5" />
+      <circle cx="21" cy="21" fill="var(--background)" r="8.5" />
+      <circle cx="43" cy="21" fill="#000" fillOpacity="0.3" r="8.5" />
+      <circle cx="47" cy="17" fill="var(--brand)" r="8.5" />
     </svg>
   );
 }
