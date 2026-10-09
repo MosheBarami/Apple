@@ -140,7 +140,7 @@ function shorten(text: string): string {
  */
 export async function repairToolInput<T extends { input: string }>({ toolCall }: { toolCall: T }): Promise<T | null> {
   const asObject = (text: string): Record<string, unknown> | null => {
-    for (const attempt of [() => JSON.parse(text), () => JSON.parse(balanceJson(text)), () => JSON.parse(jsonrepair(balanceJson(text)))]) {
+    for (const attempt of [() => JSON.parse(text), () => firstOfTwo(text), () => JSON.parse(balanceJson(text)), () => JSON.parse(jsonrepair(balanceJson(text)))]) {
       try {
         let v = attempt() as unknown;
         if (typeof v === 'string') v = asObject(v);
@@ -161,6 +161,30 @@ export async function repairToolInput<T extends { input: string }>({ toolCall }:
   }
   const fixed = asObject(text);
   return fixed ? { ...toolCall, input: JSON.stringify(fixed) } : null;
+}
+
+/**
+ * A call written twice back to back ({…} {…}): the first object, but only when what follows is itself a whole object. A stray
+ * closer inside one call also ends an object early, and cutting there would silently drop the rest of that call.
+ */
+function firstOfTwo(text: string): unknown {
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (inString) {
+      if (ch === '\\') i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{' || ch === '[') depth++;
+    else if ((ch === '}' || ch === ']') && --depth === 0) {
+      const rest = text.slice(i + 1).trim().replace(/^,/, '').trim();
+      const second = JSON.parse(rest) as unknown;
+      if (!second || typeof second !== 'object' || Array.isArray(second)) throw new Error('not two objects');
+      return JSON.parse(text.slice(0, i + 1));
+    }
+  }
+  throw new Error('no complete object');
 }
 
 /**

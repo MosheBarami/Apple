@@ -74,3 +74,16 @@ test('earlier turns keep their tool calls and results, shortened; the current tu
   assert.ok(result.value.length < 900);
   assert.deepEqual(out[5].content[0].input, big);
 });
+
+test('a call written twice back to back is repaired to the first object', async () => {
+  const one = { name: 'ProAdminPanel', root: { type: 'frame', children: [{ type: 'text', text: 'Ban' }] } };
+  const fixed = await S.repairToolInput({ toolCall: { toolName: 'build_ui', input: `${JSON.stringify(one)} ${JSON.stringify({ name: 'Again' })}` } });
+  assert.deepEqual(JSON.parse(fixed.input), one);
+});
+
+test('a stray closer inside one call is not mistaken for two calls: nothing after it is dropped', async () => {
+  const fixed = await S.repairToolInput({ toolCall: { toolName: 'build_ui', input: '{"name":"A","root":{"type":"frame"}}, "styles":{"x":{"bg":"#fff"}}}' } });
+  const v = fixed ? JSON.parse(fixed.input) : null;
+  assert.ok(!v || v.styles || v.root, 'either repaired with its content, or refused — never cut to the first object alone');
+  assert.ok(!(v && v.name === 'A' && !v.styles && Object.keys(v).length === 2), 'not truncated to {name, root}');
+});
