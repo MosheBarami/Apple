@@ -218,7 +218,8 @@ do
     assert(requests[1].headers["X-StudPilot-Plugin-Protocol"] == "1")
     assert(requests[1].body.installId == ID.installId and requests[1].body.secret == ID.secret)
     assert(requests[1].body.studioSessionId == ID.studioSessionId and requests[1].body.robloxUserId == 42)
-    assert(requests[1].body.wait == true and requests[1].body.connectedProjectId == nil)
+    -- 2.0: the first announce of a load is answered at once, so a slow one means Studio's HTTP prompt.
+    assert(requests[1].body.wait == false and requests[1].body.connectedProjectId == nil)
     assert(requests[1].body.place.placeId == 77 and requests[1].body.place.gameId == 88)
     assert(stateCalls() == 1, "claim observes the place once")
 

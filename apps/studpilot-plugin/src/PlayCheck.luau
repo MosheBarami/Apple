@@ -1009,8 +1009,8 @@ end
 	seconds with whatever it has, and the plugin watchdog (args.studpilotPlayCheck) ends it at 60 s.
 ]]
 PlayCheck.TESTS_NAME = "StudPilotRunTests"
-PlayCheck.TESTS_SOURCE = "-- StudPilot run_tests (temporary; removed after the test session).\n" .. [==[
-local MARKER = "__ApplePlayCheckHarnessV1"
+PlayCheck.TESTS_SOURCE = "-- StudPilot run_tests (temporary; removed after the test session).\n"
+	.. ("local MARKER = %q\n"):format(MARKER) .. [==[
 local okService, StudioTestService = pcall(function() return game:GetService("StudioTestService") end)
 if not okService or not StudioTestService then return end
 local okArgs, args = pcall(function() return StudioTestService:GetTestArgs() end)

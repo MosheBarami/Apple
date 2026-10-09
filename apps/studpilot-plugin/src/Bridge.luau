@@ -887,7 +887,12 @@ function Bridge:connect(identity: any): (boolean, string, string)
 	if self.destroyed or self.generation ~= attemptGeneration then
 		return false, "Connection attempt was cancelled.", "failed"
 	end
-	local ok, statusCode, body = post(ANNOUNCE_PATH, announceBody(identity, placeOf(currentState), true, nil), nil)
+	-- 2.0: the FIRST announce of a plugin load is answered at once (wait = false; the server holds only a
+	-- waiting announce). So a first request still unanswered after a few seconds is Studio's own HTTP
+	-- permission prompt, which init.server.luau then names in the dock. Every later announce long-holds.
+	local holding = self.answeredOnce == true
+	local ok, statusCode, body = post(ANNOUNCE_PATH, announceBody(identity, placeOf(currentState), holding, nil), nil)
+	if ok then self.answeredOnce = true end
 	if self.destroyed or self.generation ~= attemptGeneration then
 		return false, "Connection attempt was cancelled.", "failed"
 	end

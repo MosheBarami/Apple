@@ -301,6 +301,11 @@ end)
 local view = "waiting"
 local problem: string? = nil
 local retryNow = false
+-- 2.0: the first request of this load is answered at once (Bridge:connect), so one still out after 8 s is
+-- waiting on Studio's HTTP permission prompt for studpilot.app. Said in one line, while it lasts.
+local firstAnswered = false
+local promptHint = false
+local PROMPT_HINT = "Allow StudPilot to reach studpilot.app in the prompt Studio is showing"
 
 local function render()
 	if disposed then return end
@@ -323,7 +328,7 @@ local function render()
 		view = "waiting"
 		dot.BackgroundColor3 = AMBER
 		title.Text = "Waiting for StudPilot"
-		detail.Text = "Open your project on studpilot.app and press Connect."
+		detail.Text = if promptHint and not firstAnswered then PROMPT_HINT else "Open your project on studpilot.app and press Connect."
 		action.Visible = false
 	end
 	if projectName == nil then showSources(false, nil) end
@@ -410,6 +415,14 @@ local function pause(seconds: number, wasConnected: boolean?)
 end
 
 task.spawn(function()
+	local started = os.clock()
+	while not disposed and not firstAnswered and os.clock() - started < 8 do task.wait(0.5) end
+	if disposed or firstAnswered then return end
+	promptHint = true
+	render()
+end)
+
+task.spawn(function()
 	local failures = 0
 	while not disposed do
 		if bridge:isConnected() then
@@ -419,6 +432,7 @@ task.spawn(function()
 		else
 			local called, connected, message, state = pcall(function() return bridge:connect(identity()) end)
 			if disposed then break end
+			firstAnswered = true
 			if called and connected then
 				failures = 0
 				problem = nil
