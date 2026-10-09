@@ -15,7 +15,7 @@ changes at runtime. (3D models are not pictures: build them or take them from th
 1. Read the request and the game: theme, mood, audience, what is already in the place (colours, fonts, existing UI).
 2. Write ONE style string for the whole screen and reuse it in every call, word for word, so the pieces match:
    - simulator or cartoon: "bright cartoon simulator game art, thick black outlines, glossy plastic, saturated colours, soft top highlight"
-   - studded classic Roblox: "classic Roblox plastic bricks, raised LEGO studs on top, glossy, thick dark outline, bright primary colours"
+   - studded classic Roblox: "classic Roblox plastic bricks, round raised LEGO bumps on top, glossy, thick dark outline, bright primary colours"
    - sci-fi: "clean sci-fi HUD art, dark gunmetal panels, glowing cyan edges, thin bevels"
    - fantasy: "hand-painted fantasy RPG UI, carved wood and gold trim, parchment"
    - horror: "grimy horror game UI, rusted metal, scratched dark paint, dim red glow"
@@ -36,13 +36,15 @@ changes at runtime. (3D models are not pictures: build them or take them from th
 | `banner` | cut-out title strip | "a wide ribbon banner with the text \"ADMIN PANEL\" in bold white letters with a black outline" + style |
 | `icon` | cut-out, 256 | "a gold coin with a star on it" + style |
 | `sprite` | cut-out object, 512 | "a pink lollipop item" + style |
-| `texture` | seamless square tile, 256 | "classic Roblox stud texture, rows of round raised studs, light grey plastic, top-down" |
+| `texture` | seamless square tile, 256 | "classic Roblox brick top, rows of round raised LEGO bumps, light grey plastic, top-down" |
 | `background` | full frame, 1024x576 | "a sunny cartoon island with palm trees, soft blurred, for a menu backdrop" + style |
 
 - Text is drawn only when the prompt quotes it ("\"SHOP\""). Keep quoted text short (1-3 words): titles and logos.
 - Say colours, materials, outline weight and lighting. Never ask for a background colour on cut-out kinds: the tool
   handles the background and removes it.
 - A green or lime subject is fine: the tool picks a different removal colour by itself.
+- The image model's safety filter misreads some game words ("skin", "stud") as adult content. In prompts say
+  "button graphic" and "round raised bumps"; the words are fine everywhere else (names, build_ui).
 - To redo one piece, change the prompt or pass a different `seed`; keep the style string.
 
 ## 3. Using the results in build_ui
