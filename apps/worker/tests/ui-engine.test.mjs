@@ -113,6 +113,10 @@ const EVERYTHING = {
     { type: 'stack', name: 'Chips', at: 'top-left', w: 300, dir: 'h', wrap: true, justify: 'between', children: [
       { type: 'text', text: 'a', bg: '#333333' }, { type: 'spacer' }, { type: 'text', text: 'b', grow: 2, w: 'fill' },
     ] },
+    { type: 'stack', name: 'Chunky', at: 'top-right', w: 240, h: 120, gap: 6, depth: { color: '#3a0000', px: 6 }, pattern: { image: 'rbxassetid://9', tile: 24, t: 0.6, tint: '#ffffff' }, bg: '#ff3030', children: [
+      { type: 'button', name: 'Go', text: 'GO', w: 'fill', h: 48, bg: '#30ff30', stroke: { color: '#000000', width: 3 }, textStroke: { color: '#000000', width: 2 }, depth: { color: '#106010' }, pattern: { image: 'rbxassetid://9' } },
+      { type: 'text', text: 'Outlined', textStroke: { color: '#000000', width: 3, t: 0.1 } },
+    ] },
     { type: 'stack', name: 'Column', at: 'bottom', w: 300, h: 300, justify: 'end', align: 'end', children: [
       { type: 'input', placeholder: 'Message', placeholderColor: '#777777', multiline: true, maxW: 400, maxH: 200 },
       { type: 'button', text: 'Send', font: 'BuilderSans:Bold:Italic' },
@@ -153,7 +157,7 @@ test('every class, property, value type and enum the compiler emits is on the pl
   for (const t of seen.types) assert.ok(VALUE_TYPES.has(t), `value type ${t} is not decoded by the plugin`);
   for (const e of seen.enums) assert.ok(ALLOW.enums.has(e), `Enum.${e} is not on the plugin enum allowlist`);
   // The exercise reached the parts that matter.
-  for (const c of ['UIFlexItem', 'UITextSizeConstraint', 'UISizeConstraint', 'UIAspectRatioConstraint', 'UIGradient', 'UIStroke', 'UIGridLayout', 'ScrollingFrame', 'TextBox', 'ImageButton']) {
+  for (const c of ['UIFlexItem', 'UITextSizeConstraint', 'UISizeConstraint', 'UIAspectRatioConstraint', 'UIGradient', 'UIStroke', 'UIGridLayout', 'ScrollingFrame', 'TextBox', 'ImageButton', 'ImageLabel']) {
     assert.ok(seen.classes.has(c), `the exercise never emitted ${c}`);
   }
 });
@@ -466,4 +470,56 @@ test('a free frame whose children have no placement warns that they overlap, and
   const placed = E.compileScreen({ name: 'S', children: [{ type: 'frame', name: 'P', w: 300, h: 300, children: [{ type: 'text', text: 'a', at: 'top' }, { type: 'text', text: 'b', at: 'bottom' }] }] });
   assert.deepEqual(placed.warnings, []);
   assert.match(E.compileScreen({ name: 'S', children: [{ type: 'frame', gap: 4, children: [] }] }).error, /use type "stack"/);
+});
+
+/* --------------------------------------------------------------- game-UI dressing --- */
+
+test('a bordered button with textStroke outlines its text in a label of its own; the button keeps the border', () => {
+  const out = E.compileScreen({ name: 'S', children: [{ type: 'stack', w: 300, h: 100, children: [
+    { type: 'button', name: 'Kill', text: 'Kill', h: 48, bg: '#ff3300', stroke: { color: '#111111', width: 3 }, textStroke: { color: '#000000', width: 2 }, font: 'FredokaOne', fontSize: 24 },
+  ] }] });
+  assert.ok(!out.error, out.error);
+  const kill = find(out.item, 'Kill');
+  assert.equal(kill.className, 'TextButton');
+  assert.equal(kill.props.Text.v, '');
+  assert.equal(kids(kill, 'UIStroke')[0].props.ApplyStrokeMode.v, 'Enum.ApplyStrokeMode.Border');
+  const label = kids(kill, 'TextLabel')[0];
+  assert.equal(label.props.Text.v, 'Kill');
+  assert.equal(label.props.TextSize.v, 24);
+  assert.equal(kids(label, 'UIStroke')[0].props.ApplyStrokeMode.v, 'Enum.ApplyStrokeMode.Contextual');
+  assert.deepEqual(out.interactive, ['Stack1.Kill']);
+});
+
+test('depth puts a darker base under a face that carries the look, the layout and the children', () => {
+  const out = E.compileScreen({ name: 'S', children: [{ type: 'stack', name: 'Panel', w: 300, h: 200, bg: '#222222', radius: 8, pad: 10, gap: 6,
+    stroke: { color: '#000000', width: 3 }, depth: { color: '#000000', px: 6 }, gradient: { colors: ['#333333', '#222222'], rotation: 90 },
+    children: [{ type: 'text', name: 'T', text: 'Hi' }] }] });
+  assert.ok(!out.error, out.error);
+  const panel = find(out.item, 'Panel');
+  assert.equal(panel.className, 'Frame');
+  assert.deepEqual(panel.props.BackgroundColor3.v, [0, 0, 0]);
+  assert.deepEqual(panel.props.Size.v, [0, 300, 0, 200]);
+  assert.ok(kids(panel, 'UIStroke').length === 1 && kids(panel, 'UICorner').length === 1);
+  const face = kids(panel, 'Frame')[0];
+  assert.equal(face.name, 'Face');
+  assert.deepEqual(face.props.Size.v, [1, 0, 1, -6]);
+  assert.deepEqual(face.props.BackgroundColor3.v, [0.1333, 0.1333, 0.1333]);
+  for (const c of ['UIListLayout', 'UIPadding', 'UIGradient', 'UICorner']) assert.equal(kids(face, c).length, 1, c);
+  assert.ok(find(face, 'T'));
+  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'stack', depth: { color: '#000000' } }] }).error, /depth needs a fixed/);
+});
+
+test('pattern tiles an image across the object (studs, stripes) under its children', () => {
+  const out = E.compileScreen({ name: 'S', children: [{ type: 'stack', name: 'Bar', w: 300, h: 40, bg: '#00ff66', pattern: { image: 'rbxassetid://123', tile: 20, t: 0.5 },
+    children: [{ type: 'button', name: 'B', text: 'Go', w: 80, pattern: { image: 'rbxassetid://123' } }] }] });
+  assert.ok(!out.error, out.error);
+  const bar = find(out.item, 'Bar');
+  assert.equal(bar.className, 'ImageLabel');
+  assert.equal(bar.props.ScaleType.v, 'Enum.ScaleType.Tile');
+  assert.deepEqual(bar.props.TileSize.v, [0, 20, 0, 20]);
+  const b = find(out.item, 'B');
+  assert.equal(b.className, 'ImageButton');
+  assert.equal(b.props.Text, undefined);
+  assert.equal(kids(b, 'TextLabel')[0].props.Text.v, 'Go');
+  assert.match(E.compileScreen({ name: 'S', children: [{ type: 'text', text: 'x', pattern: { image: 'rbxassetid://1' } }] }).error, /pattern and depth go on/);
 });

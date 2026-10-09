@@ -119,6 +119,10 @@ export interface UiNode {
   image?: string; fit?: 'fit' | 'crop' | 'stretch'; tint?: string; imageT?: number;
   // divider
   thickness?: number;
+  // game-UI depth (2026-10-09): outlined text, a chunky base edge, a tiled texture
+  textStroke?: { color: string; width?: number; t?: number };
+  depth?: { color: string; px?: number };
+  pattern?: { image: string; tile?: number; t?: number; tint?: string };
 }
 type Size = number | 'fill' | 'auto' | `${number}%`;
 
@@ -171,7 +175,7 @@ const inward = (anchor: number, d: number) => (anchor === 1 ? -d : d);
 const KNOWN_KEYS = new Set(['type', 'name', 'children', 'w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'aspect', 'grow', 'at', 'offset', 'z', 'visible',
   'dir', 'gap', 'pad', 'align', 'justify', 'wrap', 'cols', 'cell', 'bar', 'barColor', 'bg', 'bgT', 'radius', 'clip', 'stroke', 'gradient',
   'text', 'font', 'fontSize', 'scale', 'color', 'textT', 'alignX', 'alignY', 'truncate', 'rich', 'lineHeight',
-  'placeholder', 'placeholderColor', 'multiline', 'image', 'fit', 'tint', 'imageT', 'thickness']);
+  'placeholder', 'placeholderColor', 'multiline', 'image', 'fit', 'tint', 'imageT', 'thickness', 'textStroke', 'depth', 'pattern']);
 
 /* ------------------------------------------------------------ styles and repeats --- */
 // Token saver: a screen's look is written once (`styles`) and a list once (`each`), instead of the model writing the
@@ -247,6 +251,99 @@ function expandList(list: unknown[], styles: Record<string, Args>, path: string)
     });
   });
   return out;
+}
+
+/* ------------------------------------------------- game-UI dressing (2026-10-09) --- */
+// What the owner's reference UI is made of and the plain schema could not express: button text with a black outline
+// on a bordered button, a tiled texture (studs) behind the content, and a chunky darker base under a button or panel.
+
+function textStrokeProps(v: unknown, where: string): P {
+  const s = v as { color?: unknown; width?: unknown; t?: unknown } | null;
+  if (!s || typeof s !== 'object') fail(`${where}.textStroke must be {color, width?, t?}.`);
+  return {
+    Color: colour(s!.color, `${where}.textStroke.color`),
+    Thickness: num(s!.width === undefined ? 2 : px(s!.width, `${where}.textStroke.width`)),
+    Transparency: num(s!.t === undefined ? 0 : unit(s!.t, `${where}.textStroke.t`)),
+    ApplyStrokeMode: en('ApplyStrokeMode', 'Contextual'),
+  };
+}
+
+const TEXT_PROP_KEYS = ['Text', 'FontFace', 'TextColor3', 'TextSize', 'TextScaled', 'TextWrapped', 'TextTruncate', 'TextXAlignment', 'TextYAlignment', 'RichText', 'LineHeight', 'TextTransparency'];
+/** What stays on the outer object when a base edge is added: how it is sized, placed, ordered and pressed. */
+const OUTER_KEYS = new Set(['Size', 'Position', 'AnchorPoint', 'ZIndex', 'Visible', 'AutomaticSize', 'BorderSizePixel', 'AutoButtonColor']);
+const OUTER_DECOR = new Set(['UISizeConstraint', 'UIAspectRatioConstraint', 'UIFlexItem']);
+
+interface Dress {
+  n: UiNode; kind: Kind; className: string; name: string; props: P; decor: Spec[]; childSpecs: Spec[]; where: string;
+  autoAxes: Set<'X' | 'Y'>; takesText: boolean;
+}
+
+function dress(d: Dress): { spec: Spec; added: number } {
+  const { n, kind, name, where, autoAxes } = d;
+  let className = d.className;
+  const props: P = { ...d.props };
+  let decor = [...d.decor];
+  let added = 0;
+  const kids = (list: Spec[]) => (list.length ? { children: list } : {});
+
+  // A button's text moves into a label of its own when the button carries anything else that draws (a texture, a base
+  // edge) or the text needs an outline: a button's own UIStroke is its border.
+  let label: Spec | null = null;
+  if (kind === 'button' && d.takesText && !d.childSpecs.length && (n.textStroke !== undefined || n.pattern !== undefined || n.depth !== undefined)) {
+    const lp: P = { BackgroundTransparency: num(1), BorderSizePixel: num(0) };
+    for (const k of TEXT_PROP_KEYS) if (props[k] !== undefined) { lp[k] = props[k]!; delete props[k]; }
+    const ax = autoAxes.has('X'), ay = autoAxes.has('Y');
+    lp.Size = udim2(ax ? 0 : 1, 0, ay ? 0 : 1, 0);
+    if (ax || ay) lp.AutomaticSize = en('AutomaticSize', ax && ay ? 'XY' : ax ? 'X' : 'Y');
+    const ldecor: Spec[] = decor.filter((s) => s.className === 'UITextSizeConstraint');
+    decor = decor.filter((s) => s.className !== 'UITextSizeConstraint');
+    if (n.textStroke !== undefined) ldecor.push({ className: 'UIStroke', name: 'UIStroke', props: textStrokeProps(n.textStroke, where) });
+    label = { className: 'TextLabel', name: 'Label', props: lp, ...kids(ldecor) };
+    added += 1 + (n.textStroke !== undefined ? 1 : 0);
+    props.Text = str('');
+  }
+
+  // A tiled texture is the object's own image: a Frame becomes an ImageLabel, a button an ImageButton.
+  if (n.pattern !== undefined) {
+    const pt = n.pattern as { image?: unknown; tile?: unknown; t?: unknown; tint?: unknown };
+    if (!pt || typeof pt !== 'object' || !ASSET.test(String(pt.image))) fail(`${where}.pattern must be {image: "rbxassetid://N", tile?: px, t?: 0-1, tint?: "#hex"}.`);
+    const tile = pt.tile === undefined ? 32 : px(pt.tile, `${where}.pattern.tile`, 4);
+    if (className === 'TextButton') { className = 'ImageButton'; for (const k of TEXT_PROP_KEYS) delete props[k]; }
+    else if (className === 'Frame') className = 'ImageLabel';
+    props.Image = str(String(pt.image));
+    props.ScaleType = en('ScaleType', 'Tile');
+    props.TileSize = udim2(0, tile, 0, tile);
+    props.ImageTransparency = num(pt.t === undefined ? 0.7 : unit(pt.t, `${where}.pattern.t`));
+    if (pt.tint !== undefined) props.ImageColor3 = colour(pt.tint, `${where}.pattern.tint`);
+  }
+
+  if (n.depth === undefined) {
+    return { spec: { className, name, props, ...kids([...decor, ...(label ? [label] : []), ...d.childSpecs]) }, added };
+  }
+
+  // The base edge: the outer object shows the darker base colour; a Face on top, px shorter, carries the look and content.
+  const dp = n.depth as { color?: unknown; px?: unknown };
+  if (!dp || typeof dp !== 'object') fail(`${where}.depth must be {color, px?}.`);
+  if (autoAxes.size) fail(`${where}: depth needs a fixed, percent or fill w and h (not "auto"), because the face is the full size minus the edge.`);
+  const edge = dp.px === undefined ? 4 : px(dp.px, `${where}.depth.px`, 1);
+  if (edge > 24) fail(`${where}.depth.px must be 1-24.`);
+  const outerProps: P = { BackgroundColor3: colour(dp.color, `${where}.depth.color`), BackgroundTransparency: num(0), BorderSizePixel: num(0) };
+  const faceProps: P = { BorderSizePixel: num(0) };
+  for (const [k, v] of Object.entries(props)) (OUTER_KEYS.has(k) ? outerProps : faceProps)[k] = v;
+  delete faceProps.AutoButtonColor;
+  faceProps.Size = udim2(1, 0, 1, -edge);
+  if (kind === 'button') outerProps.Text = str('');
+  const corner = decor.find((s) => s.className === 'UICorner');
+  const border = decor.find((s) => s.className === 'UIStroke');
+  const outerDecor = decor.filter((s) => OUTER_DECOR.has(s.className) || s === border);
+  const faceDecor = decor.filter((s) => !OUTER_DECOR.has(s.className) && s !== border);
+  if (corner) outerDecor.push({ ...corner });
+  const faceClass = className === 'ImageLabel' || className === 'ImageButton' ? 'ImageLabel' : 'Frame';
+  const outerClass = kind === 'button' ? 'TextButton' : 'Frame';
+  for (const k of TEXT_PROP_KEYS) delete faceProps[k];
+  const face: Spec = { className: faceClass, name: 'Face', props: faceProps, ...kids([...faceDecor, ...(label ? [label] : []), ...d.childSpecs]) };
+  added += 1 + (corner ? 1 : 0);
+  return { spec: { className: outerClass, name, props: outerProps, children: [...outerDecor, face] }, added };
 }
 
 function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build: Build, auto: string, parentPath: string): Compiled {
@@ -428,6 +525,10 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
     const alignY = n.alignY ?? (kind === 'input' && n.multiline ? 'top' : 'center');
     props.TextYAlignment = en('TextYAlignment', { top: 'Top', center: 'Center', bottom: 'Bottom' }[oneOf(alignY, ['top', 'center', 'bottom'] as const, `${where}.alignY`)]);
     if (n.rich === true) props.RichText = bool(true);
+    if (n.textStroke !== undefined && kind !== 'button') {
+      if (n.stroke !== undefined && kind === 'text') fail(`${where}: on a text, stroke already outlines the letters; use one of stroke or textStroke.`);
+      dec('UIStroke', textStrokeProps(n.textStroke, where));
+    }
     if (n.lineHeight !== undefined) {
       if (typeof n.lineHeight !== 'number' || n.lineHeight < 0.8 || n.lineHeight > 3) fail(`${where}.lineHeight must be 0.8-3.`);
       props.LineHeight = num(n.lineHeight);
@@ -550,7 +651,13 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
   }
   if (kind === 'button' || kind === 'input') build.interactive.push(namePath);
 
-  return { spec: { className, name, props, ...(decor.length || childSpecs.length ? { children: [...decor, ...childSpecs] } : {}) }, count };
+  if (n.textStroke !== undefined && !takesText) fail(`${where}: textStroke outlines text; put it on a text, button or input.`);
+  if (n.pattern !== undefined || n.depth !== undefined) {
+    if (kind !== 'frame' && kind !== 'stack' && kind !== 'grid' && kind !== 'button') fail(`${where}: pattern and depth go on a frame, stack, grid or button.`);
+    if (className === 'ImageButton') fail(`${where}: an image-only button already shows an image; put pattern or depth on a frame around it.`);
+  }
+  const dressed = dress({ n, kind, className, name, props, decor, childSpecs, where, autoAxes, takesText });
+  return { spec: dressed.spec, count: count + dressed.added };
 }
 
 export interface CompiledScreen { item: InstanceSpec; name: string; count: number; interactive: string[]; warnings: string[] }
@@ -643,6 +750,7 @@ export const buildUi = {
       'Look: bg "#hex", bgT 0-1, radius px|"pill", stroke {color, width, t}, gradient {colors, rotation, t:[a,b]}, clip. ' +
       `Text (text, button, input): text, font "Family" or "Family:Weight" (${UI_FONT_FAMILIES.slice(0, 8).join(', ')}, ...), fontSize px or scale [min,max], color, alignX, alignY, truncate, rich, lineHeight. ` +
       'input: placeholder, placeholderColor, multiline. image/icon: image "rbxassetid://N", fit fit|crop|stretch, tint. divider: color, thickness. ' +
+      'Game-UI depth: textStroke {color,width,t} outlines text (also on bordered buttons); depth {color,px} puts a darker base edge under a button or panel (needs non-auto w/h; the content sits in a child named Face); pattern {image,tile,t,tint} tiles a texture such as studs across a frame, stack, grid or button. ' +
       'Write less: define each look once in `styles` ({"card":{"bg":"#1e2430","radius":12},"label":{"type":"text","font":"Montserrat:Medium","color":"#c9d1e0"}}) and give nodes style:"card" or ["card","label"] (the node\'s own fields win). ' +
       'Repeat a child with each: [...]: {"type":"button","style":"tab","each":["Kick","Ban"]} makes one per item (a string sets text; an object sets fields), or use {key} placeholders: {"type":"stack","dir":"h","children":[{"type":"text","text":"{n}"},{"type":"text","text":"{p}"}],"each":[{"n":"Sword","p":"100"}]}. ' +
       'Behaviour goes in a LocalScript you write with edit_script in StarterPlayerScripts (it survives a rebuild), finding the screen with PlayerGui:WaitForChild(name).',

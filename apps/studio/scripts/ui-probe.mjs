@@ -13,6 +13,8 @@ import { compileScreen } from '../../worker/src/ui-engine.ts';
 const [request, out, model = '@cf/moonshotai/kimi-k2.7-code'] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
 const workersai = createWorkersAI({ accountId: process.env.CLOUDFLARE_ACCOUNT_ID, apiKey: process.env.CLOUDFLARE_API_TOKEN_MASTER });
+import { formatCreatorStoreResult, searchCreatorStore } from '../src/knowledge/creator-store.ts';
+let lastAsset = 0;
 const canned = { get_project_tree: 'game\n  Workspace (Baseplate, SpawnLocation)\n  StarterGui (empty)\n  ServerScriptService (empty)\n  ReplicatedStorage (empty)', list_scripts: '[]' };
 const tools = Object.fromEntries(STUDIO_TOOL_SPECS.map((s) => [s.name, tool({ description: s.description, inputSchema: jsonSchema(s.parameters), execute: async (a) => {
   if (s.name === 'build_ui') {
@@ -22,8 +24,12 @@ const tools = Object.fromEntries(STUDIO_TOOL_SPECS.map((s) => [s.name, tool({ de
     writeFileSync(`${out}/${c.name}.json`, JSON.stringify(c.item, null, 1));
     return { ok: true, screen: c.name, instances: c.count, warnings: c.warnings, defects: [], note: 'measured in Studio: none reported (probe)' };
   }
+  // The store path answers as Studio would: an inserted decal reads back with its image as Texture.
+  if (s.name === 'insert_from_store') { lastAsset = a.assetId; return JSON.stringify({ inserted: [`game.Workspace.StoreAsset_${a.assetId}`], children: [`game.Workspace.StoreAsset_${a.assetId}.Decal`] }); }
+  if (s.name === 'get_instance' && lastAsset) return JSON.stringify({ path: a.path, class: 'Decal', props: { Texture: `rbxassetid://${lastAsset}` } });
   return canned[s.name] ?? '{"ok":true}';
 } })]));
+tools.search_creator_store = tool({ description: 'Search the Roblox Creator Store for models, meshes, images (decals), audio or animations.', inputSchema: jsonSchema({ type: 'object', properties: { query: { type: 'string' }, category: { type: 'string', enum: ['model', 'mesh', 'decal', 'audio', 'animation', 'video'] } }, required: ['query'] }), execute: async ({ query, category }) => formatCreatorStoreResult(await searchCreatorStore({ query, category: category ?? 'model', limit: 8 })) });
 tools.load_skill = tool({ description: 'Load one of your skills before specialised work', inputSchema: jsonSchema({ type: 'object', properties: { name: { type: 'string' }, file: { type: 'string' } }, required: ['name'] }), execute: async ({ name }) => SKILLS.find((s) => s.name === name)?.body ?? 'no such skill' });
 const t0 = Date.now();
 const r = streamText({ model: workersai(model, { reasoning_effort: 'low' }), system: systemPrompt({ projectName: 'My Game', studio: { connected: true, placeName: 'Place1', placeId: 1 } }), prompt: request, tools, stopWhen: isStepCount(Number(process.env.STEPS ?? 8)), experimental_repairToolCall: unwrapQuotedToolInput, maxOutputTokens: 16000 });
