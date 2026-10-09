@@ -1424,7 +1424,13 @@ async function grantedScope(cfg: Config, accessToken: string): Promise<string | 
  * account the asset is created in). Null with a reason a person can act on when there is no grant with `asset:write`.
  */
 export async function robloxUploadAccess(env: Env, userId: string): Promise<{ ok: true; accessToken: string; robloxUserId: string } | { ok: false; error: string }> {
-  const r = await refreshRobloxAccessToken(env, userId);
+  // Several pictures are drawn at once and only one call may spend the single-use refresh token: the others are told `busy`
+  // and wait for it, then share the token it got (or refresh after it, once its lease is gone).
+  let r = await refreshRobloxAccessToken(env, userId);
+  for (let i = 0; i < 12 && !r.ok && r.reason === 'busy'; i++) {
+    await new Promise((done) => setTimeout(done, 500 + Math.random() * 500));
+    r = await refreshRobloxAccessToken(env, userId);
+  }
   if (!r.ok) {
     return { ok: false, error: r.reason === 'not_connected' || r.lost
       ? 'Roblox uploads are not connected: in StudPilot Settings, press "Connect Roblox for uploads"'
