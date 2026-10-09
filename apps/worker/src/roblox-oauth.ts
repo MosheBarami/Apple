@@ -853,6 +853,13 @@ async function callback(req: Request, env: Env, strays: Strays): Promise<Respons
       if (tokens.refreshToken) await revokeAtRoblox(cfg, tokens.refreshToken);
       return redirect(record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=uploads-refused&granted=' + encodeURIComponent(tokens.scope.slice(0, 200)), clear);
     }
+    // Roblox binds asset permissions to the accounts ticked under "Your Accounts" (the Select button). With none ticked the
+    // token carries asset:write but every upload answers PERMISSION_DENIED "User not authenticated" (seen live 2026-10-09).
+    if (uploads && (await uploadAccountsOf(cfg, tokens.accessToken, who.sub)) === 'none') {
+      note('uploads refused: no account selected');
+      if (tokens.refreshToken) await revokeAtRoblox(cfg, tokens.refreshToken);
+      return redirect(record.returnTo + (record.returnTo.includes('?') ? '&' : '?') + 'roblox=uploads-no-account', clear);
+    }
     try {
       await ensureStudioRobloxTable(env);
       await env.CORPUS.prepare(
@@ -1412,6 +1419,22 @@ export const scopeList = (scope: string): string[] =>
   });
 const hasUploadScope = (scope: string): boolean => scopeList(scope).includes('asset:write');
 
+/**
+ * Whether the person's own account was ticked for the asset permissions (Roblox `v1/token/resources`: each resource_info lists
+ * `resources.creator.ids`, where "U" is the user themself). `unknown` when Roblox gives no readable answer: not a refusal.
+ */
+async function uploadAccountsOf(cfg: Config, accessToken: string, sub: string): Promise<'self' | 'none' | 'unknown'> {
+  const res = await postToRoblox('/token/resources', { token: accessToken, client_id: cfg.clientId, client_secret: cfg.clientSecret });
+  const body = res?.ok ? await jsonOf(res) : null;
+  const infos = body?.resource_infos;
+  if (!Array.isArray(infos)) return 'unknown';
+  const ids = infos.flatMap((i) => {
+    const c = (i as { resources?: { creator?: { ids?: unknown } } })?.resources?.creator?.ids;
+    return Array.isArray(c) ? c.map(String) : [];
+  });
+  return ids.includes('U') || ids.includes(sub) ? 'self' : 'none';
+}
+
 /** The scopes one access token holds, by Roblox's own introspection (RFC 7662 `scope`); null when it does not say. */
 async function grantedScope(cfg: Config, accessToken: string): Promise<string | null> {
   const res = await postToRoblox('/token/introspect', { token: accessToken, client_id: cfg.clientId, client_secret: cfg.clientSecret });
@@ -1439,6 +1462,10 @@ export async function robloxUploadAccess(env: Env, userId: string): Promise<{ ok
   if (!hasUploadScope(r.scope)) return { ok: false, error: 'Roblox is connected for sign-in only: in StudPilot Settings, press "Connect Roblox for uploads" to allow uploads' };
   const row = await env.CORPUS.prepare('select sub from roblox_oauth_tokens where user_id = ?').bind(userId).first<{ sub: string }>();
   if (!row?.sub) return { ok: false, error: 'Roblox uploads are not connected' };
+  const cfg = configOf(env);
+  if (cfg && (await uploadAccountsOf(cfg, r.accessToken, row.sub)) === 'none') {
+    return { ok: false, error: 'Roblox uploads are connected without an account: in StudPilot Settings press "Connect Roblox for uploads" again and, on Roblox\'s page, press Select next to your account under "Your Accounts" before Confirm' };
+  }
   return { ok: true, accessToken: r.accessToken, robloxUserId: row.sub };
 }
 
