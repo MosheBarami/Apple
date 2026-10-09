@@ -119,7 +119,7 @@ Animation craft (make it read well):
 
 ## 8. Verification
 
-- `model_anatomy` after rigging; `get_instance` on a joint to read C0/C1.
+- `model_anatomy` after rigging; `read_instance` on a joint to read C0/C1.
 - Preview: `run_luau` to register the sequence and play it on the Animator, then read joint `Transform`s or part
   positions after a short wait; or `animate_model`'s own preview.
 - `play_check` to confirm it runs in play and shows no errors; describe what moves and how.

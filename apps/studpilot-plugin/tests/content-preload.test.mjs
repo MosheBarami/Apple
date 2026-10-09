@@ -48,7 +48,7 @@ end
 `;
 
 const SPEC = String.raw`
-local c = Commands.new({ game = game, services = { ContentProvider = provider }, opFamilies = OP_FAMILIES_UNDER_TEST })
+local c = Commands.new({ game = game, services = { ContentProvider = provider }, opFamilies = OP_FAMILIES_UNDER_TEST, permissions = PERMISSIONS_UNDER_TEST })
 local function byOp(report, wanted) for _, item in report.operations do if item.op == wanted then return item end end end
 local function fresh() provider.calls, provider.list, provider.statusFor, provider.hangAfter, provider.boom, provider.skip, provider.loading, provider.alias = 0, nil, {}, nil, nil, {}, {}, {}; now = 0; waits = 0 end
 local function run(op, allow) op.op = "preload_content"; return c:execute("pc", op, allow == true) end
@@ -168,7 +168,7 @@ spec("bad input is refused before Studio is asked", function()
 end)
 
 spec("without a ContentProvider the op says so", function()
-    local bare = Commands.new({ game = game, services = {}, opFamilies = OP_FAMILIES_UNDER_TEST })
+    local bare = Commands.new({ game = game, services = {}, opFamilies = OP_FAMILIES_UNDER_TEST, permissions = PERMISSIONS_UNDER_TEST })
     local r = bare:execute("pc", { op = "preload_content", items = { { id = "rbxassetid://1" } } }, false)
     eq(r.ok, false); has(r.error, "ContentProvider")
 end)

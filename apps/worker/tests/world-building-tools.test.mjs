@@ -19,6 +19,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const temp = mkdtempSync(join(tmpdir(), 'world-tools-'));
@@ -373,19 +374,18 @@ test('a terrain or ground read that fails is said, not rendered as an empty scen
 });
 
 // ------------------------------------------------------------------------------------- the plugin's own allowlist
-test('every property set_mood overrides can set is one the plugin\'s PROPERTY_ALLOW writes (the live plugin once refused names its source accepted)', () => {
-  const luau = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
-  const start = luau.indexOf('local PROPERTY_ALLOW = {');
-  assert.ok(start > 0, 'the plugin allowlist moved — re-aim this test');
-  const block = luau.slice(start, luau.indexOf('\n}\n', start));
-  const allowed = new Set([...block.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*) = true,/gm)].map((m) => m[1]));
-  assert.ok(allowed.size > 50, 'the allowlist was not read');
+test('every property set_mood overrides can set is one the plugin writes (the live plugin once refused names its source accepted)', () => {
+  // Plugin 2.0: the API dump decides, per class (apps/studpilot-plugin/scripts/api-dump.mjs).
+  const P = pluginPermissions();
+  const groupClass = { lighting: 'Lighting', atmosphere: 'Atmosphere', colorCorrection: 'ColorCorrectionEffect' };
+  const allowed = { has: (key) => { const [cls, prop] = key.split('.'); return P.propertyType(cls, prop) !== null; } };
+  assert.ok(P.writableNames.size > 50, 'the API dump was not read');
   const description = T.TOOLS.set_mood.def.parameters.properties.overrides.description;
   const groups = [...description.matchAll(/(lighting|atmosphere|colorCorrection)\?: \{([^}]*)\}/g)];
   assert.equal(groups.length, 3, 'the override groups are not named in the description');
   for (const [, group, names] of groups) {
     const list = names.split(',').map((n) => n.trim()).filter(Boolean);
     assert.ok(list.length >= 4, `${group} lists too few properties to mean anything`);
-    for (const name of list) assert.ok(allowed.has(name), `${group}.${name} is offered by set_mood but the plugin's allowlist does not write it`);
+    for (const name of list) assert.ok(allowed.has(`${groupClass[group]}.${name}`), `${group}.${name} is offered by set_mood but the plugin does not write it`);
   }
 });

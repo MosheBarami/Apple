@@ -10,6 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'compose-')), 'c.mjs');
@@ -104,25 +105,19 @@ test('compose: the bundled components are the current sources', () => {
 
 test('compose: every property the map writes is one the plugin will write (one refused property loses the whole map)', () => {
   // Seen live 2026-09-30: SpawnLocation.Duration was refused, so create_instances refused the whole AppleMap.
-  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
-  const block = plugin.slice(plugin.indexOf('local PROPERTY_ALLOW = {'), plugin.indexOf('\n}', plugin.indexOf('local PROPERTY_ALLOW = {')));
-  const allowed = new Set([...block.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true/gm)].map((m) => m[1])); // names may hold digits (Color3)
-  assert.ok(allowed.has('Size') && allowed.has('Material'), 'read the allowlist');
+  // Plugin 2.0: the rule is the API dump, per class (apps/studpilot-plugin/scripts/api-dump.mjs).
+  const P = pluginPermissions();
+  assert.ok(P.propertyType('Part', 'Size') && P.propertyType('Part', 'Material'), 'read the API dump');
   const used = new Set();
-  const walk = (items) => { for (const i of items) { Object.keys(i.props ?? {}).forEach((k) => used.add(k)); walk(i.children ?? []); } };
+  const walk = (items) => { for (const i of items) { Object.keys(i.props ?? {}).forEach((k) => used.add(`${i.className}.${k}`)); walk(i.children ?? []); } };
   for (const s of steps.filter((x) => x.kind === 'create')) walk(s.items);
-  for (const k of used) assert.ok(allowed.has(k), `${k} is not in the plugin's write allowlist`);
+  for (const k of used) { const [cls, prop] = k.split('.'); assert.ok(P.propertyType(cls, prop), `${k} is not writable by the plugin`); }
 });
 
 test('compose: every class and enum the build creates is one the plugin will create', () => {
-  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
-  const table = (name) => {
-    const at = plugin.indexOf(`local ${name} = {`);
-    const block = plugin.slice(at, plugin.indexOf('\n}', at));
-    return new Set([...block.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true/gm)].map((m) => m[1]));
-  };
-  const classes = table('CREATE_CLASSES'), enums = table('ENUM_ALLOW');
-  assert.ok(classes.has('Part') && classes.has('ImageButton') && enums.has('Material'), 'read the plugin tables');
+  const P = pluginPermissions();
+  const classes = P.creatableNames, enums = P.enums;
+  assert.ok(classes.has('Part') && classes.has('ImageButton') && enums.has('Material'), 'read the API dump');
   const usedClasses = new Set(), usedEnums = new Set();
   const walk = (items) => {
     for (const i of items) {

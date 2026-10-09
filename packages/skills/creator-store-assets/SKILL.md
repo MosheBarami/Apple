@@ -1,6 +1,6 @@
 ---
 name: creator-store-assets
-description: Finding, inspecting and adapting Creator Store assets (models, meshes, decals, audio, animations). Covers query wording and categories, judging results by hasScripts, creator, triangle count and thumbnail, inserting with insert_from_store, inspecting with model_anatomy/get_instance, adapting (real-world scale, anchoring, PrimaryPart and pivot, colour/material, removing junk, collision fidelity), integrating (parent, name, tag), safety (scripts stripped, never reuse free-model scripts for logic) and when to build from scratch instead. Load before calling search_creator_store or insert_from_store.
+description: Finding, inspecting and adapting Creator Store assets (models, meshes, decals, audio, animations). Covers query wording and categories, judging results by hasScripts, creator, triangle count and thumbnail, inserting with insert_from_store, inspecting with model_anatomy/read_instance, adapting (real-world scale, anchoring, PrimaryPart and pivot, colour/material, removing junk, collision fidelity), integrating (parent, name, tag), safety (scripts stripped, never reuse free-model scripts for logic) and when to build from scratch instead. Load before calling search_creator_store or insert_from_store.
 ---
 
 # Creator Store assets
@@ -46,7 +46,7 @@ Read every result's fields before inserting:
 
 1. `insert_from_store` with the asset id and a holder (e.g. a Model under `Workspace` or a staging Folder). It strips
    scripts and returns the inserted parts and size.
-2. `model_anatomy` (parts, joints, sizes) and `get_instance` on the root: what is inside? Look for: one root Model or
+2. `model_anatomy` (parts, joints, sizes) and `read_instance` on the root: what is inside? Look for: one root Model or
    loose parts; `PrimaryPart`; anchored state; welds/Motor6Ds; Humanoids; leftover `Sound`, `ParticleEmitter`,
    `ClickDetector`, `ProximityPrompt`, `BillboardGui`, invisible parts, `Configuration`/`Value` objects, attachments;
    enormous or tiny bounding size; parts named `Handle` (tool remnants).
@@ -85,6 +85,6 @@ Read every result's fields before inserting:
 
 ## 7. Verification
 
-- `get_instance` on the final Model: anchored, named, parented, scale right (bounding height vs 5-stud avatar).
+- `read_instance` on the final Model: anchored, named, parented, scale right (bounding height vs 5-stud avatar).
 - `run_luau`: confirm no `Script`/`LocalScript`/`ModuleScript` remains under it and triangle/part budget is sane.
 - `play_check`: no errors, the asset looks right next to the player, and it does not block paths.

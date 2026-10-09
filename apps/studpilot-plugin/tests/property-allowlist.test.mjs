@@ -2,50 +2,48 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-// Round 2 of the visual gauntlet: StudPilot MAX tried to put a sign on a plot and the plugin refused
-// "property SizingMode is not in StudPilot's write allowlist" — while ENUM_ALLOW already accepted
-// SurfaceGuiSizingMode. An enum value nothing can be written to is a half-open door.
+import { pluginPermissions } from '../scripts/api-dump.mjs';
+
+// 2.0 (owner decision 2026-10-08, "i accept the reduced safety"): the hand-written class/property
+// allowlists are gone. These tests hold the rule that replaced them: allow what Roblox's API dump
+// allows a plugin, deny a short explicit list, and say why.
 const source = readFileSync(new URL('../src/Commands.luau', import.meta.url), 'utf8')
   .replace(/--\[\[[\s\S]*?\]\]/g, '')
   .replace(/--[^\n]*/g, '');
+const P = pluginPermissions();
 
-function table(name) {
-  const m = source.match(new RegExp(`local ${name} = \\{([\\s\\S]*?)\\n\\}`));
-  assert.ok(m, `${name} table not found`);
-  return new Set([...m[1].matchAll(/([A-Za-z0-9_]+)\s*=\s*true/g)].map((x) => x[1]));
-}
-
-const createClasses = table('CREATE_CLASSES');
-const propertyAllow = table('PROPERTY_ALLOW');
-const readProperties = table('READ_PROPERTIES');
-const enumAllow = table('ENUM_ALLOW');
-const instanceRef = table('INSTANCE_REF_PROPERTY');
-
-test('every allowed enum named after a creatable class has a writable property to take it', () => {
-  const classes = [...createClasses].sort((a, b) => b.length - a.length);
-  const pairs = [];
-  for (const e of enumAllow) {
-    // the class name must end at a word boundary: "ParticleOrientation" is not Part + "icleOrientation"
-    const cls = classes.find((c) => e.startsWith(c) && /^[A-Z]/.test(e.slice(c.length)));
-    if (!cls) continue;
-    const prop = e.slice(cls.length);
-    if (instanceRef.has(prop)) continue; // HighlightAdornee names the Adornee reference, not an enum
-    if (e === 'PartType') { assert.ok(propertyAllow.has('Shape')); continue; } // Enum.PartType is Part.Shape
-    pairs.push([e, prop]);
+test('the allowlists are gone: no class, property or enum table lists names any more', () => {
+  for (const name of ['CREATE_CLASSES', 'PROPERTY_ALLOW', 'ENUM_ALLOW', 'CONTENT_PROPERTY', 'INSTANCE_REF_PROPERTY']) {
+    const m = source.match(new RegExp(`local ${name} = ([^\\n]*)`));
+    assert.ok(m, `${name} not found`);
+    assert.match(m[1], /^setmetatable\(\{\}, \{ __index = function/, `${name} must be a lookup, not a list`);
   }
-  assert.ok(pairs.length >= 5, `only ${pairs.length} class-prefixed enums found — the parse is broken`);
-  const missing = pairs.filter(([, p]) => !propertyAllow.has(p)).map(([e, p]) => `${e} -> ${p}`);
-  assert.deepEqual(missing, [], 'enum accepted but its property cannot be written');
 });
 
-test('signs and floating labels can be sized and placed in the world', () => {
-  assert.ok(createClasses.has('SurfaceGui') && createClasses.has('BillboardGui'));
-  const needed = ['SizingMode', 'PixelsPerStud', 'Face', 'CanvasSize', 'LightInfluence', 'Brightness',
-    'AlwaysOnTop', 'StudsOffset', 'StudsOffsetWorldSpace', 'ExtentsOffset', 'MaxDistance'];
-  for (const p of needed) {
-    assert.ok(propertyAllow.has(p), `${p} is not writable`);
-    assert.ok(readProperties.has(p), `${p} is not readable`);
+test('every deny-list entry carries a reason, and the deny list stays short', () => {
+  for (const [name, reason] of [...P.denyProperty, ...P.denyClass]) {
+    assert.ok(typeof reason === 'string' && reason.length > 20, `${name} has no reason`);
   }
+  assert.ok(P.denyProperty.size + P.denyClass.size <= 24, 'the deny list is growing back into an allowlist');
+  for (const p of ['Source', 'Parent']) assert.ok(P.denyProperty.has(p), `${p} must stay denied`);
+  for (const c of ['CoreGui', 'CorePackages', 'RobloxPluginGuiService', 'HttpService']) assert.ok(P.denyClass.has(c), `${c} must stay denied`);
+  assert.equal(P.propertyType('ServerScriptService', 'LoadStringEnabled'), null);
+  assert.equal(P.propertyType('HttpService', 'HttpEnabled'), null);
+});
+
+test('anything else creatable works: 1.x refusals that blocked real places are now allowed', () => {
+  for (const c of ['Part', 'MeshPart', 'Clouds', 'Tool', 'RemoteEvent', 'Configuration', 'SurfaceGui', 'BillboardGui', 'Humanoid']) {
+    assert.ok(P.canCreate(c), `${c} must be creatable`);
+  }
+  for (const c of ['Script', 'LocalScript', 'ModuleScript']) assert.ok(!P.canCreate(c) && P.instantiable(c), `${c} is made by edit_script`);
+  for (const c of ['BasePart', 'Workspace', 'Lighting']) assert.ok(!P.canCreate(c), `${c} is not creatable`);
+  // Round 2 of the visual gauntlet: a sign could not be sized (SizingMode). Every one of these is writable now.
+  for (const p of ['SizingMode', 'PixelsPerStud', 'Face', 'CanvasSize', 'LightInfluence', 'Brightness', 'AlwaysOnTop',
+    'StudsOffset', 'StudsOffsetWorldSpace', 'ExtentsOffset', 'MaxDistance']) {
+    assert.ok(P.propertyType('SurfaceGui', p) || P.propertyType('BillboardGui', p), `${p} is not writable`);
+  }
+  assert.equal(P.propertyType('Part', 'Mass'), null, 'read-only stays read-only');
+  assert.equal(P.propertyType('MeshPart', 'MeshId'), null, 'what Roblox keeps from plugins stays refused');
 });
 
 test('a wrong enum item is answered with the valid items, so the model can correct itself', () => {

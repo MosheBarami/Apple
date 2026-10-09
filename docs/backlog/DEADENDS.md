@@ -38,6 +38,12 @@ desktop and phone sizes (`node apps/studio/scripts/ui-render.mjs <screen.json> <
 Workers AI (`node apps/studio/scripts/model-probe.mjs "<request>" [model...]`); it chose the default model.
 CI does not run it: it spends model time.
 
+## apps/studpilot-plugin/scripts/gen-api-dump.mjs — WIRE, 2026-10-08
+
+**Found:** the operator command that regenerates the Studio plugin's `src/ApiDump.luau` (plugin 2.0's permission data)
+from Roblox's public API dump (`node apps/studpilot-plugin/scripts/gen-api-dump.mjs [API-Dump.json] [version]`). Run it
+when Roblox ships new classes or properties; CI does not run it because it fetches from GitHub.
+
 ---
 
 ## packages/asset-library/sfx/upload-cc0-ui.mjs — WIRE, 2026-09-25

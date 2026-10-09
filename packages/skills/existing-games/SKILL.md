@@ -1,6 +1,6 @@
 ---
 name: existing-games
-description: Working inside a place someone else built. Covers surveying first (get_project_tree, list_scripts, search_scripts, read_script), finding and reusing the place's conventions (folders, naming, modules, remotes, data layer, frameworks), making minimal changes, reading errors from get_output_logs and play_check, fixing bugs safely, refactoring without breaking behaviour, and explaining findings to the user. Load whenever the place already has scripts or content and the request is to fix, extend, change, review or explain it.
+description: Working inside a place someone else built. Covers surveying first (get_project_tree, glob, grep, read_script), finding and reusing the place's conventions (folders, naming, modules, remotes, data layer, frameworks), making minimal changes, reading errors from get_output_logs and play_check, fixing bugs safely, refactoring without breaking behaviour, and explaining findings to the user. Load whenever the place already has scripts or content and the request is to fix, extend, change, review or explain it.
 ---
 
 # Working in an existing game
@@ -12,9 +12,9 @@ needs, and prove nothing else broke.
 
 1. `get_project_tree` at the top level (Workspace, ReplicatedStorage, ServerScriptService, ServerStorage,
    StarterPlayer, StarterGui, SoundService, Lighting). Note how content is grouped and named.
-2. `list_scripts` for every script with its class and location. Count them; spot the entry points (server Scripts in
+2. `glob` with class_name `LuaSourceContainer` (pattern `*/**`) for every script with its class and location. Count them; spot the entry points (server Scripts in
    ServerScriptService, LocalScripts in StarterPlayerScripts/StarterGui).
-3. `search_scripts` for the things the request touches: names from the request ("coins", "shop", "door"), and the
+3. `grep` for the things the request touches: names from the request ("coins", "shop", "door"), and the
    plumbing: `RemoteEvent`, `OnServerEvent`, `DataStoreService`, `require(`, `CollectionService`, `leaderstats`,
    `ProfileService`/`ProfileStore`, `Knit`, `Fusion`, `Roact`/`React`, `Packages`/`_Index` (Wally).
 4. `read_script` the relevant ones fully before editing. Follow `require` chains to the modules they use.
@@ -45,7 +45,7 @@ Match these even when you would do it differently; mention improvements as sugge
 - Prefer `edit_script` with a small targeted replacement over rewriting a whole script.
 - Add new behaviour next to related behaviour (extend the existing shop module, not a new shop script).
 - Keep public interfaces stable: function names other scripts call, remote names and argument order, attribute and
-  tag names, instance names that code looks up with `WaitForChild`/`FindFirstChild`. `search_scripts` a name before
+  tag names, instance names that code looks up with `WaitForChild`/`FindFirstChild`. `grep` a name before
   renaming or deleting anything that carries it.
 - Before `delete_instances`, search for references (by name, tag, path string). Before moving an instance, check for
   hard-coded paths (`workspace.Map.Door`).
@@ -55,7 +55,7 @@ Match these even when you would do it differently; mention improvements as sugge
 Method:
 1. **Reproduce**: `play_check` (server + client errors, screen, leaderstats) or `get_output_logs` after the action.
 2. **Locate**: the stack trace gives `Script path:line`. `read_script` around that line; trace values back to their
-   origin (who set this attribute? who fires this remote?) with `search_scripts`.
+   origin (who set this attribute? who fires this remote?) with `grep`.
 3. **Explain the cause** in one sentence before editing (e.g. "the client reads `leaderstats` before the server
    creates it, so `WaitForChild` is needed").
 4. **Fix the cause**, not the symptom: do not wrap failing code in `pcall` to hide an error unless the operation is
@@ -94,5 +94,5 @@ Quote short snippets only when they matter; never paste whole scripts back.
 ## 7. Before finishing
 
 - `get_output_logs` / `play_check`: no new errors compared with the start.
-- `search_scripts` for any name you changed: no stale references.
+- `grep` for any name you changed: no stale references.
 - Tell the user exactly which scripts and instances you modified or added.

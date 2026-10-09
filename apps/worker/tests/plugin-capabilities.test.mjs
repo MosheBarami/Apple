@@ -96,6 +96,8 @@ function currentAuthoringReport() {
     'edit_script', 'terrain_edit', 'snapshot', 'restore', 'undo_waypoint', 'insert_asset', 'generate_model',
     'run_mode', 'inspect_model', 'project_census', 'play_check',
     ...PHASE_A_OPS,
+    // Plugin 2.0 families (ops/Search.luau, ops/Serialize.luau, ops/Tests.luau).
+    'grep', 'glob', 'list', 'serialize', 'deserialize', 'run_tests',
   ];
   return {
     schema: C.PLUGIN_CAPABILITY_SCHEMA,

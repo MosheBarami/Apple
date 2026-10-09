@@ -21,6 +21,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -68,21 +69,16 @@ test('the catalogue is real and not empty', () => {
 });
 
 test('every preset is representable by the current typed StudPilot plugin contract', () => {
-  const commands = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
-  const tableKeys = (name) => {
-    const block = new RegExp(`local ${name} = \\{([\\s\\S]*?)\\n\\}`, 'm').exec(commands);
-    assert.ok(block, `${name} missing from current plugin`);
-    return new Set([...block[1].matchAll(/^\s*([A-Za-z0-9_]+)\s*=\s*true/gm)].map((m) => m[1]));
-  };
-  const classes = tableKeys('CREATE_CLASSES');
-  const props = tableKeys('PROPERTY_ALLOW');
+  // Plugin 2.0: the API dump decides, per class (apps/studpilot-plugin/scripts/api-dump.mjs).
+  const P = pluginPermissions();
+  const classes = P.creatableNames;
   for (const name of FX.EFFECT_NAMES) {
     const specs = FX.effectInstanceSpecs(name, 'game.Workspace.Thing');
     assert.ok(specs?.length, `${name} cannot be encoded as typed instance specs`);
     for (const spec of specs) {
       assert.equal(classes.has(spec.className), true, `${name} uses plugin-blocked class ${spec.className}`);
       for (const prop of Object.keys(spec.props ?? {})) {
-        assert.equal(props.has(prop), true, `${name}.${spec.className} uses plugin-blocked property ${prop}`);
+        assert.notEqual(P.propertyType(spec.className, prop), null, `${name}.${spec.className} uses plugin-blocked property ${prop}`);
       }
       assert.equal(spec.attributes.AppleEffect.v, name);
     }

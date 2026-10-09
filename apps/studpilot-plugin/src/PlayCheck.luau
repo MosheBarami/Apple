@@ -162,8 +162,9 @@ local function finish(stage)
 	pcall(function() channel:Destroy() end)
 	pcall(function() StudioTestService:EndTest(report) end)
 end
--- The hard bound. Whatever the place does, the session ends and the plugin gets an answer.
-task.delay(50, function() finish("deadline") end)
+-- The hard bound. Whatever the place does, the session ends and the plugin gets an answer, with what was
+-- observed so far (2.0: the bound follows the requested seconds instead of a flat 50 s).
+task.delay(math.clamp(seconds + 20, 10, 50), function() finish("deadline") end)
 
 local player = nil
 channel.OnServerEvent:Connect(function(sender, payload)
@@ -997,6 +998,152 @@ function PlayCheck.run(ctx: any): (any?, string?, string?, string?)
 	data.harnessRemoved = remaining == 0
 	if remaining > 0 then data.harnessRemaining = remaining end
 	return data
+end
+
+--[[
+	RUN_TESTS (plugin 2.0). TestEZ specs (ModuleScripts named *.spec) run INSIDE a solo Test session,
+	from a temporary server Script, exactly like the play check: the specs and TestEZ are the place's
+	own code running in a throwaway copy of the place, never in the plugin. StudPilot does not ship
+	TestEZ (Apache-2.0, github.com/Roblox/testez); the place must have it (Wally/Rojo projects vendor it
+	as a ModuleScript named TestEZ). The session always ends: the harness ends it at `deadline`
+	seconds with whatever it has, and the plugin watchdog (args.studpilotPlayCheck) ends it at 60 s.
+]]
+PlayCheck.TESTS_NAME = "StudPilotRunTests"
+PlayCheck.TESTS_SOURCE = "-- StudPilot run_tests (temporary; removed after the test session).\n"
+	.. ("local MARKER = %q\n"):format(MARKER) .. [==[
+local okService, StudioTestService = pcall(function() return game:GetService("StudioTestService") end)
+if not okService or not StudioTestService then return end
+local okArgs, args = pcall(function() return StudioTestService:GetTestArgs() end)
+if not okArgs or type(args) ~= "table" or args.studpilotPlayCheck ~= 1 or args.tests ~= 1 or type(args.nonce) ~= "string" then return end
+local ownNonce = script:GetAttribute(MARKER)
+if ownNonce ~= args.nonce then return end
+local report = { nonce = args.nonce, harness = 1, tests = 1, stage = "started", failures = {}, errors = {} }
+local ended = false
+local started = os.clock()
+local function finish(stage)
+	if ended then return end
+	ended = true
+	report.stage = stage
+	report.elapsedSeconds = math.floor((os.clock() - started) * 10) / 10
+	pcall(function() StudioTestService:EndTest(report) end)
+end
+task.delay(math.clamp(tonumber(args.deadline) or 40, 5, 50), function() finish("deadline") end)
+local function resolve(path)
+	local node = game
+	for segment in string.gmatch(path, "[^/]+") do
+		if node == game then
+			local ok, service = pcall(function() return game:GetService(segment) end)
+			node = if ok then service else nil
+		else
+			node = node:FindFirstChild(segment)
+		end
+		if node == nil then return nil end
+	end
+	return node
+end
+local testez = type(args.testez) == "string" and resolve(args.testez) or nil
+if testez == nil then report.error = "TestEZ was not found in the test session"; finish("error"); return end
+local roots = {}
+for _, path in args.roots or {} do
+	local root = resolve(path)
+	if root then table.insert(roots, root) end
+end
+local function walk(node, trail)
+	if type(node) ~= "table" then return end
+	local phrase = node.planNode and node.planNode.phrase
+	local name = if phrase then (if trail ~= "" then trail .. " " .. phrase else phrase) else trail
+	if node.status == "Failure" and #report.failures < 50 then
+		local why = {}
+		for _, e in node.errors or {} do table.insert(why, string.sub(tostring(e), 1, 1500)) end
+		table.insert(report.failures, { name = string.sub(name, 1, 300), errors = why })
+	end
+	for _, child in node.children or {} do walk(child, name) end
+end
+local ok, err = pcall(function()
+	local TestEZ = require(testez)
+	local reporter = TestEZ.Reporters and (TestEZ.Reporters.TextReporterQuiet or TestEZ.Reporters.TextReporter)
+	local results = TestEZ.TestBootstrap:run(roots, reporter)
+	report.success = results.successCount
+	report.failure = results.failureCount
+	report.skipped = results.skippedCount
+	for index, e in results.errors or {} do
+		if index > 50 then break end
+		table.insert(report.errors, string.sub(tostring(e), 1, 2000))
+	end
+	walk(results, "")
+end)
+if not ok then report.error = string.sub(tostring(err), 1, 2000) end
+finish(if ok then "done" else "error")
+]==]
+
+--[[ ctx: game, services, editor, nonce?, testez (slash path), roots ({ slash path }), deadline (s). ]]
+function PlayCheck.runTests(ctx: any): (any?, string?, string?, string?)
+	local gameRef = ctx.game
+	local services = ctx.services
+	local available, why = PlayCheck.available(gameRef, services)
+	if not available then return nil, "refused", why, "none" end
+	local studioTest = service(gameRef, services, "StudioTestService")
+	local serverHome = service(gameRef, services, "ServerScriptService")
+	if serverHome == nil then return nil, "refused", "ServerScriptService is unavailable", "none" end
+	local editor = ctx.editor
+	if not editor or type(editor.UpdateSourceAsync) ~= "function" then
+		return nil, "refused", "ScriptEditorService.UpdateSourceAsync is unavailable, so the test runner cannot be written", "none"
+	end
+	local containers = { serverHome }
+	if sweep(containers) > 0 then return nil, "internal", "an earlier StudPilot test runner could not be removed from the place" end
+	local nonce = ctx.nonce or ("%d-%d"):format(math.floor(os.clock() * 1000) % 1000000000, math.random(1, 999999999))
+	local okNew, node = pcall(function() return Instance.new("Script") end)
+	if not okNew or not node then return nil, "internal", "could not create the test runner" end
+	local okSetup, setupErr = pcall(function()
+		node.Name = PlayCheck.TESTS_NAME
+		node:SetAttribute(MARKER, nonce)
+		node.Parent = serverHome
+	end)
+	local okWrite, writeErr = false, setupErr
+	if okSetup then okWrite, writeErr = pcall(function() editor:UpdateSourceAsync(node, function() return PlayCheck.TESTS_SOURCE end) end) end
+	if not okWrite then
+		pcall(function() node:Destroy() end)
+		local left = sweep(containers)
+		return nil, "internal", "could not write the test runner: " .. clipText(writeErr, 300) .. (if left > 0 then " (and it could NOT be removed)" else "")
+	end
+	local args = { studpilotPlayCheck = 1, tests = 1, nonce = nonce, testez = ctx.testez, roots = ctx.roots, deadline = ctx.deadline }
+	local called, result = pcall(function() return studioTest:ExecutePlayModeAsync(args) end)
+	pcall(function() node:Destroy() end)
+	local remaining = sweep(containers)
+	local removal = if remaining == 0 then "The test runner was removed from the place." else "The test runner could NOT be removed from the place."
+	if not called then return nil, "internal", "Studio refused StudioTestService:ExecutePlayModeAsync: " .. clipText(result, 300) .. " " .. removal end
+	if type(result) ~= "table" or result.nonce ~= nonce then
+		return nil, "internal", "the Test session ended without the runner's report (stopped by other means, or the place destroyed the runner). " .. removal
+	end
+	local failures = {}
+	for index, failure in (if type(result.failures) == "table" then result.failures else {}) do
+		if index > 50 then break end
+		if type(failure) == "table" then
+			local errors = {}
+			for e, text in (if type(failure.errors) == "table" then failure.errors else {}) do
+				if e > 5 then break end
+				table.insert(errors, clipText(text, 1500))
+			end
+			table.insert(failures, { name = clipText(failure.name, 300), errors = errors })
+		end
+	end
+	local errors = {}
+	for index, text in (if type(result.errors) == "table" then result.errors else {}) do
+		if index > 20 then break end
+		table.insert(errors, clipText(text, 1500))
+	end
+	return {
+		stage = clipText(result.stage, 20),
+		passed = tonumber(result.success) or 0,
+		failed = tonumber(result.failure) or 0,
+		skipped = tonumber(result.skipped) or 0,
+		failures = failures,
+		errors = errors,
+		error = if result.error ~= nil then clipText(result.error, 2000) else nil,
+		timedOut = result.stage == "deadline",
+		elapsedSeconds = tonumber(result.elapsedSeconds),
+		runnerRemoved = remaining == 0,
+	}
 end
 
 --[[

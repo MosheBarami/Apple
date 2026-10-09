@@ -19,7 +19,6 @@ const KNOWLEDGE_CACHE = new TtlCache<unknown>(10 * 60_000);
  * library, reviewed kits, consent), and a description pointing at a missing tool sends the model looking for it.
  */
 const DESCRIPTIONS: Record<string, string> = {
-  search_scripts: 'Search every script source for a string. Returns matching lines with paths and line numbers.',
   model_anatomy:
     "Read a placed model: its parts, joints, hinge candidates and which way a positive angle turns a part, what is already clickable, lit or playing. Use it to understand something you inserted or found before adapting or animating it. Pass part for one part's detail.",
   edit_script:
@@ -29,7 +28,7 @@ const DESCRIPTIONS: Record<string, string> = {
   animate_model:
     'Rig a model with joints (root part, Motor6D joints with pivots: the RigEdit Lite method) and author keyframed clips from code, previewed in Studio without uploading. Load the animation skill first; read the model with model_anatomy before rigging it.',
   play_check:
-    "Play-test as a player: starts a real Studio test session with one player, waits `seconds`, optionally walks the character onto `touch` parts, then reports what the player's screen shows (every ScreenGui and its visible text), leaderstats before and after, and errors from the client and the server. Use it before you say a script, counter, HUD or button works.",
+    "Play-test as a player: starts a real Studio test session with one player, waits `seconds`, optionally walks the character onto `touch` parts, then reports what the player's screen shows (every ScreenGui and its visible text), leaderstats before and after, and errors from the client and the server. Use it before you say a script, counter, HUD or button works. tests:true instead runs the place's TestEZ unit tests (ModuleScripts named *.spec; TestEZ must be in the place) and reports passed/failed/skipped with each failure.",
 };
 
 /** Tool names whose results the chat shows as steps; the UI labels them. */

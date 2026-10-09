@@ -14,6 +14,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'ty-')), 't.mjs');
@@ -140,13 +141,12 @@ test('the economy curve: prices are the agent\'s when given, the documented defa
 
 test('every class and property the tycoon writes is one the plugin accepts', () => {
   // Live 2026-10-02: the whole map was refused for Neutral, Duration and TextStrokeTransparency, and the run said only
-  // "did not work". The plugin's allowlists are the source of truth.
-  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
-  const allowed = new Set([...plugin.matchAll(/^\s*([A-Z][A-Za-z0-9]*) = true,/gm)].map((m) => m[1]));
-  assert.ok(allowed.size > 100, 'the allowlists were read');
+  // "did not work". Plugin 2.0: the API dump decides, per class (apps/studpilot-plugin/scripts/api-dump.mjs).
+  const P = pluginPermissions();
+  assert.ok(P.creatableNames.size > 100, 'the API dump was read');
   const steps = T.tycoonSteps(T.tycoonRecipe(1, theme()));
   const bad = new Set();
-  const walk = (n) => { if (!allowed.has(n.className)) bad.add(`class ${n.className}`); for (const k of Object.keys(n.props ?? {})) if (!allowed.has(k)) bad.add(`${n.className}.${k}`); (n.children ?? []).forEach(walk); };
+  const walk = (n) => { if (!P.canCreate(n.className)) bad.add(`class ${n.className}`); for (const k of Object.keys(n.props ?? {})) if (!P.propertyType(n.className, k)) bad.add(`${n.className}.${k}`); (n.children ?? []).forEach(walk); };
   for (const s of steps) if (s.kind === 'create') s.items.forEach(walk);
   assert.deepEqual([...bad], []);
 });

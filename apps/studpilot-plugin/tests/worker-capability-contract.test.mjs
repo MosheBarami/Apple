@@ -75,7 +75,7 @@ local function stubCapture() return { capture = function() return nil, "stub" en
 
 -- The shipped PlayCheck module is bundled beside Commands, exactly as rojo places it; the mock's
 -- StudioTestService exposes ExecutePlayModeAsync as current Studio documents it.
-emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), capture = stubCapture(), generation = stubGeneration(), playCheck = PlayCheck, opFamilies = OP_FAMILIES_UNDER_TEST })))
+emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), capture = stubCapture(), generation = stubGeneration(), playCheck = PlayCheck, opFamilies = OP_FAMILIES_UNDER_TEST, permissions = PERMISSIONS_UNDER_TEST })))
 emit("NO_RENDERER", Commands.capabilities(Commands.new({ game = game, generation = stubGeneration(), playCheck = PlayCheck })))
 emit("NO_PLAY_CHECK", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration() })))
 `;

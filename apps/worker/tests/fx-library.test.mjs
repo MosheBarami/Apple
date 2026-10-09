@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pluginPermissions } from '../../studpilot-plugin/scripts/api-dump.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -211,12 +212,14 @@ const stripLuauComments = (src) => src.replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, '').
 const COMMANDS = stripLuauComments(readFileSync(join(PLUGIN_SRC, 'Commands.luau'), 'utf8'));
 const FX_FAMILY = stripLuauComments(readFileSync(join(PLUGIN_SRC, 'ops', 'Fx.luau'), 'utf8'));
 const union = (...sets) => new Set(sets.flatMap((s) => [...(s ?? [])]));
+// Plugin 2.0 (owner, 2026-10-08): no allowlists; the API dump and a short deny list decide (scripts/api-dump.mjs).
+// An engine texture is any rbxasset path the plugin's content rule takes (Permissions.contentAllowed).
+const PERMS = pluginPermissions();
 const ALLOW = {
-  classes: tableKeys(COMMANDS, 'local CREATE_CLASSES = {'),
-  props: union(tableKeys(COMMANDS, 'local PROPERTY_ALLOW = {'), tableKeys(FX_FAMILY, 'propertyAllow = {')),
-  enums: union(tableKeys(COMMANDS, 'local ENUM_ALLOW = {'), tableKeys(FX_FAMILY, 'enumAllow = {')),
-  // The engine particle textures the plugin accepts, read from the plugin's own list.
-  textures: new Set([...(/CONTENT_PROPERTY\.Texture\.ParticleEmitter = \{([\s\S]*?)\n\}/.exec(COMMANDS)?.[1] ?? '').matchAll(/\["([^"]+)"\]\s*=\s*true/g)].map((m) => m[1])),
+  classes: new Set(PERMS.creatableNames),
+  props: union(PERMS.writableNames, tableKeys(FX_FAMILY, 'propertyAllow = {')),
+  enums: union(PERMS.enums, tableKeys(FX_FAMILY, 'enumAllow = {')),
+  textures: { has: (path) => /^[\w\-./]+$/.test(path) && !path.includes('..'), size: Infinity },
 };
 
 function walk(items, out = []) {
@@ -226,7 +229,6 @@ function walk(items, out = []) {
 
 test('the plugin allowlists read back non-empty (else the next test checks nothing)', () => {
   assert.ok(ALLOW.classes.size > 20 && ALLOW.props.size > 50 && ALLOW.enums.size > 5, JSON.stringify({ c: ALLOW.classes.size, p: ALLOW.props.size, e: ALLOW.enums.size }));
-  assert.ok(ALLOW.textures.size >= 8, `engine textures read: ${ALLOW.textures.size}`);
   for (const path of F.ENGINE_TEXTURE_PATHS) assert.ok(ALLOW.textures.has(path), `the plugin would refuse preset texture ${path}`);
 });
 
@@ -381,12 +383,18 @@ test('edit_script refuses a script that adds a hand-made Sound, and allows one t
   assert.ok(good.calls.some((c) => c.op === 'edit_script'));
 });
 
-test('set_properties refuses a SoundId from nowhere and accepts a library or discovered one', async () => {
+// Plugin 2.0 (owner, 2026-10-08): any Roblox audio id (Creator Store, Toolbox, engine) is accepted; a web URL is refused.
+test('set_properties refuses a SoundId that is no Roblox audio id and accepts any that is', async () => {
   const sound = () => studio((op) => (op.op === 'get_instance' ? { class: 'Sound', props: {} } : { ok: true }));
-  for (const v of ['rbxassetid://1', 'rbxasset://sounds/electronicpingshort.wav', 'http://x/a.mp3']) {
+  for (const good of ['rbxassetid://1', 'rbxasset://sounds/electronicpingshort.wav']) {
+    const s = sound();
+    assert.ok(!refused(await T.TOOLS.set_properties.run(s.ctx, { path: 'game.SoundService.Coin', props: { SoundId: { t: 'string', v: good } } })), good);
+    assert.ok(s.calls.some((c) => c.op === 'set_props'), good);
+  }
+  for (const v of ['http://x/a.mp3', 'rbxassetid://12ab']) {
     const s = sound();
     const r = await T.TOOLS.set_properties.run(s.ctx, { path: 'game.SoundService.Coin', props: { SoundId: { t: 'string', v } } });
-    assert.ok(refused(r), `${v}: ${JSON.stringify(r)}`);
+    assert.match(String(r?.error), /not a Roblox audio id/, `${v}: ${JSON.stringify(r)}`);
     assert.ok(!s.calls.some((c) => c.op === 'set_props'));
   }
   const lib = sound();

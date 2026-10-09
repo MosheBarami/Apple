@@ -37,7 +37,10 @@ local POLL_PATH = "/api/studio/poll"
 -- Explosion; a Wire/IKControl end is a path reference; an Explosion is created harmless unless the op says otherwise.
 -- Also in 1.5.0 (handoff 1.5): the API base is https://studpilot.app, and a request that never gets an answer is
 -- tried once on the former host (FALLBACK_ORIGIN) for this release only. An HTTP status is never retried.
-local PLUGIN_VERSION = "1.5.0"
+-- 2.0.0 (2026-10-08, owner decision "i accept the reduced safety"): allow by default from Roblox's API dump with a
+-- short deny list (Permissions.luau), any Roblox content id, checkpoints that hold what they cannot recreate,
+-- serialize/deserialize, grep/glob/list, run_tests, and every payload sent is made valid UTF-8 first.
+local PLUGIN_VERSION = "2.0.0"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails
@@ -254,12 +257,40 @@ local function attempt(origin: string, path: string, encoded: string, token: str
 	end)
 end
 
+-- 2.0: EVERY PAYLOAD IS VALID UTF-8 BEFORE IT IS ENCODED. A place's script source, instance name or
+-- attribute can hold bytes that are not UTF-8 (pasted binary, an old encoding), and JSONEncode refuses
+-- the whole body for one bad byte, so one script could cost a whole read. Each invalid byte becomes
+-- U+FFFD; valid text is returned unchanged (the same string, no copy).
+local function cleanText(text: string): string
+	if utf8.len(text) ~= nil then return text end
+	local out = {}
+	local i = 1
+	while i <= #text do
+		local length, bad = utf8.len(text, i)
+		if length ~= nil then table.insert(out, string.sub(text, i)); break end
+		table.insert(out, string.sub(text, i, bad - 1))
+		table.insert(out, "\u{FFFD}")
+		i = bad + 1
+	end
+	return table.concat(out)
+end
+
+local function sanitize(value: any, depth: number): any
+	if type(value) == "string" then return cleanText(value) end
+	if type(value) ~= "table" or depth > 64 then return value end
+	local out = {}
+	for key, item in value do
+		out[if type(key) == "string" then cleanText(key) else key] = sanitize(item, depth + 1)
+	end
+	return out
+end
+
 -- The fourth value says why a request never got an answer (Studio's own error), for the poll loop.
 local function post(path: string, body: any, token: string?): (boolean, number, any, string?)
 	-- Keep the wire names used by the existing worker.  The path is a module constant, not a value
 	-- supplied by a prompt, a project, or a server response.
 	local encodedOk, encoded = pcall(function()
-		return HttpService:JSONEncode(body)
+		return HttpService:JSONEncode(sanitize(body, 0))
 	end)
 	if not encodedOk or type(encoded) ~= "string" then
 		return false, 0, nil, "could not encode: " .. tostring(encoded)
@@ -290,7 +321,7 @@ local UNSENT_RETRIES = 3
 local function shrinkUnsendable(session: Session, reason: string): number
 	local shrunk = 0
 	for index, result in session.pendingResults do
-		local encodedOk, encoded = pcall(function() return HttpService:JSONEncode(result) end)
+		local encodedOk, encoded = pcall(function() return HttpService:JSONEncode(sanitize(result, 0)) end)
 		if not encodedOk or type(encoded) ~= "string" or #encoded > MAX_RESULT_BYTES then
 			local short = {
 				id = result.id,
@@ -856,7 +887,12 @@ function Bridge:connect(identity: any): (boolean, string, string)
 	if self.destroyed or self.generation ~= attemptGeneration then
 		return false, "Connection attempt was cancelled.", "failed"
 	end
-	local ok, statusCode, body = post(ANNOUNCE_PATH, announceBody(identity, placeOf(currentState), true, nil), nil)
+	-- 2.0: the FIRST announce of a plugin load is answered at once (wait = false; the server holds only a
+	-- waiting announce). So a first request still unanswered after a few seconds is Studio's own HTTP
+	-- permission prompt, which init.server.luau then names in the dock. Every later announce long-holds.
+	local holding = self.answeredOnce == true
+	local ok, statusCode, body = post(ANNOUNCE_PATH, announceBody(identity, placeOf(currentState), holding, nil), nil)
+	if ok then self.answeredOnce = true end
 	if self.destroyed or self.generation ~= attemptGeneration then
 		return false, "Connection attempt was cancelled.", "failed"
 	end

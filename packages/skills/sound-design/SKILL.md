@@ -108,7 +108,7 @@ and changes faster.
 
 ## 9. Verification
 
-- `get_instance` each Sound: `SoundId` set, `SoundGroup` set, parent correct (part for 3D).
+- `read_instance` each Sound: `SoundId` set, `SoundGroup` set, parent correct (part for 3D).
 - `play_check` and `get_output_logs`: look for `Failed to load sound rbxassetid://...` (wrong id / private / moderated)
   and script errors on trigger. Fix by choosing another asset.
 - `run_luau` at edit time can read `IsLoaded`/`TimeLength` after `sound.Loaded:Wait()` (with a timeout) to confirm an

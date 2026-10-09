@@ -26,5 +26,8 @@ load(function() return require(script.Compose) end)
 load(function() return require(script.Surface) end)
 load(function() return require(script.Joints) end)
 load(function() return require(script.Upright) end)
+load(function() return require(script.Search) end)
+load(function() return require(script.Serialize) end)
+load(function() return require(script.Tests) end)
 
 return families
