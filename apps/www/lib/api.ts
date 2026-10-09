@@ -86,14 +86,15 @@ export interface StudioCandidate {
 export type ConnectResult =
   | { status: "connected"; placeName: string }
   | { status: "choose"; candidates: StudioCandidate[] }
+  | { status: "elsewhere"; pickId: string; placeName: string; projectId: string; projectName: string }
   | { status: "waiting" };
 
 /** Bind this project to the Roblox Studio waiting with the StudPilot plugin (no code). `pickId` answers a choice. */
-export async function connectStudio(projectId: string, pickId?: string): Promise<ConnectResult> {
+export async function connectStudio(projectId: string, pickId?: string, here?: boolean): Promise<ConnectResult> {
   const res = await fetch(`/api/projects/${projectId}/connect`, {
     method: "POST",
     headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify(pickId ? { pickId } : {}),
+    body: JSON.stringify({ ...(pickId ? { pickId } : {}), ...(here ? { here: true } : {}) }),
     signal: AbortSignal.timeout(15_000),
   });
   const body = (await res.json().catch(() => ({}))) as Partial<ConnectResult> & { error?: string };

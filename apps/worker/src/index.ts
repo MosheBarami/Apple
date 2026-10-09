@@ -2421,11 +2421,25 @@ app.get('/api/roblox/uploads', async (c) => {
   return c.json(await robloxUploadsConnected(c.env, user.userId).catch(() => ({ connected: false, username: null })));
 });
 
+/** This person's other project already bound to `placeId` (projects.place_id, mirrored by the SessionDO), read as them. */
+export async function projectForPlace(env: Env, auth: string, userId: string, placeId: number, notId: string): Promise<{ id: string; name: string } | null> {
+  try {
+    const q = `owner_id=eq.${encodeURIComponent(userId)}&place_id=eq.${Math.floor(placeId)}&id=neq.${encodeURIComponent(notId)}&select=id,name&order=updated_at.desc&limit=1`;
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/projects?${q}`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth } });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ id?: unknown; name?: unknown }>;
+    const row = rows[0];
+    return row && typeof row.id === 'string' ? { id: row.id, name: typeof row.name === 'string' ? row.name : 'Untitled' } : null;
+  } catch {
+    return null;
+  }
+}
+
 app.post('/api/projects/:id/connect', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
-  const body = await c.req.json<{ pickId?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ pickId?: unknown; here?: unknown }>().catch(() => null);
   const robloxUserIds = await linkedRobloxIds(c.env, ctx.user.userId);
   const lobby = pairingStub(c.env);
   const listed = (await (await lobby.fetch('https://do/candidates', { method: 'POST', body: JSON.stringify({ robloxUserIds, ip, userId: ctx.user.userId }) })).json()) as {
@@ -2437,6 +2451,12 @@ app.post('/api/projects/:id/connect', async (c) => {
   if (!picked) {
     if (mine.length === 0) return c.json({ status: 'waiting' });
     return c.json({ status: 'choose', candidates: mine.map(({ pickId, placeName, placeId }) => ({ pickId, placeName, placeId })) });
+  }
+  // One project per game (handoff 2026-10-09 section 12): a game that already has another project of this person's is
+  // offered as that project, so its conversation and history continue there. `here: true` binds this one anyway.
+  if (picked.placeId > 0 && body?.here !== true) {
+    const other = await projectForPlace(c.env, c.req.header('Authorization') ?? '', ctx.user.userId, picked.placeId, ctx.project.id);
+    if (other) return c.json({ status: 'elsewhere', pickId: picked.pickId, placeName: picked.placeName, projectId: other.id, projectName: other.name });
   }
   const res = await lobby.fetch('https://do/bind', {
     method: 'POST',
