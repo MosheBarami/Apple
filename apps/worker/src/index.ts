@@ -715,13 +715,15 @@ app.use('/api/*', async (c, next) => {
 //   signed-off comment attached and no second look. Deleting it means that handler has to earn the
 //   line. The waitlist product itself is gone — see the notes in apps/web/src/routes/usage.tsx and
 //   apps/site/src/pages/pricing.astro — so there is nothing left for it to be the review OF. ]]
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/announce', '/api/studio/release', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config', '/api/library-preview/:assetId'];
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/announce', '/api/studio/release', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config', '/api/library-preview/:assetId', '/api/studio/pixels/:id'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   // A browser <img> cannot attach the account JWT. This one numeric, read-only route returns
   // only Roblox's public thumbnail; unknown sibling paths stay behind the JWT gate.
   if (AUTH_EXEMPT.includes(path) ||
       (/^\/api\/library-preview\/[1-9][0-9]{0,15}$/.test(path) && AUTH_EXEMPT.includes('/api/library-preview/:assetId')) ||
+      // The plugin downloads make_image pixels with no account JWT; the random single-use id is the capability.
+      (/^\/api\/studio\/pixels\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(path) && AUTH_EXEMPT.includes('/api/studio/pixels/:id')) ||
       path.startsWith('/api/admin/')) return next();
   const token = bearerToken(c.req.raw);
   if (!token) return c.json({ error: 'unauthorized' }, 401);
