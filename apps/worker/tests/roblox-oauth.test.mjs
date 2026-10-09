@@ -144,7 +144,7 @@ function makeWorld() {
     roblox.access.set(access, who);
     roblox.refresh.set(refresh, { ...who, state: 'live' });
     roblox.lastRefreshIssued = refresh;
-    return { access_token: access, refresh_token: refresh, token_type: 'Bearer', expires_in: 900, scope: 'openid profile' };
+    return { access_token: access, refresh_token: refresh, token_type: 'Bearer', expires_in: 900, scope: roblox.scope ?? 'openid profile' };
   };
   const userByEmail = (email) => [...sb.users.values()].find((u) => u.email === email);
 
@@ -3706,4 +3706,17 @@ baseTest("Roblox's compact scope answer counts as an uploads grant (measured liv
   assert.deepEqual(R.scopeList('asset:read,write openid profile'), ['asset:read', 'asset:write', 'openid', 'profile']);
   assert.deepEqual(R.scopeList('openid profile asset:read asset:write'), ['openid', 'profile', 'asset:read', 'asset:write']);
   assert.ok(!R.scopeList('openid profile').includes('asset:write'));
+});
+
+test('UPLOADS AT ONCE: four pictures drawn together all get an upload token; the ones that find the refresh busy wait for it instead of failing', async () => {
+  const s = await connected();
+  s.db.raw.prepare("update roblox_oauth_tokens set scopes = 'asset:read,write openid profile' where user_id = ?").run(s.userId);
+  s.world.roblox.scope = 'asset:read,write openid profile';
+  const before = s.world.roblox.tokenCalls.length;
+  const results = await Promise.all([1, 2, 3, 4].map(() => R.robloxUploadAccess(s.env, s.userId)));
+  assert.deepEqual(results.map((r) => r.ok ? 'ok' : r.error), ['ok', 'ok', 'ok', 'ok']);
+  assert.equal(results[0].robloxUserId, SUB_A);
+  assert.equal(s.world.roblox.tokenCalls.length - before, 1, 'one refresh at Roblox, shared by all four');
+  assert.equal(s.world.roblox.burned, false);
+  s.db.close();
 });
