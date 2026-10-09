@@ -98,8 +98,8 @@ client/UI → persistence → test.
 
 ## 5. Testing
 
-1. `run_luau` to unit-check pure logic in modules at edit time (level formula, price checks, day math) — require the
-   module and assert outputs.
+1. Keep pure logic (level formula, price checks, day math) in a ModuleScript and check it by reading it carefully;
+   if the place has TestEZ, `play_check` with tests:true runs its *.spec modules.
 2. `play_check`: join as a player; confirm leaderstats/attributes appear with the right starting values, UI shows
    them, no client/server errors.
 3. Exercise the flow (touch a checkpoint, buy an item) where `play_check` allows; otherwise add a temporary

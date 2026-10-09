@@ -1,6 +1,6 @@
 ---
 name: building-worlds
-description: Building maps, levels and environments in Roblox. Covers player scale and dimensions, layout and composition (landmarks, paths, sightlines, zones), terrain with edit_terrain, procedural placement with run_luau (noise, scatter, raycasts onto terrain), materials and MaterialVariants, Lighting (LightingStyle, ClockTime, ambient, shadows) and Atmosphere/Sky/Clouds/post effects tuned to a requested mood, performance (part counts, anchoring, collision fidelity, StreamingEnabled), and when to use Creator Store models versus parts. Load before creating or changing any 3D space, terrain or lighting. references/lighting-and-atmosphere.md explains every mood parameter and its range.
+description: Building maps, levels and environments in Roblox. Covers player scale and dimensions, layout and composition (landmarks, paths, sightlines, zones), terrain with edit_terrain, placement that sits on real ground (spatial_query, scatter_instances), materials and MaterialVariants, Lighting (LightingStyle, ClockTime, ambient, shadows) and Atmosphere/Sky/Clouds/post effects tuned to a requested mood, performance (part counts, anchoring, collision fidelity, StreamingEnabled), and when to use Creator Store models versus parts. Load before creating or changing any 3D space, terrain or lighting. references/lighting-and-atmosphere.md explains every mood parameter and its range.
 ---
 
 # Building worlds
@@ -56,28 +56,25 @@ Actions: `fill_block`, `fill_ball`, `fill_region`, `replace_material`, `write_vo
 - Fill ground as a thick slab (≥ 8 studs) so it never shows holes; build hills with overlapping `fill_ball`s of varied
   radius; water with `fill_block` material `Water` below the ground line, then carve the basin.
 - `replace_material` inside a region to paint (grass → ground near paths, rock on steep slopes).
-- For heightmaps or large organic shapes, generate occupancy/material arrays (`write_voxels`), or call
-  `workspace.Terrain:FillBlock/FillBall/FillWedge/FillCylinder` from `run_luau` in a loop driven by `math.noise`.
+- For large organic shapes, overlap several `edit_terrain` fills of varied size (one call takes a list of operations)
+  rather than one giant ball: a radius-64 sphere is a mountain, not a "small island". Size the shape to the request.
 - `Terrain.Decoration = true` adds animated grass on Grass material (cost on low-end devices).
 - Terrain colours: `Terrain:SetMaterialColor(Enum.Material.Grass, Color3)`; water look: `WaterColor`,
   `WaterTransparency`, `WaterWaveSize`, `WaterWaveSpeed`, `WaterReflectance`.
 
-## 4. Procedural placement with run_luau
+## 4. Placement that sits on the ground
 
-Use code for anything repeated (forests, rocks, lamp rows, fences, city blocks). Principles:
-- **Seeded randomness**: `local rng = Random.new(seed)` so a re-run reproduces the layout; tell the user the seed.
-- **Noise for natural variation**: `math.noise(x * f, z * f, seed)` with frequency `f` ~ 0.01-0.05 for
-  large-scale density; combine two octaves for detail. Use it to decide *density*, not exact positions.
-- **Poisson-ish scatter**: candidate points from `rng`; reject any closer than `minDist` to accepted ones (grid-bucket
-  the accepted points for speed). Gives natural spacing without clumps.
-- **Snap to ground**: raycast down from above each point:
-  `workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -1000, 0), params)`; place at `result.Position`, reject
-  if `result.Normal.Y < 0.8` (too steep) or `result.Material == Enum.Material.Water`. Align to slope with
-  `CFrame.lookAlong`/`CFrame.fromMatrix` when the object should tilt (rocks), keep upright for trees and buildings.
-- **Avoid paths and keep-outs**: test distance to path polyline points or `GetPartBoundsInBox`.
-- Clone from one prepared source model (`:Clone()` in run_luau) and vary rotation/scale
-  (`Model:ScaleTo`, `PivotTo`).
-- Batch: create inside a Model, parent it at the end. Report how many instances you made.
+Never place by a guessed Y. Ask the world first, then place:
+- `spatial_query` `find_ground {position:[x, y, z]}`: the surface straight below a point (position, normal, material).
+  Put a prop's bottom there (bottom = position.Y + half its height, or use `bounds` on the prop to get bottomY).
+- `spatial_query` `bounds {path}`: centre, size, bottomY/topY of anything placed; `check_placement {path}`: what it
+  overlaps and whether it floats (gapBelow). Run it on every focal object (waterfall, tree, building) after placing.
+- `spatial_query` `find_flat {region, samples, maxSlopeDeg}`: flat points to build on.
+- Repeated things (forests, rocks, coins, grass tufts): make ONE good template first, check it, then
+  `scatter_instances {template, count, region, onMaterial, minSpacing, scale, seed}` drops copies by ray onto the ground,
+  skips water and steep or wrong surfaces, and reports why any were not placed. A fixed seed reproduces the layout.
+- Upright for trees and buildings; random yaw and a small scale range for natural variation.
+- A few hand-placed hero objects with clear intent beat a large random scatter. Composition first (section 2).
 
 ## 5. Materials and colour
 
@@ -139,7 +136,7 @@ does. Method:
 ## 9. Verification
 
 1. `get_project_tree` on `Workspace` — structure grouped and named; nothing loose at the root.
-2. `run_luau` to count parts and unanchored parts: iterate `workspace:GetDescendants()` and report counts, bounds
+2. `get_project_tree` on the build and `spatial_query` `check_placement` on focal objects: count parts, find unanchored or floating ones, check bounds
    (`Model:GetBoundingBox()`), anything floating (raycast down from each prop; gap > 0.5 stud = floating).
 3. `play_check`: player spawns on ground, can walk the main path, view shows the intended landmark, no errors.
 4. Describe to the user what you built, with sizes, and what you would refine next.

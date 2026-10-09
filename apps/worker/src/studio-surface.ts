@@ -16,6 +16,7 @@ export const STUDIO_READ_TOOLS = [
   'get_output_logs',
   'model_anatomy',
   'check_ui',
+  'spatial_query',
 ] as const;
 
 // No offline "knowledge" tools any more (rebuild 2026-10-08): no reviewed patterns, kits or verified modules. The agent's
@@ -28,9 +29,8 @@ export const STUDIO_WRITE_TOOLS = [
   'set_properties',
   'delete_instances',
   'transform_instances',
-  'apply_surface',
+  'scatter_instances',
   'edit_script',
-  'run_luau',
   'edit_terrain',
   'insert_from_store',
   'make_image',

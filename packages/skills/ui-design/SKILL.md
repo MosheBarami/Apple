@@ -16,15 +16,15 @@ Write down (to yourself) four things, then design from them:
 1. **Job.** What does the player or operator do here, in one sentence? ("Find a player and kick, mute or
    ban them." "Pick an item and buy it." "Glance at health and coins mid-fight.")
 2. **Kind.** It sets density, tone and motion:
-   - **Game UI (the default for anything inside a Roblox game, admin panels included)**: expressive,
-     loud, on-theme, built with the craft in section 10. A player-facing admin panel, shop, inventory,
-     reward or menu in a simulator, obby or tycoon looks like the game: chunky outlined buttons, display
-     fonts with black outlines, saturated gradients, thick dark borders, textures. Rewards and prices are
-     the loudest things on the screen. "Cool", "cooler", "awesome", "studded", "colourful", "like a
-     simulator" all mean this, turned up (section 10's ladder).
-   - **Tool UI (only when asked for clean, minimal, professional or a developer tool)**: dense, calm,
-     precise. Neutral surfaces, one accent, left-aligned text, compact rows (36-48 px), small radii,
-     thin strokes, a sans family.
+   The kind comes from the request and the game, never from habit. Read the words and look at the place's
+   existing UI; when neither says, pick what a skilled designer would for that job and say which.
+   - **Game UI (player-facing screens that should feel like the game: shops, rewards, menus, HUD frames)**:
+     expressive and on-theme, with the craft in section 10 where the game's style calls for it. "Cool",
+     "cooler", "awesome", "colourful", "like a simulator" ask for section 10's ladder, turned up.
+     Studs, cartoon outlines and stud textures only when the request or the game asks for them.
+   - **Tool UI (operator screens: admin and moderation panels, settings, debug and editor tools, unless the
+     request asks for a game look)**: dense, calm, precise. Neutral surfaces, one accent, left-aligned text,
+     compact rows (36-48 px), small radii, thin strokes, a sans family. A well-made tool, deliberately designed.
    - **HUD**: minimal and peripheral. Pin to corners and edges, never the centre; small footprint;
      translucent backing (bgT 0.3-0.5) so the world shows through; numbers big enough to read in one
      glance; nothing pressable under the player's thumbs on phone unless it must be.
@@ -69,6 +69,13 @@ Write down (to yourself) four things, then design from them:
   uses the accent fill or an accent stroke.
 - Every action answers: a toast, a number that changes, a row that disappears, a button that switches
   to "Bought". Destructive actions (ban, delete, reset) ask to confirm.
+- **Anything that can close can open again.** A panel with a close button also gets a visible way back: a
+  small toggle button on screen (and a key on desktop, said in the reply). Never leave the player with a hidden
+  screen and no way to reach it.
+- **The owner can use what they asked for.** An admin or moderation panel checks permission on the server; by
+  default allow the place's owner (`game.CreatorId` for a user-owned place, group rank 255 for a group place) and
+  anyone in the play-test in Studio (`RunService:IsStudio()`), plus an `ADMINS` list of UserIds at the top of the
+  server script for others. An empty admin list makes every button do nothing.
 - Empty states say what is missing and what to do ("No players match "bu". Clear the search.").
 
 ## 5. Responsive on Roblox
@@ -180,10 +187,10 @@ with `player.PlayerGui:WaitForChild("<name>")` and elements by their names. It s
 2. Choose the scales and colours (sections 2-3) for this request; write them down in your reasoning.
 3. Write the tree: one outer panel or a few edge-anchored HUD groups, stacks inside, names on everything
    a script needs. Put every repeated look in `styles` and every list in `each`.
-4. Call build_ui. Read `layout.defects` and `warnings`. Fix each by changing the design (section 6): one or
-   two properties with `set_properties` then `check_ui`; a structural change by calling build_ui again with
-   the same name. Repeat until `verdict: "pass"`, or explain any defect you keep
-   on purpose (a truncated long username in a list is acceptable; a cut-off price is not).
+4. Call build_ui. Read `layout.defects` and `warnings`. Fix each by changing the design (section 6): a few
+   values with `set_properties` on the named node, then `check_ui`. Call build_ui again only for a
+   structural change: each rebuild re-sends the whole tree, costs money and can break what worked; if one made it
+   worse, go back to the earlier tree. Stop at `verdict: "pass"`, or explain a defect you keep on purpose.
 5. Wire behaviour (edit_script), then prove it with play_check.
 6. For UI built by other means, run check_ui.
 
@@ -209,9 +216,9 @@ still yours, chosen for the game.
 - **Bars** (stamina, health, XP): a dark track with a 3 px border, the fill a vivid gradient with a light
   top band, texture over the fill, value text outlined on top; the fill tweens, it never jumps.
 
-**Art.** Every picture (button and panel skins, banners, icons, textures, backgrounds) comes from
-`make_image`: load the game-art skill. A drawn button skin, tinted per colour, with outlined live text on top is
-the strongest single upgrade from flat UI.
+**Art.** When a screen needs a picture (an icon that says more than a word, a skin the style calls for, a
+banner), draw it with `make_image` (load the game-art skill). Many good screens need none: native UI, gradients
+and type are often the better answer. Never draw art just to have art.
 
 **Textures.** "Studded", "Roblox classic" or "LEGO" means a stud texture tiled over surfaces (`pattern`,
 tile 16-32 px): Roblox's classic stud map rbxassetid://10509831729, or a `texture` from make_image. Stripes,
@@ -226,8 +233,8 @@ Offset tween); 8. a click sound. Keep the layout measured clean at every step.
 
 ## 9. Example screens (illustrations of the schema, not templates)
 
-**A simulator-style admin panel** (game UI, chunky cartoon craft from section 10; replace rbxassetid://0
-with a real stud texture id)
+**A command panel in a chunky cartoon style** (only when the request asks for that look; an admin panel with no
+style asked is tool UI, like the moderation panel below. Replace rbxassetid://0 with a real stud texture id)
 
 ```json
 { "name": "AdminPanel",
