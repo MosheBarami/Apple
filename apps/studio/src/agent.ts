@@ -58,8 +58,12 @@ export class StudPilotAgent extends AIChatAgent<Env> {
   messageConcurrency = 'queue' as const;
 
   /** The whole stored conversation, for the operator's admin export (server.ts /studio/api/admin/history). */
-  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[] }> {
-    return { project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null, messages: this.messages };
+  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[]; lastBadToolInput: unknown }> {
+    return {
+      project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null,
+      messages: this.messages,
+      lastBadToolInput: (await this.ctx.storage.get('lastBadToolInput')) ?? null,
+    };
   }
 
   /** The raw storage (every table), for the operator's export by object id (server.ts). */
@@ -128,7 +132,14 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             messages,
             tools: { ...studioTools(this.env, projectId, new TurnReadCache()), ...knowledgeTools(this.env, writer) },
             stopWhen: isStepCount(MAX_STEPS),
-            experimental_repairToolCall: repairToolInput,
+            experimental_repairToolCall: async (args) => {
+              const repaired = await repairToolInput(args);
+              // Kept whole for the operator's export: the error the model sees is cut to 600 characters, which hid what broke.
+              if (!repaired) {
+                await this.ctx.storage.put('lastBadToolInput', { at: new Date().toISOString(), tool: args.toolCall.toolName, text: args.toolCall.input.slice(0, 120_000) }).catch(() => undefined);
+              }
+              return repaired;
+            },
             maxOutputTokens: 16_000,
             abortSignal: options?.abortSignal,
             experimental_transform: smoothStream({ chunking: 'word' }),
