@@ -119,3 +119,24 @@ test('an `all` edit whose text is absent is a miss with the closest lines, not "
   assert.match(r.error, /not present/);
   assert.ok(String(r.closest).includes('Currency.add(player, gain)'));
 });
+
+test('a runtime bug the analyzer finds is reported first and in full, never cut off behind style notes (live run 2026-10-09)', async () => {
+  // The shape that cost eight steps: an unused local and two WaitForChild notes came first, and the typo `extended`
+  // (for `expanded`) was the fourth finding of a list cut to three.
+  const src = [
+    'local Players = game:GetService("Players")',
+    'local unused = 1',
+    'local a = script.Parent:WaitForChild("A")',
+    'local b = script.Parent:WaitForChild("B")',
+    'local expanded = {}',
+    'for _, cat in ipairs({"EVENTS"}) do',
+    '\textended[cat] = false',
+    'end',
+    'print(Players, a, b, expanded)',
+  ].join('\n');
+  const s = studio('');
+  const res = await T.TOOLS.edit_script.run(s.ctx, { path: PATH, source: src });
+  assert.equal(res.error, undefined, String(res.error));
+  assert.ok(Array.isArray(res.bugs) && res.bugs.some((b) => /unknown-global — `extended`/.test(b)), JSON.stringify(res.bugs));
+  assert.ok(!(res.warnings ?? []).some((w) => /extended/.test(w)), 'the bug is not buried in warnings');
+});

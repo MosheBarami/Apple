@@ -23,8 +23,6 @@ const DESCRIPTIONS: Record<string, string> = {
     "Read a placed model: its parts, joints, hinge candidates and which way a positive angle turns a part, what is already clickable, lit or playing. Use it to understand something you inserted or found before adapting or animating it. Pass part for one part's detail.",
   edit_script:
     'Create or edit a script. Provide exactly one of `source` (full new content) or `edits` (exact find/replace list: edits:[{find:"exact old text",replace:"new text"}]). A new script: set `create_class` (Script, LocalScript, ModuleScript) + `create_parent`. The source is parsed before it is written: a body that does not compile is refused and nothing changes. `base_hash` from read_script refuses a write over a concurrent Studio edit.',
-  run_luau:
-    'Run Luau in Studio (edit time, plugin context) and get print() output and the returned value back. Use it for inspection, bulk edits, procedural generation and maths that the typed tools do not cover. Game scripts do not run. Bring assets in with insert_from_store, not from here.',
   animate_model:
     'Rig a model with joints (root part, Motor6D joints with pivots: the RigEdit Lite method) and author keyframed clips from code, previewed in Studio without uploading. Load the animation skill first; read the model with model_anatomy before rigging it.',
   play_check:

@@ -153,8 +153,7 @@ The stack trace names the script and line: `read_script` that line before changi
 
 1. `get_project_tree` / `glob` / `grep` to learn the existing structure before adding code.
 2. Plan the pieces in `update_plan`: modules, remotes, server scripts, client scripts.
-3. Create scripts with `create_instances` (class `Script`/`LocalScript`/`ModuleScript`, `Source`) or change them with
-   `edit_script`. Keep each script focused; shared constants in one ReplicatedStorage module.
-4. `run_luau` to inspect state or test a pure module at edit time (it runs in the plugin context: no players, no
-   DataStores, no server/client split).
+3. Create and change scripts with `edit_script` (it creates the script when it does not exist; read its `bugs` list and
+   fix every one before testing). Keep each script focused; shared constants in one ReplicatedStorage module.
+4. `read_instance` / `get_project_tree` to inspect state at edit time.
 5. `play_check` to run it for real; read server and client errors; fix and re-run until clean.

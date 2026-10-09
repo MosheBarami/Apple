@@ -111,6 +111,7 @@ export interface UiNode {
   stroke?: { color: string; width?: number; t?: number };
   gradient?: { colors: string[]; rotation?: number; t?: [number, number] };
   // text
+  rotation?: number;
   text?: string; font?: string; fontSize?: number; scale?: [number, number]; color?: string; textT?: number;
   alignX?: 'left' | 'center' | 'right'; alignY?: 'top' | 'center' | 'bottom'; truncate?: boolean; rich?: boolean; lineHeight?: number;
   // input
@@ -133,7 +134,7 @@ type Ctx = { layout: 'v' | 'h' | 'grid' | 'free'; bg: string | null };
 const TEXT_KINDS: ReadonlySet<Kind> = new Set(['text', 'button', 'input']);
 
 interface Compiled { spec: Spec; count: number }
-interface Build { count: number; nodes: number; interactive: string[]; warnings: string[] }
+interface Build { count: number; nodes: number; interactive: string[]; outlined: string[]; warnings: string[] }
 
 function axis(size: Size | undefined, dim: 'X' | 'Y', ctx: Ctx, label: string, flex: { grow?: number }, auto: Set<'X' | 'Y'>): [number, number] {
   if (size === undefined) return [0, 0];
@@ -173,7 +174,7 @@ const PLACE: Record<Placement, [number, number]> = {
 /** An offset moves INWARD from the edges the node is placed at (positive x leaves a right-placed node's right edge). */
 const inward = (anchor: number, d: number) => (anchor === 1 ? -d : d);
 
-const KNOWN_KEYS = new Set(['type', 'name', 'children', 'w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'aspect', 'grow', 'at', 'offset', 'z', 'visible',
+const KNOWN_KEYS = new Set(['type', 'name', 'children', 'w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'aspect', 'grow', 'at', 'offset', 'z', 'rotation', 'visible',
   'dir', 'gap', 'pad', 'align', 'justify', 'wrap', 'cols', 'cell', 'bar', 'barColor', 'bg', 'bgT', 'radius', 'clip', 'stroke', 'gradient',
   'text', 'font', 'fontSize', 'scale', 'color', 'textT', 'alignX', 'alignY', 'truncate', 'rich', 'lineHeight',
   'placeholder', 'placeholderColor', 'multiline', 'image', 'fit', 'tint', 'imageT', 'thickness', 'textStroke', 'depth', 'pattern', 'skin']);
@@ -271,7 +272,7 @@ function textStrokeProps(v: unknown, where: string): P {
 
 const TEXT_PROP_KEYS = ['Text', 'FontFace', 'TextColor3', 'TextSize', 'TextScaled', 'TextWrapped', 'TextTruncate', 'TextXAlignment', 'TextYAlignment', 'RichText', 'LineHeight', 'TextTransparency'];
 /** What stays on the outer object when a base edge is added: how it is sized, placed, ordered and pressed. */
-const OUTER_KEYS = new Set(['Size', 'Position', 'AnchorPoint', 'ZIndex', 'Visible', 'AutomaticSize', 'BorderSizePixel', 'AutoButtonColor']);
+const OUTER_KEYS = new Set(['Size', 'Position', 'AnchorPoint', 'ZIndex', 'Rotation', 'Visible', 'AutomaticSize', 'BorderSizePixel', 'AutoButtonColor']);
 const OUTER_DECOR = new Set(['UISizeConstraint', 'UIAspectRatioConstraint', 'UIFlexItem']);
 
 interface Dress {
@@ -466,6 +467,11 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
   if (n.z !== undefined) {
     if (!Number.isInteger(n.z) || n.z < 0 || n.z > 100) fail(`${where}.z must be a whole number 0-100.`);
     props.ZIndex = num(n.z);
+  }
+  if (n.rotation !== undefined) {
+    // Rotation turns the drawing only; layouts still place the unrotated box (vertical text: a box as wide as the text, turned 90).
+    if (typeof n.rotation !== 'number' || !Number.isFinite(n.rotation) || Math.abs(n.rotation) > 360) fail(`${where}.rotation must be degrees, -360 to 360.`);
+    props.Rotation = num(n.rotation);
   }
   if (n.visible === false) props.Visible = bool(false);
 
@@ -673,6 +679,8 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
     if (unplaced.length > 1) build.warnings.push(`${where} places children freely and ${unplaced.length} of them have no at/offset, so they sit on top of each other at the top-left; make ${where} a stack (or give it dir) to lay them out in order.`);
   }
   if (kind === 'button' || kind === 'input') build.interactive.push(namePath);
+  // Text outlined by a stroke that stands out from its fill reads on any background (see outlinedReads).
+  if (n.textStroke !== undefined && takesText && outlinedReads(n)) build.outlined.push(namePath);
 
   if (n.textStroke !== undefined && !takesText) fail(`${where}: textStroke outlines text; put it on a text, button or input.`);
   if (n.pattern !== undefined || n.depth !== undefined || n.skin !== undefined) {
@@ -684,7 +692,7 @@ function compileNode(raw: unknown, ctx: Ctx, path: string, depth: number, build:
   return { spec: dressed.spec, count: count + dressed.added };
 }
 
-export interface CompiledScreen { item: InstanceSpec; name: string; count: number; interactive: string[]; warnings: string[] }
+export interface CompiledScreen { item: InstanceSpec; name: string; count: number; interactive: string[]; outlined: string[]; warnings: string[] }
 
 const INSETS = { safe: 'CoreUISafeInsets', device: 'DeviceSafeInsets', none: 'None' } as const;
 
@@ -708,7 +716,7 @@ export function compileScreen(a: Args): CompiledScreen | Refusal {
       if (!Number.isInteger(a.displayOrder) || (a.displayOrder as number) < -100 || (a.displayOrder as number) > 100) fail('displayOrder must be a whole number -100..100.');
       props.DisplayOrder = num(a.displayOrder as number);
     }
-    const build: Build = { count: 0, nodes: 0, interactive: [], warnings: [] };
+    const build: Build = { count: 0, nodes: 0, interactive: [], outlined: [], warnings: [] };
     const seen = new Set<string>();
     const counters: Record<string, number> = {};
     const children: Spec[] = [];
@@ -725,7 +733,7 @@ export function compileScreen(a: Args): CompiledScreen | Refusal {
     if (count > UI_ENGINE_LIMITS.instances) fail(`the screen compiles to ${count} objects (limit ${UI_ENGINE_LIMITS.instances}); split it into more screens.`);
     return {
       item: { className: 'ScreenGui', name, parent: 'game.StarterGui', props, children },
-      name, count, interactive: build.interactive, warnings: build.warnings,
+      name, count, interactive: build.interactive, outlined: build.outlined, warnings: build.warnings,
     };
   } catch (err) {
     if (err instanceof UiError) return { error: `${err.message} Nothing was sent to Studio.` };
@@ -746,10 +754,25 @@ function viewportsArg(v: unknown): UiViewport[] | undefined | Refusal {
 }
 
 /** The plugin's report, with what to do about it. */
-function verdict(raw: unknown): unknown {
+/**
+ * Text with a stroke at least 1.5 px wide whose colour stands 4.5:1 from the fill. The plugin's contrast check measured the
+ * fill against the background only, so white-on-green with a black outline was a "defect" the agent kept re-fixing.
+ */
+function outlinedReads(n: UiNode): boolean {
+  const s = n.textStroke;
+  if (!s || typeof s.color !== 'string' || (s.t ?? 0) >= 0.5 || (s.width ?? 2) < 1.5) return false;
+  try {
+    return contrast(typeof n.color === 'string' ? n.color : '#ffffff', s.color) >= 4.5;
+  } catch {
+    return false;
+  }
+}
+
+function verdict(raw: unknown, outlined: readonly string[] = [], screen = ''): unknown {
   if (isRefusal(raw)) return { notChecked: raw.error };
   const r = (raw ?? {}) as Args;
-  const defects = Array.isArray(r.defects) ? r.defects : [];
+  const isOutlined = (path: unknown): boolean => typeof path === 'string' && outlined.some((p) => path === `${screen}.${p}` || path.startsWith(`${screen}.${p}.`));
+  const defects = (Array.isArray(r.defects) ? r.defects : []).filter((d: Args) => !(d?.kind === 'low_contrast' && isOutlined(d.path)));
   return {
     verdict: defects.length ? 'defects' : 'pass',
     defects,
@@ -769,7 +792,7 @@ export const buildUi = {
       'Fix each defect by calling build_ui again with the same name: it REPLACES that screen. Load the ui-design skill first for the full schema and design method. ' +
       `Node = {type, name?, children?, ...}. types: ${UI_KINDS.join(', ')}. ` +
       'Size: w/h = pixels | "fill" | "auto" | "NN%"; minW/maxW/minH/maxH px; aspect; grow (weight of a fill in a stack). ' +
-      `Place (outside stacks/grids): at ${UI_PLACEMENTS.join('|')}, offset [x, y] px inward; z. ` +
+      `Place (outside stacks/grids): at ${UI_PLACEMENTS.join('|')}, offset [x, y] px inward; z; rotation (degrees, drawing only). ` +
       'Containers: stack {dir v|h, gap, pad, align start|center|end, justify start|center|end|between|around|evenly, wrap}; grid {cell [w,h] px, or cols + cell [0,h], gap}; scroll {dir, gap, pad, or cols/cell}; frame (free placement, or dir for a list); button may hold children. ' +
       'Look: bg "#hex", bgT 0-1, radius px|"pill", stroke {color, width, t}, gradient {colors, rotation, t:[a,b]}, clip. ' +
       `Text (text, button, input): text, font "Family" or "Family:Weight" (${UI_FONT_FAMILIES.slice(0, 8).join(', ')}, ...), fontSize px or scale [min,max], color, alignX, alignY, truncate, rich, lineHeight. ` +
@@ -823,7 +846,7 @@ export const buildUi = {
     const created = (made as Args).created;
     const screen = Array.isArray(created) && typeof created[0] === 'string' ? created[0] : `game.StarterGui.${compiled.name}`;
     const measured = await call({ op: 'measure_ui', screen, ...(viewports ? { viewports } : {}) }, 90_000);
-    const check = verdict(measured) as Args;
+    const check = verdict(measured, compiled.outlined, screen) as Args;
     return {
       built: screen,
       replaced: old.length > 0,

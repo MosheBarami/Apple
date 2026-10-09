@@ -13,7 +13,7 @@ fit to the place's scale, style and performance budget. Behaviour is always writ
 Search the store when the thing is **organic or detailed** and would look crude from parts: trees, rocks, plants,
 animals, vehicles, furniture, statues, weapons' visual meshes, character models, skyboxes (decals), sounds.
 
-Build it yourself (parts, terrain, `run_luau`) when:
+Build it yourself (parts with create_instances, terrain with edit_terrain) when:
 - it is structure or gameplay geometry (floors, walls, platforms, obstacles, colliders, checkpoints) — exact sizes
   matter and you need to control collisions;
 - it is simple geometry (crates, tables, fences, signs, simple buildings) — parts give a cleaner, consistent style;
@@ -50,14 +50,13 @@ Read every result's fields before inserting:
    loose parts; `PrimaryPart`; anchored state; welds/Motor6Ds; Humanoids; leftover `Sound`, `ParticleEmitter`,
    `ClickDetector`, `ProximityPrompt`, `BillboardGui`, invisible parts, `Configuration`/`Value` objects, attachments;
    enormous or tiny bounding size; parts named `Handle` (tool remnants).
-3. `run_luau` for counts and bounds when the anatomy is large: `#model:GetDescendants()`,
-   `model:GetBoundingBox()`, list classes present.
+3. `spatial_query` `bounds {path}` for its real size and bottom, and `read_instance` with descendants for what classes
+   are inside when the anatomy is large.
 
 ## 5. Adapting
 
 - **Scale to the avatar** (5-stud character; see the `building-worlds` skill table): compute the factor from the
-  bounding box (`size.Y` vs the target height) and apply with `transform_instances` (or `Model:ScaleTo(factor)` in
-  `run_luau`, which scales parts, joints, attachments, lights and particles together). Never scale parts one by one.
+  bounding box (`size.Y` vs the target height) and apply with `transform_instances` scale (it scales the whole model as one). Never scale parts one by one.
 - **Pivot and placement**: set `Model.PrimaryPart` to a sensible base part, or set `WorldPivot` to the bottom-centre
   so `PivotTo` places it on the ground; rotate it to face the path or the player.
 - **Anchor**: static props `Anchored = true` on every BasePart. Things you will animate: anchor only the root, join the
@@ -86,5 +85,6 @@ Read every result's fields before inserting:
 ## 7. Verification
 
 - `read_instance` on the final Model: anchored, named, parented, scale right (bounding height vs 5-stud avatar).
-- `run_luau`: confirm no `Script`/`LocalScript`/`ModuleScript` remains under it and triangle/part budget is sane.
+- `glob` `<model path>/**` for scripts left under it (none should remain unless you meant them), and a sane part count;
+  `spatial_query` `check_placement` to confirm it sits on the ground.
 - `play_check`: no errors, the asset looks right next to the player, and it does not block paths.

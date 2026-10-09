@@ -53,7 +53,7 @@ Pick the simplest that gives the requested movement.
   `EasingDirection` (Enum.PoseEasingDirection) shape the motion **toward the next keyframe**; `Weight` (0-1).
 - Sequence: `Loop` (bool), `Priority` (Enum.AnimationPriority: Core < Idle < Movement < Action < Action2 < Action3 <
   Action4). `keyframe:AddMarker(KeyframeMarker)` for timed events (footstep, hit frame).
-- Build with `Instance.new` in `run_luau` (or let `animate_model` author the clip from your keyframes). Rotations:
+- Author clips with `animate_model` from your keyframes (it builds the KeyframeSequence for you). Rotations:
   `CFrame.Angles(math.rad(x), math.rad(y), math.rad(z))`.
 
 **CurveAnimation** (curve format): `CurveAnimation` → `Folder` per joint (named after the part, nested by hierarchy)
@@ -120,7 +120,7 @@ Animation craft (make it read well):
 ## 8. Verification
 
 - `model_anatomy` after rigging; `read_instance` on a joint to read C0/C1.
-- Preview: `run_luau` to register the sequence and play it on the Animator, then read joint `Transform`s or part
-  positions after a short wait; or `animate_model`'s own preview.
+- Preview with `animate_model`'s own preview, then `play_check` to see it play; a still read of joints proves nothing
+  about motion.
 - `play_check` to confirm it runs in play and shows no errors; describe what moves and how.
 - State clearly whether what you made will play in the published game or needs the owner to upload an asset.

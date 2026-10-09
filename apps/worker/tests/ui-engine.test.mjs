@@ -535,3 +535,22 @@ test('skin draws generated art as the object, 9-sliced from its size so it stret
   assert.match(E.compileScreen({ name: 'S', children: [{ type: 'frame', skin: { image: 'rbxassetid://1', slice: 10 } }] }).error, /slice needs size/);
   assert.match(E.compileScreen({ name: 'S', children: [{ type: 'frame', skin: { image: 'rbxassetid://1' }, pattern: { image: 'rbxassetid://2' } }] }).error, /one image per object/);
 });
+
+test('outlined text is not a low-contrast defect: white with a black stroke on a green button reads (live run 2026-10-09)', async () => {
+  const measure = { defects: [
+    { kind: 'low_contrast', path: 'game.StarterGui.P.Send.Face.Label', detail: 'text contrast 2.3:1 is under 3:1' },
+    { kind: 'low_contrast', path: 'game.StarterGui.P.Note', detail: 'text contrast 1.8:1 is under 4.5:1' },
+  ], viewports: [] };
+  const s = studio(replies({ measure }));
+  const out = await T.TOOLS.build_ui.run(s.ctx, { name: 'P', children: [
+    { type: 'button', name: 'Send', text: 'SEND', w: 96, h: 42, bg: '#22c55e', color: '#ffffff', stroke: { color: '#000000', width: 3 }, textStroke: { color: '#000000', width: 3 } },
+    { type: 'text', name: 'Note', text: 'faint', color: '#cccccc', at: 'bottom' },
+  ] });
+  assert.deepEqual(out.layout.defects.map((d) => d.path), ['game.StarterGui.P.Note'], 'the outlined label is dropped, the plain faint text is kept');
+});
+
+test('rotation turns a node\'s drawing (vertical tab text) and is range-checked', () => {
+  const out = E.compileScreen({ name: 'R', children: [{ type: 'text', name: 'Tab', text: 'More...', rotation: 90 }] });
+  assert.equal(out.item.children.find((c) => c.name === 'Tab').props.Rotation.v, 90);
+  assert.ok(E.compileScreen({ name: 'R', children: [{ type: 'text', text: 'x', rotation: 900 }] }).error);
+});

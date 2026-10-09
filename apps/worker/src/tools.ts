@@ -1209,6 +1209,9 @@ async function uploadImageWithOwnKey(ctx: AgentCtx, userId: string, png: Uint8Ar
   return { error: `Roblox is still processing the upload (operation ${up.data.operationId}); try again in a moment` };
 }
 
+/** Luau analyzer rules (packages/evals/src/luau-intel.mjs) whose finding is a bug at runtime, not a style note. */
+const RUNTIME_BUG_RULES = new Set(['unknown-global', 'implicit-global', 'no-yield-infinite-loop', 'never-updated-loop-condition', 'unreachable-code', 'require-cycle']);
+
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) {
@@ -2782,12 +2785,17 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       // The review runs on what was written, so a warning here is about the file as it now stands.
       const review = reviewScript(path, after, create?.className);
-      const warnings = review.findings.filter((f) => f.severity !== 'error').slice(0, 3);
+      // Findings that are runtime bugs go first and all of them: an `unknown-global` typo cut off behind three style notes
+      // cost a live run eight steps of guessing (2026-10-09). The rest stay a short list.
+      const findings = review.findings.filter((f) => f.severity !== 'error');
+      const bugs = findings.filter((f) => RUNTIME_BUG_RULES.has(f.rule));
+      const warnings = findings.filter((f) => !RUNTIME_BUG_RULES.has(f.rule)).slice(0, 2);
       return {
         ...(res as Record<string, unknown>),
         added: stat.added,
         removed: stat.removed,
         ...(sourceFile ? { sourceFile } : {}),
+        ...(bugs.length ? { bugs: bugs.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}. Fix this before play_check: it fails at runtime.`) } : {}),
         ...(warnings.length ? { warnings: warnings.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}`) } : {}),
         ...(lint.summary ? { lint: lint.summary } : {}),
       };
@@ -2905,7 +2913,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'make_image',
       description:
         'Make a picture for the game with the image model and upload it to the person\'s Roblox account; returns its rbxassetid and size. ' +
-        'Use it for every piece of art a screen or world needs: button and panel skins, title banners, icons, item pictures, textures, backgrounds, decals. ' +
+        'Use it when the design needs a picture: button and panel skins, title banners, icons, item pictures, textures, backgrounds, decals. ' +
         'kind: icon | button | panel | banner | sprite (cut out on a transparent background and cropped) | texture (seamless tile) | background (full frame). ' +
         'Describe the subject and look in prompt; pass the SAME style string for every image of one screen so they match. ' +
         'Text is drawn only when quoted in the prompt ("SHOP"); live text (names, numbers, labels) stays in build_ui. About $0.03 per image: make what the request needs.',
@@ -5773,7 +5781,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   animate_model: {
     def: {
       name: 'animate_model',
-      description: "Make a model move: rig it, then keyframe clips. Read creation skill props-rig-animate first.",
+      description: "Make a model move: rig it, then keyframe clips. Load the animation skill first and read the model with model_anatomy.",
       parameters: S({ model: { type: 'string' }, rig: { type: 'object' }, clips: { type: 'object' } }, ['model', 'clips']),
     },
     studio: true,

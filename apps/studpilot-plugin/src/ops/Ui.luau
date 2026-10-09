@@ -112,6 +112,21 @@ function Ui.build(api)
 		return nil
 	end
 
+	-- Outlined text reads by its outline, not its fill: white with a black stroke on a mid green is a game-UI staple the
+	-- fill-only ratio called unreadable, and the agent spent turns "fixing" it (2026-10-09). Readable when the outline
+	-- stands out from the background (3:1) and the fill stands out from the outline (4.5:1).
+	local function outlined(node, fg, bg)
+		local colour, width = nil, 0
+		for _, child in api.childrenOf(node) or {} do
+			if api.classNameOf(child) == "UIStroke" and read(child, "Enabled") ~= false and (read(child, "Transparency") or 0) < 0.5
+				and read(child, "ApplyStrokeMode") ~= Enum.ApplyStrokeMode.Border then
+				colour, width = read(child, "Color"), read(child, "Thickness") or 0
+			end
+		end
+		if not colour and (read(node, "TextStrokeTransparency") or 1) < 0.5 then colour, width = read(node, "TextStrokeColor3"), 1.5 end
+		return colour ~= nil and width >= 1.5 and Ui.contrast(colour, bg) >= 3 and Ui.contrast(fg, colour) >= 4.5
+	end
+
 	local function measure(frame, width, height, touch, topInset, prefix)
 		local issues, elements, interactive = {}, 0, {}
 		local function add(kind, node, detail)
@@ -148,7 +163,7 @@ function Ui.build(api)
 						if fg and bg then
 							local ratio = Ui.contrast(fg, bg)
 							local large = (read(node, "TextSize") or 14) >= 18
-							if ratio < (if large then 3 else 4.5) then
+							if ratio < (if large then 3 else 4.5) and not outlined(node, fg, bg) then
 								add("low_contrast", node, ("text contrast %.1f:1 is under %s:1"):format(ratio, if large then "3" else "4.5"))
 							end
 						end
@@ -446,7 +461,7 @@ function Ui.build(api)
 					if fg and bg then
 						local ratio = Ui.contrast(fg, bg)
 						local large = (read(node, "TextSize") or 14) >= 18
-						if ratio < (if large then 3 else 4.5) then
+						if ratio < (if large then 3 else 4.5) and not outlined(node, fg, bg) then
 							add("low_contrast", node, ("text contrast %.1f:1 is under %s:1"):format(ratio, if large then "3" else "4.5"))
 						end
 					end

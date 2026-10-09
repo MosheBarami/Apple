@@ -5,8 +5,9 @@ description: Making the pictures a Roblox game needs with make_image (the Lucid 
 
 # Game art with make_image
 
-Every picture in a screen or a world comes from `make_image`: skins for buttons and panels, title banners, icons,
-item pictures, tiled textures, backgrounds. You design the screen and its behaviour; the image model draws. Live
+When a screen or a world needs a picture, `make_image` draws it: skins for buttons and panels, title banners, icons,
+item pictures, tiled textures, backgrounds. Draw only what the design needs; many screens need no art at all. You
+design the screen and its behaviour; the image model draws. Live
 text (names, numbers, prices, button labels) stays live in build_ui, outlined with `textStroke`, so it scales and
 changes at runtime. (3D models are not pictures: build them or take them from the Creator Store.)
 
@@ -69,8 +70,8 @@ changes at runtime. (3D models are not pictures: build them or take them from th
 
 ## 4. Use what you draw
 
-Every picture you make must appear in the screen: a skin you drew and then did not use is money spent for nothing.
-Before build_ui, map each image to the node that shows it.
+Plan before drawing so nothing is drawn for nothing: before build_ui, map each image to the node that will show it.
+If a picture came out wrong or does not fit, do not use it because it was paid for; redraw it or leave it out.
 
 ## 5. Check and finish
 
