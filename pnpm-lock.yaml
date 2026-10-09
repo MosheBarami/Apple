@@ -25,7 +25,7 @@ importers:
         version: 0.35.5(@types/node@24.13.3)
       wrangler:
         specifier: ^4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)
+        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)(@types/node@24.13.3)
 
   apps/site:
     dependencies:
@@ -216,6 +216,9 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+      jpeg-js:
+        specifier: 0.4.4
+        version: 0.4.4
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.20260830.1
@@ -228,7 +231,7 @@ importers:
         version: 7.0.2
       wrangler:
         specifier: ^4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)
+        version: 4.147.0(@cloudflare/workers-types@5.20260830.1)(@types/node@24.13.3)
 
   packages/asset-library: {}
 
@@ -4185,6 +4188,9 @@ packages:
 
   jose@6.2.12:
     resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
+
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
   js-base64@3.9.4:
     resolution: {integrity: sha512-PtOMXpEGuP0RRiRXsjzHzl44dMHxSu2CPvAhinupR1tBa88me+1DPqsobl7eupn5UukjLkln1ZnAOAOXOrYG0Q==}
@@ -9597,6 +9603,8 @@ snapshots:
 
   jose@6.2.12: {}
 
+  jpeg-js@0.4.4: {}
+
   js-base64@3.9.4: {}
 
   js-tokens@10.0.0: {}
@@ -11411,24 +11419,6 @@ snapshots:
     dependencies:
       '@ai-sdk/provider': 4.0.2
       ai: 7.0.15(zod@4.6.5)
-
-  wrangler@4.147.0(@cloudflare/workers-types@5.20260830.1):
-    dependencies:
-      '@cloudflare/kv-asset-handler': 0.5.0
-      '@cloudflare/unenv-preset': 2.16.2(unenv@2.0.0-rc.24)(workerd@1.20261001.1)
-      blake3-wasm: 2.1.5
-      esbuild: 0.28.1
-      miniflare: 5.20261001.0-alpha(@types/node@24.13.3)
-      path-to-regexp: 6.3.0
-      unenv: 2.0.0-rc.24
-      workerd: 1.20261001.1
-    optionalDependencies:
-      '@cloudflare/workers-types': 5.20260830.1
-      fsevents: 2.3.3
-    transitivePeerDependencies:
-      - '@types/node'
-      - bufferutil
-      - utf-8-validate
 
   wrangler@4.147.0(@cloudflare/workers-types@5.20260830.1)(@types/node@24.13.3):
     dependencies:
