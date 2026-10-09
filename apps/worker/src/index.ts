@@ -1032,12 +1032,16 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     }
   }
 
-  /** Settles a reservation: by the reported token usage when the call gave one, otherwise at the reserved estimate. */
-  async settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number } | null): Promise<void> {
+  /**
+   * Settles a reservation: by the reported token usage when the call gave one, otherwise at the reserved estimate. Cached
+   * input counts at its cached rate, as the person's credits do (chargeUsage); settling it at the full rate made the shared
+   * daily ceiling fill about three times faster than the real bill (audit of 2026-10-09: $2.87 counted for $0.97 spent).
+   */
+  async settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number; cachedInputTokens?: number } | null): Promise<void> {
     let actual = reserved;
     if (usage) {
       try {
-        actual = neuronsFor(model, usage.inputTokens, usage.outputTokens);
+        actual = neuronsFor(model, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens ?? 0);
       } catch {
         actual = reserved;
       }

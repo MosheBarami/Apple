@@ -14,6 +14,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   CircleSlashIcon,
+  PauseCircleIcon,
 } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -89,6 +90,8 @@ export function AssistantTurn({
   const lastProcess = parts.findLastIndex(isProcess);
   const process = lastProcess >= 0 ? parts.slice(0, lastProcess + 1) : [];
   const final = parts.slice(lastProcess + 1).filter((p) => p.type === "text");
+  // Why the turn ended when it did not simply finish (step limit, cut-off reply, model failure): written by the agent.
+  const stop = parts.findLast((p) => p.type === "data-stop") as { data?: { note?: string } } | undefined;
   const sources = useMemo(() => {
     const seen = new Map<string, CitedSource>();
     for (const p of parts) {
@@ -182,6 +185,12 @@ export function AssistantTurn({
         <Shimmer as="span" className="text-[13px]" duration={2}>
           Thinking
         </Shimmer>
+      ) : null}
+      {!live && stop?.data?.note ? (
+        <p className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground" data-testid="turn-stop" role="status">
+          <PauseCircleIcon aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          <span>{stop.data.note}</span>
+        </p>
       ) : null}
       {!live && sources.length ? <SourcesRow sources={sources} /> : null}
     </div>

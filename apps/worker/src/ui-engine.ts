@@ -773,9 +773,13 @@ function verdict(raw: unknown, outlined: readonly string[] = [], screen = ''): u
   const r = (raw ?? {}) as Args;
   const isOutlined = (path: unknown): boolean => typeof path === 'string' && outlined.some((p) => path === `${screen}.${p}` || path.startsWith(`${screen}.${p}.`));
   const defects = (Array.isArray(r.defects) ? r.defects : []).filter((d: Args) => !(d?.kind === 'low_contrast' && isOutlined(d.path)));
+  // The admin-panel run of 2026-10-09 "fixed" two sections spilling out of a column by clipping the row above them: the
+  // content was cut off and the run stopped. The fix that keeps the content is said with the defect.
+  const spills = defects.some((d: Args) => d?.kind === 'overflows_parent' || d?.kind === 'cut_off');
   return {
     verdict: defects.length ? 'defects' : 'pass',
     defects,
+    ...(spills ? { overflowFix: 'Content taller than its parent: make that parent a scroll (type "scroll"), or make the content smaller (gaps, font sizes, fewer rows, a second tab). Clipping (clip, ClipsDescendants) only hides it and is not a fix.' } : {}),
     ...(r.truncated ? { truncated: true } : {}),
     viewports: r.viewports,
   };

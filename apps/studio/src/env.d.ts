@@ -4,7 +4,7 @@ interface StudioGate {
   projectStatus(projectId: string): Promise<{ studio: { connected: boolean; placeName: string | null; placeId: number | null }; credits: { remaining: number; unmetered: boolean } | null }>;
   callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }>;
   reserveModel(model: string, inputChars: number, maxOutputTokens: number): Promise<{ ok: true; reserved: number } | { ok: false; message: string }>;
-  settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number } | null): Promise<void>;
+  settleModel(model: string, reserved: number, usage: { inputTokens: number; outputTokens: number; cachedInputTokens?: number } | null): Promise<void>;
   releaseModel(model: string, reserved: number): Promise<void>;
   canSpend(projectId: string): Promise<{ ok: true } | { ok: false; message: string }>;
   chargeUsage(projectId: string, model: string, usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }): Promise<{ ok: boolean; credits: number }>;
