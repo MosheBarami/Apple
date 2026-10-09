@@ -38,11 +38,19 @@ test('old history is shortened; the recent window is sent whole', () => {
 });
 
 test('a tool call quoted as a JSON string is unwrapped; anything else is left to fail normally', async () => {
-  const fixed = await S.unwrapQuotedToolInput({ toolCall: { toolName: 'build_ui', input: JSON.stringify(JSON.stringify({ name: 'A' })) } });
+  const fixed = await S.repairToolInput({ toolCall: { toolName: 'build_ui', input: JSON.stringify(JSON.stringify({ name: 'A' })) } });
   assert.deepEqual(JSON.parse(fixed.input), { name: 'A' });
   assert.equal(fixed.toolName, 'build_ui');
-  assert.equal(await S.unwrapQuotedToolInput({ toolCall: { input: '{"name":1}' } }), null);
-  assert.equal(await S.unwrapQuotedToolInput({ toolCall: { input: 'not json' } }), null);
+  assert.equal(await S.repairToolInput({ toolCall: { input: '{"name":1}' } }), null);
+  assert.equal(await S.repairToolInput({ toolCall: { input: 'not json' } }), null);
+  // The measured failure: one closing pair too many in a deep tree, then more keys of the root.
+  const deep = '{"name":"Hud","children":[{"type":"stack","children":[{"type":"text","text":"a]}"}]}]}]},"viewports":["desktop"]}';
+  const repaired = JSON.parse((await S.repairToolInput({ toolCall: { input: deep } })).input);
+  assert.equal(repaired.name, 'Hud');
+  assert.deepEqual(repaired.viewports, ['desktop']);
+  assert.equal(repaired.children[0].children[0].text, 'a]}');
+  // Missing closers at the end are added.
+  assert.deepEqual(JSON.parse((await S.repairToolInput({ toolCall: { input: '{"a":[1,2,{"b":3' } })).input), { a: [1, 2, { b: 3 }] });
 });
 
 test('earlier turns keep their tool calls and results, shortened; the current turn is whole', () => {

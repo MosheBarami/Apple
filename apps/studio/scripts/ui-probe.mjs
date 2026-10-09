@@ -9,7 +9,7 @@ import { finishImage, planImage } from '../../worker/src/image-gen.ts';
 import { STUDIO_TOOL_SPECS } from '../src/tools/generated.ts';
 import { systemPrompt } from '../src/prompt.ts';
 import { SKILLS } from '../src/skills.generated.ts';
-import { unwrapQuotedToolInput } from '../src/token-saver.ts';
+import { repairToolInput } from '../src/token-saver.ts';
 import { compileScreen } from '../../worker/src/ui-engine.ts';
 
 const [request, out, model = '@cf/moonshotai/kimi-k2.7-code'] = process.argv.slice(2);
@@ -64,7 +64,7 @@ const tools = Object.fromEntries(STUDIO_TOOL_SPECS.map((s) => [s.name, tool({ de
 tools.search_creator_store = tool({ description: 'Search the Roblox Creator Store for models, meshes, images (decals), audio or animations.', inputSchema: jsonSchema({ type: 'object', properties: { query: { type: 'string' }, category: { type: 'string', enum: ['model', 'mesh', 'decal', 'audio', 'animation', 'video'] } }, required: ['query'] }), execute: async ({ query, category }) => formatCreatorStoreResult(await searchCreatorStore({ query, category: category ?? 'model', limit: 8 })) });
 tools.load_skill = tool({ description: 'Load one of your skills before specialised work', inputSchema: jsonSchema({ type: 'object', properties: { name: { type: 'string' }, file: { type: 'string' } }, required: ['name'] }), execute: async ({ name }) => SKILLS.find((s) => s.name === name)?.body ?? 'no such skill' });
 const t0 = Date.now();
-const r = streamText({ model: workersai(model, { reasoning_effort: 'low' }), system: systemPrompt({ projectName: 'My Game', studio: { connected: true, placeName: 'Place1', placeId: 1 } }), prompt: request, tools, stopWhen: isStepCount(Number(process.env.STEPS ?? 8)), experimental_repairToolCall: unwrapQuotedToolInput, maxOutputTokens: 16000 });
+const r = streamText({ model: workersai(model, { reasoning_effort: 'low' }), system: systemPrompt({ projectName: 'My Game', studio: { connected: true, placeName: 'Place1', placeId: 1 } }), prompt: request, tools, stopWhen: isStepCount(Number(process.env.STEPS ?? 8)), experimental_repairToolCall: repairToolInput, maxOutputTokens: 16000 });
 let text = '';
 const written = {};
 for await (const p of r.fullStream) {

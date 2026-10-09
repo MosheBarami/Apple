@@ -22,7 +22,7 @@ import { createWorkersAI } from 'workers-ai-provider';
 import { type Holds, meteredAi, releaseAll, settleNext } from './metering.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
-import { compactHistory, TurnReadCache, unwrapQuotedToolInput } from './token-saver.ts';
+import { compactHistory, TurnReadCache, repairToolInput } from './token-saver.ts';
 
 /** Measured 2026-10-08 (scripts/model-probe.mjs): first token in 1.0s and first tool call in 2.1s, against 3.6s/6.1s for
  * DeepSeek V4 Pro (which then reasoned for 113s) and 9.9s for GLM 5.3 Flash. */
@@ -117,7 +117,7 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             messages,
             tools: { ...studioTools(this.env, projectId, new TurnReadCache()), ...knowledgeTools(this.env, writer) },
             stopWhen: isStepCount(MAX_STEPS),
-            experimental_repairToolCall: unwrapQuotedToolInput,
+            experimental_repairToolCall: repairToolInput,
             maxOutputTokens: 16_000,
             abortSignal: options?.abortSignal,
             experimental_transform: smoothStream({ chunking: 'word' }),

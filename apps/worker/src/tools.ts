@@ -3,7 +3,7 @@
 import { searchLibraryCode, insertPlan, aliasFor, treeOps, header, audit } from './library-code';
 import { searchLibrarySkills, readLibrarySkill, LIBRARY_SKILL_PREFIX } from './library-skills';
 import { embed, release as releaseImageBudget, reserve as reserveImageBudget, settle as settleImageBudget } from './gateway';
-import { finishImage, IMAGE_KINDS, planImage, toBase64, type ImageKind } from './image-gen';
+import { finishImage, IMAGE_KINDS, planImage, suggestSlice, toBase64, type ImageKind } from './image-gen';
 import { IMAGE_MODEL, imageNeurons } from './pricing';
 import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
@@ -2924,17 +2924,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       await ctx.env.MEDIA!.delete(`studio-pixels/${id}`).catch(() => undefined);
       const assetId = (made as { assetId?: unknown })?.assetId;
       if (typeof assetId !== 'number' && typeof assetId !== 'string') return { ...(made as object), neurons, note: 'The picture was drawn but not uploaded; nothing in the place changed.' };
+      // A panel's rim is thicker than its corner curve: never slice inside it.
+      const rim = plan.kind === 'panel' ? Math.round(Math.min(img.width, img.height) * 0.12) : 0;
+      const slice = plan.kind === 'panel' || plan.kind === 'button' || plan.kind === 'banner' ? suggestSlice(img).map((v) => Math.max(v, rim)) : null;
       return {
         image: `rbxassetid://${assetId}`,
         width: img.width,
         height: img.height,
         kind: plan.kind,
         neurons,
+        ...(slice ? { slice } : {}),
         use: plan.kind === 'texture'
           ? 'Tile it: build_ui pattern {image, tile} or a Texture on a part.'
-          : plan.kind === 'panel' || plan.kind === 'button'
-            ? `Use it as a skin in build_ui: skin {image, size: [${img.width}, ${img.height}], slice: <border px>} so it stretches without distorting its corners.`
-            : 'Use it in build_ui (an image or icon node, or a skin) or on an Image/Decal property.',
+          : slice
+            ? `Use it as a skin exactly so: skin {image: "rbxassetid://${assetId}", size: [${img.width}, ${img.height}], slice: [${slice.join(', ')}]} (measured from its corners, so it stretches to any size cleanly; tint recolours it).`
+            : 'Use it in build_ui (an image or icon node with fit "fit") or on an Image/Decal property.',
       };
     },
   },

@@ -47,12 +47,12 @@ changes at runtime. (3D models are not pictures: build them or take them from th
 
 ## 3. Using the results in build_ui
 
-`make_image` returns `{ image, width, height }`.
+`make_image` returns `{ image, width, height, slice? }` and a `use` line showing the exact skin to write.
 
-- **Skin** (a button or panel drawn from art): `skin: { image, size: [width, height], slice }`. `slice` is the border
-  that must not stretch: about 20-25% of the smaller side for buttons, 10-15% for panels. With slice, one skin
-  serves every width.
-- **Many colours from one skin**: draw the button light grey or white, then set `skin.tint` per button
+- **Skin** (a button, panel or banner drawn from art): `skin: { image, size: [width, height], slice }` with the
+  `slice` the tool returned, unchanged (it is measured from the art's corners). One skin then serves every size.
+- **Many colours from one skin**: tint multiplies, so only a LIGHT skin can take a colour (a dark one stays dark).
+  Draw the button or panel light grey or white, then set `skin.tint` per element
   ("#ff3b30", "#ffcc00", "#34c759"). One image, many buttons; half the cost and a perfectly matched set.
 - **Label on art**: the button's `text` sits on the skin; give it a display font, white or dark ink, and
   `textStroke` (2-3 px black) so it reads on any colour.
@@ -60,10 +60,17 @@ changes at runtime. (3D models are not pictures: build them or take them from th
   `texture` from make_image (or Roblox's classic stud map rbxassetid://10509831729).
 - **Icons and items**: an `image` or `icon` node with `fit: "fit"`.
 - **Banner**: an `image` node across the top of the panel, `aspect` set to width/height so it never distorts.
+  A banner whose text is drawn in it IS the title: never put a live title on top of it (that doubles the words).
+  For a title that changes at runtime, draw the banner without text and put live outlined text on it.
 - **Backgrounds**: an `image` node behind the panel at `z: 0`, `fit: "crop"`, full size.
 - On parts: a texture's id goes on a `Texture` (StudsPerTileU/V) or `Decal`; a SurfaceGui can show any picture.
 
-## 4. Check and finish
+## 4. Use what you draw
+
+Every picture you make must appear in the screen: a skin you drew and then did not use is money spent for nothing.
+Before build_ui, map each image to the node that shows it.
+
+## 5. Check and finish
 
 - build_ui measures the layout; fix every defect it reports.
 - If an image is wrong (cut badly, off-style, wrong subject), make it again with a sharper prompt. Don't ship it.

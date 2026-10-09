@@ -95,7 +95,76 @@ export function cutBackground(img: Rgba, tolerance = 70): Rgba {
     // Un-mix the key from a half-covered pixel: colour = (seen - key * (1 - a)) / a.
     for (let c = 0; c < 3; c++) d[i * 4 + c] = Math.max(0, Math.min(255, Math.round((d[i * 4 + c]! - key[c]! * (1 - alpha)) / alpha)));
   }
+  // A drop shadow painted on the key (a darker green ellipse under the object) is key-hued, not key-coloured: clear it.
+  const green = key[1] > key[0] && key[1] > key[2];
+  for (let i = 0; i < w * h; i++) {
+    if (d[i * 4 + 3] === 0) continue;
+    const rr = d[i * 4]!, gg = d[i * 4 + 1]!, bb = d[i * 4 + 2]!;
+    if (green ? gg - Math.max(rr, bb) > 60 : Math.min(rr, bb) - gg > 80) d[i * 4 + 3] = 0;
+  }
+  keepMainShapes(w, h, d);
+  // Spill: pixels near the cut lose the key's tint (green fringe on a dark frame).
+  for (let i = 0; i < w * h; i++) {
+    if (d[i * 4 + 3] === 0) continue;
+    const x = i % w, y = (i / w) | 0;
+    let near = false;
+    for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2 && !near; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if (xx >= 0 && yy >= 0 && xx < w && yy < h && d[(yy * w + xx) * 4 + 3] === 0) near = true;
+    }
+    if (!near) continue;
+    if (green) d[i * 4 + 1] = Math.min(d[i * 4 + 1]!, Math.max(d[i * 4]!, d[i * 4 + 2]!));
+    else { const cap = Math.max(d[i * 4 + 1]!, Math.min(d[i * 4]!, d[i * 4 + 2]!) * 0.5); d[i * 4] = Math.min(d[i * 4]!, cap + (d[i * 4]! - cap) * 0.5); d[i * 4 + 2] = Math.min(d[i * 4 + 2]!, cap + (d[i * 4 + 2]! - cap) * 0.5); }
+  }
   return { width: w, height: h, data: d };
+}
+
+/** Keeps the subject: the largest opaque shape and any other at least 15% of its size; specks and shadows go. */
+function keepMainShapes(w: number, h: number, d: Uint8Array): void {
+  const label = new Int32Array(w * h);
+  const sizes: number[] = [0];
+  const queue = new Int32Array(w * h);
+  for (let start = 0; start < w * h; start++) {
+    if (label[start] || d[start * 4 + 3]! <= 16) continue;
+    const id = sizes.length;
+    let head = 0, tail = 0, n = 0;
+    label[start] = id; queue[tail++] = start;
+    while (head < tail) {
+      const i = queue[head++]!; n++;
+      const x = i % w, y = (i / w) | 0;
+      for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+        if (j >= 0 && !label[j] && d[j * 4 + 3]! > 16) { label[j] = id; queue[tail++] = j; }
+      }
+    }
+    sizes.push(n);
+  }
+  const largest = Math.max(...sizes);
+  for (let i = 0; i < w * h; i++) if (label[i] && sizes[label[i]!]! < largest * 0.15) d[i * 4 + 3] = 0;
+}
+
+/**
+ * The 9-slice insets of a cut-out frame or button: how far in from each edge its corners curve, measured from where the
+ * shape first reaches (nearly) its full width and height, plus a margin. Lets a skin stretch without bending corners.
+ */
+export function suggestSlice(img: Rgba): [number, number, number, number] {
+  const { width: w, height: h, data } = img;
+  const solid = (x: number, y: number) => data[(y * w + x) * 4 + 3]! > 128;
+  const colH = (x: number) => { let n = 0; for (let y = 0; y < h; y++) if (solid(x, y)) n++; return n; };
+  const rowW = (y: number) => { let n = 0; for (let x = 0; x < w; x++) if (solid(x, y)) n++; return n; };
+  let maxH = 0, maxW = 0;
+  for (let x = 0; x < w; x++) maxH = Math.max(maxH, colH(x));
+  for (let y = 0; y < h; y++) maxW = Math.max(maxW, rowW(y));
+  let l = 0, rr = w - 1, t = 0, b = h - 1;
+  while (l < w - 1 && colH(l) < maxH * 0.97) l++;
+  while (rr > 0 && colH(rr) < maxH * 0.97) rr--;
+  while (t < h - 1 && rowW(t) < maxW * 0.97) t++;
+  while (b > 0 && rowW(b) < maxW * 0.97) b--;
+  const m = 6;
+  const out = [l + m, t + m, w - rr + m, h - b + m].map((v) => Math.max(4, Math.round(v)));
+  // Always leave a middle to stretch.
+  if (out[0]! + out[2]! > w - 4) { const k = (w - 4) / (out[0]! + out[2]!); out[0] = Math.floor(out[0]! * k); out[2] = Math.floor(out[2]! * k); }
+  if (out[1]! + out[3]! > h - 4) { const k = (h - 4) / (out[1]! + out[3]!); out[1] = Math.floor(out[1]! * k); out[3] = Math.floor(out[3]! * k); }
+  return out as [number, number, number, number];
 }
 
 /** The smallest box holding every visible pixel, with a small margin; null when nothing is left. */

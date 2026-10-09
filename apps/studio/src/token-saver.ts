@@ -9,6 +9,7 @@
  * The provider's prompt cache (session affinity, apps/studio/src/agent.ts) then serves the unchanged prefix at the cached rate.
  */
 import type { ModelMessage } from 'ai';
+import { jsonrepair } from 'jsonrepair';
 
 /** The most characters one tool result may put into the conversation (about 3,000 tokens). */
 export const MAX_TOOL_RESULT_CHARS = 12_000;
@@ -131,16 +132,66 @@ function shorten(text: string): string {
 }
 
 /**
- * A tool call whose arguments arrive as a JSON string of the object (the model sometimes quotes a long argument list)
- * is unwrapped here instead of failing and making the model write the whole call again.
+ * Repairs a tool call whose arguments do not parse, instead of failing it and making the model write the whole call again
+ * (measured 2026-10-09: Kimi miscounted closing brackets in a deep build_ui tree ten times in a row, each a paid step):
+ * - arguments quoted as a JSON string of the object are unwrapped;
+ * - brackets are balanced (balanceJson), then anything else jsonrepair can mend is mended.
+ * The tool still validates what it receives, so a repair can never make an invalid call pass.
  */
-export async function unwrapQuotedToolInput<T extends { input: string }>({ toolCall }: { toolCall: T }): Promise<T | null> {
-  try {
-    const once = JSON.parse(toolCall.input) as unknown;
-    if (typeof once !== 'string') return null;
-    const twice = JSON.parse(once) as unknown;
-    return twice && typeof twice === 'object' && !Array.isArray(twice) ? { ...toolCall, input: JSON.stringify(twice) } : null;
-  } catch {
+export async function repairToolInput<T extends { input: string }>({ toolCall }: { toolCall: T }): Promise<T | null> {
+  const asObject = (text: string): Record<string, unknown> | null => {
+    for (const attempt of [() => JSON.parse(text), () => JSON.parse(balanceJson(text)), () => JSON.parse(jsonrepair(balanceJson(text)))]) {
+      try {
+        let v = attempt() as unknown;
+        if (typeof v === 'string') v = asObject(v);
+        if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>;
+      } catch {
+        // next attempt
+      }
+    }
     return null;
+  };
+  let text = toolCall.input;
+  try {
+    const once = JSON.parse(text) as unknown;
+    if (typeof once !== 'string') return null; // it parsed: whatever failed was the schema, not the JSON
+    text = once;
+  } catch {
+    // not JSON at all: repair below
   }
+  const fixed = asObject(text);
+  return fixed ? { ...toolCall, input: JSON.stringify(fixed) } : null;
+}
+
+/**
+ * Balances brackets outside strings: a closer that matches nothing open, or that would close the outermost value while
+ * more content follows, is dropped; a closer that skips open levels closes them; missing closers are added at the end.
+ */
+export function balanceJson(text: string): string {
+  const out: string[] = [];
+  const stack: string[] = [];
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (inString) {
+      out.push(ch);
+      if (ch === '\\') { out.push(text[i + 1] ?? ''); i++; }
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; out.push(ch); continue; }
+    if (ch === '{' || ch === '[') { stack.push(ch === '{' ? '}' : ']'); out.push(ch); continue; }
+    if (ch === '}' || ch === ']') {
+      const depth = stack.lastIndexOf(ch);
+      if (depth < 0) continue; // matches nothing open
+      if (depth === 0 && stack.length === 1 && /\S/.test(text.slice(i + 1))) continue; // would end the root too early
+      while (stack.length > depth + 1) out.push(stack.pop()!);
+      stack.pop();
+      out.push(ch);
+      continue;
+    }
+    out.push(ch);
+  }
+  while (stack.length) out.push(stack.pop()!);
+  return out.join('');
 }

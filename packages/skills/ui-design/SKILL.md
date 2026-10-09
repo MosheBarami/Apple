@@ -266,6 +266,33 @@ with a real stud texture id)
 ```
 (The avatar is an `rbxthumb://` headshot set by a LocalScript at runtime, so it is a placeholder here.)
 
+**A "1000x cooler", studded stamina bar** (game HUD: chunky, outlined, textured, a badge, a bar that tweens).
+The rbxassetid://0 ids stand for make_image results (a LIGHT grey panel skin, so its tint shows as purple, and a
+lightning icon); the studs are Roblox's classic stud map, tinted a deeper shade of the fill so they read as raised
+studs instead of washing the colour out. A LocalScript tweens Fill's Size X scale and Value's text, and pulses Badge when stamina is low.
+
+```json
+{ "name": "StaminaHud",
+  "styles": {
+    "loud": { "font": "LuckiestGuy", "color": "#ffffff", "textStroke": { "color": "#000000", "width": 3 } },
+    "studs": { "pattern": { "image": "rbxassetid://10509831729", "tile": 18, "t": 0.45, "tint": "#1f9e3c" } } },
+  "children": [
+  { "type": "stack", "name": "Stamina", "at": "bottom", "offset": [0, 28], "dir": "h", "w": "60%", "maxW": 620, "h": 96,
+    "gap": 10, "align": "center", "pad": [10, 14],
+    "skin": { "image": "rbxassetid://0", "size": [512, 512], "slice": [62, 62, 62, 62], "tint": "#3b2a6b" }, "children": [
+    { "type": "frame", "name": "Badge", "w": 72, "h": 72, "bg": "#ffffff", "radius": "pill", "stroke": { "color": "#000000", "width": 4 },
+      "gradient": { "colors": ["#fff36b", "#ffb300"], "rotation": 90 }, "depth": { "color": "#a36a00", "px": 5 }, "children": [
+      { "type": "image", "name": "Bolt", "image": "rbxassetid://0", "w": 48, "h": 48, "at": "center" } ] },
+    { "type": "stack", "name": "Body", "w": "fill", "h": "fill", "gap": 4, "children": [
+      { "type": "frame", "name": "Labels", "dir": "h", "h": 30, "align": "center", "children": [
+        { "type": "text", "name": "Title", "style": "loud", "text": "STAMINA", "fontSize": 26, "w": "fill" },
+        { "type": "text", "name": "Value", "style": "loud", "text": "100%", "fontSize": 24, "w": "auto", "color": "#7dff5a" } ] },
+      { "type": "frame", "name": "Track", "h": "fill", "bg": "#14101f", "radius": 12, "stroke": { "color": "#000000", "width": 4 }, "clip": true, "children": [
+        { "type": "frame", "name": "Fill", "at": "left", "w": "100%", "h": "100%", "bg": "#ffffff", "radius": 12, "style": "studs",
+          "gradient": { "colors": ["#2dff5a", "#a6ff00", "#ffe600"], "rotation": 0 }, "children": [
+          { "type": "frame", "name": "Shine", "at": "top", "w": "100%", "h": "38%", "bg": "#ffffff", "bgT": 0.65, "radius": 12 } ] } ] } ] } ] } ] }
+```
+
 **A moderation panel** (tool UI: dense, neutral, one accent, destructive colour only on destructive actions)
 
 ```json
