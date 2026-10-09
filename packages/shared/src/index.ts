@@ -930,6 +930,10 @@ export function phaseForTool(tool: string): AgentPhase {
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
     // announcing "building" while they run tells the user work is happening that is not.
     case 'get_instance':
+    // Plugin 2.0 readers: code search, instance search, and a full-property read.
+    case 'grep':
+    case 'glob':
+    case 'read_instance':
     case 'get_selection':
     case 'viewport_info':
     // The web-facing tools. Every one of these READS something outside the place — a page, a
@@ -1066,6 +1070,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'run_and_check':
     case 'play_check':
     case 'play_check_ui':
+    // TestEZ specs in a Test session: the same verifying stage as a play check.
+    case 'run_tests':
       return 'playtesting';
     case 'get_output_logs':
       return 'debugging';

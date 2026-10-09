@@ -111,21 +111,31 @@ export function soundAssetId(value: unknown): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/** Any Roblox content reference the Studio plugin 2.0 accepts on a content property (Permissions.contentAllowed). */
+export function isRobloxContentId(value: unknown): boolean {
+  if (typeof value === 'number') return Number.isSafeInteger(value) && value > 0;
+  if (typeof value !== 'string') return false;
+  const text = value.trim();
+  return /^(?:rbxassetid:\/\/)?\d{1,20}$/.test(text)
+    || (/^rbxasset:\/\/[\w\-./]+$/.test(text) && !text.includes('..'))
+    || /^rbxthumb:\/\/[\w\-.=&%]+$/.test(text);
+}
+
 /**
- * A SoundId (or an AudioPlayer's Asset) written by hand: allowed only for a library id, or an id a search tool
- * of this run returned. Anything else plays silence without an error, which is why it is refused.
+ * A SoundId (or an AudioPlayer's Asset) written by hand. Plugin 2.0 (owner decision 2026-10-08, "i accept the reduced
+ * safety"): any Roblox content id is accepted, a Creator Store or Toolbox sound included, not only one from StudPilot's
+ * library or a search of this run. What is still refused is a value that is no Roblox content id at all (a web URL), which
+ * the plugin would refuse too. `discovered` is kept for callers; it no longer decides anything.
  */
-export function refuseSoundId(props: Record<string, unknown> | undefined, discovered?: ReadonlySet<number>): { error: string } | null {
+export function refuseSoundId(props: Record<string, unknown> | undefined, _discovered?: ReadonlySet<number>): { error: string } | null {
   if (!props) return null;
   for (const key of ['SoundId', 'Asset'] as const) {
     if (!(key in props)) continue;
     const raw = props[key];
     const value = raw && typeof raw === 'object' && 'v' in (raw as Record<string, unknown>) ? (raw as { v: unknown }).v : raw;
-    if (value === '') continue;
-    const id = soundAssetId(value);
-    if (id !== null && (librarySound(id) || discovered?.has(id))) continue;
+    if (value === '' || isRobloxContentId(value)) continue;
     return {
-      error: `Refused (D-FXLIB-1): ${key} ${JSON.stringify(value)} is not a sound from StudPilot's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
+      error: `Refused: ${key} ${JSON.stringify(value)} is not a Roblox audio id. Use rbxassetid://<digits> (a Creator Store or Toolbox sound: search_creator_store with category audio), or an rbxasset:// engine sound. Nothing was changed.`,
     };
   }
   return null;

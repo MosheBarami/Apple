@@ -57,6 +57,8 @@ export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName
   'measure_ui',
   // D-FXLIB-1: the sound and effect library family (ops/Fx.luau).
   'preview_sound',
+  // Plugin 2.0: search, serialize and TestEZ families (ops/Search.luau, ops/Serialize.luau, ops/Tests.luau).
+  'grep', 'glob', 'list', 'serialize', 'deserialize', 'run_tests',
 ]);
 const NOT_REPORTED = 'the connected Studio plugin does not report this operation';
 

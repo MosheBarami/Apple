@@ -875,6 +875,11 @@ const TOOL_ARGS = {
   read_script: { path: 'game.ServerScriptService.Main' },
   edit_script: { path: 'game.ServerScriptService.Main', source: 'print(1)' },
   search_scripts: { query: 'Humanoid' },
+  // Plugin 2.0 readers and the TestEZ runner.
+  grep: { query: 'Humanoid', context: 1 },
+  glob: { pattern: 'Workspace/**', class_name: 'BasePart' },
+  read_instance: { path: 'game.Workspace.A', depth: 1 },
+  run_tests: {},
 
   // The three code-intelligence tools. The arguments are chosen to reach each BODY, which is the
   // whole difficulty: `find_symbol` with only a `name` and `review_scripts` with no `path` both go

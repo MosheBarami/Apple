@@ -116,12 +116,12 @@ test('a bad request is refused with the reason and what to do, before anything i
     [{ verb: 'light', color: [2, 0.2, 0.2] }, /light\.color must stay within 0\.\.1/],
     [{ verb: 'bounce', trigger: 'click' }, /a launcher listens for touch/],
     [{ verb: 'bounce', power: 5000 }, /bounce\.power must be 10\.\.400/],
-    [{ verb: 'sound', soundId: 'rbxassetid://12345' }, /Refused \(D-FXLIB-1\)/],
+    [{ verb: 'sound', soundId: 'https://example.com/a.mp3' }, /must be rbxassetid/],
     [{ verb: 'sound' }, /sound needs `sound`/],
     [{ verb: 'sound', sound: `${MODEL}.Body`, soundId: 'rbxassetid://1' }, /not both/],
     [{ verb: 'sound', soundId: 'http://x' }, /soundId must be rbxassetid/],
     [{ verb: 'emit' }, /no ParticleEmitter under it/],
-    [{ verb: 'sound', soundId: 'rbxassetid://12345', trigger: 'auto' }, /Refused|auto/],
+    [{ verb: 'sound', soundId: 'https://example.com/a.mp3', trigger: 'auto' }, /Refused|auto/],
     [{ verb: 'swing', ...swing(), with: [`${MODEL}.Knob`], target: `${MODEL}.Cover`, trigger: 'auto', mode: 'toggle', angle: 10, extra: 1 }, /does not take "extra"/],
   ];
   for (const [raw, why] of bad) {
@@ -396,8 +396,8 @@ test('a sound written in an earlier run survives a merge in a later one, though 
   assert.ok(!r.error, r.error);
   assert.deepEqual(r.behaviours.map((b) => b.split(':')[0]), ['hum', 'gone'], 'the earlier sound is still there');
   assert.ok(!(r.notes ?? []).some((n) => /dropped/.test(n)), 'and was not dropped');
-  const stillRefused = await call(later, { behaviours: [{ verb: 'sound', soundId: 'rbxassetid://4242', target: `${MODEL}.Cover`, id: 'again' }] });
-  assert.match(stillRefused.error, /Refused \(D-FXLIB-1\)/, 'a NEW request for that id is still judged');
+  const stillRefused = await call(later, { behaviours: [{ verb: 'sound', soundId: 'https://example.com/a.mp3', target: `${MODEL}.Cover`, id: 'again' }] });
+  assert.match(stillRefused.error, /must be rbxassetid/, 'a NEW request is still judged');
 });
 
 test('a sound by id needs an id from the library or one the search found; a Sound in the place is checked for its id', async () => {
@@ -410,13 +410,13 @@ test('a sound by id needs an id from the library or one the search found; a Soun
   // a Sound already inside the model
   m.cover.children.push(inst('Hum', 'Sound', { SoundId: { t: 'string', v: 'rbxassetid://4242' } }));
   m.knob.children.push(inst('Mute', 'Sound', { SoundId: { t: 'string', v: '' } }));
-  m.body.children.push(inst('Rogue', 'Sound', { SoundId: { t: 'string', v: 'rbxassetid://31337' } }));
+  m.body.children.push(inst('Rogue', 'Sound', { SoundId: { t: 'string', v: 'https://example.com/a.mp3' } }));
   finalize(m.root, MODEL);
   const inside = await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Cover.Hum`, id: 'hum' }] });
   assert.ok(!inside.error, inside.error);
   assert.deepEqual(C.parseConfigSource(written(studio)).records.find((r) => r.id === 'hum').sound, { segs: ['Cover', 'Hum'] });
   assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Knob.Mute` }] })).error, /no SoundId/);
-  assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Body.Rogue` }] })).error, /not from StudPilot's library/);
+  assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Body.Rogue` }] })).error, /not a Roblox audio id/);
   assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Body` }] })).error, /is a Part, not a Sound/);
 });
 

@@ -383,12 +383,18 @@ test('edit_script refuses a script that adds a hand-made Sound, and allows one t
   assert.ok(good.calls.some((c) => c.op === 'edit_script'));
 });
 
-test('set_properties refuses a SoundId from nowhere and accepts a library or discovered one', async () => {
+// Plugin 2.0 (owner, 2026-10-08): any Roblox audio id (Creator Store, Toolbox, engine) is accepted; a web URL is refused.
+test('set_properties refuses a SoundId that is no Roblox audio id and accepts any that is', async () => {
   const sound = () => studio((op) => (op.op === 'get_instance' ? { class: 'Sound', props: {} } : { ok: true }));
-  for (const v of ['rbxassetid://1', 'rbxasset://sounds/electronicpingshort.wav', 'http://x/a.mp3']) {
+  for (const good of ['rbxassetid://1', 'rbxasset://sounds/electronicpingshort.wav']) {
+    const s = sound();
+    assert.ok(!refused(await T.TOOLS.set_properties.run(s.ctx, { path: 'game.SoundService.Coin', props: { SoundId: { t: 'string', v: good } } })), good);
+    assert.ok(s.calls.some((c) => c.op === 'set_props'), good);
+  }
+  for (const v of ['http://x/a.mp3', 'rbxassetid://12ab']) {
     const s = sound();
     const r = await T.TOOLS.set_properties.run(s.ctx, { path: 'game.SoundService.Coin', props: { SoundId: { t: 'string', v } } });
-    assert.ok(refused(r), `${v}: ${JSON.stringify(r)}`);
+    assert.match(String(r?.error), /not a Roblox audio id/, `${v}: ${JSON.stringify(r)}`);
     assert.ok(!s.calls.some((c) => c.op === 'set_props'));
   }
   const lib = sound();

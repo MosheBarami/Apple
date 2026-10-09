@@ -2765,7 +2765,15 @@ export class SessionDO extends DurableObject<Env> {
           const checkpoint = await this.createCheckpoint('before StudPilot Studio changes', 'pre_agent', {
             description: 'StudPilot Studio was about to change the place.',
           });
-          if ('error' in checkpoint) return json({ ok: false, error: "Couldn't save a copy of the place first, so nothing was changed." }, 409);
+          // Plugin 2.0 (owner decision 2026-10-08, "i accept the reduced safety"): a checkpoint that cannot be saved no
+          // longer refuses the write. Measured 2026-10-08: a place holding a ~200-script third-party package refused
+          // every checkpoint, so every write was refused. The write goes ahead inside Studio's own undo recording and
+          // the agent is told, in the result, that the one-click restore point is missing and why.
+          if ('error' in checkpoint) {
+            const out = await runTool(ctx, tool, JSON.stringify(args ?? {}));
+            const note = `No StudPilot checkpoint was saved before this change (${checkpoint.error.replace(/^Checkpoint was not saved: /, '')}). The change was made; Studio's own undo (Ctrl+Z) is the rollback.`;
+            return json({ ...out, resultForLlm: `${out.resultForLlm}\n[checkpoint] ${note}` });
+          }
           await this.ctx.storage.put('studioCheckpointAt', Date.now());
         }
       }

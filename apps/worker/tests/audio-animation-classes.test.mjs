@@ -132,16 +132,17 @@ test('every reference property the plugin added is read as a reference, and plai
   assert.deepEqual(P.normaliseProps({ Target: 'Enum.Material.Neon' }).props.Target, { t: 'EnumItem', v: 'Enum.Material.Neon' });
 });
 
-test('an AudioPlayer.Asset must be a library sound id or one a search returned, and nothing is sent otherwise', async () => {
+// Plugin 2.0 (owner, 2026-10-08): any Roblox audio id is accepted; what is no Roblox content id at all is refused.
+test('an AudioPlayer.Asset must be a Roblox audio id, and nothing is sent otherwise', async () => {
   const bad = await ctxWith();
-  const refused = await run(bad.ctx, { items: [{ className: 'AudioPlayer', name: 'Music', parent: 'game.Workspace', props: { Asset: { t: 'string', v: 'rbxassetid://1' } } }] });
-  assert.match(refused.data.error, /D-FXLIB-1/);
+  const refused = await run(bad.ctx, { items: [{ className: 'AudioPlayer', name: 'Music', parent: 'game.Workspace', props: { Asset: { t: 'string', v: 'https://example.com/a.mp3' } } }] });
+  assert.match(refused.data.error, /not a Roblox audio id/);
   assert.match(refused.data.error, /Asset/);
   assert.equal(bad.ops.length, 0, 'nothing may reach Studio');
 
   const nested = await ctxWith();
-  const refusedChild = await run(nested.ctx, { items: [{ className: 'Part', name: 'P', parent: 'game.Workspace', children: [{ className: 'AudioPlayer', name: 'Music', props: { Asset: 'rbxassetid://2' } }] }] });
-  assert.match(refusedChild.data.error, /D-FXLIB-1/, 'a nested AudioPlayer is held to the same rule');
+  const refusedChild = await run(nested.ctx, { items: [{ className: 'Part', name: 'P', parent: 'game.Workspace', children: [{ className: 'AudioPlayer', name: 'Music', props: { Asset: 'https://example.com/a.mp3' } }] }] });
+  assert.match(refusedChild.data.error, /not a Roblox audio id/, 'a nested AudioPlayer is held to the same rule');
   assert.equal(nested.ops.length, 0);
 
   const good = ctxWith();

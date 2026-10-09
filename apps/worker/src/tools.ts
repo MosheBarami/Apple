@@ -1052,6 +1052,34 @@ function displayTagged(value: unknown): string {
   return String(decoded);
 }
 
+/** One node of the plugin's `serialize` op (apps/studpilot-plugin/src/ops/Serialize.luau). */
+interface SerializedNode {
+  class?: string;
+  name?: string;
+  props?: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
+  tags?: string[];
+  source?: string;
+  childCount?: number;
+  children?: SerializedNode[];
+}
+
+/** A serialized node as text a model can quote: each value displayed, a reference shown as its path. */
+function readableNode(node: SerializedNode): Record<string, unknown> {
+  const show = (v: unknown): string => {
+    const t = v as { t?: string; v?: unknown } | null;
+    return t && typeof t === 'object' && t.t === 'Instance' && typeof t.v === 'string' ? t.v : displayTagged(v);
+  };
+  const out: Record<string, unknown> = { class: node.class, name: node.name };
+  out.props = Object.fromEntries(Object.entries(node.props ?? {}).sort(([x], [y]) => x.localeCompare(y)).map(([k, v]) => [k, show(v)]));
+  if (node.attributes && Object.keys(node.attributes).length) out.attributes = Object.fromEntries(Object.entries(node.attributes).map(([k, v]) => [k, show(v)]));
+  if (node.tags?.length) out.tags = node.tags;
+  if (typeof node.source === 'string') out.source = node.source;
+  if (node.children?.length) out.children = node.children.map(readableNode);
+  else if (node.childCount) out.childCount = node.childCount;
+  return out;
+}
+
 /** Two decimals, without the trailing zeros that make a property panel read like a spreadsheet. */
 function round2(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
@@ -2732,6 +2760,102 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['search_scripts'],
     run: (ctx, a) => op(ctx, { op: 'search_scripts', query: String(a.query ?? ''), maxResults: 40 }),
   },
+  /** Plugin 2.0 (ops/Search.luau): the Studio agent's code search. Replaces search_scripts on that surface. */
+  grep: {
+    def: {
+      name: 'grep',
+      description:
+        'Search every script source for text, or a Lua pattern with pattern:true. Case-insensitive unless case_sensitive. Returns path, line number and the line, with `context` lines before and after (0-5). Narrow with include/exclude slash globs over script paths, e.g. include:"ServerScriptService/**", exclude:["ReplicatedStorage/Packages/**"]. Paths come back in the game.X.Y form read_script and edit_script take.',
+      parameters: S({
+        query: { type: 'string' },
+        pattern: { type: 'boolean', description: 'Treat query as a Lua pattern (%d, %a, .-, ^ $), not plain text.' },
+        case_sensitive: { type: 'boolean' },
+        context: { type: 'number', description: '0-5 lines of context around each match. Default 0.' },
+        include: { type: 'array', items: { type: 'string' }, description: 'Slash globs a script path must match (* within a name, ** across names).' },
+        exclude: { type: 'array', items: { type: 'string' }, description: 'Slash globs that drop a script.' },
+        max_results: { type: 'number', description: 'Default 100, at most 500.' },
+      }, ['query']),
+    },
+    studio: true,
+    studioOps: ['grep'],
+    run: (ctx, a) => {
+      const list = (v: unknown): string[] | undefined => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 20) : undefined);
+      const context = Math.min(5, Math.max(0, Math.round(Number(a.context) || 0)));
+      const maxResults = Math.min(500, Math.max(1, Math.round(Number(a.max_results) || 100)));
+      return op(ctx, {
+        op: 'grep', query: String(a.query ?? ''), pattern: a.pattern === true, caseSensitive: a.case_sensitive === true, context, maxResults,
+        ...(list(a.include)?.length ? { include: list(a.include) } : {}), ...(list(a.exclude)?.length ? { exclude: list(a.exclude) } : {}),
+      });
+    },
+  },
+  /** Plugin 2.0 (ops/Search.luau): find instances by path shape. Replaces list_scripts on the Studio agent's surface. */
+  glob: {
+    def: {
+      name: 'glob',
+      description:
+        'Find instances by path: a slash glob from the service down, * within one name, ? one character, ** across any number of names. E.g. "Workspace/**/Door*", "ServerScriptService/**" with class_name:"LuaSourceContainer" to list every script, "ReplicatedStorage/**/*.spec". class_name keeps only instances that are that class or inherit from it (BasePart, GuiObject, Script). Returns each path (game.X.Y form), class and child count.',
+      parameters: S({
+        pattern: { type: 'string' },
+        class_name: { type: 'string' },
+        max_results: { type: 'number', description: 'Default 200, at most 500.' },
+      }, ['pattern']),
+    },
+    studio: true,
+    studioOps: ['glob'],
+    run: (ctx, a) => op(ctx, {
+      op: 'glob', pattern: String(a.pattern ?? ''), maxResults: Math.min(500, Math.max(1, Math.round(Number(a.max_results) || 200))),
+      ...(typeof a.class_name === 'string' && a.class_name ? { className: a.class_name } : {}),
+    }),
+  },
+  /**
+   * Plugin 2.0 (ops/Serialize.luau): one instance, or a subtree, with EVERY property a plugin can write (Roblox's API
+   * dump), not the dozen get_instance shows. Replaces get_instance on the Studio agent's surface. Values are shown as
+   * text the model can quote; `typed` keeps the {t,v} values for a create_instances / set_properties round trip.
+   */
+  read_instance: {
+    def: {
+      name: 'read_instance',
+      description:
+        'Read an instance back with every property a plugin can set (all of them, from the Roblox API dump), its attributes and tags, and optionally its descendants (depth) and script source. Use it to VERIFY a change and quote what you saw, or to learn exactly how something you inserted is built before changing it. Values equal to a new instance\'s defaults are included. typed:true returns {t,v} values you can pass straight back to create_instances / set_properties.',
+      parameters: S({
+        path: { type: 'string', description: 'Full path, e.g. game.Workspace.Lobby.Floor (or a readRef from get_project_tree)' },
+        depth: { type: 'number', description: 'Levels of descendants to include, 0-6. Default 0 (just this instance; children are counted).' },
+        include_source: { type: 'boolean', description: 'Include script source for scripts in the subtree. Default false (use read_script).' },
+        typed: { type: 'boolean' },
+      }, ['path']),
+    },
+    studio: true,
+    studioOps: ['serialize'],
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      if (!path) return { error: 'path is required' };
+      const depth = Math.min(6, Math.max(0, Math.round(Number(a.depth) || 0)));
+      const res = await op(ctx, { op: 'serialize', path, maxDepth: depth, maxNodes: depth === 0 ? 1 : 300, includeSource: a.include_source === true });
+      if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
+      const data = res as { path?: string; root?: SerializedNode; truncated?: boolean; notes?: string[] };
+      if (a.typed === true || !data.root) return data;
+      return { path: data.path, ...readableNode(data.root), ...(data.truncated ? { truncated: true } : {}), ...(data.notes?.length ? { notes: data.notes } : {}) };
+    },
+  },
+  /** Plugin 2.0 (ops/Tests.luau + PlayCheck.runTests): the place's TestEZ specs in a solo Test session. */
+  run_tests: {
+    def: {
+      name: 'run_tests',
+      description:
+        'Run the place\'s TestEZ unit tests: every ModuleScript named *.spec under `roots` (default: ReplicatedStorage, ServerScriptService, ServerStorage, StarterPlayer, ReplicatedFirst) runs in a solo Studio Test session on a copy of the place, and you get passed / failed / skipped counts with each failure\'s name and message. TestEZ must be in the place as a ModuleScript named TestEZ. The session always ends by timeout_seconds (5-50, default 40); a timeout returns what had finished.',
+      parameters: S({
+        roots: { type: 'array', items: { type: 'string' }, description: 'Paths to search for *.spec modules, e.g. ["game.ReplicatedStorage.Shared"].' },
+        timeout_seconds: { type: 'number' },
+      }),
+    },
+    studio: true,
+    studioOps: ['run_tests'],
+    run: async (ctx, a) => {
+      const roots = Array.isArray(a.roots) ? a.roots.filter((r): r is string => typeof r === 'string').slice(0, 10) : undefined;
+      const timeoutSeconds = Math.min(50, Math.max(5, Math.round(Number(a.timeout_seconds) || 40)));
+      return op(ctx, { op: 'run_tests', timeoutSeconds, ...(roots?.length ? { roots } : {}) }, (timeoutSeconds + 40) * 1000);
+    },
+  },
   review_scripts: {
     def: {
       name: 'review_scripts',
@@ -2894,7 +3018,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'create_instances',
       description:
-        'Create instances (parts, models, lights...). Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. A propIssues result means the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you. Also creates AudioPlayer (Asset: a library sound id), AudioEmitter, Wire (SourceInstance/TargetInstance: paths of existing instances), the Audio effects, Animator, Animation, IKControl and Explosion (BlastPressure and DestroyJointRadiusPercent default to 0).',      parameters: S({
+        'Create instances: any class Roblox lets a plugin create, with any property a plugin can write on it (scripts are made with edit_script). Content properties (Image, SoundId, Texture, TextureID, Asset, AnimationId...) take any rbxassetid://<digits> (Creator Store / Toolbox ids included), rbxasset:// or rbxthumb:// value. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem (full name, or just the item name/number),BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Font,Faces,Axes,PhysicalProperties,Instance,nil. A propIssues result means the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you. Also creates AudioPlayer (Asset: an audio id), AudioEmitter, Wire (SourceInstance/TargetInstance: paths of existing instances), the Audio effects, Animator, Animation, IKControl and Explosion (BlastPressure and DestroyJointRadiusPercent default to 0).',      parameters: S({
         items: {
           type: 'array',
           minItems: 1,
@@ -3719,8 +3843,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'play_check',
       description:
-        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. It does not press buttons: to prove a button flow (Shop → Buy) use play_check_ui, which clicks each button and reports what the click changed. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute.",
+        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. It does not press buttons: to prove a button flow (Shop → Buy) use play_check_ui, which clicks each button and reports what the click changed. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute. tests:true instead runs the place's TestEZ unit tests (every ModuleScript named *.spec; TestEZ must be in the place) in a Test session and reports passed/failed/skipped with each failure.",
       parameters: S({
+        tests: { type: 'boolean', description: 'Run the TestEZ *.spec modules instead of the player check (same as run_tests).' },
         seconds: { type: 'number', description: '3-15, default 5: how long the player stays in before the touches and the screen read' },
         touch: {
           type: 'array',
@@ -3732,6 +3857,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['play_check'],
     run: async (ctx, a) => {
+      // Plugin 2.0: the Studio agent's surface is capped at 25 tools, so its unit-test runner rides on play_check.
+      if (a.tests === true) return TOOLS.run_tests!.run(ctx, {});
       const seconds = Math.min(15, Math.max(3, Math.round(Number(a.seconds) || 5)));
       const rawTouch = a.touch === undefined ? [] : a.touch;
       if (!Array.isArray(rawTouch) || rawTouch.length > 5 || rawTouch.some((p) => typeof p !== 'string' || p.length > 320)) {
