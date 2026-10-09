@@ -27,7 +27,7 @@ The owner's direction of 2026-10-08 is the product contract:
 - **One-click Connect** (no pairing code), no extra edit-consent gate, credits shown in the composer, a projects
   dashboard.
 
-**Names.** StudPilot is the product. "Apple", "Golem" and "RbxAI" are former names that survive only where
+**Names.** StudPilot is the product. The former names survive only where
 `AGENTS.md` section 2 allows them. `node scripts/check-old-names.mjs` guards this.
 
 ---
@@ -366,7 +366,7 @@ Measured cost of real turns:
 | `src/Commands.luau` | The op table: tree reads, instance create/set/delete/move, scripts through ScriptEditorService, insert by asset id (one id-only `GetObjects` loader, then script removal before parenting), checkpoints (snapshot and restore), typed value decoding `{t, v}`, limits (`MAX_ITEMS` 120 items, `MAX_CREATE_NODES` 400, `MAX_TREE_NODES` 1,200, `MAX_SCRIPTS` 240, writes up to 240k characters per script, reads up to 4M). |
 | `src/Permissions.luau` | 2.0 model: allow by default. Any class the API dump marks creatable; any property scriptable and writable at plugin security; any `rbxassetid://`, `rbxasset://` or `rbxthumb://` content. Short deny list with reasons: `Source`/`LinkedSource` (`edit_script` only), `Parent` (structure ops only), `ClassName`, script sandbox `Capabilities`, … |
 | `src/ApiDump.luau` | Generated from Roblox's API dump (client 0.742): 935 classes, 2,317 plugin-writable properties, 648 enums. Data only. |
-| `src/PlayCheck.luau` | Play-test harness: starts a Test session, injects temporary check scripts (marker `__ApplePlayCheckHarnessV1`, counted and removed), walks the character, reads PlayerGui and leaderstats, collects client and server errors; TestEZ runner. |
+| `src/PlayCheck.luau` | Play-test harness: starts a Test session, injects temporary check scripts (a fixed marker, counted and removed), walks the character, reads PlayerGui and leaderstats, collects client and server errors; TestEZ runner. |
 | `src/Render.luau`, `StudioCapture.luau`, `GenerationService.luau` | Viewport capture and older generation helpers (mostly used by the legacy path). |
 | `src/ops/*.luau` | Op families, each `{name, build(api) → {handlers, mutating?, consentOnly?, createClasses?, propertyAllow?, enumAllow?, watch?}}`, loaded by `ops/init.luau` (one failing family never takes the others down; Commands.luau is at Luau's 200-local limit, so new ops go here). |
 
@@ -559,7 +559,7 @@ available yet" (section 15).
     empty FlueStudPilotAgent holding the previous agent's conversations.
 - **R2 `MEDIA`:** the image hand-off.
 - **AI Gateway `studpilot`:** logs of every model call (the source of the run history).
-- **Secrets** live only in the environment and Cloudflare: `CLOUDFLARE_API_TOKEN_MASTER`, `GOLEM_ADMIN_KEY` (admin
+- **Secrets** live only in the environment and Cloudflare: `CLOUDFLARE_API_TOKEN_MASTER`, the operator admin key (admin
   routes; the same value is the agent worker's `ADMIN_KEY`), Supabase keys, `OWNER_USER_IDS` (who may build before
   launch). The repo is public: never print or commit a value.
 
