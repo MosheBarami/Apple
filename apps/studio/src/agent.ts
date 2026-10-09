@@ -25,6 +25,7 @@ import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
 import { compactHistory, TurnReadCache, repairToolInput } from './token-saver.ts';
 import { openUiDefects, stopNote, terminalReason } from './terminal.ts';
+import { withEvidence } from './evidence.ts';
 
 /** Measured 2026-10-08 (scripts/model-probe.mjs): first token in 1.0s and first tool call in 2.1s, against 3.6s/6.1s for
  * DeepSeek V4 Pro (which then reasoned for 113s) and 9.9s for GLM 5.3 Flash. */
@@ -59,11 +60,12 @@ export class StudPilotAgent extends AIChatAgent<Env> {
   messageConcurrency = 'queue' as const;
 
   /** The whole stored conversation, for the operator's admin export (server.ts /studio/api/admin/history). */
-  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[]; lastBadToolInput: unknown; lastTerminal: unknown }> {
+  async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[]; lastBadToolInput: unknown; lastTerminal: unknown; lastImageInput: unknown }> {
     return {
       project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null,
       messages: this.messages,
       lastTerminal: (await this.ctx.storage.get('lastTerminal')) ?? null,
+      lastImageInput: (await this.ctx.storage.get('lastImageInput')) ?? null,
       lastBadToolInput: (await this.ctx.storage.get('lastBadToolInput')) ?? null,
     };
   }
@@ -100,6 +102,11 @@ export class StudPilotAgent extends AIChatAgent<Env> {
           if (status?.credits) writer.write({ type: 'data-credits', data: status.credits, transient: true });
 
           const holds: Holds = { pending: [] };
+          // Tags this turn's Studio ops, so a stop discards the ones Studio has not collected yet.
+          const turnId = crypto.randomUUID();
+          let stepsDone = 0;
+          // Pictures from render_view, waiting for the next step (evidence.ts).
+          const seen: EvidenceImage[] = [];
           const workersai = createWorkersAI({
             binding: meteredAi(this.env, holds),
             gateway: { id: this.env.AI_GATEWAY_ID },
@@ -132,7 +139,16 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             model: workersai(model, { reasoning_effort: 'low', sessionAffinity: projectId }),
             system: systemPrompt({ projectName: project.name, studio: status?.studio ?? null }),
             messages,
-            tools: { ...studioTools(this.env, projectId, new TurnReadCache()), ...knowledgeTools(this.env, writer) },
+            tools: { ...studioTools(this.env, projectId, new TurnReadCache(), turnId, (images) => seen.push(...images)), ...knowledgeTools(this.env, writer) },
+            prepareStep: async ({ messages }) => {
+              const fresh = seen.splice(0);
+              const next = withEvidence(messages, fresh);
+              // Proof for the operator's export that pixels went to the model, and how many bytes.
+              if (fresh.length) {
+                await this.ctx.storage.put('lastImageInput', { at: new Date().toISOString(), model, images: fresh.map((i) => ({ label: i.label, width: i.width, height: i.height, pngBytes: Math.floor((i.base64.length * 3) / 4) })) }).catch(() => undefined);
+              }
+              return next ? { messages: next } : undefined;
+            },
             stopWhen: isStepCount(MAX_STEPS),
             experimental_repairToolCall: async (args) => {
               const repaired = await repairToolInput(args);
@@ -147,12 +163,15 @@ export class StudPilotAgent extends AIChatAgent<Env> {
             experimental_transform: smoothStream({ chunking: 'word' }),
             onStepFinish: async ({ usage }) => {
               await charge(usage);
+              stepsDone += 1;
             },
             onFinish: async () => {
               await releaseAll(this.env, holds);
             },
             onAbort: async () => {
               await releaseAll(this.env, holds);
+              const { dropped } = await this.env.GATE.cancelTurn(projectId, turnId).catch(() => ({ dropped: 0 }));
+              await this.ctx.storage.put('lastTerminal', { at: new Date().toISOString(), reason: 'cancelled', steps: stepsDone, droppedOps: dropped }).catch(() => undefined);
             },
             onError: async () => {
               await releaseAll(this.env, holds);

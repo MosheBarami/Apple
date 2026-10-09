@@ -21,9 +21,11 @@ test('the lists were read (a scrape that finds nothing checks nothing)', () => {
   assert.ok(reads.length >= 5 && writes.length >= 5 && localTools.length >= 4, `reads ${reads}, writes ${writes}, local ${localTools}`);
 });
 
-test('M4 acceptance: the agent is offered 25 tools or fewer', () => {
+// 25 was the old plan's M3/M4 cap; the owner's handoff of 2026-10-09 (section 9) requires the agent to see its work, so
+// render_view joined the surface as the 26th. The cap still holds the surface small: a new tool must replace one.
+test('the agent is offered 26 tools or fewer', () => {
   const total = reads.length + writes.length + localTools.length;
-  assert.ok(total <= 25, `${total} tools`);
+  assert.ok(total <= 26, `${total} tools`);
 });
 
 test('no premade content reaches the agent: no kits, blocks, verified modules, library or presets', () => {

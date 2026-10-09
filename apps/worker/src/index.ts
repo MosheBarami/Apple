@@ -1,4 +1,5 @@
 // StudPilot worker entry: API routes + static serving + DO exports.
+import type { EvidenceImage } from './evidence-images';
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
@@ -1103,19 +1104,28 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     await releaseBudget(this.env, reserved, model);
   }
 
-  async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {
+  async callTool(projectId: string, name: string, args: Record<string, unknown>, turnId?: string): Promise<{ ok: boolean; text: string; images?: EvidenceImage[] }> {
     if (!STUDIO_TOOLS.includes(name)) return { ok: false, text: `Unknown tool '${name}'.` };
     const stub = await studioGrantedStub(this.env, projectId);
     if (!stub) return { ok: false, text: 'This project is not open in StudPilot Studio. Reload the page.' };
     const res = await stub.fetch('https://do/studio-tool', {
       method: 'POST',
-      body: JSON.stringify({ tool: name, args }),
+      body: JSON.stringify({ tool: name, args, ...(turnId ? { turnId } : {}) }),
     });
-    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
+    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string; images?: EvidenceImage[] };
     if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };
     // A generated picture is paid per image, not per token: its neurons are charged to the owner's Credits here.
     if (name === 'make_image') await this.chargeImage(projectId, out.resultForLlm).catch(() => undefined);
-    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}' };
+    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}', ...(out.images?.length ? { images: out.images } : {}) };
+  }
+
+  /** The person stopped the agent's turn: its ops still queued for Studio are discarded (SessionDO `/studio-cancel`). */
+  async cancelTurn(projectId: string, turnId: string): Promise<{ dropped: number }> {
+    const stub = await studioGrantedStub(this.env, projectId);
+    if (!stub) return { dropped: 0 };
+    const res = await stub.fetch('https://do/studio-cancel', { method: 'POST', body: JSON.stringify({ turnId }) });
+    const out = (await res.json().catch(() => ({}))) as { dropped?: number };
+    return { dropped: out.dropped ?? 0 };
   }
 
   private async chargeImage(projectId: string, resultText: string | undefined): Promise<void> {

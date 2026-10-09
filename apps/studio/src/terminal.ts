@@ -4,7 +4,7 @@
  * Why a turn ended. Every turn ends with one, so a run that stops is never silent: before 2026-10-09 a run that reached
  * MAX_STEPS mid-build just ended, and the island request "stopped before finishing" with no reason anyone could find.
  */
-export type TerminalReason = 'completed' | 'open_defects' | 'step_limit' | 'output_limit' | 'content_filter' | 'provider_error' | 'incomplete';
+export type TerminalReason = 'completed' | 'cancelled' | 'open_defects' | 'step_limit' | 'output_limit' | 'content_filter' | 'provider_error' | 'incomplete';
 
 export function terminalReason(finishReason: string | undefined, steps: number, maxSteps: number, openDefects = 0): TerminalReason {
   if (finishReason === 'stop') return openDefects > 0 ? 'open_defects' : 'completed';
@@ -40,6 +40,8 @@ export function stopNote(reason: TerminalReason, steps: number, openDefects = 0)
   switch (reason) {
     case 'completed':
       return null;
+    case 'cancelled':
+      return `Stopped after ${steps} step${steps === 1 ? '' : 's'}. Changes Studio had not picked up yet were discarded; what was already made is in your place.`;
     case 'open_defects':
       return `Finished with ${openDefects} layout defect${openDefects === 1 ? '' : 's'} still open in the last check. Say "fix the layout" and StudPilot works on them.`;
     case 'step_limit':

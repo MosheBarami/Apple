@@ -19,6 +19,8 @@ const KNOWLEDGE_CACHE = new TtlCache<unknown>(10 * 60_000);
  * library, reviewed kits, consent), and a description pointing at a missing tool sends the model looking for it.
  */
 const DESCRIPTIONS: Record<string, string> = {
+  render_view:
+    'See the place: renders the target (or the whole workspace) from a camera preset and captures the active Studio viewport, and you receive the pictures on your next step. Use it after building something visible (a model, a map, a screen) to check how it really looks: proportions, grounding, overlaps, colours, readability. Then name what you see and fix what is wrong. Software views approximate parts and omit effects; the viewport capture is exactly what the person sees in Studio, including UI. view "all" renders every angle; one view is usually enough.',
   model_anatomy:
     "Read a placed model: its parts, joints, hinge candidates and which way a positive angle turns a part, what is already clickable, lit or playing. Use it to understand something you inserted or found before adapting or animating it. Pass part for one part's detail.",
   edit_script:
@@ -32,7 +34,8 @@ const DESCRIPTIONS: Record<string, string> = {
 /** Tool names whose results the chat shows as steps; the UI labels them. */
 export type StudioToolName = (typeof STUDIO_TOOL_SPECS)[number]['name'];
 
-export function studioTools(env: Env, projectId: string, reads?: TurnReadCache): ToolSet {
+/** `turnId` tags every op this turn queues, so a stop can discard the ones Studio has not collected yet (agent.ts). */
+export function studioTools(env: Env, projectId: string, reads?: TurnReadCache, turnId?: string, saw?: (images: EvidenceImage[]) => void): ToolSet {
   const tools: ToolSet = {};
   for (const spec of STUDIO_TOOL_SPECS) {
     const description = DESCRIPTIONS[spec.name] ?? spec.description;
@@ -47,9 +50,10 @@ export function studioTools(env: Env, projectId: string, reads?: TurnReadCache):
           const again = reads?.repeat(spec.name, args);
           if (again) return again;
         }
-        const out = await env.GATE.callTool(projectId, spec.name, (args ?? {}) as Record<string, unknown>);
+        const out = await env.GATE.callTool(projectId, spec.name, (args ?? {}) as Record<string, unknown>, turnId);
         if (spec.writes) reads?.invalidate();
         if (!out.ok) throw new Error(clampToolOutput(out.text));
+        if (out.images?.length) saw?.(out.images);
         if (!spec.writes) reads?.remember(spec.name, args);
         return clampToolOutput(out.text);
       },
