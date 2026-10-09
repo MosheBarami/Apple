@@ -35,7 +35,7 @@ const TRUST = [
   {
     Icon: HouseIcon,
     title: "Your place stays yours",
-    body: "What it builds is ordinary instances and scripts in your place. It never publishes, never uploads, and never touches a place you did not connect.",
+    body: "What it builds is ordinary instances and scripts in your place. It never publishes your game or touches a place you did not connect, and it uploads art or sound only to your own Roblox account, only if you allow it.",
   },
   {
     Icon: BookOpenIcon,

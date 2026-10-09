@@ -218,7 +218,7 @@ function RobloxUploadsSection() {
 
   return (
     <Section
-      description="StudPilot draws your game's art (buttons, panels, icons, textures) and uploads each picture to your own Roblox account. Allow it once with your Roblox account."
+      description="StudPilot uploads the art (buttons, panels, icons, textures) and sound effects it makes for your game to your own Roblox account. Allow it once with your Roblox account."
       title="Roblox uploads"
     >
       {state === undefined ? (

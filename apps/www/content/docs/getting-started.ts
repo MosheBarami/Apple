@@ -41,7 +41,7 @@ The [guides](/docs/build-an-interface) walk through one request of each kind fro
 
 ## What it does not do
 
-- It does not publish your game or upload anything to your Roblox account.
+- It does not publish your game. It uploads to your Roblox account only the art and sound it makes for you, and only after you allow uploads in Settings. See [Game art and sound](/docs/game-art-and-sound).
 - It does not touch places you have not connected, or files on your computer.
 - It does not run arbitrary code in Studio. It works through a fixed set of typed operations, listed in [What the plugin can change](/docs/plugin-permissions).
 - It does not turn one sentence into a finished, polished game. It is very good at the next step, and the next one after that.

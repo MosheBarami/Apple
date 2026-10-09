@@ -20,7 +20,7 @@ The StudPilot plugin is the agent's hands in Roblox Studio. It connects the plac
 - **One place at a time.** It acts only on the place you connected, never on other places or files on your computer.
 - **Typed operations only.** The agent cannot send code for the plugin to run. Every action is a specific, checked operation such as "create this instance" or "set this property". Anything outside the list is refused. See [What the plugin can change](/docs/plugin-permissions).
 - **Every change is undoable.** Changes are recorded as normal Studio undo steps, and every run has a checkpoint.
-- **No publishing, no uploads.** The plugin never publishes your place and never uploads anything to your Roblox account.
+- **No publishing, no uploads from Studio.** The plugin never publishes your place and never uploads anything. Art and sound the agent makes are uploaded by StudPilot to your own Roblox account, only if you allow it in Settings ([Game art and sound](/docs/game-art-and-sound)), and the plugin then uses their asset ids.
 - **Readable source.** The plugin's code is plain Luau with no hidden or binary parts.
 `,
   },
@@ -69,8 +69,8 @@ Each class and property the plugin is allowed to write is on an allowlist. A wri
 
 - Run code it receives. There is no "execute this" operation.
 - Publish your place or save it to Roblox.
-- Upload anything to your Roblox account.
-- Start a playtest on its own.
+- Upload anything to your Roblox account. (StudPilot's own uploads of art and sound go through your Roblox sign-in, not the plugin.)
+- Start a playtest on its own. It plays only when the agent runs a play check, and stops it after.
 - Act on a place you did not connect, or keep acting after you disconnect.
 `,
   },

@@ -185,7 +185,7 @@ and bob up and down while they wait to be collected.
 
 - Finds the coins and the script that collects them, so the effect plays at the right moment.
 - Builds the sparkle as a \`ParticleEmitter\` set to emit a single burst, with size and transparency curves so it fades out cleanly.
-- Adds the sound from the Creator Store or your place, and plays it from the coin's position so it is heard in 3D.
+- Adds the sound from the Creator Store or your place, or makes an original one and uploads it to your Roblox account when you have allowed uploads ([Game art and sound](/docs/game-art-and-sound)). It plays it from the coin's position so it is heard in 3D.
 - Animates the spin and bob with \`TweenService\` or a lightweight loop, keeping it on the client where it costs the server nothing.
 
 ## Check it
