@@ -1,6 +1,7 @@
 // SessionDO — one per project. Store of record for chat history, checkpoints and op logs.
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
+import { framesToImages } from '../evidence-images';
 import { benchClean } from '../owner-bench';
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
@@ -937,6 +938,11 @@ export class SessionDO extends DurableObject<Env> {
       } catch {
         /* already added on an earlier boot */
       }
+      // A timed-out op's real outcome, when its result arrives late (recordLateResult). NULL: none arrived.
+      const oplogColumns = (this.sql.exec(`select name from pragma_table_info('oplog')`).toArray() as { name: string }[]).map((c) => c.name);
+      if (!oplogColumns.includes('late_ok')) this.sql.exec(`alter table oplog add column late_ok integer`);
+      if (!oplogColumns.includes('late_summary')) this.sql.exec(`alter table oplog add column late_summary text`);
+      if (!oplogColumns.includes('late_at')) this.sql.exec(`alter table oplog add column late_at integer`);
       //[[ WHO TOOK THIS CHECKPOINT. Not guessed from its kind.
       //
       //   There was no author column, so the product inferred one: `kind === 'manual' ? 'you'`.
@@ -2748,7 +2754,8 @@ export class SessionDO extends DurableObject<Env> {
     //   agent is mid-run, and the first write in a STUDIO_CHECKPOINT_GAP_MS window is preceded by a
     //   checkpoint, so whatever the Studio agent changes can be put back in one click. ]]
     if (path === '/studio-tool' && req.method === 'POST') {
-      const { tool, args } = (await req.json().catch(() => ({}))) as { tool?: unknown; args?: unknown };
+      const { tool, args, turnId } = (await req.json().catch(() => ({}))) as { tool?: unknown; args?: unknown; turnId?: unknown };
+      if (typeof turnId === 'string' && /^[\w-]{1,80}$/.test(turnId)) this.studioTurnId = turnId;
       if (typeof tool !== 'string' || !STUDIO_TOOLS.includes(tool)) {
         return json({ ok: false, error: `${typeof tool === 'string' ? tool : 'that tool'} is not a Studio tool.` }, 403);
       }
@@ -2778,11 +2785,40 @@ export class SessionDO extends DurableObject<Env> {
           await this.ctx.storage.put('studioCheckpointAt', Date.now());
         }
       }
+      // A render's frames go back to the agent as images its model reads (evidence-images.ts), not only to a screen.
+      const frames: StudioFrame[] = [];
+      if (tool === 'render_view') ctx.emitFrame = (frame) => { frames.push(frame); };
+      // Edited in Studio by hand since the agent's last call? Then its earlier reads are stale (plugin sceneRev).
+      const revBefore = (await this.ctx.storage.get<StudioEventState>('pluginState'))?.sceneRev;
+      const seenRev = await this.ctx.storage.get<number>('agentSceneRev');
+      const sceneChanged = typeof revBefore === 'number' && typeof seenRev === 'number' && revBefore !== seenRev;
       const out = await runTool(ctx, tool, JSON.stringify(args ?? {}));
+      const revAfter = (await this.ctx.storage.get<StudioEventState>('pluginState'))?.sceneRev;
+      if (typeof revAfter === 'number') await this.ctx.storage.put('agentSceneRev', revAfter);
+      if (sceneChanged) {
+        if (out && typeof out === 'object') (out as { sceneChanged?: boolean }).sceneChanged = true;
+        checkpointNote = `${checkpointNote ? `${checkpointNote}\n` : ''}The place was changed in Studio outside StudPilot since your last call (by the person or another plugin). Anything you read before may be out of date: read again what you are about to change.`;
+      }
+      const images = frames.length ? await framesToImages(frames) : [];
+      if (images.length && out && typeof out === 'object') (out as { images?: unknown }).images = images;
+      if (this.lateResults.length) {
+        const late = this.lateResults.map((l) => `${l.kind} (${l.id}): ${l.summary}`).join('; ');
+        this.lateResults = [];
+        checkpointNote = `${checkpointNote ? `${checkpointNote}\n` : ''}Late answers from Studio for changes that had timed out (they did reach Studio; do not redo them blindly, read the place first): ${late}.`;
+      }
       if (checkpointNote && out && typeof out === 'object' && typeof (out as { resultForLlm?: unknown }).resultForLlm === 'string') {
         (out as { resultForLlm: string }).resultForLlm = `${checkpointNote}\n${(out as { resultForLlm: string }).resultForLlm}`;
       }
       return json(out);
+    }
+
+    // The person pressed stop in the Studio agent: its queued ops are discarded. One already collected by the plugin may still
+    // apply; its result is recorded when it arrives (recordLateResult).
+    if (path === '/studio-cancel' && req.method === 'POST') {
+      const { turnId } = (await req.json().catch(() => ({}))) as { turnId?: unknown };
+      if (typeof turnId !== 'string' || !turnId) return json({ ok: false, error: 'turnId required' }, 400);
+      const dropped = await this.dropOpsForTurn(turnId);
+      return json({ ok: true, dropped });
     }
 
     if (path === '/studio-op' && req.method === 'POST') {
@@ -6528,6 +6564,29 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /** Drop only one still-live run's queued work when its membership changes mid-step. */
+  /** The Studio agent's current turn (set by `/studio-tool`), tagged on the ops it queues so a stop can discard them. */
+  private studioTurnId: string | undefined;
+  /**
+   * Results that arrived after their op had timed out. A timeout is "maybe applied"; when the real answer comes in late it is
+   * recorded on the op's oplog row and told to the agent on its next tool call, so it reconciles instead of redoing the change.
+   */
+  private lateResults: { id: string; kind: string; ok: boolean; summary: string }[] = [];
+
+  private async dropOpsForTurn(turnId: string): Promise<number> {
+    const dropped = this.opQueue.filter((op) => op.turnId === turnId);
+    if (dropped.length === 0) return 0;
+    this.opQueue = this.opQueue.filter((op) => op.turnId !== turnId);
+    await this.ctx.storage.put('opQueue', this.opQueue);
+    for (const op of dropped) {
+      const waiter = this.opWaiters.get(op.id);
+      if (!waiter) continue;
+      this.opWaiters.delete(op.id);
+      // Removed before any plugin collected it, so it provably never reached Studio.
+      waiter({ id: op.id, ok: false, error: 'Stopped: this change was discarded before Studio collected it', failure: WORKER_FAILURES.runEnded });
+    }
+    return dropped.length;
+  }
+
   private async dropOpsForRun(runId: string): Promise<number> {
     const dropped = this.opQueue.filter((op) => op.runId === runId);
     if (dropped.length === 0) return 0;
@@ -6595,6 +6654,7 @@ export class SessionDO extends DurableObject<Env> {
       seq: this.seq,
       studioOp,
       runId: leavesRunMode ? undefined : this.currentMsgId,
+      ...(leavesRunMode || !this.studioTurnId ? {} : { turnId: this.studioTurnId }),
     };
     this.opQueue.push(op);
     // Queueing an op is activity: it un-parks the poll so the next one holds again rather than
@@ -6644,9 +6704,18 @@ export class SessionDO extends DurableObject<Env> {
       result.ok ? null : (asFailureKind(result.failure) ?? null),
       // The op's OWN attribution, not `this.currentMsgId` read a second time: the run can have
       // ended while this op sat in the queue, and the row must name the run that asked for it.
-      op.runId ?? null,
+      op.runId ?? (op.turnId ? `turn:${op.turnId}` : null),
     );
     return result;
+  }
+
+  /** A result whose op already timed out: the oplog row gets the real outcome, and the agent hears it on its next call. */
+  private recordLateResult(r: OpResult): void {
+    const row = this.sql.exec(`select kind from oplog where op_id = ? and failure = 'timeout' order by id desc limit 1`, r.id).toArray()[0] as { kind?: string } | undefined;
+    if (!row) return;
+    const summary = (r.ok ? 'applied' : `failed: ${r.error ?? 'no reason'}`).slice(0, 200);
+    this.sql.exec(`update oplog set late_ok = ?, late_summary = ?, late_at = ? where op_id = ?`, r.ok ? 1 : 0, summary, Date.now(), r.id);
+    this.lateResults = [...this.lateResults, { id: r.id, kind: String(row.kind ?? 'op'), ok: !!r.ok, summary }].slice(-10);
   }
 
   /** What the plugin last reported as selected in Studio. Mirrored in storage. */
@@ -6953,6 +7022,8 @@ export class SessionDO extends DurableObject<Env> {
       if (waiter) {
         this.opWaiters.delete(r.id);
         waiter(r);
+      } else {
+        this.recordLateResult(r);
       }
     }
     const logs = (body.events ?? []).filter((e) => e.kind === 'log');

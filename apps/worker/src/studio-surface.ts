@@ -17,6 +17,8 @@ export const STUDIO_READ_TOOLS = [
   'model_anatomy',
   'check_ui',
   'spatial_query',
+  // Visual evidence (handoff 2026-10-09 section 9): the frames come back to the agent as images its model reads.
+  'render_view',
 ] as const;
 
 // No offline "knowledge" tools any more (rebuild 2026-10-08): no reviewed patterns, kits or verified modules. The agent's
@@ -34,6 +36,8 @@ export const STUDIO_WRITE_TOOLS = [
   'edit_terrain',
   'insert_from_store',
   'make_image',
+  // Sound effects: synthesised from a catalogue (no model), uploaded into the person's own account with upload:true.
+  'generate_sound',
   'animate_model',
   'play_check',
 ] as const;

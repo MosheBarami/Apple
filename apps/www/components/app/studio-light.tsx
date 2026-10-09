@@ -24,6 +24,7 @@ type Phase =
   | { kind: "idle" }
   | { kind: "looking" }
   | { kind: "choose"; candidates: StudioCandidate[] }
+  | { kind: "elsewhere"; pickId: string; placeName: string; projectId: string; projectName: string }
   | { kind: "notFound" }
   | { kind: "error"; message: string };
 
@@ -106,17 +107,21 @@ export function StudioLight({ projectId, openOnMount = false }: { projectId: str
     }
   }, [connected, phase.kind]);
 
-  const look = useCallback(async (id: string, pickId?: string) => {
+  const look = useCallback(async (id: string, pickId?: string, here?: boolean) => {
     const mine = ++attempt.current;
     setPhase({ kind: "looking" });
     const until = Date.now() + LOOK_FOR_MS;
     try {
       for (;;) {
-        const result = await connectStudio(id, pickId);
+        const result = await connectStudio(id, pickId, here);
         if (mine !== attempt.current) return;
         if (result.status === "connected") return; // the link poll turns the light green once Studio collects its token
         if (result.status === "choose") {
           setPhase({ kind: "choose", candidates: result.candidates });
+          return;
+        }
+        if (result.status === "elsewhere") {
+          setPhase({ kind: "elsewhere", pickId: result.pickId, placeName: result.placeName, projectId: result.projectId, projectName: result.projectName });
           return;
         }
         if (Date.now() >= until) {
@@ -242,6 +247,20 @@ export function StudioLight({ projectId, openOnMount = false }: { projectId: str
           </div>
         ) : null}
         {phase.kind === "error" ? <p className="text-destructive" role="alert">{phase.message}</p> : null}
+        {phase.kind === "elsewhere" ? (
+          <div className="space-y-2">
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">{phase.placeName}</span> already has a project:{" "}
+              <span className="font-medium text-foreground">{phase.projectName}</span>. Its conversation and history are there.
+            </p>
+            <Button className="w-full" onClick={() => { stop(); router.push(`/app/chat/${phase.projectId}?pair=1`); }} size="sm">
+              Open {phase.projectName}
+            </Button>
+            <Button className="w-full" onClick={() => projectId && void look(projectId, phase.pickId, true)} size="sm" variant="ghost">
+              Connect it to this project instead
+            </Button>
+          </div>
+        ) : null}
         {phase.kind === "choose" ? (
           <div className="space-y-1">
             <p className="text-muted-foreground">Which Studio should this project use?</p>

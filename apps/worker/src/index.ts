@@ -1,4 +1,5 @@
 // StudPilot worker entry: API routes + static serving + DO exports.
+import type { EvidenceImage } from './evidence-images';
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
@@ -1103,19 +1104,28 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     await releaseBudget(this.env, reserved, model);
   }
 
-  async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {
+  async callTool(projectId: string, name: string, args: Record<string, unknown>, turnId?: string): Promise<{ ok: boolean; text: string; images?: EvidenceImage[]; sceneChanged?: boolean }> {
     if (!STUDIO_TOOLS.includes(name)) return { ok: false, text: `Unknown tool '${name}'.` };
     const stub = await studioGrantedStub(this.env, projectId);
     if (!stub) return { ok: false, text: 'This project is not open in StudPilot Studio. Reload the page.' };
     const res = await stub.fetch('https://do/studio-tool', {
       method: 'POST',
-      body: JSON.stringify({ tool: name, args }),
+      body: JSON.stringify({ tool: name, args, ...(turnId ? { turnId } : {}) }),
     });
-    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
+    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string; images?: EvidenceImage[]; sceneChanged?: boolean };
     if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };
     // A generated picture is paid per image, not per token: its neurons are charged to the owner's Credits here.
     if (name === 'make_image') await this.chargeImage(projectId, out.resultForLlm).catch(() => undefined);
-    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}' };
+    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}', ...(out.images?.length ? { images: out.images } : {}), ...(out.sceneChanged ? { sceneChanged: true } : {}) };
+  }
+
+  /** The person stopped the agent's turn: its ops still queued for Studio are discarded (SessionDO `/studio-cancel`). */
+  async cancelTurn(projectId: string, turnId: string): Promise<{ dropped: number }> {
+    const stub = await studioGrantedStub(this.env, projectId);
+    if (!stub) return { dropped: 0 };
+    const res = await stub.fetch('https://do/studio-cancel', { method: 'POST', body: JSON.stringify({ turnId }) });
+    const out = (await res.json().catch(() => ({}))) as { dropped?: number };
+    return { dropped: out.dropped ?? 0 };
   }
 
   private async chargeImage(projectId: string, resultText: string | undefined): Promise<void> {
@@ -2411,11 +2421,27 @@ app.get('/api/roblox/uploads', async (c) => {
   return c.json(await robloxUploadsConnected(c.env, user.userId).catch(() => ({ connected: false, username: null })));
 });
 
+/** This person's other project already bound to `placeId` (projects.place_id, mirrored by the SessionDO), read as them. */
+export async function projectForPlace(env: Env, auth: string, userId: string, placeId: number, notId: string): Promise<{ id: string; name: string } | null> {
+  try {
+    const q = `owner_id=eq.${encodeURIComponent(userId)}&place_id=eq.${Math.floor(placeId)}&id=neq.${encodeURIComponent(notId)}&select=id,name,place_id&order=updated_at.desc&limit=1`;
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/projects?${q}`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth } });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ id?: unknown; name?: unknown; place_id?: unknown }>;
+    // Only a row that really is this game's and another project counts: sending the person away on anything less would
+    // move their Studio to the wrong project.
+    const row = rows.find((r) => typeof r.id === 'string' && r.id !== notId && Number(r.place_id) === Math.floor(placeId));
+    return row ? { id: row.id as string, name: typeof row.name === 'string' ? row.name : 'Untitled' } : null;
+  } catch {
+    return null;
+  }
+}
+
 app.post('/api/projects/:id/connect', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
-  const body = await c.req.json<{ pickId?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ pickId?: unknown; here?: unknown }>().catch(() => null);
   const robloxUserIds = await linkedRobloxIds(c.env, ctx.user.userId);
   const lobby = pairingStub(c.env);
   const listed = (await (await lobby.fetch('https://do/candidates', { method: 'POST', body: JSON.stringify({ robloxUserIds, ip, userId: ctx.user.userId }) })).json()) as {
@@ -2427,6 +2453,12 @@ app.post('/api/projects/:id/connect', async (c) => {
   if (!picked) {
     if (mine.length === 0) return c.json({ status: 'waiting' });
     return c.json({ status: 'choose', candidates: mine.map(({ pickId, placeName, placeId }) => ({ pickId, placeName, placeId })) });
+  }
+  // One project per game (handoff 2026-10-09 section 12): a game that already has another project of this person's is
+  // offered as that project, so its conversation and history continue there. `here: true` binds this one anyway.
+  if (picked.placeId > 0 && body?.here !== true) {
+    const other = await projectForPlace(c.env, c.req.header('Authorization') ?? '', ctx.user.userId, picked.placeId, ctx.project.id);
+    if (other) return c.json({ status: 'elsewhere', pickId: picked.pickId, placeName: picked.placeName, projectId: other.id, projectName: other.name });
   }
   const res = await lobby.fetch('https://do/bind', {
     method: 'POST',

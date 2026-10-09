@@ -43,6 +43,7 @@ import {
 } from './sound-design';
 import { VOICE_PRESET_NAMES, synthesize, voicePresetCatalogue, workersAiSpeech, TIMBRE_SELECTABLE } from './speech';
 import { audioPathFor, storeAudio } from './audio-store';
+import { uploadToOwnRoblox } from './own-upload';
 
 /**
  * Structurally identical to tools.ts's private `ToolImpl`, declared here so this file does not
@@ -388,6 +389,8 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
           seed: { type: 'number', description: 'Same seed, same bytes. Default 0. Change it for a different take of the same effect.' },
           semitones: { type: 'number', description: 'Transpose, -24 to +24. A quick way to make a heavier or lighter version of the same effect.' },
           seconds: { type: 'number', description: 'Override the preset length. Ambience beds default to 6s and loop.' },
+          upload: { type: 'boolean', description: 'Upload it into the person\'s own Roblox account as Audio and return its rbxassetid, ready for a Sound\'s SoundId (needs Roblox uploads connected in Settings). Roblox moderates audio before it plays for others.' },
+          name: { type: 'string', description: 'The uploaded asset\'s name, e.g. "Coin pickup". Default: the preset name.' },
         },
         ['preset'],
       ),
@@ -423,8 +426,30 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
         `${preset.summary} ${rendered.seconds.toFixed(2)}s, ${rendered.sampleRate} Hz${rendered.loop ? ', loops seamlessly' : ''}. Download it and upload it to Roblox yourself — this does not place it in your game.`,
       );
 
+      // Uploaded into the person's own account (own-upload.ts): then a Sound in their place can play it.
+      let uploaded: { soundId: string } | { uploadError: string } | null = null;
+      if (a.upload === true) {
+        if (!ctx.userId) uploaded = { uploadError: 'no signed-in owner to upload for' };
+        else {
+          const name = typeof a.name === 'string' && a.name.trim() ? a.name.trim().slice(0, 50) : rendered.preset;
+          const up = await uploadToOwnRoblox(ctx.env, ctx.userId, wav, 'audio/wav', 'Audio', name);
+          uploaded = 'assetId' in up ? { soundId: `rbxassetid://${up.assetId}` } : { uploadError: up.error };
+        }
+      }
+      if (uploaded && 'soundId' in uploaded) {
+        return {
+          soundId: uploaded.soundId,
+          preset: rendered.preset,
+          seconds: rendered.seconds,
+          loop: rendered.loop,
+          peakDbfs: rendered.peakDbfs,
+          placedInGame: false,
+          note: `Uploaded to the person's Roblox account as Audio. Set it as a Sound's SoundId (Looped ${rendered.loop ? 'true' : 'false'}) where the game needs it, then check it loads (play_check). Roblox moderates new audio, so it may be silent for others for a few minutes.`,
+        };
+      }
       return {
         audioId,
+        ...(uploaded && 'uploadError' in uploaded ? { uploadError: uploaded.uploadError } : {}),
         preset: rendered.preset,
         family: rendered.family,
         seconds: rendered.seconds,

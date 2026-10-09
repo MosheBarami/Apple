@@ -188,6 +188,36 @@ Open the project's menu to rename it or delete it. Deleting a project deletes it
 `,
   },
   {
+    slug: "game-art-and-sound",
+    title: "Game art and sound",
+    description: "Pictures and sound effects the agent makes, and how they get into your game through your Roblox account.",
+    body: `
+Most requests need no art: the agent builds interfaces from Roblox's own UI objects, and worlds from parts, terrain and Creator Store assets. When a design does need a picture or a sound that does not exist yet, the agent can make one.
+
+## What it can make
+
+- **Pictures:** button and panel skins, icons, title banners, item pictures, tiled textures (for example studs or wood) and backgrounds. They are drawn by an image model running on Cloudflare. Labels and numbers stay live text, so they can change in the game.
+- **Sound effects:** pickups, clicks, hits, whooshes, ambience and more, made from a catalogue of sound recipes (no AI model; the same recipe and seed always give the same sound). For something the catalogue does not have, the agent looks in the Creator Store instead.
+
+## Allowing uploads
+
+A picture or sound has to be a Roblox asset before your game can use it. StudPilot uploads it **to your own Roblox account**, never to anyone else's, and only after you allow it once:
+
+1. Open **Settings** and find **Roblox uploads**.
+2. Press **Connect Roblox for uploads** and sign in to Roblox.
+3. On Roblox's screen, press **Select** next to your account under **Your Accounts**, then **Confirm**. Without selecting the account, Roblox refuses every upload.
+
+You can disconnect it in the same place. Until uploads are allowed, the agent builds the look in-engine instead (colours, gradients, outlines, Roblox's own textures) and tells you once.
+
+## What to know
+
+- **Uploads are permanent.** Roblox does not let anyone delete an uploaded image; it stays in your inventory even if the agent stops using it.
+- **Roblox moderates them.** A new picture or sound can show as blank or silent for a few minutes while Roblox reviews it, and Roblox's filter sometimes refuses an innocent picture. The agent rewords and tries once more, then tells you.
+- **Pictures cost credits.** Each picture is charged by the image model's usage; sound effects cost nothing to make. See [Credits and limits](/docs/credits-and-limits).
+- **The agent checks its work.** It looks at what it built with its own render of your place and fixes what does not fit, so ask it to change anything you do not like.
+`,
+  },
+  {
     slug: "credits-and-limits",
     title: "Credits and limits",
     description: "How credits work, what requests cost, when they reset and what happens when you run out.",

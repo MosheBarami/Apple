@@ -93,9 +93,9 @@ export const DEFAULT_ACCENT = '#FFB020';
 /** Hard ceiling on model calls per Generate press: one try and one corrective retry. */
 export const BRANDING_MAX_MODEL_CALLS = 2;
 export const CAPTURES_MAX = 2;
-const CAPTURE_PNG_MAX_BYTES = 256 * 1024;
-const CAPTURE_MAX_W = 320;
-const CAPTURE_MAX_H = 240;
+const CAPTURE_PNG_MAX_BYTES = 600 * 1024;
+const CAPTURE_MAX_W = 640;
+const CAPTURE_MAX_H = 480;
 
 /**
  * English only. Printable ASCII plus the typographic punctuation a model tends to use; anything in

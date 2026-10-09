@@ -5,12 +5,15 @@
 
 local StudioCapture = {}
 
-local MAX_WIDTH = 320
-local MAX_HEIGHT = 240
--- Matches frame-bus.ts's 320 KiB base64 ceiling. 240 KiB of PNG bytes expands to at most 320 KiB
--- of base64, so a frame we accept here will not be shipped only to be dropped by worker admission.
-local MAX_PNG_BYTES = 240 * 1024
-local MAX_BASE64_CHARS = 320 * 1024
+-- Native PNG capture may be up to 640x480: the agent's model judges builds from these pixels (worker evidence-images.ts),
+-- and 320x240 was too small to read UI text or spacing (handoff 2026-10-09 section 9). The raw-RGB fallback stays at
+-- 320x240, because uncompressed RGB at 640x480 would exceed the transport limit.
+local MAX_WIDTH = 640
+local MAX_HEIGHT = 480
+local LEGACY_MAX_WIDTH = 320
+local LEGACY_MAX_HEIGHT = 240
+local MAX_PNG_BYTES = 600 * 1024
+local MAX_BASE64_CHARS = 820 * 1024
 local READY_POLLS = 80
 local READY_POLL_SECONDS = 0.025
 
@@ -154,7 +157,8 @@ function StudioCapture.new(options: any?): any
 	function self:capture(width: number, height: number, stillCurrent: any?): (any?, string?)
 		local maxW = math.clamp(math.floor(width), 1, MAX_WIDTH)
 		local maxH = math.clamp(math.floor(height), 1, MAX_HEIGHT)
-		if captureService == nil or self.legacyUnsupported then return legacyCapture(maxW,maxH,stillCurrent) end
+		local legacyW, legacyH = math.min(maxW, LEGACY_MAX_WIDTH), math.min(maxH, LEGACY_MAX_HEIGHT)
+		if captureService == nil or self.legacyUnsupported then return legacyCapture(legacyW,legacyH,stillCurrent) end
 		if type(captureService.CanCaptureScreenshot) ~= "function" or type(captureService.CaptureScreenshot) ~= "function" then
 			return nil, "StudioCaptureService screenshot methods are unavailable"
 		end
@@ -173,7 +177,7 @@ function StudioCapture.new(options: any?): any
 					-- An unavailable API is distinct from a denied permission. Actual denial never falls through.
 					if string.find(tostring(allowed),"Feature not supported yet",1,true) then
 						self.legacyUnsupported = true
-						return legacyCapture(maxW,maxH,stillCurrent)
+						return legacyCapture(legacyW,legacyH,stillCurrent)
 					end
 				elseif type(allowed) ~= "boolean" then
 					self.permissionFailure = "RequestScreenshotPermissionAsync returned unexpected " .. typeof(allowed) .. ": " .. string.sub(tostring(allowed),1,120)

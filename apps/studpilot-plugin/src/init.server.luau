@@ -3,6 +3,32 @@
 -- project then edits this place directly. No saved session token, asset loaders or remote code execution.
 local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
+local okHistory, ChangeHistoryService = pcall(function() return game:GetService("ChangeHistoryService") end)
+if not okHistory then ChangeHistoryService = nil end
+
+-- SCENE REVISION: changes made in Studio by anything but StudPilot's own ops (a person editing by hand, another
+-- plugin). The worker tells the agent when it moved, so earlier reads are not trusted after a manual edit (handoff
+-- 2026-10-09, case 5). Events from StudPilot's ops are deferred like any signal, so the op counter is released with
+-- task.defer after the op, behind them.
+local sceneRev = 0
+local executingOps = 0
+local function sceneChanged()
+	if executingOps == 0 then sceneRev += 1 end
+end
+for _, name in { "Workspace", "ReplicatedStorage", "ServerScriptService", "ServerStorage", "StarterGui", "StarterPlayer", "StarterPack", "Lighting", "SoundService", "Teams" } do
+	local ok, svc = pcall(function() return game:GetService(name) end)
+	if ok and svc then
+		pcall(function()
+			svc.DescendantAdded:Connect(sceneChanged)
+			svc.DescendantRemoving:Connect(sceneChanged)
+		end)
+	end
+end
+if ChangeHistoryService then
+	pcall(function() ChangeHistoryService.OnUndo:Connect(sceneChanged) end)
+	pcall(function() ChangeHistoryService.OnRedo:Connect(sceneChanged) end)
+	pcall(function() (ChangeHistoryService :: any).OnRecordingFinished:Connect(sceneChanged) end)
+end
 local StudioTestService: any = nil
 local studioTestServiceOk, studioTestService = pcall(function() return game:GetService("StudioTestService") end)
 if studioTestServiceOk then StudioTestService = studioTestService end
@@ -361,13 +387,17 @@ bridge = Bridge.new({
 		local authorized = if isRunMode then liveConnection() else writeFence()
 		-- A viewport snapshot reads pixels only; StudioCapture fences edit mode itself.
 		local readFence = if type(op) == "table" and op.op == "capture_studio_viewport" then liveConnection else writeFence
-		return commands:execute(id, op, authorized, readFence)
+		executingOps += 1
+		local results = table.pack(pcall(function() return commands:execute(id, op, authorized, readFence) end))
+		if task and type(task.defer) == "function" then task.defer(function() executingOps -= 1 end) else executingOps -= 1 end
+		if not results[1] then error(results[2], 0) end
+		return table.unpack(results, 2, results.n)
 	end,
 	state = function()
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "2.0.0",
+			selectionCount = #Selection:Get(), pluginVersion = "2.0.0", sceneRev = sceneRev,
 		}
 	end,
 	onStatus = function(_message: string)

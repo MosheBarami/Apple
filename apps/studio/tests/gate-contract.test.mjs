@@ -21,9 +21,12 @@ test('the lists were read (a scrape that finds nothing checks nothing)', () => {
   assert.ok(reads.length >= 5 && writes.length >= 5 && localTools.length >= 4, `reads ${reads}, writes ${writes}, local ${localTools}`);
 });
 
-test('M4 acceptance: the agent is offered 25 tools or fewer', () => {
+// 25 was the old plan's M3/M4 cap. The owner's handoff of 2026-10-09 asks for capabilities the 25 lacked: seeing the
+// work (section 9: render_view) and sound that reaches the game (section 8: generate_sound with upload). The cap still
+// holds the surface small; raising it again needs a capability the handoff names.
+test('the agent is offered 27 tools or fewer', () => {
   const total = reads.length + writes.length + localTools.length;
-  assert.ok(total <= 25, `${total} tools`);
+  assert.ok(total <= 27, `${total} tools`);
 });
 
 test('no premade content reaches the agent: no kits, blocks, verified modules, library or presets', () => {

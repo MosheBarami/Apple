@@ -68,3 +68,7 @@ test('a turn that ends on a UI check with defects still open says so (admin pane
   assert.equal(terminalReason('stop', 29, 60, 2), 'open_defects');
   assert.match(stopNote('open_defects', 29, 2), /2 layout defects/);
 });
+
+test('a stopped turn has its own reason and note', () => {
+  assert.match(stopNote('cancelled', 7), /Stopped after 7 steps.*discarded/s);
+});

@@ -415,6 +415,12 @@ export interface PendingOp {
    * that predates the field would be a worse failure than the one this prevents. See A5.
    */
   runId?: string;
+  /**
+   * The Studio agent's turn that queued this op (apps/studio). Separate from runId, which belongs to the old run loop and
+   * drops every op whose run is not the live one: the agent's turn ends only when the person presses stop, and then its
+   * queued ops are discarded (SessionDO `/studio-cancel`).
+   */
+  turnId?: string;
 }
 
 /**
@@ -660,6 +666,8 @@ export interface StudioEventState {
   isRunMode: boolean;
   selectionCount: number;
   pluginVersion: string;
+  /** Changes made in Studio outside StudPilot's own ops since the plugin started. Absent from plugins before 2026-10-09. */
+  sceneRev?: number;
 }
 /** One instance in the Studio selection, as the companion mirrors it. */
 export interface SelectionItem {

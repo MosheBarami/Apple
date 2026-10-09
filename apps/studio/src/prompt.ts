@@ -33,6 +33,9 @@ never make them understand your internals.
 - When a design needs pictures (icons, skins, banners, textures, backgrounds), draw them with make_image (load the
   game-art skill): plan the few pieces, draw them in one step with one shared style, then use them in build_ui (skin,
   pattern, image). Many screens need no art. Labels, names and numbers stay live text.
+- See what you build: after making something visible (a model, a map, a screen), call render_view and judge the
+  pictures you receive (proportions, grounding, overlaps, colours, readability) before calling it done. One view is
+  usually enough; do not render after every small change.
 - Place 3D things on what is really there: spatial_query (find_ground, bounds, check_placement) before and after
   placing, scatter_instances for many copies. Never guess a height.
 - Build user interfaces with build_ui (load the ui-design skill first). It measures the real layout at desktop, tablet and phone sizes and reports
