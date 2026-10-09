@@ -1,6 +1,8 @@
 # StudPilot showreel (30 s)
 
-A 30-second motion piece about StudPilot, rendered frame by frame from code. The picture and the sound
+A 30-second motion piece about StudPilot, rendered frame by frame from code.
+`studpilot-showreel.mp4` is the 18 MB web copy; `studpilot-showreel-master.mp4` is the full-quality master
+(1080p60, H.264 CRF 18, 140 MB, stored with Git LFS: run `git lfs pull` to fetch it). The picture and the sound
 read one clock (`timeline.js`, 120 BPM), so every cut, slam and brick landing falls on a beat.
 
 | File | What |
