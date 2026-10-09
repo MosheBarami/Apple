@@ -96,3 +96,18 @@ export function compactHistory(messages: ModelMessage[]): ModelMessage[] {
 function shorten(text: string): string {
   return text.length <= OLD_TEXT_CHARS ? text : `${text.slice(0, OLD_TEXT_CHARS)}…[shortened]`;
 }
+
+/**
+ * A tool call whose arguments arrive as a JSON string of the object (the model sometimes quotes a long argument list)
+ * is unwrapped here instead of failing and making the model write the whole call again.
+ */
+export async function unwrapQuotedToolInput<T extends { input: string }>({ toolCall }: { toolCall: T }): Promise<T | null> {
+  try {
+    const once = JSON.parse(toolCall.input) as unknown;
+    if (typeof once !== 'string') return null;
+    const twice = JSON.parse(once) as unknown;
+    return twice && typeof twice === 'object' && !Array.isArray(twice) ? { ...toolCall, input: JSON.stringify(twice) } : null;
+  } catch {
+    return null;
+  }
+}

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as S from '../src/token-saver.ts';
 import { clampToolOutput, compactHistory, TtlCache, TurnReadCache } from '../src/token-saver.ts';
 
 test('a long tool result keeps its head and tail and says how to ask for less', () => {
@@ -34,4 +35,12 @@ test('old history is shortened; the recent window is sent whole', () => {
   const out = compactHistory(msgs);
   assert.ok(out[0].content[0].text.length < 1_600);
   assert.equal(out[19].content[0].text.length, 5_000);
+});
+
+test('a tool call quoted as a JSON string is unwrapped; anything else is left to fail normally', async () => {
+  const fixed = await S.unwrapQuotedToolInput({ toolCall: { toolName: 'build_ui', input: JSON.stringify(JSON.stringify({ name: 'A' })) } });
+  assert.deepEqual(JSON.parse(fixed.input), { name: 'A' });
+  assert.equal(fixed.toolName, 'build_ui');
+  assert.equal(await S.unwrapQuotedToolInput({ toolCall: { input: '{"name":1}' } }), null);
+  assert.equal(await S.unwrapQuotedToolInput({ toolCall: { input: 'not json' } }), null);
 });
