@@ -20,6 +20,7 @@ import {
 } from 'ai';
 import { createWorkersAI } from 'workers-ai-provider';
 import { type Holds, meteredAi, releaseAll, settleNext } from './metering.ts';
+import { dumpStorage } from './legacy.ts';
 import { systemPrompt } from './prompt.ts';
 import { knowledgeTools, studioTools } from './tools.ts';
 import { compactHistory, TurnReadCache, repairToolInput } from './token-saver.ts';
@@ -59,6 +60,11 @@ export class StudPilotAgent extends AIChatAgent<Env> {
   /** The whole stored conversation, for the operator's admin export (server.ts /studio/api/admin/history). */
   async exportHistory(): Promise<{ project: ProjectInfo | null; messages: unknown[] }> {
     return { project: (await this.ctx.storage.get<ProjectInfo>('project')) ?? null, messages: this.messages };
+  }
+
+  /** The raw storage (every table), for the operator's export by object id (server.ts). */
+  async dumpStorage() {
+    return dumpStorage(this.ctx.storage);
   }
 
   /** Called by the router after the owner check: the project's name and whether its owner may build. */

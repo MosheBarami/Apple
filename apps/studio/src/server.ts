@@ -5,6 +5,7 @@
  *   GET  /studio/api/health          build marker
  *   ANY  /studio/agent/<projectId>…  the project's agent (WebSocket chat + its HTTP helpers)
  *   GET  /studio/api/admin/history/<projectId>  the operator's export of that conversation (X-Admin-Key)
+ *   GET  /studio/api/admin/object/<agent|flue>/<objectId>  raw storage of one agent object, by id (X-Admin-Key)
  *
  * Every agent request is checked against the project's owner first; the agent instance is named by the project id, so
  * a person can only ever reach the agent of a project they own.
@@ -17,6 +18,7 @@ export { FlueStudPilotAgent } from './legacy.ts';
 
 const AGENT_PREFIX = '/studio/agent/';
 const ADMIN_HISTORY_PREFIX = '/studio/api/admin/history/';
+const ADMIN_OBJECT_PREFIX = '/studio/api/admin/object/';
 
 /** Constant-time comparison of two secrets (hashes compared, so length leaks nothing either). */
 async function sameSecret(a: string, b: string): Promise<boolean> {
@@ -41,6 +43,21 @@ export default {
       if (!projectId) return new Response('Not found', { status: 404 });
       const agent = await getAgentByName(env.StudPilotAgent, projectId);
       return Response.json(await agent.exportHistory());
+    }
+    // The same export by Durable Object id (a conversation whose project no longer exists), for either agent class.
+    if (url.pathname.startsWith(ADMIN_OBJECT_PREFIX)) {
+      if (!env.ADMIN_KEY || !(await sameSecret(request.headers.get('X-Admin-Key') ?? '', env.ADMIN_KEY))) return new Response('Not found', { status: 404 });
+      const [kind, hex] = url.pathname.slice(ADMIN_OBJECT_PREFIX.length).split('/');
+      if (!hex || !/^[0-9a-f]{64}$/.test(hex)) return new Response('Not found', { status: 404 });
+      if (kind === 'agent') {
+        const stub = env.StudPilotAgent.get(env.StudPilotAgent.idFromString(hex));
+        return Response.json(await stub.dumpStorage());
+      }
+      if (kind === 'flue') {
+        const stub = env.FLUE_STUDPILOT.get(env.FLUE_STUDPILOT.idFromString(hex));
+        return Response.json(await stub.dumpStorage());
+      }
+      return new Response('Not found', { status: 404 });
     }
     if (!url.pathname.startsWith(AGENT_PREFIX)) return new Response('Not found', { status: 404 });
 
